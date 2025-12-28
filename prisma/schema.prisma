@@ -1,0 +1,250 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum UserRole {
+  CHAIRPERSON
+  TREASURER
+  SECRETARY
+  MEMBER
+}
+
+enum LoanStatus {
+  PENDING_APPROVAL
+  ACTIVE
+  CLEARED
+  OVERDUE
+  REJECTED
+  CANCELLED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum RepaymentFrequencyType {
+  DAYS
+  WEEKS
+  MONTHS
+}
+
+enum InterestType {
+  FLAT
+  DECLINING_BALANCE
+}
+
+enum InterestCalculationPeriodType {
+  DAILY
+  SAME_AS_REPAYMENT
+}
+
+enum AmortizationType {
+  EQUAL_INSTALLMENTS
+  EQUAL_PRINCIPAL
+}
+
+enum ChargeType {
+  FEE
+  PENALTY
+}
+
+enum ChargeCalculationType {
+  FIXED
+  PERCENTAGE
+}
+
+enum ExpenseCategory {
+  OFFICE
+  OPERATIONS
+  EVENTS
+  MISCELLANEOUS
+}
+
+enum IncomeCategory {
+  MONTHLY_CONTRIBUTION
+  LOAN_REPAYMENT
+  LOAN_PENALTY
+  NON_LOAN_PENALTY
+  RESCHEDULING_FEE
+  TOP_UP_FEE
+  APPLICATION_FEE
+}
+
+enum NotificationType {
+  APPLICATION_RECEIVED
+  LOAN_APPROVED
+  LOAN_REJECTED
+  LOAN_CLEARED
+  SYSTEM_UPDATE
+}
+
+enum AuditLogAction {
+  LOAN_APPLIED
+  LOAN_VOTE_CAST
+  LOAN_STATUS_CHANGED
+  EXPENSE_REQUEST_CREATED
+  MODIFICATION_REQUEST_CREATED
+  REQUEST_DECISION_MADE
+  FINANCIAL_RECORD_RECORDED
+  SETTINGS_UPDATED
+  PRODUCT_CREATED
+  PRODUCT_UPDATED
+  MEMBER_ADDED
+  DASHBOARD_VIEWED
+  REPORT_DOWNLOADED
+  USER_RIGHTS_UPDATED
+  FEE_EXEMPTION_CHANGED
+  LOAN_APPLICATION_CANCELLED
+  LOAN_DISBURSED
+  CHARGE_TEMPLATE_CREATED
+}
+
+// Models
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  passwordHash  String
+  role          UserRole  @default(MEMBER)
+  permissions   Json?     // Stores UserPermissions object
+  memberId      String?   @unique
+  member        Member?   @relation(fields: [memberId], references: [id])
+  
+  auditLogs     AuditLog[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Member {
+  id            String   @id @default(cuid())
+  memberNumber  Int      @unique
+  name          String
+  contact       String
+  
+  user          User?
+  loans         Loan[]
+  incomes       Income[]
+  notifications Notification[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model LoanProduct {
+  id                            String    @id @default(cuid())
+  name                          String
+  principal                     Float
+  numberOfRepayments           Int
+  repaymentEvery               Int
+  repaymentFrequencyType       RepaymentFrequencyType
+  interestRatePerPeriod        Float
+  interestType                 InterestType
+  interestCalculationPeriodType InterestCalculationPeriodType
+  amortizationType             AmortizationType
+  charges                       Json      // Stores LoanCharge[]
+  isActive                      Boolean   @default(true)
+  
+  loans                         Loan[]
+
+  createdAt                     DateTime  @default(now())
+  updatedAt                     DateTime  @updatedAt
+}
+
+model Loan {
+  id                      String    @id @default(cuid())
+  loanApplicationNumber   String    @unique
+  memberId                String
+  member                  Member    @relation(fields: [memberId], references: [id])
+  loanProductId           String
+  loanProduct             LoanProduct @relation(fields: [loanProductId], references: [id])
+  
+  amount                  Float
+  applicationDate         DateTime
+  disbursementDate        DateTime?
+  dueDate                 DateTime?
+  interestRate            Float
+  penalties               Float     @default(0)
+  status                  LoanStatus @default(PENDING_APPROVAL)
+  
+  approvalVotes           Json      // Stores ApprovalVote[]
+  repaymentSchedule       Json      // Stores RepaymentScheduleItem[]
+  originalRepaymentSchedule Json?   // Stores RepaymentScheduleItem[]
+  
+  feeExemptions           Json      // Stores FeeExemptions object
+  productSnapshot         Json?     // Stores snapshot of product at time of loan
+  loanContract            String?
+  applicationFeePaid      Boolean   @default(false)
+  
+  hasBeenRescheduled      Boolean   @default(false)
+  hasBeenToppedUp         Boolean   @default(false)
+
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+}
+
+model ChargeTemplate {
+  id              String    @id @default(cuid())
+  name            String
+  chargeType      ChargeType
+  calculationType ChargeCalculationType
+  amount          Float
+  dueDateOffset   Int
+  isActive        Boolean   @default(true)
+}
+
+model Expense {
+  id          String          @id @default(cuid())
+  date        DateTime
+  description String
+  category    ExpenseCategory
+  amount      Float
+  
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model Income {
+  id              String         @id @default(cuid())
+  date            DateTime
+  memberId        String
+  member          Member         @relation(fields: [memberId], references: [id])
+  amount          Float
+  category        IncomeCategory
+  description     String
+  loanId          String?
+  transactionId   String
+  principalAmount Float?
+  interestAmount  Float?
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  memberId  String
+  member    Member           @relation(fields: [memberId], references: [id])
+  type      NotificationType
+  message   String
+  timestamp DateTime         @default(now())
+  loanId    String?
+  isRead    Boolean          @default(false)
+}
+
+model AuditLog {
+  id        String         @id @default(cuid())
+  timestamp DateTime       @default(now())
+  userId    String
+  user      User           @relation(fields: [userId], references: [id])
+  action    AuditLogAction
+  details   String
+}

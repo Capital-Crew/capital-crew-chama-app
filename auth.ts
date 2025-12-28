@@ -3,9 +3,29 @@ import Credentials from 'next-auth/providers/credentials';
 import { z } from 'zod';
 import prisma from './lib/prisma';
 import bcrypt from 'bcryptjs';
-import { UserRole } from '@prisma/client';
+import { authConfig } from './auth.config';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+    ...authConfig,
+    callbacks: {
+        jwt({ token, user }) {
+            if (user) {
+                token.id = user.id;
+                // @ts-ignore
+                token.role = user.role;
+            }
+            return token;
+        },
+        session({ session, token }) {
+            if (session.user) {
+                // @ts-ignore
+                session.user.id = token.id as string;
+                // @ts-ignore
+                session.user.role = token.role as string;
+            }
+            return session;
+        },
+    },
     providers: [
         Credentials({
             credentials: {
@@ -34,7 +54,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                         id: user.id,
                         name: user.name,
                         email: user.email,
-                        role: user.role, // Custom field, will need type augmentation
+                        role: user.role,
                     };
                 }
 
@@ -42,26 +62,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             },
         }),
     ],
-    callbacks: {
-        jwt({ token, user }) {
-            if (user) {
-                token.id = user.id;
-                // @ts-ignore
-                token.role = user.role;
-            }
-            return token;
-        },
-        session({ session, token }) {
-            if (session.user) {
-                // @ts-ignore
-                session.user.id = token.id;
-                // @ts-ignore
-                session.user.role = token.role;
-            }
-            return session;
-        },
-    },
-    pages: {
-        signIn: '/login',
-    },
 });

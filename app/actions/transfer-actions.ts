@@ -1,0 +1,289 @@
+'use server'
+
+import { db } from '@/lib/db'
+import { auth } from '@/auth'
+import { revalidatePath } from 'next/cache'
+import { ApprovalStatus, TransferStatus } from '@prisma/client'
+import { AccountingEngine } from '@/lib/accounting/AccountingEngine'
+
+// ========================================
+// CREATE TRANSFER REQUEST
+// ========================================
+
+export async function createTransferRequest(data: {
+    sourceAccountId: string;
+    destinationAccountId: string;
+    amount: number;
+    description: string;
+}) {
+    const session = await auth()
+
+    // Strict Admin Check
+    const allowedRoles = ['CHAIRPERSON', 'TREASURER', 'SECRETARY', 'SYSTEM_ADMIN']
+    if (!session?.user || !allowedRoles.includes(session.user.role)) {
+        return { error: 'Unauthorized: Only administrators can initiate transfers.' }
+    }
+
+    if (data.amount <= 0) {
+        return { error: 'Amount must be greater than zero.' }
+    }
+
+    if (data.sourceAccountId === data.destinationAccountId) {
+        return { error: 'Source and Destination accounts cannot be the same.' }
+    }
+
+    try {
+        const result = await db.$transaction(async (tx) => {
+            // Fetch source account to determine its type
+            const sourceAccount = await tx.ledgerAccount.findUnique({
+                where: { id: data.sourceAccountId },
+                select: { type: true, code: true, name: true }
+            })
+
+            if (!sourceAccount) {
+                throw new Error('Source account not found')
+            }
+
+            // SMART TRANSFER LOGIC
+            // Determine which account gets debited and which gets credited
+            // based on the source account's normal balance type
+
+            const debitNormalTypes = ['ASSET', 'EXPENSE']
+            const isSourceDebitNormal = debitNormalTypes.includes(sourceAccount.type)
+
+            let debitAccountId: string
+            let creditAccountId: string
+
+            if (isSourceDebitNormal) {
+                // Source is Asset/Expense (Debit Normal)
+                // To DECREASE it, we CREDIT the source
+                // To INCREASE destination, we DEBIT the destination
+                creditAccountId = data.sourceAccountId
+                debitAccountId = data.destinationAccountId
+                console.log(`[Smart Transfer] ${sourceAccount.code} is Debit-Normal (${sourceAccount.type}). Crediting Source, Debiting Destination.`)
+            } else {
+                // Source is Liability/Equity/Income (Credit Normal)
+                // To DECREASE it, we DEBIT the source
+                // To INCREASE destination, we CREDIT the destination
+                debitAccountId = data.sourceAccountId
+                creditAccountId = data.destinationAccountId
+                console.log(`[Smart Transfer] ${sourceAccount.code} is Credit-Normal (${sourceAccount.type}). Debiting Source, Crediting Destination.`)
+            }
+
+            // 1. Create Request with intelligently assigned debit/credit
+            const request = await tx.transferRequest.create({
+                data: {
+                    requesterId: session.user.id!,
+                    debitAccountId,
+                    creditAccountId,
+                    amount: data.amount,
+                    description: data.description,
+                    status: TransferStatus.PENDING
+                }
+            })
+
+            // 2. Auto-Approve by Requester (Maker Consent)
+            await tx.transferApproval.create({
+                data: {
+                    transferRequestId: request.id,
+                    approverId: session.user.id!,
+                    status: ApprovalStatus.APPROVED,
+                    notes: 'Request Creator'
+                }
+            })
+
+            return request
+        })
+
+        revalidatePath('/accounting/transfers')
+        revalidatePath('/accounts')
+        return { success: true, id: result.id }
+
+    } catch (error: any) {
+        console.error('Create Transfer Error:', error)
+        return { error: error.message || 'Failed to create transfer request' }
+    }
+}
+
+// ========================================
+// APPROVE TRANSFER
+// ========================================
+
+export async function approveTransfer(requestId: string, notes?: string) {
+    const session = await auth()
+
+    // Strict Admin Check
+    const allowedRoles = ['CHAIRPERSON', 'TREASURER', 'SECRETARY', 'SYSTEM_ADMIN']
+    if (!session?.user || !allowedRoles.includes(session.user.role)) {
+        return { error: 'Unauthorized: Only administrators can approve transfers.' }
+    }
+
+    try {
+        const result = await db.$transaction(async (tx) => {
+            const request = await tx.transferRequest.findUnique({
+                where: { id: requestId },
+                include: { approvals: true }
+            })
+
+            if (!request) throw new Error('Request not found')
+            if (request.status !== TransferStatus.PENDING) throw new Error('Request is not pending')
+
+            // Check if already voted
+            const existingVote = request.approvals.find(a => a.approverId === session.user.id)
+            if (existingVote) {
+                throw new Error('You have already voted on this request.')
+            }
+
+            // Record Approval
+            await tx.transferApproval.create({
+                data: {
+                    transferRequestId: requestId,
+                    approverId: session.user.id!,
+                    status: ApprovalStatus.APPROVED,
+                    notes: notes
+                }
+            })
+
+            // 3. CHECK CONSENSUS
+            // We need 2 approvals total (Requester + This Approver = 2)
+            // Or ideally 3? Plan said "At least 2".
+            // Since we just added one, count is request.approvals.length + 1
+
+            // Re-fetch approvals to be safe? Or validation logic:
+            // Previous approvals + Current one.
+            const totalApprovals = request.approvals.filter(a => a.status === ApprovalStatus.APPROVED).length + 1
+
+            if (totalApprovals >= 2) {
+                // EXECUTE TRANSACTION
+                // 1. Post to Ledger
+                const je = await AccountingEngine.postJournalEntry({
+                    transactionDate: new Date(),
+                    referenceType: 'MANUAL_ADJUSTMENT',
+                    referenceId: request.id,
+                    description: `Transfer Executed: ${request.description}`,
+                    notes: `Approved by ${totalApprovals} admins.`,
+                    createdBy: session.user.id!,
+                    createdByName: session.user.name || 'Admin',
+                    lines: [
+                        {
+                            accountId: request.debitAccountId,
+                            debitAmount: Number(request.amount),
+                            creditAmount: 0,
+                            description: request.description
+                        },
+                        {
+                            accountId: request.creditAccountId,
+                            debitAmount: 0,
+                            creditAmount: Number(request.amount),
+                            description: request.description
+                        }
+                    ]
+                }, tx as any) // Type cast if needed for transaction client
+
+                // 2. Update Request Status
+                await tx.transferRequest.update({
+                    where: { id: requestId },
+                    data: {
+                        status: TransferStatus.EXECUTED,
+                        ledgerEntryId: je.id
+                    }
+                })
+            } else {
+                // Just update status to indicate progress? 
+                // Currently status is PENDING until EXECUTED.
+            }
+
+            return { success: true }
+        })
+
+        revalidatePath('/accounting/transfers')
+        revalidatePath('/accounts') // Ensure balances update!
+        return result
+
+    } catch (error: any) {
+        console.error('Approve Transfer Error:', error)
+        return { error: error.message || 'Failed to approve transfer' }
+    }
+}
+
+// ========================================
+// REJECT TRANSFER
+// ========================================
+
+export async function rejectTransfer(requestId: string, notes: string) {
+    const session = await auth()
+    // Strict Admin Check
+    const allowedRoles = ['CHAIRPERSON', 'TREASURER', 'SECRETARY', 'SYSTEM_ADMIN']
+    if (!session?.user || !allowedRoles.includes(session.user.role)) {
+        return { error: 'Unauthorized' }
+    }
+
+    try {
+        await db.transferRequest.update({
+            where: { id: requestId },
+            data: {
+                status: TransferStatus.REJECTED
+            }
+        })
+
+        await db.transferApproval.create({
+            data: {
+                transferRequestId: requestId,
+                approverId: session.user.id!,
+                status: ApprovalStatus.REJECTED,
+                notes
+            }
+        })
+
+        revalidatePath('/accounting/transfers')
+        return { success: true }
+    } catch (error: any) {
+        return { error: error.message }
+    }
+}
+
+/**
+ * Fetch all transfer requests (Pending & History)
+ */
+export async function getTransferRequests() {
+    const session = await auth()
+    if (!session?.user) {
+        throw new Error('Unauthorized')
+    }
+
+    const [pendingRaw, historyRaw] = await Promise.all([
+        db.transferRequest.findMany({
+            where: { status: 'PENDING' },
+            include: {
+                requester: { select: { name: true } },
+                debitAccount: true,
+                creditAccount: true,
+                approvals: true
+            },
+            orderBy: { createdAt: 'desc' }
+        }),
+        db.transferRequest.findMany({
+            where: { status: { in: ['EXECUTED', 'REJECTED'] } },
+            include: {
+                requester: { select: { name: true } },
+                debitAccount: true,
+                creditAccount: true,
+                approvals: true
+            },
+            orderBy: { updatedAt: 'desc' },
+            take: 50
+        })
+    ])
+
+    const serializeTransfer = (t: any) => ({
+        ...t,
+        amount: Number(t.amount),
+        debitAccount: { ...t.debitAccount, balance: Number(t.debitAccount.balance) },
+        creditAccount: { ...t.creditAccount, balance: Number(t.creditAccount.balance) }
+    })
+
+    return {
+        pending: pendingRaw.map(serializeTransfer),
+        history: historyRaw.map(serializeTransfer)
+    }
+}

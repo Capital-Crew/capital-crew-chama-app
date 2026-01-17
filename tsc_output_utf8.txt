@@ -1,0 +1,380 @@
+﻿.next/types/validator.ts(116,39): error TS2307: Cannot find module '../../app/(protected)/admin/welfare/page.js' or its corresponding type declarations.
+.next/types/validator.ts(413,39): error TS2307: Cannot find module '../../app/api/mpesa/b2c/queue/route.js' or its corresponding type declarations.
+.next/types/validator.ts(422,39): error TS2307: Cannot find module '../../app/api/mpesa/b2c/result/route.js' or its corresponding type declarations.
+.next/types/validator.ts(431,39): error TS2307: Cannot find module '../../app/api/mpesa/balance/queue/route.js' or its corresponding type declarations.
+.next/types/validator.ts(440,39): error TS2307: Cannot find module '../../app/api/mpesa/balance/result/route.js' or its corresponding type declarations.
+.next/types/validator.ts(449,39): error TS2307: Cannot find module '../../app/api/mpesa/confirmation/route.js' or its corresponding type declarations.
+.next/types/validator.ts(458,39): error TS2307: Cannot find module '../../app/api/mpesa/reversal/queue/route.js' or its corresponding type declarations.
+.next/types/validator.ts(467,39): error TS2307: Cannot find module '../../app/api/mpesa/reversal/result/route.js' or its corresponding type declarations.
+.next/types/validator.ts(476,39): error TS2307: Cannot find module '../../app/api/mpesa/status/queue/route.js' or its corresponding type declarations.
+.next/types/validator.ts(485,39): error TS2307: Cannot find module '../../app/api/mpesa/status/result/route.js' or its corresponding type declarations.
+.next/types/validator.ts(494,39): error TS2307: Cannot find module '../../app/api/mpesa/stkpush/callback/route.js' or its corresponding type declarations.
+.next/types/validator.ts(503,39): error TS2307: Cannot find module '../../app/api/mpesa/validation/route.js' or its corresponding type declarations.
+__tests__/decimal/decimal-operations.test.ts(10,38): error TS2307: Cannot find module '@jest/globals' or its corresponding type declarations.
+__tests__/loan-repayment.integration.test.ts(7,59): error TS2307: Cannot find module '@jest/globals' or its corresponding type declarations.
+__tests__/loan-repayment.integration.test.ts(26,17): error TS2353: Object literal may only specify known properties, and 'firstName' does not exist in type '(Without<MemberCreateInput, MemberUncheckedCreateInput> & MemberUncheckedCreateInput) | (Without<...> & MemberCreateInput)'.
+__tests__/loan-repayment.integration.test.ts(42,17): error TS2353: Object literal may only specify known properties, and 'code' does not exist in type '(Without<LoanProductCreateInput, LoanProductUncheckedCreateInput> & LoanProductUncheckedCreateInput) | (Without<...> & LoanProductCreateInput)'.
+__tests__/loan-repayment.integration.test.ts(55,13): error TS2322: Type '{ memberId: string; loanProductId: string; loanApplicationNumber: string; amount: Prisma.Decimal; interestRate: Prisma.Decimal; status: "ACTIVE"; applicationDate: Date; disbursementDate: Date; }' is not assignable to type '(Without<LoanCreateInput, LoanUncheckedCreateInput> & LoanUncheckedCreateInput) | (Without<...> & LoanCreateInput)'.
+  Type '{ memberId: string; loanProductId: string; loanApplicationNumber: string; amount: Prisma.Decimal; interestRate: Prisma.Decimal; status: "ACTIVE"; applicationDate: Date; disbursementDate: Date; }' is not assignable to type 'Without<LoanCreateInput, LoanUncheckedCreateInput> & LoanUncheckedCreateInput'.
+    Type '{ memberId: string; loanProductId: string; loanApplicationNumber: string; amount: Decimal; interestRate: Decimal; status: "ACTIVE"; applicationDate: Date; disbursementDate: Date; }' is missing the following properties from type 'LoanUncheckedCreateInput': approvalVotes, repaymentSchedule, feeExemptions
+app/(protected)/admin/accounting/integrity/page.tsx(73,106): error TS2737: BigInt literals are not available when targeting lower than ES2020.
+app/(protected)/admin/accounting/integrity/page.tsx(77,107): error TS2737: BigInt literals are not available when targeting lower than ES2020.
+app/(protected)/admin/accounting/integrity/page.tsx(82,67): error TS2737: BigInt literals are not available when targeting lower than ES2020.
+app/(protected)/admin/approvals/page.tsx(23,53): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+app/(protected)/admin/products/[id]/page.tsx(72,70): error TS2322: Type 'Decimal' is not assignable to type 'ReactNode'.
+app/(protected)/admin/system/page.tsx(54,45): error TS7006: Parameter 'p' implicitly has an 'any' type.
+app/(protected)/loans/[id]/page.tsx(23,18): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+app/(protected)/loans/[id]/page.tsx(23,32): error TS2363: The right-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+app/(protected)/loans/[id]/page.tsx(24,56): error TS2363: The right-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+app/(protected)/loans/[id]/page.tsx(69,123): error TS2769: No overload matches this call.
+  Overload 1 of 3, '(value: number | bigint | StringNumericLiteral): string', gave the following error.
+    Argument of type 'Decimal' is not assignable to parameter of type 'number | bigint | StringNumericLiteral'.
+  Overload 2 of 3, '(value: number | bigint): string', gave the following error.
+    Argument of type 'Decimal' is not assignable to parameter of type 'number | bigint'.
+  Overload 3 of 3, '(value: number): string', gave the following error.
+    Argument of type 'Decimal' is not assignable to parameter of type 'number'.
+app/(protected)/loans/[id]/page.tsx(85,116): error TS2769: No overload matches this call.
+  Overload 1 of 3, '(value: number | bigint | StringNumericLiteral): string', gave the following error.
+    Argument of type 'Decimal' is not assignable to parameter of type 'number | bigint | StringNumericLiteral'.
+  Overload 2 of 3, '(value: number | bigint): string', gave the following error.
+    Argument of type 'Decimal' is not assignable to parameter of type 'number | bigint'.
+  Overload 3 of 3, '(value: number): string', gave the following error.
+    Argument of type 'Decimal' is not assignable to parameter of type 'number'.
+app/(protected)/loans/[id]/page.tsx(89,77): error TS2322: Type 'Decimal' is not assignable to type 'ReactNode'.
+app/(protected)/loans/page.tsx(31,39): error TS7006: Parameter 'loan' implicitly has an 'any' type.
+app/(protected)/loans/page.tsx(59,43): error TS7006: Parameter 'member' implicitly has an 'any' type.
+app/(protected)/loans/page.tsx(65,45): error TS7006: Parameter 'product' implicitly has an 'any' type.
+app/(protected)/members/[id]/legacy-view.tsx(75,13): error TS2353: Object literal may only specify known properties, and 'monthlyDue' does not exist in type 'ActiveLoanRow'.
+app/(protected)/members/[id]/legacy-view.tsx(113,18): error TS2741: Property 'onLoanClick' is missing in type '{ loans: ActiveLoanRow[]; }' but required in type 'Props'.
+app/(protected)/members/[id]/page.tsx(17,16): error TS2304: Cannot find name 'notFound'.
+app/(protected)/members/[id]/page.tsx(20,26): error TS2304: Cannot find name 'getMemberFullDetail'.
+app/(protected)/members/[id]/page.tsx(23,16): error TS2304: Cannot find name 'notFound'.
+app/(protected)/members/[id]/page.tsx(31,18): error TS2304: Cannot find name 'MemberDetailView'.
+app/(protected)/test-toast/page.tsx(181,51): error TS2345: Argument of type 'void' is not assignable to parameter of type 'string | number | undefined'.
+app/actions.ts(143,53): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+app/actions.ts(337,52): error TS2345: Argument of type '{ amount: number; applicationDate: string; }' is not assignable to parameter of type 'Partial<Loan>'.
+  Types of property 'amount' are incompatible.
+    Type 'number' is not assignable to type 'Decimal'.
+app/actions/accounting.ts(28,42): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+app/actions/approval-actions.ts(7,29): error TS2307: Cannot find module './loan-actions' or its corresponding type declarations.
+app/actions/auth-settings.ts(28,41): error TS2339: Property 'errors' does not exist on type 'ZodError<{ currentPassword: string; newPassword: string; confirmPassword: string; }>'.
+app/actions/disburse-loan.ts(51,25): error TS2353: Object literal may only specify known properties, and 'balance' does not exist in type 'Without<WalletCreateInput, WalletUncheckedCreateInput> & WalletUncheckedCreateInput'.
+app/actions/disburse-loan.ts(74,25): error TS2353: Object literal may only specify known properties, and 'balance' does not exist in type '(Without<WalletUpdateInput, WalletUncheckedUpdateInput> & WalletUncheckedUpdateInput) | (Without<...> & WalletUpdateInput)'.
+app/actions/disburse-loan.ts(85,43): error TS2339: Property 'balance' does not exist on type '{ id: string; memberId: string; createdAt: Date; updatedAt: Date; status: WalletStatus; glAccountId: string; accountRef: string; currency: string; }'.
+app/actions/expenses.ts(124,26): error TS2339: Property 'journalEntry' does not exist on type 'Omit<PrismaClient<PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">'.
+app/actions/get-member-stats.ts(34,33): error TS2339: Property 'journalLine' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+app/actions/get-member-stats.ts(120,17): error TS2353: Object literal may only specify known properties, and 'repaymentSchedule' does not exist in type 'LoanInclude<DefaultArgs>'.
+app/actions/get-member-stats.ts(125,52): error TS2345: Argument of type '{ id: string; memberId: string; createdAt: Date; updatedAt: Date; amount: Decimal; status: LoanStatus; dueDate: Date | null; penalties: Decimal; ... 30 more ...; accruedInterestTotal: Decimal; }' is not assignable to parameter of type 'LoanWithRelations'.
+  Property 'loanProduct' is missing in type '{ id: string; memberId: string; createdAt: Date; updatedAt: Date; amount: Decimal; status: LoanStatus; dueDate: Date | null; penalties: Decimal; ... 30 more ...; accruedInterestTotal: Decimal; }' but required in type '{ loanProduct: { id: string; name: string; isActive: boolean; description: string | null; createdAt: Date; updatedAt: Date; currency: string; principal: Decimal; interestType: InterestType; ... 13 more ...; charges: JsonValue; }; repaymentSchedule: any; }'.
+app/actions/loan-product.ts(137,42): error TS2339: Property 'errors' does not exist on type 'ZodError<{ name: string; shortCode: string; currency: string; principal: number; minPrincipal: number; maxPrincipal: number; numberOfRepayments: number; minRepaymentTerms: number; maxRepaymentTerms: number; ... 14 more ...; description?: string | undefined; }>'.
+app/actions/member-actions.ts(52,57): error TS2339: Property 'errors' does not exist on type 'ZodError<{ firstName: string; lastName: string; mobile: string; nationalId: string; email?: string | undefined; branchId?: string | undefined; }>'.
+app/actions/member-dashboard-actions.ts(53,54): error TS2737: BigInt literals are not available when targeting lower than ES2020.
+app/actions/member-dashboard-actions.ts(54,56): error TS2737: BigInt literals are not available when targeting lower than ES2020.
+app/actions/member-dashboard-actions.ts(107,66): error TS2737: BigInt literals are not available when targeting lower than ES2020.
+app/actions/member-dashboard-actions.ts(108,68): error TS2737: BigInt literals are not available when targeting lower than ES2020.
+app/actions/member-registration.ts(8,10): error TS2305: Module '"@/lib/utils"' has no exported member 'generateRandomString'.
+app/actions/member-registration.ts(57,57): error TS2339: Property 'errors' does not exist on type 'ZodError<{ firstName: string; lastName: string; mobile: string; nationalId: string; email?: string | undefined; branchId?: string | undefined; }>'.
+app/actions/member-registration.ts(72,57): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+app/actions/password-reset.ts(34,57): error TS2339: Property 'errors' does not exist on type 'ZodError<{ email: string; }>'.
+app/actions/password-reset.ts(89,57): error TS2339: Property 'errors' does not exist on type 'ZodError<{ token: string; password: string; confirmPassword: string; }>'.
+app/actions/process-transfer.ts(22,24): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: readonly ["LOAN_REPAYMENT", "CONTRIBUTION"], params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidValue<unknown>> | undefined; message?: string | undefined; } | undefined): ZodEnum<...>', gave the following error.
+    Object literal may only specify known properties, and 'errorMap' does not exist in type '{ error?: string | $ZodErrorMap<$ZodIssueInvalidValue<unknown>> | undefined; message?: string | undefined; }'.
+  Overload 2 of 2, '(entries: Readonly<Record<string, EnumValue>>, params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidValue<unknown>> | undefined; message?: string | undefined; } | undefined): ZodEnum<...>', gave the following error.
+    Argument of type 'string[]' is not assignable to parameter of type 'Readonly<Record<string, EnumValue>>'.
+      Index signature for type 'string' is missing in type 'string[]'.
+app/actions/process-transfer.ts(114,56): error TS2339: Property 'errors' does not exist on type 'ZodError<unknown>'.
+app/actions/process-transfer.ts(137,19): error TS2353: Object literal may only specify known properties, and 'balance' does not exist in type 'WalletSelect<DefaultArgs>'.
+app/actions/process-transfer.ts(144,19): error TS2339: Property 'balance' does not exist on type '{ id: string; memberId: string; createdAt: Date; updatedAt: Date; status: WalletStatus; glAccountId: string; accountRef: string; currency: string; }'.
+app/actions/process-transfer.ts(175,25): error TS2339: Property 'balance' does not exist on type '{ member: { name: string; memberNumber: number; }; } & { id: string; memberId: string; createdAt: Date; updatedAt: Date; status: WalletStatus; glAccountId: string; accountRef: string; currency: string; }'.
+app/actions/update-kin.ts(21,21): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: readonly ["SPOUSE", "CHILD", "PARENT", "SIBLING", "OTHER"], params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidValue<unknown>> | undefined; message?: string | undefined; } | undefined): ZodEnum<...>', gave the following error.
+    Object literal may only specify known properties, and 'errorMap' does not exist in type '{ error?: string | $ZodErrorMap<$ZodIssueInvalidValue<unknown>> | undefined; message?: string | undefined; }'.
+  Overload 2 of 2, '(entries: Readonly<Record<string, EnumValue>>, params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidValue<unknown>> | undefined; message?: string | undefined; } | undefined): ZodEnum<...>', gave the following error.
+    Argument of type 'readonly ["SPOUSE", "CHILD", "PARENT", "SIBLING", "OTHER"]' is not assignable to parameter of type 'Readonly<Record<string, EnumValue>>'.
+      Index signature for type 'string' is missing in type 'readonly ["SPOUSE", "CHILD", "PARENT", "SIBLING", "OTHER"]'.
+app/actions/update-kin.ts(67,42): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+app/actions/update-kin.ts(92,41): error TS2339: Property 'errors' does not exist on type 'ZodError<unknown>'.
+app/actions/update-kin.ts(92,52): error TS7006: Parameter 'err' implicitly has an 'any' type.
+app/actions/user-permissions.ts(129,73): error TS2339: Property 'errors' does not exist on type 'ZodError<unknown>'.
+app/actions/user-permissions.ts(130,40): error TS2339: Property 'errors' does not exist on type 'ZodError<unknown>'.
+app/actions/user-settings.ts(191,35): error TS2339: Property 'errors' does not exist on type 'ZodError<unknown>'.
+app/api/deposit/route.ts(2,10): error TS2614: Module '"@/lib/prisma"' has no exported member 'prisma'. Did you mean to use 'import prisma from "@/lib/prisma"' instead?
+app/api/mpesa/callback/route.ts(2,10): error TS2614: Module '"@/lib/prisma"' has no exported member 'prisma'. Did you mean to use 'import prisma from "@/lib/prisma"' instead?
+app/loan-approval-actions.ts(197,13): error TS2365: Operator '>' cannot be applied to types 'Decimal' and 'number'.
+app/loan-approval-actions.ts(208,60): error TS2365: Operator '+' cannot be applied to types 'number' and 'Decimal'.
+app/loan-approval-actions.ts(211,33): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+app/loan-approval-actions.ts(211,45): error TS2363: The right-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+app/loan-approval-actions.ts(211,61): error TS2363: The right-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+app/loan-approval-actions.ts(211,76): error TS2363: The right-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+app/loan-approval-actions.ts(268,13): error TS2365: Operator '>' cannot be applied to types 'Decimal' and 'number'.
+app/loan-approval-actions.ts(278,13): error TS2365: Operator '>' cannot be applied to types 'Decimal' and 'number'.
+app/loan-approval-actions.ts(288,13): error TS2365: Operator '>' cannot be applied to types 'Decimal' and 'number'.
+app/loan-approval-actions.ts(305,17): error TS2365: Operator '>' cannot be applied to types 'Decimal' and 'number'.
+app/loan-approval-actions.ts(317,17): error TS2365: Operator '>' cannot be applied to types 'Decimal' and 'number'.
+app/loan-approval-actions.ts(329,34): error TS2365: Operator '+' cannot be applied to types 'import("C:/Users/Hp/Downloads/Capital Crew/capital-crew/node_modules/@prisma/client/runtime/library").Decimal' and 'import("C:/Users/Hp/Downloads/Capital Crew/capital-crew/node_modules/@prisma/client/runtime/library").Decimal'.
+app/loan-approval-actions.ts(348,13): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+app/loan-approval-actions.ts(348,24): error TS18047: 'session' is possibly 'null'.
+app/loan-approval-actions.ts(349,28): error TS18047: 'session' is possibly 'null'.
+app/loan-approval-actions.ts(445,26): error TS18047: 'session' is possibly 'null'.
+app/loan-repayment-actions.ts(129,39): error TS2339: Property 'walletId' does not exist on type '{ id: string; name: string; contact: string; createdAt: Date; updatedAt: Date; status: MemberStatus; memberNumber: number; externalId: string | null; beneficiaries: JsonValue; ... 10 more ...; branchId: string | null; }'.
+app/loan-repayment-actions.ts(158,32): error TS18047: 'user.member' is possibly 'null'.
+app/loan-repayment-actions.ts(171,21): error TS2322: Type '"LOAN_REPAID"' is not assignable to type 'NotificationType'.
+app/loan-repayment-actions.ts(184,32): error TS18047: 'user.member' is possibly 'null'.
+app/loan-repayment-actions.ts(201,17): error TS2322: Type '"LOAN_REPAYMENT"' is not assignable to type 'AuditLogAction'.
+app/repayment-actions.ts(29,49): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+app/toast-debug/page.tsx(181,51): error TS2345: Argument of type 'void' is not assignable to parameter of type 'string | number | undefined'.
+app/wallet-add-funds-actions.ts(498,26): error TS7006: Parameter 'loan' implicitly has an 'any' type.
+app/wallet-history-actions.ts(26,29): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+app/wallet-withdraw-actions.ts(63,45): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+app/wallet-withdraw-actions.ts(88,13): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+app/welfare-requisition-actions.ts(244,44): error TS7006: Parameter 'v' implicitly has an 'any' type.
+app/welfare-requisition-actions.ts(245,42): error TS7006: Parameter 'v' implicitly has an 'any' type.
+components/accounting/TransferList.tsx(124,53): error TS2551: Property 'requesterId' does not exist on type 'TransferRequest'. Did you mean 'requester'?
+components/AccountsModule.tsx(5,5): error TS2305: Module '"@/app/accounts-actions"' has no exported member 'createAccount'.
+components/admin/LoanSystemMonitoring.tsx(6,41): error TS2307: Cannot find module '@/components/ui/alert' or its corresponding type declarations.
+components/approvals/ApprovalsDashboard.tsx(163,17): error TS2339: Property 'divWrapper' does not exist on type 'JSX.IntrinsicElements'.
+components/approvals/ApprovalsDashboard.tsx(175,17): error TS2339: Property 'divWrapper' does not exist on type 'JSX.IntrinsicElements'.
+components/audit/AuditPageClient.tsx(55,17): error TS2345: Argument of type '() => Promise<void>' is not assignable to parameter of type 'Promise<unknown>'.
+components/audit/AuditPageClient.tsx(65,37): error TS7006: Parameter 'log' implicitly has an 'any' type.
+components/DepositForm.tsx(41,9): error TS2322: Type 'Resolver<{ phoneNumber: string; amount: unknown; }, any, { phoneNumber: string; amount: number; }>' is not assignable to type 'Resolver<{ phoneNumber: string; amount: number; }, any, { phoneNumber: string; amount: number; }>'.
+  Types of parameters 'options' and 'options' are incompatible.
+    Type 'ResolverOptions<{ phoneNumber: string; amount: number; }>' is not assignable to type 'ResolverOptions<{ phoneNumber: string; amount: unknown; }>'.
+      Type 'unknown' is not assignable to type 'number'.
+components/DepositForm.tsx(86,55): error TS2345: Argument of type '(data: { phoneNumber: string; amount: number; }) => Promise<void>' is not assignable to parameter of type 'SubmitHandler<TFieldValues>'.
+  Types of parameters 'data' and 'data' are incompatible.
+    Type 'TFieldValues' is not assignable to type '{ phoneNumber: string; amount: number; }'.
+      Type 'FieldValues' is missing the following properties from type '{ phoneNumber: string; amount: number; }': phoneNumber, amount
+components/DepositForm.tsx(88,29): error TS2322: Type 'Control<{ phoneNumber: string; amount: number; }, any, TFieldValues>' is not assignable to type 'Control<{ phoneNumber: string; amount: number; }, any, { phoneNumber: string; amount: number; }>'.
+  The types of '_options.resolver' are incompatible between these types.
+    Type 'Resolver<{ phoneNumber: string; amount: number; }, any, TFieldValues> | undefined' is not assignable to type 'Resolver<{ phoneNumber: string; amount: number; }, any, { phoneNumber: string; amount: number; }> | undefined'.
+      Type 'Resolver<{ phoneNumber: string; amount: number; }, any, TFieldValues>' is not assignable to type 'Resolver<{ phoneNumber: string; amount: number; }, any, { phoneNumber: string; amount: number; }>'.
+        Type 'ResolverResult<{ phoneNumber: string; amount: number; }, TFieldValues> | Promise<ResolverResult<{ phoneNumber: string; amount: number; }, TFieldValues>>' is not assignable to type 'ResolverResult<{ phoneNumber: string; amount: number; }, { phoneNumber: string; amount: number; }> | Promise<ResolverResult<{ phoneNumber: string; amount: number; }, { phoneNumber: string; amount: number; }>>'.
+          Type 'ResolverSuccess<TFieldValues>' is not assignable to type 'ResolverResult<{ phoneNumber: string; amount: number; }, { phoneNumber: string; amount: number; }> | Promise<ResolverResult<{ phoneNumber: string; amount: number; }, { phoneNumber: string; amount: number; }>>'.
+            Type 'ResolverSuccess<TFieldValues>' is not assignable to type 'ResolverSuccess<{ phoneNumber: string; amount: number; }>'.
+              Type 'TFieldValues' is not assignable to type '{ phoneNumber: string; amount: number; }'.
+                Type 'FieldValues' is missing the following properties from type '{ phoneNumber: string; amount: number; }': phoneNumber, amount
+components/DepositForm.tsx(101,29): error TS2322: Type 'Control<{ phoneNumber: string; amount: number; }, any, TFieldValues>' is not assignable to type 'Control<{ phoneNumber: string; amount: number; }, any, { phoneNumber: string; amount: number; }>'.
+  The types of '_options.resolver' are incompatible between these types.
+    Type 'Resolver<{ phoneNumber: string; amount: number; }, any, TFieldValues> | undefined' is not assignable to type 'Resolver<{ phoneNumber: string; amount: number; }, any, { phoneNumber: string; amount: number; }> | undefined'.
+      Type 'Resolver<{ phoneNumber: string; amount: number; }, any, TFieldValues>' is not assignable to type 'Resolver<{ phoneNumber: string; amount: number; }, any, { phoneNumber: string; amount: number; }>'.
+        Type 'ResolverResult<{ phoneNumber: string; amount: number; }, TFieldValues> | Promise<ResolverResult<{ phoneNumber: string; amount: number; }, TFieldValues>>' is not assignable to type 'ResolverResult<{ phoneNumber: string; amount: number; }, { phoneNumber: string; amount: number; }> | Promise<ResolverResult<{ phoneNumber: string; amount: number; }, { phoneNumber: string; amount: number; }>>'.
+          Type 'ResolverSuccess<TFieldValues>' is not assignable to type 'ResolverResult<{ phoneNumber: string; amount: number; }, { phoneNumber: string; amount: number; }> | Promise<ResolverResult<{ phoneNumber: string; amount: number; }, { phoneNumber: string; amount: number; }>>'.
+            Type 'ResolverSuccess<TFieldValues>' is not assignable to type 'ResolverSuccess<{ phoneNumber: string; amount: number; }>'.
+              Type 'TFieldValues' is not assignable to type '{ phoneNumber: string; amount: number; }'.
+                Type 'FieldValues' is missing the following properties from type '{ phoneNumber: string; amount: number; }': phoneNumber, amount
+components/examples/ToastDemo.tsx(78,39): error TS2345: Argument of type 'void' is not assignable to parameter of type 'string | number | undefined'.
+components/LoanManagement.tsx(167,21): error TS2345: Argument of type 'Element' is not assignable to parameter of type 'string'.
+components/LoanManagement.tsx(282,60): error TS2345: Argument of type '{ id: void; }' is not assignable to parameter of type 'string'.
+components/LoanManagement.tsx(285,95): error TS2345: Argument of type '{ id: void; }' is not assignable to parameter of type 'string'.
+components/LoanManagement.tsx(291,92): error TS2345: Argument of type '{ id: void; }' is not assignable to parameter of type 'string'.
+components/LoanOffsetSelector.tsx(157,75): error TS2339: Property 'outstandingBalance' does not exist on type 'ActiveLoan'.
+components/loans/PostLoanButton.tsx(52,47): error TS2345: Argument of type '{ id: void; }' is not assignable to parameter of type 'string'.
+components/loans/PostLoanButton.tsx(54,77): error TS2345: Argument of type '{ id: void; }' is not assignable to parameter of type 'string'.
+components/loans/PostLoanButton.tsx(58,73): error TS2345: Argument of type '{ id: void; }' is not assignable to parameter of type 'string'.
+components/member/MemberProfileTabs.tsx(67,18): error TS2367: This comparison appears to be unintentional because the types '"loans" | "contributions" | "kin" | "statements"' and '"my-loans"' have no overlap.
+components/member/MemberStatsView.tsx(70,38): error TS2322: Type 'LoanPortfolioItem[]' is not assignable to type 'MemberLoanTableRow[]'.
+  Property 'interestInArrears' is missing in type 'LoanPortfolioItem' but required in type 'MemberLoanTableRow'.
+components/member/NextOfKinCard.tsx(31,9): error TS2322: Type 'Resolver<{ fullName: string; relationship: "OTHER" | "SPOUSE" | "CHILD" | "PARENT" | "SIBLING"; phoneNumber: string; allocation: unknown; id?: string | undefined; nationality?: string | undefined; altPhone?: string | ... 1 more ... | undefined; }, any, { ...; }>' is not assignable to type 'Resolver<{ fullName: string; relationship: "OTHER" | "SPOUSE" | "CHILD" | "PARENT" | "SIBLING"; phoneNumber: string; allocation: number; nationality: string; id?: string | undefined; altPhone?: string | ... 1 more ... | undefined; }, any, { ...; }>'.
+  Types of parameters 'options' and 'options' are incompatible.
+    Type 'ResolverOptions<{ fullName: string; relationship: "OTHER" | "SPOUSE" | "CHILD" | "PARENT" | "SIBLING"; phoneNumber: string; allocation: number; nationality: string; id?: string | undefined; altPhone?: string | ... 1 more ... | undefined; }>' is not assignable to type 'ResolverOptions<{ fullName: string; relationship: "OTHER" | "SPOUSE" | "CHILD" | "PARENT" | "SIBLING"; phoneNumber: string; allocation: unknown; id?: string | undefined; nationality?: string | undefined; altPhone?: string | ... 1 more ... | undefined; }>'.
+      Type 'unknown' is not assignable to type 'number'.
+components/member/NextOfKinCard.tsx(77,42): error TS2345: Argument of type '(data: NextOfKinInput) => Promise<void>' is not assignable to parameter of type 'SubmitHandler<TFieldValues>'.
+  Types of parameters 'data' and 'data' are incompatible.
+    Type 'TFieldValues' is not assignable to type '{ fullName: string; relationship: "OTHER" | "SPOUSE" | "CHILD" | "PARENT" | "SIBLING"; phoneNumber: string; allocation: number; nationality: string; id?: string | undefined; altPhone?: string | ... 1 more ... | undefined; }'.
+      Type 'FieldValues' is missing the following properties from type '{ fullName: string; relationship: "OTHER" | "SPOUSE" | "CHILD" | "PARENT" | "SIBLING"; phoneNumber: string; allocation: number; nationality: string; id?: string | undefined; altPhone?: string | ... 1 more ... | undefined; }': fullName, relationship, phoneNumber, allocation, nationality
+components/member/tabs/LoansTab.tsx(120,18): error TS2741: Property 'currentUserId' is missing in type '{ loanId: string; isOpen: boolean; onClose: () => void; }' but required in type 'LoanAppraisalCardProps'.
+components/PermissionControlPanel.tsx(155,42): error TS2345: Argument of type 'UserRole' is not assignable to parameter of type '"CHAIRPERSON" | "TREASURER" | "SECRETARY" | "MEMBER"'.
+  Type '"SYSTEM_ADMIN"' is not assignable to type '"CHAIRPERSON" | "TREASURER" | "SECRETARY" | "MEMBER"'.
+components/products/LoanProductWizard.tsx(32,9): error TS2322: Type 'Resolver<{ name: string; shortCode: string; principal: unknown; minPrincipal: unknown; maxPrincipal: unknown; numberOfRepayments: unknown; minRepaymentTerms: unknown; maxRepaymentTerms: unknown; interestRatePerPeriod: unknown; fundSourceAccountId: string; ... 13 more ...; gracePeriod?: unknown; }, any, { ...; }>' is not assignable to type 'Resolver<{ name: string; shortCode: string; currency: string; principal: number; minPrincipal: number; maxPrincipal: number; numberOfRepayments: number; minRepaymentTerms: number; maxRepaymentTerms: number; ... 14 more ...; description?: string | undefined; }, any, { ...; }>'.
+  Types of parameters 'options' and 'options' are incompatible.
+    Type 'ResolverOptions<{ name: string; shortCode: string; currency: string; principal: number; minPrincipal: number; maxPrincipal: number; numberOfRepayments: number; minRepaymentTerms: number; maxRepaymentTerms: number; ... 14 more ...; description?: string | undefined; }>' is not assignable to type 'ResolverOptions<{ name: string; shortCode: string; principal: unknown; minPrincipal: unknown; maxPrincipal: unknown; numberOfRepayments: unknown; minRepaymentTerms: unknown; maxRepaymentTerms: unknown; interestRatePerPeriod: unknown; fundSourceAccountId: string; ... 13 more ...; gracePeriod?: unknown; }>'.
+      Type 'string | undefined' is not assignable to type 'string'.
+        Type 'undefined' is not assignable to type 'string'.
+components/products/LoanProductWizard.tsx(81,35): error TS2345: Argument of type '(data: LoanProductWizardValues) => Promise<void>' is not assignable to parameter of type 'SubmitHandler<TFieldValues>'.
+  Types of parameters 'data' and 'data' are incompatible.
+    Type 'TFieldValues' is not assignable to type '{ name: string; shortCode: string; currency: string; principal: number; minPrincipal: number; maxPrincipal: number; numberOfRepayments: number; minRepaymentTerms: number; maxRepaymentTerms: number; ... 14 more ...; description?: string | undefined; }'.
+      Type 'FieldValues' is missing the following properties from type '{ name: string; shortCode: string; currency: string; principal: number; minPrincipal: number; maxPrincipal: number; numberOfRepayments: number; minRepaymentTerms: number; maxRepaymentTerms: number; ... 14 more ...; description?: string | undefined; }': name, shortCode, currency, principal, and 19 more.
+components/SystemAdminModule.tsx(191,92): error TS2322: Type 'Decimal' is not assignable to type 'ReactNode'.
+components/ui/calendar.tsx(57,17): error TS2353: Object literal may only specify known properties, and 'IconLeft' does not exist in type 'Partial<CustomComponents>'.
+components/ui/skeleton.tsx(12,10): error TS2322: Type '{ defaultChecked?: boolean | undefined; defaultValue?: string | number | readonly string[] | undefined; suppressContentEditableWarning?: boolean | undefined; suppressHydrationWarning?: boolean | undefined; ... 276 more ...; transition: { ...; }; }' is not assignable to type 'Omit<HTMLMotionProps<"div">, "ref">'.
+  Types of property 'onDrag' are incompatible.
+    Type 'DragEventHandler<HTMLDivElement> | undefined' is not assignable to type '((event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => void) | undefined'.
+      Type 'DragEventHandler<HTMLDivElement>' is not assignable to type '(event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => void'.
+        Types of parameters 'event' and 'event' are incompatible.
+          Type 'MouseEvent | TouchEvent | PointerEvent' is not assignable to type 'DragEvent<HTMLDivElement>'.
+            Type 'MouseEvent' is missing the following properties from type 'DragEvent<HTMLDivElement>': dataTransfer, nativeEvent, isDefaultPrevented, isPropagationStopped, persist
+lib/accounting/AccountingEngine.ts(132,53): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+lib/accounting/AccountingEngine.ts(213,53): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+lib/accounting/BalanceChecker.ts(238,70): error TS2345: Argument of type 'PrismaTransaction | undefined' is not assignable to parameter of type 'TransactionClient | undefined'.
+  Type 'PrismaTransaction' is missing the following properties from type 'TransactionClient': user, $queryRaw, $queryRawUnsafe, $executeRaw, and 48 more.
+lib/accounting/CoreLedger.ts(58,49): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+lib/accounting/SafetyNet.ts(29,25): error TS2367: This comparison appears to be unintentional because the types 'number' and 'bigint' have no overlap.
+lib/accounting/SafetyNet.ts(32,13): error TS2322: Type 'number' is not assignable to type 'bigint'.
+lib/accounting/SafetyNet.ts(87,9): error TS2322: Type '{ accountId: any; code: any; cachedBalance: any; calculatedBalance: number; difference: number; }[]' is not assignable to type '{ accountId: string; code: string; cachedBalance: bigint; calculatedBalance: bigint; difference: bigint; }[]'.
+  Type '{ accountId: any; code: any; cachedBalance: any; calculatedBalance: number; difference: number; }' is not assignable to type '{ accountId: string; code: string; cachedBalance: bigint; calculatedBalance: bigint; difference: bigint; }'.
+    Types of property 'calculatedBalance' are incompatible.
+      Type 'number' is not assignable to type 'bigint'.
+lib/decimal-utils.ts(93,20): error TS2339: Property 'min' does not exist on type 'typeof Decimal'.
+lib/decimal-utils.ts(100,20): error TS2339: Property 'max' does not exist on type 'typeof Decimal'.
+lib/decimal/config.ts(26,5): error TS2353: Object literal may only specify known properties, and 'minE' does not exist in type 'Config'.
+lib/decimal/config.ts(48,14): error TS2417: Class static side 'typeof MoneyDecimal' incorrectly extends base class static side 'typeof Decimal'.
+  The types returned by 'config(...)' are incompatible between these types.
+    Type '{ precision: number; rounding: number; }' is missing the following properties from type 'Decimal': absoluteValue, abs, comparedTo, cmp, and 57 more.
+lib/decimal/config.ts(49,24): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/config.ts(78,14): error TS2417: Class static side 'typeof RateDecimal' incorrectly extends base class static side 'typeof Decimal'.
+  The types returned by 'config(...)' are incompatible between these types.
+    Type '{ precision: number; rounding: number; }' is missing the following properties from type 'Decimal': absoluteValue, abs, comparedTo, cmp, and 57 more.
+lib/decimal/config.ts(79,24): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/config.ts(109,14): error TS2417: Class static side 'typeof PercentDecimal' incorrectly extends base class static side 'typeof Decimal'.
+  The types returned by 'config(...)' are incompatible between these types.
+    Type '{ precision: number; rounding: number; }' is missing the following properties from type 'Decimal': absoluteValue, abs, comparedTo, cmp, and 57 more.
+lib/decimal/config.ts(110,24): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/formulas.ts(13,21): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/formulas.ts(36,16): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/formulas.ts(37,17): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/formulas.ts(75,16): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/formulas.ts(76,25): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/formulas.ts(97,16): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/formulas.ts(98,11): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/formulas.ts(99,11): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/formulas.ts(124,16): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/formulas.ts(125,17): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/formulas.ts(127,12): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/formulas.ts(155,16): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/formulas.ts(156,17): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/formulas.ts(185,20): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/formulas.ts(186,18): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/formulas.ts(206,13): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/formulas.ts(207,17): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/formulas.ts(224,13): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/formulas.ts(225,17): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/formulas.ts(246,21): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/formulas.ts(247,14): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/formulas.ts(248,22): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/formulas.ts(270,14): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/formulas.ts(271,21): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/formulas.ts(272,18): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/formulas.ts(309,15): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/formulas.ts(310,15): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/formulas.ts(333,19): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(24,24): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(24,42): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(34,29): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(34,47): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(44,29): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(44,47): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(55,27): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(55,45): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(72,34): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(72,58): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(86,27): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(86,45): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(93,32): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(93,50): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(100,39): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(100,57): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(107,29): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(107,47): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(114,36): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(114,54): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(122,28): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(122,46): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(129,32): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(131,20): error TS2339: Property 'min' does not exist on type 'typeof Decimal'.
+lib/decimal/operations.ts(137,32): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(139,20): error TS2339: Property 'max' does not exist on type 'typeof Decimal'.
+lib/decimal/operations.ts(151,40): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(160,40): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(167,44): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(174,44): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(181,47): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(188,47): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(199,31): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(206,35): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(213,35): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(220,28): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(227,31): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/operations.ts(234,29): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/validation.ts(200,12): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/validation.ts(201,10): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/validation.ts(202,10): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/validation.ts(211,41): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/decimal/validation.ts(218,44): error TS2702: 'Decimal' only refers to a type, but is being used as a namespace here.
+lib/events/handlers/legacy-event-handler.ts(64,17): error TS2322: Type 'DomainEventType' is not assignable to type 'AuditLogAction'.
+  Type '"PENALTY_APPLIED"' is not assignable to type 'AuditLogAction'.
+lib/prisma.ts(9,9): error TS2451: Cannot redeclare block-scoped variable 'prisma'.
+lib/prisma.ts(12,27): error TS2339: Property 'prisma' does not exist on type 'typeof globalThis'.
+lib/prisma.ts(13,55): error TS2339: Property 'prisma' does not exist on type 'typeof globalThis'.
+lib/services/LoanStateService.ts(124,17): error TS2353: Object literal may only specify known properties, and 'nextDueDate' does not exist in type '(Without<LoanUpdateInput, LoanUncheckedUpdateInput> & LoanUncheckedUpdateInput) | (Without<...> & LoanUpdateInput)'.
+lib/services/LoanStateService.ts(143,17): error TS2322: Type '"WRITTEN_OFF"' is not assignable to type 'LoanStatus | EnumLoanStatusFieldUpdateOperationsInput | undefined'.
+lib/services/WalletService.ts(70,53): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+lib/strategies/waterfall-allocation.ts(40,36): error TS2339: Property 'repaymentSchedule' does not exist on type 'PrismaTransaction'.
+lib/strategies/waterfall-allocation.ts(161,18): error TS2339: Property 'repaymentSchedule' does not exist on type 'PrismaTransaction'.
+lib/utils.ts(32,24): error TS2365: Operator '+' cannot be applied to types 'number' and 'Decimal'.
+lib/utils.ts(38,28): error TS2365: Operator '+' cannot be applied to types 'number' and 'Decimal'.
+lib/utils.ts(52,34): error TS2365: Operator '+' cannot be applied to types 'number' and 'number | Decimal'.
+lib/utils.ts(54,24): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+lib/utils.ts(86,34): error TS2365: Operator '+' cannot be applied to types 'number' and 'Decimal'.
+lib/utils.ts(101,26): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+lib/utils.ts(105,31): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+lib/utils.ts(106,38): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+lib/utils.ts(128,51): error TS2363: The right-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+lib/utils.ts(132,34): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+lib/utils.ts(142,17): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+lib/utils.ts(146,42): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+lib/utils.ts(149,34): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+lib/utils.ts(159,17): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+lib/utils.ts(185,109): error TS2345: Argument of type 'Decimal' is not assignable to parameter of type 'number'.
+lib/utils.ts(187,113): error TS2345: Argument of type 'Decimal' is not assignable to parameter of type 'number'.
+prisma/seed-gl.ts(43,39): error TS2339: Property 'account' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+prisma/seed-gl.ts(50,26): error TS2339: Property 'account' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+prisma/seed-user.ts(36,21): error TS2353: Object literal may only specify known properties, and 'physicalAddress' does not exist in type '(Without<MemberDetailCreateWithoutMemberInput, MemberDetailUncheckedCreateWithoutMemberInput> & MemberDetailUncheckedCreateWithoutMemberInput) | (Without<...> & MemberDetailCreateWithoutMemberInput)'.
+prisma/verify-user.ts(30,69): error TS2339: Property 'password' does not exist on type '{ member: { id: string; name: string; contact: string; createdAt: Date; updatedAt: Date; status: MemberStatus; memberNumber: number; externalId: string | null; ... 11 more ...; branchId: string | null; } | null; } & { ...; }'.
+prisma/verify-user.ts(44,21): error TS2353: Object literal may only specify known properties, and 'password' does not exist in type '(Without<UserUpdateInput, UserUncheckedUpdateInput> & UserUncheckedUpdateInput) | (Without<...> & UserUpdateInput)'.
+reset_admin_credentials.ts(2,9): error TS2451: Cannot redeclare block-scoped variable 'PrismaClient'.
+reset_admin_credentials.ts(5,7): error TS2451: Cannot redeclare block-scoped variable 'prisma'.
+reset_admin_credentials.ts(7,16): error TS2393: Duplicate function implementation.
+scripts/audit-system-accounts.ts(46,36): error TS2339: Property 'account' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+scripts/check-config.ts(6,30): error TS2339: Property 'account' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+scripts/check-members.ts(2,9): error TS2451: Cannot redeclare block-scoped variable 'PrismaClient'.
+scripts/check-members.ts(3,7): error TS2451: Cannot redeclare block-scoped variable 'prisma'.
+scripts/check-members.ts(5,16): error TS2393: Duplicate function implementation.
+scripts/debug-contributions.ts(12,34): error TS2339: Property 'account' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+scripts/debug-contributions.ts(21,35): error TS2339: Property 'journalLine' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+scripts/debug-contributions.ts(50,38): error TS7006: Parameter 'index' implicitly has an 'any' type.
+scripts/debug-contributions.ts(70,26): error TS2339: Property 'journalLine' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+scripts/debug-contributions.ts(89,36): error TS2339: Property 'journalLine' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+scripts/debug-dashboard-stats.ts(52,26): error TS2339: Property 'journalLine' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+scripts/debug-loan-202601-002.ts(21,28): error TS2339: Property 'journalLine' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+scripts/debug-loan-202601-002.ts(38,29): error TS7006: Parameter 'l' implicitly has an 'any' type.
+scripts/debug_registration.ts(16,13): error TS2322: Type '{ memberNumber: number; name: string; }' is not assignable to type '(Without<MemberCreateInput, MemberUncheckedCreateInput> & MemberUncheckedCreateInput) | (Without<...> & MemberCreateInput)'.
+  Type '{ memberNumber: number; name: string; }' is not assignable to type 'Without<MemberUncheckedCreateInput, MemberCreateInput> & MemberCreateInput'.
+    Property 'contact' is missing in type '{ memberNumber: number; name: string; }' but required in type 'MemberCreateInput'.
+scripts/debug_registration.ts(42,13): error TS2322: Type '{ memberId: string; }' is not assignable to type '(Without<WalletCreateInput, WalletUncheckedCreateInput> & WalletUncheckedCreateInput) | (Without<...> & WalletCreateInput)'.
+  Type '{ memberId: string; }' is not assignable to type 'Without<WalletCreateInput, WalletUncheckedCreateInput> & WalletUncheckedCreateInput'.
+    Type '{ memberId: string; }' is missing the following properties from type 'WalletUncheckedCreateInput': accountRef, glAccountId
+scripts/debug_registration.ts(57,13): error TS2322: Type '{ memberNumber: number; name: string; }' is not assignable to type '(Without<MemberCreateInput, MemberUncheckedCreateInput> & MemberUncheckedCreateInput) | (Without<...> & MemberCreateInput)'.
+  Type '{ memberNumber: number; name: string; }' is not assignable to type 'Without<MemberUncheckedCreateInput, MemberCreateInput> & MemberCreateInput'.
+    Property 'contact' is missing in type '{ memberNumber: number; name: string; }' but required in type 'MemberCreateInput'.
+scripts/fix-account-type.ts(8,30): error TS2339: Property 'account' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+scripts/fix-account-type.ts(13,18): error TS2339: Property 'account' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+scripts/fix-gl-accounts.ts(46,37): error TS2339: Property 'account' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+scripts/fix-gl-accounts.ts(65,35): error TS2339: Property 'account' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+scripts/migrate-contributions-asset.ts(19,30): error TS2339: Property 'account' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+scripts/migrate-contributions-asset.ts(30,28): error TS2339: Property 'journalLine' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+scripts/migrate-contributions-asset.ts(45,18): error TS2339: Property 'account' does not exist on type 'Omit<PrismaClient<PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">'.
+scripts/migrate-contributions-asset.ts(53,22): error TS2339: Property 'journalLine' does not exist on type 'Omit<PrismaClient<PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">'.
+scripts/migrate-contributions-asset.ts(68,35): error TS2339: Property 'journalLine' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+scripts/migrate_wallet_entries.ts(45,13): error TS18047: 'wallet' is possibly 'null'.
+scripts/migrate_wallet_entries.ts(46,39): error TS18047: 'wallet' is possibly 'null'.
+scripts/migrate_wallet_entries.ts(65,30): error TS18047: 'wallet' is possibly 'null'.
+scripts/migrate_wallet_entries.ts(71,35): error TS18047: 'wallet' is possibly 'null'.
+scripts/verify-loan-balance.ts(14,43): error TS2339: Property 'account' does not exist on type 'Omit<PrismaClient<PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">'.
+scripts/verify-loan-balance.ts(19,47): error TS2339: Property 'account' does not exist on type 'Omit<PrismaClient<PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">'.
+verify_admin_permissions.ts(2,9): error TS2451: Cannot redeclare block-scoped variable 'PrismaClient'.
+verify_admin_permissions.ts(4,7): error TS2451: Cannot redeclare block-scoped variable 'prisma'.
+verify_admin_permissions.ts(6,16): error TS2393: Duplicate function implementation.

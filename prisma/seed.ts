@@ -1,5 +1,7 @@
 
+
 import { PrismaClient, UserRole, ChargeType, ChargeCalculationType, RepaymentFrequencyType, InterestType, InterestCalculationPeriodType, AmortizationType } from '@prisma/client'
+import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
@@ -84,35 +86,50 @@ async function main() {
         }
     })
 
-    // 4. Create Users (Chairperson)
-    // Need to link to member? David Jones matches memberId 'm4' in prototype which doesn't exist in my seeded members.
-    // I will create a member for David.
+    // 4. Create Admin Member & User (Chairperson)
     const member4 = await prisma.member.create({
         data: {
             memberNumber: 4,
-            name: 'David Jones',
-            contact: 'david@example.com'
+            name: 'System Administrator',
+            contact: 'admin@capitalcrew.com'
         }
     })
 
-    const user1 = await prisma.user.upsert({
-        where: { email: 'david@example.com' },
-        update: {},
+    // Hash the admin password
+    const hashedPassword = await bcrypt.hash('Admin@2025', 10)
+
+    const adminUser = await prisma.user.upsert({
+        where: { email: 'admin@capitalcrew.com' },
+        update: {
+            role: UserRole.SYSTEM_ADMIN,
+            permissions: {
+                canViewAll: true, canAddData: true, canApprove: true,
+                canManageSettings: true, canViewReports: true, canViewAudit: true,
+                canManageUserRights: true, canExemptFees: true, canEnrollMembers: true,
+                canReverse: true
+            }
+        },
         create: {
-            name: 'David Jones',
-            email: 'david@example.com',
-            passwordHash: '$2a$10$hashedpassword', // Placeholder
-            role: UserRole.CHAIRPERSON,
+            name: 'System Administrator',
+            email: 'admin@capitalcrew.com',
+            passwordHash: hashedPassword,
+            role: UserRole.SYSTEM_ADMIN,
             memberId: member4.id,
             permissions: {
                 canViewAll: true, canAddData: true, canApprove: true,
                 canManageSettings: true, canViewReports: true, canViewAudit: true,
-                canManageUserRights: true, canExemptFees: true
+                canManageUserRights: true, canExemptFees: true, canEnrollMembers: true,
+                canReverse: true
             }
         }
     })
 
-    console.log({ product1, member1, user1 })
+    console.log('✅ Database seeded successfully!')
+    console.log('\n📧 Admin Credentials:')
+    console.log('   Email: admin@capitalcrew.com')
+    console.log('   Password: Admin@2025')
+    console.log('\n⚠️  Please change this password after first login!\n')
+    console.log({ product1, member1, adminUser })
 }
 
 main()

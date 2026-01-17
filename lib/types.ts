@@ -80,6 +80,8 @@ export interface UserPermissions {
     canViewAudit: boolean;
     canManageUserRights: boolean;
     canExemptFees: boolean;
+    canReverse: boolean;
+    canEnrollMembers: boolean;
 }
 
 // Extended Models
@@ -106,4 +108,15 @@ export interface Expense extends PrismaExpense { }
 export interface Income extends PrismaIncome { }
 export interface ChargeTemplate extends PrismaChargeTemplate { }
 
+// Payment Gateway Types
+export type DestinationType = 'LOAN_REPAYMENT' | 'CONTRIBUTION';
+
+export interface PaymentAllocation {
+    penalty: number;
+    interest: number;
+    principal: number;
+    overpayment?: number;
+}
+
 export type Page = 'dashboard' | 'loans' | 'members' | 'expenses' | 'financials' | 'reports' | 'settings' | 'approvals' | 'notifications' | 'audit' | 'rights' | 'disbursements';
+

@@ -1,0 +1,15 @@
+
+import prisma from "@/lib/prisma";
+
+async function checkMappings() {
+    console.log("Checking System Accounting Mappings...");
+    const mappings = await prisma.systemAccountingMapping.findMany({
+        include: { account: true }
+    });
+
+    mappings.forEach(m => {
+        console.log(`- ${m.type} -> [${m.account.code}] ${m.account.name} (${m.account.type})`);
+    });
+}
+
+checkMappings().catch(console.error);

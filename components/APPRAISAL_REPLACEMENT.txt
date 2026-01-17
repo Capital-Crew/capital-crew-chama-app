@@ -1,0 +1,37 @@
+                            {activeTab === 'appraisal' ? (
+                                <LoanAppraisalReport
+                                    loanNo={loan.loanApplicationNumber}
+                                    applicationDate={new Date(loan.applicationDate).toLocaleDateString('en-GB')}
+                                    loanType={loan.loanProduct.name}
+                                    memberNo={loan.member.memberNumber.toString()}
+                                    memberName={loan.member.name}
+                                    amountApplied={loan.amount}
+                                    memberContribution={loan.memberSharesAtApplication}
+                                    maxAvailable={loan.grossQualifyingAmount}
+                                    depositsMultiplier={loan.grossQualifyingAmount / loan.memberSharesAtApplication}
+                                    loanBalance={loan.existingLoanOffset}
+                                    topUpAmount={loan.existingLoanOffset}
+                                    balanceAfterTopup={0}
+                                    netLoan={loan.amount - loan.existingLoanOffset}
+                                    interestRate={loan.loanProduct.interestRatePerPeriod}
+                                    installments={(loan as any).installments || 12}
+                                    monthlyRepayment={(loan as any).monthlyInstallment || 0}
+                                    topUpItems={(loan as any).topUps?.map((topUp: any) => ({
+                                        loanNo: topUp.oldLoanNumber,
+                                        product: topUp.productName,
+                                        principalTopUp: topUp.principalBalance,
+                                        interestTopUp: topUp.accruedInterest,
+                                        penalty: topUp.penalties,
+                                        refinanceFee: topUp.refinanceFee,
+                                        totalTopUp: topUp.totalOffset
+                                    })) || []}
+                                    recommendedAmount={loan.grossQualifyingAmount}
+                                    approvedAmount={loan.amount}
+                                    processingFee={loan.processingFee}
+                                    insuranceFee={loan.insuranceFee}
+                                    shareCapitalDeduction={loan.shareCapitalDeduction}
+                                    existingLoanOffset={loan.existingLoanOffset}
+                                    totalDeductions={loan.totalDeductions}
+                                    netDisbursed={loan.netDisbursementAmount}
+                                />
+                            ) : activeTab === 'journey' ? (

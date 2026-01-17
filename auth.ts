@@ -10,19 +10,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     callbacks: {
         jwt({ token, user }) {
             if (user) {
+                console.log('JWT Callback - User on Signin:', { id: user.id, memberId: user.memberId })
                 token.id = user.id;
                 // @ts-ignore
                 token.role = user.role;
+                // @ts-ignore
+                token.memberId = user.memberId;
             }
             return token;
         },
         session({ session, token }) {
+            console.log('Session Callback - Token:', token)
             if (session.user) {
                 // @ts-ignore
                 session.user.id = token.id as string;
                 // @ts-ignore
                 session.user.role = token.role as string;
+                // @ts-ignore
+                session.user.memberId = token.memberId as string;
             }
+            console.log('Session Callback - Final Session:', session)
             return session;
         },
     },
@@ -39,13 +46,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 }).safeParse(credentials);
 
                 if (!parsed.success) return null;
-                const { email, password } = parsed.data;
+                const email = parsed.data.email.toLowerCase().trim();
+                const password = parsed.data.password;
 
                 const user = await prisma.user.findUnique({
                     where: { email },
                 });
 
-                if (!user) return null;
+                if (!user) {
+                    console.log('Authorize - User not found:', email)
+                    return null;
+                }
+
+                console.log('Authorize - User Found:', { id: user.id, memberId: user.memberId })
 
                 const passwordsMatch = await bcrypt.compare(password, user.passwordHash);
 
@@ -55,6 +68,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                         name: user.name,
                         email: user.email,
                         role: user.role,
+                        memberId: user.memberId,
                     };
                 }
 

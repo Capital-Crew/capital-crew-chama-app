@@ -1,34 +1,30 @@
+import { getDashboardStats, getMonthlyTrends } from '@/app/dashboard-actions'
+import { DashboardView } from '@/components/DashboardView'
+import { auth } from '@/auth'
+import { getMemberFullDetail } from '@/app/actions/member-dashboard-actions'
+import { MemberDashboard } from '@/components/member/MemberDashboard'
 
-import prisma from "@/lib/prisma"
-import { DashboardView } from "@/components/DashboardView"
-import { LoanStatus } from "@/lib/types"
+// Force dynamic rendering to ensure real-time data
+export const dynamic = 'force-dynamic'
+export const revalidate = 0 // Never cache, always fetch fresh data
 
 export default async function DashboardPage() {
-    // Parallel data fetching
-    const [
-        membersCount,
-        activeLoansCount,
-        auditLogsCount,
-        incomes,
-        expenses
-    ] = await Promise.all([
-        prisma.member.count(),
-        prisma.loan.count({ where: { status: LoanStatus.ACTIVE } }),
-        prisma.auditLog.count(),
-        prisma.income.findMany(),
-        prisma.expense.findMany(),
-    ])
+    const session = await auth()
+    const memberId = session?.user?.memberId;
 
-    const totalAssets = incomes.reduce((sum, i) => sum + i.amount, 0) - expenses.reduce((sum, e) => sum + e.amount, 0)
+    // Fetch Global Stats for everyone
+    const stats = await getDashboardStats()
+    const trends = await getMonthlyTrends()
 
-    return (
-        <DashboardView
-            membersCount={membersCount}
-            activeLoansCount={activeLoansCount}
-            auditLogsCount={auditLogsCount}
-            totalAssets={totalAssets}
-            incomes={incomes as any}
-            expenses={expenses as any}
-        />
-    )
+    // If user is a regular member, we might want to also pass their personal details 
+    // so the view can offer a toggle. For now, per request "dashboard should be accessible to everyone",
+    // we render the Global DashboardView. 
+    // Ideally, we pass 'personalDashboard' as a prop or render it in a tab.
+
+    let personalDetail = null;
+    if (memberId) {
+        personalDetail = await getMemberFullDetail(memberId);
+    }
+
+    return <DashboardView stats={stats} trends={trends} personalDetail={personalDetail} />
 }

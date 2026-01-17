@@ -1,8 +1,13 @@
-
 import {
     Loan, Income, IncomeCategory, LoanProduct, RepaymentScheduleItem, RepaymentStatus, NotificationType, LoanStatus,
     RepaymentFrequencyType, InterestType, AmortizationType
 } from './types';
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+    return twMerge(clsx(inputs));
+}
 
 export const formatCurrency = (amount: number): string => {
     return new Intl.NumberFormat('en-KE', {

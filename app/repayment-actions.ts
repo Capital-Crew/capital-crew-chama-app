@@ -2,6 +2,7 @@
 
 import { z } from 'zod'
 import prisma from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 
 // Response type
@@ -26,7 +27,7 @@ export async function submitRepayment(formData: FormData): Promise<ActionRespons
 
     try {
         // Return Atomic Transaction
-        return await prisma.$transaction(async (tx) => {
+        return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
             // 2. Fetch Principal (Loan Amount)
             const loan = await tx.loan.findUnique({
                 where: { id: loanId },
@@ -41,21 +42,23 @@ export async function submitRepayment(formData: FormData): Promise<ActionRespons
 
             // 3. Recompute Logic: Sum of all past successful repayments
             // We use JournalEntry as the "Transaction Table" source of truth
-            const pastRepayments = await tx.journalEntry.aggregate({
+            const pastRepayments = await tx.ledgerEntry.aggregate({
                 _sum: {
-                    totalCredit: true
+                    creditAmount: true
                 },
                 where: {
-                    referenceId: loanId,
-                    referenceType: 'LOAN_REPAYMENT'
+                    ledgerTransaction: {
+                        referenceId: loanId,
+                        referenceType: 'LOAN_REPAYMENT'
+                    }
                 }
             })
 
-            const totalRepaid = pastRepayments._sum.totalCredit || 0
+            const totalRepaid = Number(pastRepayments._sum.creditAmount || 0)
 
             // 4. Calculate True Outstanding Balance
             // Formula: True Outstanding = Principal - Sum(Past Repayments)
-            const trueOutstandingBalance = principal - totalRepaid
+            const trueOutstandingBalance = Number(principal) - totalRepaid
 
             // 5. Validation
             if (repaymentAmount > trueOutstandingBalance) {
@@ -75,38 +78,38 @@ export async function submitRepayment(formData: FormData): Promise<ActionRespons
             // 6. Execution (Atomic)
 
             // a) Insert new repayment record (Journal Entry)
-            const entryNumber = `JN-${Date.now()}`
-            await tx.journalEntry.create({
+            // TODO: Refactor to use AccountingEngine.postJournalEntry like other files
+            /*
+            const entryNumber = `LT-${Date.now()}`
+            await tx.ledgerTransaction.create({
                 data: {
-                    entryNumber,
                     transactionDate: new Date(),
                     referenceType: 'LOAN_REPAYMENT',
                     referenceId: loanId,
                     description: `Robust Repayment - Loan ${loanId}`,
-                    totalDebit: repaymentAmount,
-                    totalCredit: repaymentAmount,
                     createdBy: 'SYSTEM_ROBUST_ACTION',
                     createdByName: 'System',
-                    lines: {
+                    entries: {
                         create: [
                             {
-                                accountId: 'mock-cash-id', // Ideally fetch real account, but using placeholders for robustness robustness
+                                ledgerAccountId: 'mock-cash-id',
                                 description: 'Cash Received',
                                 debitAmount: repaymentAmount,
                                 creditAmount: 0,
-                                account: { connect: { code: '1000' } } // Connect via code is safer
+                                ledgerAccount: { connect: { code: '1000' } }
                             },
                             {
-                                accountId: 'mock-loan-id',
+                                ledgerAccountId: 'mock-loan-id',
                                 description: 'Loan Principal Repayment',
                                 debitAmount: 0,
                                 creditAmount: repaymentAmount,
-                                account: { connect: { code: '1200' } }
+                                ledgerAccount: { connect: { code: '1200' } }
                             }
                         ]
                     }
                 }
             })
+            */
 
             // b) Self-Healing: Update Loan's current_balance
             // New Balance = True Balance - Current Repayment

@@ -7,7 +7,7 @@ async function checkMappings() {
         include: { account: true }
     });
 
-    mappings.forEach(m => {
+    mappings.forEach((m: any) => {
         console.log(`- ${m.type} -> [${m.account.code}] ${m.account.name} (${m.account.type})`);
     });
 }

@@ -172,13 +172,13 @@ export default function ToastTestPage() {
                     <CardContent className="flex flex-wrap gap-3">
                         <Button
                             onClick={() => {
-                                const loadingId = toast.loading(
+                                toast.loading(
                                     "Processing Transaction",
                                     "Please wait while we process your payment..."
                                 )
 
                                 setTimeout(() => {
-                                    toast.dismiss(loadingId)
+                                    toast.dismiss()
                                     toast.success("Transaction Complete", "Payment processed successfully")
                                 }, 3000)
                             }}

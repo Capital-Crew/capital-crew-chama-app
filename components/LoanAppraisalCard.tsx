@@ -14,7 +14,7 @@ interface LoanAppraisalCardProps {
     loanId: string
     isOpen: boolean
     onClose: () => void
-    currentUserId: string
+    currentUserId?: string
     activeTab?: string
 }
 

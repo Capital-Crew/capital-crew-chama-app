@@ -25,6 +25,7 @@ enum LoanStatus {
   OVERDUE
   REJECTED
   CANCELLED
+  WRITTEN_OFF
 }
 
 enum ApprovalStatus {
@@ -1234,6 +1235,7 @@ enum SystemAccountType {
   RECEIVABLE_LOAN_PENALTY
   INCOME_LOAN_PROCESSING_FEE
   INCOME_GENERAL_FEE
+  RECEIVABLE_LOAN_FEES
 
   // Legacy / Fallbacks (Optional, keeping for safety if code references them)
   CASH_ON_HAND

@@ -160,7 +160,7 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
 
             {/* Fallback for others */}
             {selectedRequest && !['LOAN', 'MEMBER'].includes(selectedRequest.type) && (
-                <divWrapper onClose={handleClose}>
+                <DivWrapper onClose={handleClose}>
                     <div className="p-8 text-center bg-white rounded-3xl">
                         <h3 className="text-xl font-bold text-slate-800">Details for {selectedRequest.type}</h3>
                         <p className="text-slate-500 my-4 font-medium">No specific details card implemented for this type yet.</p>
@@ -172,13 +172,13 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
                             <p className="font-mono text-xs text-slate-600">{selectedRequest.referenceTable}</p>
                         </div>
                     </div>
-                </divWrapper>
+                </DivWrapper>
             )}
         </div>
     )
 }
 
-function divWrapper({ children, onClose }: { children: React.ReactNode, onClose: () => void }) {
+function DivWrapper({ children, onClose }: { children: React.ReactNode, onClose: () => void }) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md transition-all duration-300">
             <div className="w-full max-w-md relative animate-in fade-in zoom-in-95 duration-300">

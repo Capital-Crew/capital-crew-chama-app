@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+// import { Alert, AlertDescription } from '@/components/ui/alert'
 
 interface SystemHealth {
     loansWithInstallments: number
@@ -158,6 +158,7 @@ export function LoanSystemMonitoring() {
             </Card>
 
             {/* Alerts */}
+            {/* TODO: Implement Alert component
             {health && health.loansWithoutInstallments > 0 && (
                 <Alert variant="destructive">
                     <AlertDescription>
@@ -166,7 +167,9 @@ export function LoanSystemMonitoring() {
                     </AlertDescription>
                 </Alert>
             )}
+            */}
 
+            {/* TODO: Implement Alert component
             {metrics && metrics.errorRate > 5 && (
                 <Alert variant="destructive">
                     <AlertDescription>
@@ -174,6 +177,7 @@ export function LoanSystemMonitoring() {
                     </AlertDescription>
                 </Alert>
             )}
+            */}
 
             {/* Last Updated */}
             <p className="text-sm text-muted-foreground text-center">

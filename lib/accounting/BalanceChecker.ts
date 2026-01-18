@@ -1,8 +1,8 @@
-import { Prisma } from '@prisma/client'
+import { Prisma, PrismaClient } from '@prisma/client'
 import prisma from '@/lib/prisma'
 import { InsufficientBalanceError, OverdraftPreventionError } from './errors'
 
-type PrismaTransaction = Omit<typeof prisma, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>
+type DbClient = Prisma.TransactionClient | PrismaClient
 
 export interface JournalLine {
     accountId: string
@@ -29,7 +29,7 @@ export class BalanceChecker {
      */
     static async getAccountBalance(
         accountCode: string,
-        tx?: PrismaTransaction
+        tx?: DbClient
     ): Promise<number> {
         const db = tx || prisma
 
@@ -71,7 +71,7 @@ export class BalanceChecker {
     /**
      * Get account details by code
      */
-    static async getAccount(accountCode: string, tx?: PrismaTransaction) {
+    static async getAccount(accountCode: string, tx?: DbClient) {
         const db = tx || prisma
         return await db.ledgerAccount.findUnique({
             where: { code: accountCode }
@@ -87,7 +87,7 @@ export class BalanceChecker {
     static async validateDebit(
         accountCode: string,
         debitAmount: number,
-        tx?: PrismaTransaction
+        tx?: DbClient
     ): Promise<void> {
         if (debitAmount <= 0) return // No validation needed for zero or negative
 
@@ -124,7 +124,7 @@ export class BalanceChecker {
     static async validateCredit(
         accountCode: string,
         creditAmount: number,
-        tx?: PrismaTransaction
+        tx?: DbClient
     ): Promise<void> {
         if (creditAmount <= 0) return // No validation needed for zero or negative
 
@@ -158,7 +158,7 @@ export class BalanceChecker {
      */
     static async validateJournalEntry(
         journalLines: JournalLine[],
-        tx?: PrismaTransaction
+        tx?: DbClient
     ): Promise<ValidationResult> {
         const errors: string[] = []
         const warnings: string[] = []
@@ -208,7 +208,7 @@ export class BalanceChecker {
      */
     static async verifyNoNegativeBalances(
         accountCodes: string[],
-        tx?: PrismaTransaction
+        tx?: DbClient
     ): Promise<void> {
         for (const code of accountCodes) {
             const balance = await this.getAccountBalance(code, tx)
@@ -229,7 +229,7 @@ export class BalanceChecker {
     static async validateWalletBalance(
         memberId: string,
         requiredAmount: number,
-        tx?: PrismaTransaction
+        tx?: DbClient
     ): Promise<void> {
         const db = tx || prisma
 

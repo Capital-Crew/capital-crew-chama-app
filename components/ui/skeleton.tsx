@@ -1,9 +1,9 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { HTMLMotionProps, motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
-interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
+interface SkeletonProps extends HTMLMotionProps<"div"> {
     className?: string
 }
 

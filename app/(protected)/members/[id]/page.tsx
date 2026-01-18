@@ -32,7 +32,7 @@ export default async function MemberProfilePage({ params }: PageProps) {
 
             <div className="bg-white border border-slate-200 rounded-[2rem] shadow-sm overflow-hidden">
                 <MemberDetailView
-                    member={detail.member}
+                    member={detail.member as any}
                     stats={detail.stats}
                     contributions={detail.contributions}
                     loans={detail.loans}

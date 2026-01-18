@@ -1,5 +1,6 @@
 
 import prisma from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 
 export class SafetyNet {
 
@@ -9,9 +10,9 @@ export class SafetyNet {
      */
     static async checkLedgerIntegrity(): Promise<{
         isBalanced: boolean;
-        totalDebit: bigint;
-        totalCredit: bigint;
-        difference: bigint
+        totalDebit: number;
+        totalCredit: number;
+        difference: number
     }> {
         // Aggregate all LedgerEntries
         const aggregation = await prisma.ledgerEntry.aggregate({
@@ -21,15 +22,15 @@ export class SafetyNet {
             }
         })
 
-        const totalDebit = aggregation._sum.debitAmount || BigInt(0)
-        const totalCredit = aggregation._sum.creditAmount || BigInt(0)
-        const diff = totalDebit - totalCredit
+        const totalDebit = aggregation._sum.debitAmount || new Prisma.Decimal(0)
+        const totalCredit = aggregation._sum.creditAmount || new Prisma.Decimal(0)
+        const diff = totalDebit.minus(totalCredit)
 
         return {
-            isBalanced: diff === BigInt(0),
-            totalDebit,
-            totalCredit,
-            difference: diff
+            isBalanced: diff.equals(0),
+            totalDebit: totalDebit.toNumber(),
+            totalCredit: totalCredit.toNumber(),
+            difference: diff.toNumber()
         }
     }
 
@@ -40,25 +41,20 @@ export class SafetyNet {
     static async validateAccountBalances(): Promise<Array<{
         accountId: string;
         code: string;
-        cachedBalance: bigint;
-        calculatedBalance: bigint;
-        difference: bigint;
+        cachedBalance: number;
+        calculatedBalance: number;
+        difference: number;
     }>> {
         const accounts = await prisma.ledgerAccount.findMany()
         const mismatches = []
 
         for (const account of accounts) {
             // Calculate actual balance from entries
-            // Formula depends on Account Type?
-            // CoreLedger stores 'balance' often as Credits - Debits for Liability/Equity/Revenue
-            // and Debits - Credits for Asset/Expense?
-            // actually CoreLedger.ts `recalculateBalance` uses:
-            // balance = (sumCredits - sumDebits) for LIABILITY, EQUITY, REVENUE
-            // balance = (sumDebits - sumCredits) for ASSET, EXPENSE
-
-            // CoreLedger stores Balance as (Sum Credits - Sum Debits) universally.
-            // This means Assets/Expenses are typically negative.
-            // Liabilities/Equity/Revenue are typically positive.
+            // CoreLedger stores Balance as (Sum Credits - Sum Debits) universally?
+            // Actually CoreLedger logic was:
+            // Debit/Credit affect balance based on `increment: credit - debit`.
+            // So Balance = Sum(Credit - Debit) = TotalCredit - TotalDebit.
+            // This is the "Net Credit" convention.
 
             const entries = await prisma.ledgerEntry.aggregate({
                 where: { ledgerAccountId: account.id },
@@ -68,18 +64,19 @@ export class SafetyNet {
                 }
             })
 
-            const sumDebit = entries._sum.debitAmount || BigInt(0)
-            const sumCredit = entries._sum.creditAmount || BigInt(0)
+            const sumDebit = entries._sum.debitAmount || new Prisma.Decimal(0)
+            const sumCredit = entries._sum.creditAmount || new Prisma.Decimal(0)
 
-            const calculated = sumCredit - sumDebit
+            const calculated = sumCredit.minus(sumDebit)
+            const cached = account.balance || new Prisma.Decimal(0) // Handle potential null
 
-            if (calculated !== account.balance) {
+            if (!calculated.equals(cached)) {
                 mismatches.push({
                     accountId: account.id,
                     code: account.code,
-                    cachedBalance: account.balance,
-                    calculatedBalance: calculated,
-                    difference: calculated - account.balance
+                    cachedBalance: cached.toNumber(),
+                    calculatedBalance: calculated.toNumber(),
+                    difference: calculated.minus(cached).toNumber()
                 })
             }
         }

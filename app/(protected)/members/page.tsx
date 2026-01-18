@@ -21,7 +21,7 @@ export default async function MembersPage() {
         UserRole.SECRETARY
     ];
 
-    const isPrivileged = privilegedRoles.includes(role);
+    const isPrivileged = privilegedRoles.includes(role as any);
 
     // REDIRECT LOGIC: Restricted users go to their own profile
     if (!isPrivileged) {

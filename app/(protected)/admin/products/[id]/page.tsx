@@ -1,6 +1,6 @@
 import { auth } from "@/auth"
 import { redirect, notFound } from "next/navigation"
-import { PrismaClient } from "@prisma/client"
+// import { PrismaClient } from "@prisma/client"
 import {
     Tabs,
     TabsContent,
@@ -14,7 +14,7 @@ import Link from "next/link"
 import { Edit, ArrowLeft } from "lucide-react"
 import { ProductAccountingForm } from "@/components/products/ProductAccountingForm"
 
-const prisma = new PrismaClient()
+import prisma from "@/lib/prisma"
 
 export default async function ProductDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const session = await auth()

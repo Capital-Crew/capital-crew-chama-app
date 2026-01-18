@@ -55,7 +55,7 @@ export class CoreLedger {
         }
 
         // 3. Execute in Transaction
-        return await prisma.$transaction(async (tx) => {
+        return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
             // A. Create Transaction Header
             const transaction = await tx.ledgerTransaction.create({
                 data: {
@@ -65,14 +65,14 @@ export class CoreLedger {
                     description: input.description,
                     notes: input.notes,
                     externalReferenceId: input.externalReferenceId,
-                    totalAmount: totalDebit,
+                    totalAmount: new Prisma.Decimal(totalDebit.toString()),
                     createdBy: input.createdBy,
                     createdByName: input.createdByName,
                     ledgerEntries: {
                         create: input.lines.map(line => ({
-                            ledgerAccountId: line.accountId,
-                            debitAmount: line.debit,
-                            creditAmount: line.credit,
+                            ledgerAccount: { connect: { id: line.accountId } },
+                            debitAmount: new Prisma.Decimal(line.debit.toString()),
+                            creditAmount: new Prisma.Decimal(line.credit.toString()),
                             description: line.description || input.description
                         }))
                     }
@@ -103,7 +103,7 @@ export class CoreLedger {
                     where: { id: line.accountId },
                     data: {
                         balance: {
-                            increment: netChange
+                            increment: new Prisma.Decimal(netChange.toString())
                         }
                     }
                 })

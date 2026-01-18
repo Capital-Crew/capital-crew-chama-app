@@ -22,6 +22,7 @@ import { format } from 'date-fns'
 
 interface TransferRequest {
     id: string
+    requesterId?: string
     requester: { name: string | null }
     debitAccount: { code: string; name: string }
     creditAccount: { code: string; name: string }

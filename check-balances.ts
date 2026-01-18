@@ -10,19 +10,19 @@ async function checkBalances() {
     try {
         const bal1100 = await AccountingEngine.getAccountBalance('1100');
         console.log(`Account 1100 (Loan Portfolio): KES ${bal1100.toLocaleString()}`);
-    } catch (e) { console.log("Account 1100 not found or error", e.message); }
+    } catch (e: any) { console.log("Account 1100 not found or error", e.message); }
 
     // 2. Account 1200 (Old Contributions)
     try {
         const bal1200 = await AccountingEngine.getAccountBalance('1200');
         console.log(`Account 1200 (Receivables/Old Contrib): KES ${bal1200.toLocaleString()}`);
-    } catch (e) { console.log("Account 1200 not found or error", e.message); }
+    } catch (e: any) { console.log("Account 1200 not found or error", e.message); }
 
     // 3. Account 3000 (Contributions Equity)
     try {
         const bal3000 = await AccountingEngine.getAccountBalance('3000');
         console.log(`Account 3000 (Contributions Equity): KES ${bal3000.toLocaleString()}`);
-    } catch (e) { console.log("Account 3000 not found or error", e.message); }
+    } catch (e: any) { console.log("Account 3000 not found or error", e.message); }
 
     // 4. Check Mapping for EVENT_LOAN_DISBURSEMENT
     const mapping = await prisma.systemAccountingMapping.findUnique({

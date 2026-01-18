@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import prisma from '@/lib/prisma'
 import { z } from 'zod'
-import { ProductAccountingType } from '@prisma/client'
+import { ProductAccountingType, Prisma } from '@prisma/client'
 import { auth } from '@/auth'
 
 // Validation Schema
@@ -25,7 +25,7 @@ export async function updateProductMappings(productId: string, mappings: Record<
         const validated = MappingSchema.parse(mappings)
 
         // 2. Transactional Update
-        await prisma.$transaction(async (tx) => {
+        await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
             // A. Clear existing configurations
             await tx.productAccountingMapping.deleteMany({
                 where: { productId }

@@ -2,6 +2,7 @@
 
 import { z } from 'zod'
 import prisma from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 
 // Define manually to avoid dependency on generated client if generation failed
@@ -18,7 +19,7 @@ const COUNTRY_PATTERNS: Record<string, { regex: RegExp; label: string; example: 
 
 const kinSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters"),
-    relationship: z.enum(RELATIONSHIP_ENUM, { errorMap: () => ({ message: "Invalid relationship type" }) }),
+    relationship: z.enum(RELATIONSHIP_ENUM),
     // Validate that nationality is one of the keys in COUNTRY_PATTERNS
     nationality: z.string().refine((val) => Object.keys(COUNTRY_PATTERNS).includes(val), {
         message: "Invalid nationality code"
@@ -64,7 +65,7 @@ export async function updateBeneficiaries(memberId: string, beneficiaries: any[]
         }
 
         // 3. Transaction
-        await prisma.$transaction(async (tx) => {
+        await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
             // Delete existing for this member to avoid ghosts
             await (tx as any).nextOfKin.deleteMany({ where: { memberId } })
 
@@ -89,7 +90,7 @@ export async function updateBeneficiaries(memberId: string, beneficiaries: any[]
     } catch (error: any) {
         console.error('Update Kin Error:', error)
         if (error instanceof z.ZodError) {
-            const errorMessages = error.errors.map(err => {
+            const errorMessages = error.issues.map(err => {
                 return err.path.length > 0 ? `${err.path.join('.')}: ${err.message}` : err.message
             }).join(', ')
             return { error: errorMessages || 'Validation failed' }

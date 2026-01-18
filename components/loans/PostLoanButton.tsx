@@ -42,20 +42,20 @@ export function PostLoanButton({
     const isSelfApproval = currentUserId === applicantId;
 
     const handleDisburse = () => {
-        const toastId = toast.loading('Processing disbursement...');
+        toast.loading('Processing disbursement...');
 
         startTransition(async () => {
             try {
                 const result = await disburseLoan(loanId);
 
                 if (result && 'error' in result && result.error) {
-                    toast.error(result.error, { id: toastId });
+                    toast.error(result.error);
                 } else {
-                    toast.success('Loan successfully posted and disbursed', { id: toastId });
+                    toast.success('Loan successfully posted and disbursed');
                     setIsOpen(false);
                 }
             } catch (error: any) {
-                toast.error(error.message || 'Failed to disburse loan', { id: toastId });
+                toast.error(error.message || 'Failed to disburse loan');
             }
         });
     };

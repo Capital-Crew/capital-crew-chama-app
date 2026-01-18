@@ -38,21 +38,23 @@ export async function getMemberRealtimeStats(memberId: string): Promise<Serializ
 
     // Helper to get aggregated ledger balance
     async function getLedgerBalance(code: string) {
-        const result = await db.journalLine.aggregate({
+        const result = await db.ledgerEntry.aggregate({
             _sum: {
                 creditAmount: true,
                 debitAmount: true
             },
             where: {
-                account: { code },
-                journalEntry: {
+                ledgerAccount: { code },
+                ledgerTransaction: {
                     referenceId: memberId,
                     isReversed: false
                 }
             }
         })
         // Liabilities/Equity (Shares/Deposits) are Credit Normal. Balance = Credit - Debit.
-        return (result._sum.creditAmount || 0) - (result._sum.debitAmount || 0)
+        const credit = Number(result._sum.creditAmount || 0)
+        const debit = Number(result._sum.debitAmount || 0)
+        return credit - debit
     }
 
     // Parallel fetch for speed
@@ -123,8 +125,7 @@ export async function getAllMemberLoans(memberId: string): Promise<Serialized<Me
             orderBy: { disbursementDate: 'desc' },
             include: {
                 member: true,
-                loanProduct: true,
-                repaymentSchedule: true
+                loanProduct: true
             }
         });
 

@@ -178,8 +178,8 @@ export default function ToastTestPage() {
                                 )
 
                                 setTimeout(() => {
-                                    toast.dismiss(loadingId)
-                                    toast.success("Transaction Complete", "Payment processed successfully")
+                                    // toast.loading() returns void, so we can't dismiss it by ID
+                                    toast.success("Transaction Complete", "Payment processed successfully");
                                 }, 3000)
                             }}
                             variant="outline"

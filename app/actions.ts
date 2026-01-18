@@ -140,7 +140,7 @@ export async function createUserAccount(formData: FormData) {
     const memberNumber = (lastMember?.memberNumber || 0) + 1
 
     // Create member and user in a transaction
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         const member = await tx.member.create({
             data: {
                 name,
@@ -334,7 +334,7 @@ export async function applyForLoan(prevState: any, formData: FormData) {
             numberOfRepayments: installments
         }
         const tempLoan = { amount, applicationDate: new Date().toISOString() }
-        const schedule = generateRepaymentSchedule(tempLoan, tempProductWithCustomInstallments as any)
+        const schedule = generateRepaymentSchedule(tempLoan as any, tempProductWithCustomInstallments as any)
         const dueDate = schedule[schedule.length - 1]?.dueDate ? new Date(schedule[schedule.length - 1].dueDate) : new Date()
 
         // Handle loan top-ups/offsets

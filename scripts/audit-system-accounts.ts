@@ -15,7 +15,7 @@ const EXPECTED_TYPES: Record<string, AccountType> = {
     CONTRIBUTIONS_LOANS: 'ASSET', // Hybrid, but primary nature is Asset
     LOAN_RECEIVABLES: 'ASSET',
     MEMBER_WALLET: 'LIABILITY',
-    LOAN_INCOME: 'INCOME'
+    LOAN_INCOME: AccountType.REVENUE
 };
 
 async function main() {
@@ -43,7 +43,7 @@ async function main() {
             // 2. Check Default Code
             const code = DEFAULTS[type];
             if (code) {
-                account = await db.account.findUnique({ where: { code } });
+                account = await db.ledgerAccount.findUnique({ where: { code } });
             }
         }
 

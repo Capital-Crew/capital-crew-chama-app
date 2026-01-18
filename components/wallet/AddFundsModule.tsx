@@ -164,7 +164,7 @@ export function AddFundsModule({ memberId, userRole }: { memberId: string; userR
                 description: repaymentDescription
             })
 
-            const allocationText = `Penalty: ${result.allocation.penalty}, Interest: ${result.allocation.interest}, Principal: ${result.allocation.principal}`
+            const allocationText = `Penalty: ${result.allocation.paidPenalty}, Interest: ${result.allocation.paidInterest}, Principal: ${result.allocation.paidPrincipal}`
             setMessage({
                 type: 'success',
                 text: `Loan repayment successful! ${allocationText}. ${result.isFullyPaid ? '✓ LOAN CLEARED!' : `Remaining: KES ${result.newOutstanding.toLocaleString()}`}`

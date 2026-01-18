@@ -4,7 +4,7 @@ import { db } from '@/lib/db'
 import { auth } from '@/auth'
 import { Prisma } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
-import { LoanStatus, ApprovalStatus, LoanEventType, NotificationType, AuditLogAction, SystemAccountType } from '@prisma/client'
+import { LoanStatus, ApprovalStatus, LoanEventType, NotificationType, AuditLogAction, SystemAccountType, UserRole } from '@prisma/client'
 import { LoanBalanceService } from '@/services/loan-balance';
 import { getSystemMappingsDict } from './actions/system-accounting'
 import { getSaccoSettings } from './sacco-settings-actions'
@@ -75,10 +75,19 @@ export async function submitLoanApproval(loanId: string, decision: 'APPROVED' | 
         })
 
         // Check if we need to transition loan status
-        // Get strict count of approvals
+        // Get strict count of approvals with User Roles
         const loanWithApprovals = await tx.loan.findUnique({
             where: { id: loanId },
-            include: { approvals: true, loanProduct: true }
+            include: {
+                approvals: {
+                    include: {
+                        approver: {
+                            include: { user: true }
+                        }
+                    }
+                },
+                loanProduct: true
+            }
         })
 
         if (!loanWithApprovals) throw new Error("Loan not found")
@@ -111,19 +120,28 @@ export async function submitLoanApproval(loanId: string, decision: 'APPROVED' | 
                 }
             })
 
-            return
+            return { status: 'REJECTED', message: 'Loan Rejected' }
         }
 
         // Count APPROVED votes
         // @ts-ignore
-        const approvedVotes = loanWithApprovals.approvals.filter((a: any) => a.decision === 'APPROVED').length
+        const approvedVotes = loanWithApprovals.approvals.filter((a: any) => a.decision === 'APPROVED')
+        const approvedCount = approvedVotes.length
+
+        // Governance Check: Quality (Executive Role)
+        const EXECUTIVE_ROLES: UserRole[] = [UserRole.CHAIRPERSON, UserRole.SECRETARY, UserRole.TREASURER, UserRole.SYSTEM_ADMIN]
+
+        const hasExecutiveApproval = approvedVotes.some((vote: any) => {
+            const userRole = vote.approver?.user?.role
+            return userRole && EXECUTIVE_ROLES.includes(userRole)
+        })
 
         // Get required approvals (Global setting or Product specific)
-        // For now using global settingMock or default 3
         const settings = await tx.saccoSettings.findFirst()
         const requiredApprovals = settings?.requiredApprovals ?? 3
 
-        if (approvedVotes >= requiredApprovals) {
+        // Condition: Quantity AND Quality met
+        if (approvedCount >= requiredApprovals && hasExecutiveApproval) {
             // Transition to APPROVED/AWAITING_DISBURSEMENT
             // Use Enum here
             await tx.loan.update({
@@ -135,7 +153,7 @@ export async function submitLoanApproval(loanId: string, decision: 'APPROVED' | 
                 data: {
                     loanId,
                     eventType: LoanEventType.LOAN_APPROVED,
-                    description: `Loan fully approved by ${approvedVotes} members`,
+                    description: `Loan fully approved by ${approvedCount} members (Including Executive)`,
                     actorId: 'SYSTEM'
                 }
             })
@@ -160,11 +178,22 @@ export async function submitLoanApproval(loanId: string, decision: 'APPROVED' | 
                     approvedAt: new Date()
                 }
             })
+
+            return { status: 'APPROVED', message: 'Loan Approved Successfully' }
+        } else if (approvedCount >= requiredApprovals && !hasExecutiveApproval) {
+            // Quantity met, Quality failed
+            return { status: 'PENDING_EXECUTIVE', message: 'Quorum met, waiting for Executive Approval' }
         }
+
+        return { status: 'PENDING_QUORUM', message: `Vote recorded. (${approvedCount}/${requiredApprovals})` }
     })
 
     revalidatePath(`/loans/${loanId}`)
     revalidatePath('/dashboard')
+
+    // Return result of transaction if we capture it, but simple returns here work since revalidate happens after.
+    // Ideally refactor to capture tx result. 
+    return { success: true }
 }
 
 /**
@@ -208,18 +237,18 @@ export async function disburseLoanToWallet(loanId: string) {
 
         if (!loan) throw new Error("Loan not found")
         if (loan.status !== 'APPROVED') throw new Error("Loan is not in APPROVED state")
-        if (loan.current_balance > 0) throw new Error("Loan already has a balance? Possible error.")
+        if (Number(loan.current_balance) > 0) throw new Error("Loan already has a balance? Possible error.")
 
         // 1. Calculate Amounts
-        const principal = loan.amount
+        const principal = Number(loan.amount)
 
         // Deductions
-        const processingFee = loan.processingFee
-        const insuranceFee = loan.insuranceFee
-        const shareDeduction = loan.shareCapitalDeduction
+        const processingFee = Number(loan.processingFee)
+        const insuranceFee = Number(loan.insuranceFee)
+        const shareDeduction = Number(loan.shareCapitalDeduction)
 
         // Offsets (Top-ups) - Includes Principal + Interest + Penalties + Refinance Fee
-        const totalOffset = loan.topUps.reduce((sum, t) => sum + t.totalOffset, 0)
+        const totalOffset = loan.topUps.reduce((sum, t) => sum + Number(t.totalOffset), 0)
 
         // Net
         const netDisbursement = principal - processingFee - insuranceFee - shareDeduction - totalOffset
@@ -327,31 +356,31 @@ export async function disburseLoanToWallet(loanId: string) {
             // And Credit Income for the interest/penalties being paid off
 
             // 1. Principal Base
-            if (topUp.principalBalance > 0) {
+            if (Number(topUp.principalBalance) > 0) {
                 journalLines.push({
                     accountId: (await getAccountId(tx, getCode('RECEIVABLES'))), // Reduce Loan Asset (1300)
                     accountType: 'ASSET',
                     description: `Offset Principal - ${topUp.oldLoanNumber}`,
                     debitAmount: 0,
-                    creditAmount: topUp.principalBalance,
+                    creditAmount: Number(topUp.principalBalance),
                     index: lineIndex++
                 })
             }
 
             // 2. Interest Income
-            if (topUp.accruedInterest > 0) {
+            if (Number(topUp.accruedInterest) > 0) {
                 journalLines.push({
                     accountId: (await getAccountId(tx, getCode('RECEIVABLE_LOAN_INTEREST') || getCode('INCOME_LOAN_INTEREST'))),
                     accountType: 'ASSET', // Reducing Receivable
                     description: `Offset Interest - ${topUp.oldLoanNumber}`,
                     debitAmount: 0,
-                    creditAmount: topUp.accruedInterest,
+                    creditAmount: Number(topUp.accruedInterest),
                     index: lineIndex++
                 })
             }
 
             // 3. Penalty/Other Income from Offset
-            const otherCharges = topUp.penalties + topUp.refinanceFee
+            const otherCharges = Number(topUp.penalties) + Number(topUp.refinanceFee)
             if (otherCharges > 0) {
                 journalLines.push({
                     accountId: (await getAccountId(tx, getCode('INCOME_GENERAL_FEE'))),
@@ -370,8 +399,8 @@ export async function disburseLoanToWallet(loanId: string) {
             referenceType: 'LOAN_DISBURSEMENT',
             referenceId: loan.id,
             description: `Disbursement for Loan ${loan.loanApplicationNumber}`,
-            createdBy: session.user.id,
-            createdByName: session.user.name || 'Unknown',
+            createdBy: session!.user.id!,
+            createdByName: session!.user.name || 'Unknown',
             lines: journalLines.map(l => ({
                 accountId: l.accountId,
                 debitAmount: Number(l.debitAmount) || 0,
@@ -467,7 +496,7 @@ export async function disburseLoanToWallet(loanId: string) {
                 loanId,
                 eventType: LoanEventType.LOAN_DISBURSED,
                 description: `Disbursed ${netDisbursement.toLocaleString()} to wallet${totalOffset > 0 ? ` (after ${totalOffset.toLocaleString()} offsets)` : ''}`,
-                actorId: session.user.id
+                actorId: session!.user.id!
             }
         })
 

@@ -49,7 +49,7 @@ export async function createMemberAction(formData: FormData): Promise<ActionResu
     const validated = createMemberSchema.safeParse(rawData)
 
     if (!validated.success) {
-        return { success: false, error: validated.error.errors[0].message }
+        return { success: false, error: validated.error.issues[0].message }
     }
 
     try {

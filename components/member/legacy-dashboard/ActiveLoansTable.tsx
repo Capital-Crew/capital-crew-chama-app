@@ -1,3 +1,4 @@
+'use client';
 
 import React from 'react';
 import { ActiveLoanRow } from './types';
@@ -8,7 +9,7 @@ import { format } from 'date-fns';
 
 interface Props {
     loans: (ActiveLoanRow & { status?: string })[];
-    onLoanClick: (id: string) => void;
+    onLoanClick?: (id: string) => void;
 }
 
 export const ActiveLoansTable: React.FC<Props> = ({ loans, onLoanClick }) => {
@@ -24,13 +25,20 @@ export const ActiveLoansTable: React.FC<Props> = ({ loans, onLoanClick }) => {
             className={`transition-colors ${isHistory ? 'hover:bg-slate-50' : 'bg-white hover:bg-sky-50'}`}
         >
             <td className="py-4 px-6 font-medium text-slate-900">
-                <button
-                    onClick={() => onLoanClick(loan.id)}
-                    className={`font-bold text-left flex items-center gap-2 ${isHistory ? 'text-slate-600 hover:text-slate-900' : 'text-blue-600 hover:text-blue-800'}`}
-                >
-                    {isHistory ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <Clock className="w-4 h-4 text-blue-500" />}
-                    {loan.loanNumber}
-                </button>
+                {onLoanClick ? (
+                    <button
+                        onClick={() => onLoanClick(loan.id)}
+                        className={`font-bold text-left flex items-center gap-2 ${isHistory ? 'text-slate-600 hover:text-slate-900' : 'text-blue-600 hover:text-blue-800'}`}
+                    >
+                        {isHistory ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <Clock className="w-4 h-4 text-blue-500" />}
+                        {loan.loanNumber}
+                    </button>
+                ) : (
+                    <div className={`font-bold text-left flex items-center gap-2 ${isHistory ? 'text-slate-600' : 'text-slate-700'}`}>
+                        {isHistory ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <Clock className="w-4 h-4 text-blue-500" />}
+                        {loan.loanNumber}
+                    </div>
+                )}
             </td>
             <td className="py-4 px-6 text-slate-700">
                 <span className="block font-semibold">{loan.productName}</span>

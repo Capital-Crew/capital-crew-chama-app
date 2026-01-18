@@ -134,7 +134,7 @@ export async function updateLoanProductWizard(id: string, data: LoanProductWizar
     // Validate Input
     const validated = loanProductWizardSchema.safeParse(data);
     if (!validated.success) {
-        const errorMsg = validated.error.errors?.[0]?.message || "Validation failed";
+        const errorMsg = validated.error.issues?.[0]?.message || "Validation failed";
         throw new Error(errorMsg);
     }
 

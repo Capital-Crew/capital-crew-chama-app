@@ -29,13 +29,13 @@ export const calculateOutstandingBalance = (loan: Loan, incomes: Income[]): numb
         .filter(i => i.loanId === loan.id)
         .reduce((sum, income) => {
             if (income.category !== IncomeCategory.MONTHLY_CONTRIBUTION && income.category !== IncomeCategory.NON_LOAN_PENALTY) {
-                return sum + income.amount;
+                return sum + Number(income.amount);
             }
             return sum;
         }, 0);
 
     // Use penalties if exist, or 0.
-    const totalRepayable = loan.repaymentSchedule.reduce((sum, item) => sum + item.total, 0) + (loan.penalties || 0);
+    const totalRepayable = (loan.repaymentSchedule as any[]).reduce((sum, item) => sum + item.total, 0) + Number(loan.penalties || 0);
 
     return Math.max(0, totalRepayable - totalPaidForLoan);
 };
@@ -49,9 +49,9 @@ export const calculateAllOutstandingBalances = (memberId: string, loans: Loan[],
 export const calculateOutstandingPrincipal = (loan: Loan, incomes: Income[]): number => {
     const totalPaidForRepayment = incomes
         .filter(i => i.loanId === loan.id && i.category === IncomeCategory.LOAN_REPAYMENT)
-        .reduce((sum, income) => sum + (income.principalAmount || 0), 0);
+        .reduce((sum, income) => sum + Number(income.principalAmount || 0), 0);
 
-    return Math.max(0, loan.amount - totalPaidForRepayment);
+    return Math.max(0, Number(loan.amount) - totalPaidForRepayment);
 };
 
 export const addFrequencyOffset = (date: Date, every: number, type: RepaymentFrequencyType): Date => {
@@ -83,7 +83,7 @@ export const generateLoanApplicationNumber = (loans: Loan[]): string => {
 export const calculateTotalContributions = (memberId: string, incomes: Income[]): number => {
     return incomes
         .filter(i => i.memberId === memberId && i.category === IncomeCategory.MONTHLY_CONTRIBUTION)
-        .reduce((sum, income) => sum + income.amount, 0);
+        .reduce((sum, income) => sum + Number(income.amount), 0);
 };
 
 export const calculateLoanLimit = (totalContributions: number, multiplier: number): number => {
@@ -96,9 +96,9 @@ export const calculateLoanLimit = (totalContributions: number, multiplier: numbe
  */
 export const generateRepaymentSchedule = (loan: Partial<Loan>, product: LoanProduct): RepaymentScheduleItem[] => {
     const schedule: RepaymentScheduleItem[] = [];
-    const principal = loan.amount || product.principal;
+    const principal = Number(loan.amount || product.principal);
     const n = product.numberOfRepayments;
-    const periodicRate = product.interestRatePerPeriod / 100;
+    const periodicRate = Number(product.interestRatePerPeriod) / 100;
     const startDate = new Date(loan.applicationDate || new Date().toISOString());
 
     if (product.interestType === InterestType.FLAT) {
@@ -182,9 +182,9 @@ export const getNotificationMessage = (type: NotificationType, data: { memberNam
     const { memberName, loan } = data;
     switch (type) {
         case NotificationType.APPLICATION_RECEIVED:
-            return `Dear ${memberName}, your application ${loan.loanApplicationNumber} for ${formatCurrency(loan.amount)} has been received.`;
+            return `Dear ${memberName}, your application ${loan.loanApplicationNumber} for ${formatCurrency(Number(loan.amount))} has been received.`;
         case NotificationType.LOAN_APPROVED:
-            return `Congratulations ${memberName}! Your loan ${loan.loanApplicationNumber} for ${formatCurrency(loan.amount)} has been approved.`;
+            return `Congratulations ${memberName}! Your loan ${loan.loanApplicationNumber} for ${formatCurrency(Number(loan.amount))} has been approved.`;
         case NotificationType.LOAN_REJECTED:
             return `Dear ${memberName}, we regret to inform you that your application ${loan.loanApplicationNumber} has been rejected.`;
         case NotificationType.LOAN_CLEARED:
@@ -192,4 +192,13 @@ export const getNotificationMessage = (type: NotificationType, data: { memberNam
         default:
             return `Update regarding your account.`;
     }
+};
+
+export const generateRandomPassword = (length: number = 10): string => {
+    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()";
+    let retVal = "";
+    for (let i = 0, n = charset.length; i < length; ++i) {
+        retVal += charset.charAt(Math.floor(Math.random() * n));
+    }
+    return retVal;
 };

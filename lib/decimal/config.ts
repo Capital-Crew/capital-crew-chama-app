@@ -23,8 +23,6 @@ Decimal.set({
     rounding: Decimal.ROUND_HALF_UP,
     toExpNeg: -9e15,
     toExpPos: 9e15,
-    minE: -9e15,
-    maxE: 9e15,
 })
 
 // ============================================================================
@@ -45,21 +43,8 @@ Decimal.set({
  * const amount = new MoneyDecimal("1234.5678")
  * const rounded = amount.toDecimalPlaces(2) // "1234.57"
  */
-export class MoneyDecimal extends Decimal {
-    constructor(value: Decimal.Value) {
-        super(value)
-    }
-
-    static config() {
-        return {
-            precision: 19,
-            rounding: Decimal.ROUND_HALF_UP,
-        }
-    }
-}
-
-// Configure MoneyDecimal
-MoneyDecimal.set(MoneyDecimal.config())
+export const MoneyDecimal = Decimal;
+export type MoneyDecimal = Decimal;
 
 /**
  * RateDecimal - For interest rates and other rates
@@ -75,21 +60,11 @@ MoneyDecimal.set(MoneyDecimal.config())
  * const rate = new RateDecimal("0.125") // 12.5%
  * const monthly = rate.dividedBy(12) // Monthly rate
  */
-export class RateDecimal extends Decimal {
-    constructor(value: Decimal.Value) {
-        super(value)
-    }
-
-    static config() {
-        return {
-            precision: 16,
-            rounding: Decimal.ROUND_HALF_UP,
-        }
-    }
-}
+export const RateDecimal = Decimal;
+export type RateDecimal = Decimal;
 
 // Configure RateDecimal
-RateDecimal.set(RateDecimal.config())
+// RateDecimal.set(RateDecimal.config())
 
 /**
  * PercentDecimal - For percentage values
@@ -106,21 +81,11 @@ RateDecimal.set(RateDecimal.config())
  * const amount = new MoneyDecimal("1000")
  * const feeAmount = amount.times(fee.dividedBy(100))
  */
-export class PercentDecimal extends Decimal {
-    constructor(value: Decimal.Value) {
-        super(value)
-    }
-
-    static config() {
-        return {
-            precision: 10,
-            rounding: Decimal.ROUND_HALF_UP,
-        }
-    }
-}
+export const PercentDecimal = Decimal;
+export type PercentDecimal = Decimal;
 
 // Configure PercentDecimal
-PercentDecimal.set(PercentDecimal.config())
+// PercentDecimal.set(PercentDecimal.config())
 
 // ============================================================================
 // CONSTANTS

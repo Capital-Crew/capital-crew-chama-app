@@ -28,7 +28,7 @@ export function NextOfKinCard({ kin, memberId, initialIsEditing = false, onCance
         reset,
         formState: { errors }
     } = useForm<NextOfKinInput>({
-        resolver: zodResolver(NextOfKinSchema),
+        resolver: zodResolver(NextOfKinSchema) as any,
         defaultValues: kin ? {
             id: kin.id,
             fullName: kin.fullName,

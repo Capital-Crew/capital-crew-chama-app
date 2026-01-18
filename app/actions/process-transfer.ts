@@ -19,9 +19,7 @@ import { z } from 'zod';
 
 const ProcessTransferSchema = z.object({
     walletId: z.string().min(1, 'Wallet ID is required'),
-    destinationType: z.enum(['LOAN_REPAYMENT', 'CONTRIBUTION'], {
-        errorMap: () => ({ message: 'Invalid destination type' })
-    }),
+    destinationType: z.enum(['LOAN_REPAYMENT', 'CONTRIBUTION'] as const),
     destinationId: z.string().min(1, 'Destination ID is required'),
     amount: z.number().positive('Amount must be greater than zero'),
     description: z.string().optional()
@@ -111,7 +109,7 @@ export async function processTransfer(
         console.error('Transfer processing error:', error);
 
         if (error instanceof z.ZodError) {
-            throw new Error(`Validation error: ${error.errors[0].message}`);
+            throw new Error(`Validation error: ${error.issues[0].message}`);
         }
 
         if (error instanceof Error) {
@@ -134,14 +132,14 @@ export async function getWalletBalance(walletId: string): Promise<number> {
 
     const wallet = await db.wallet.findUnique({
         where: { id: walletId },
-        select: { balance: true }
+        include: { glAccount: true }
     });
 
     if (!wallet) {
         throw new Error('Wallet not found');
     }
 
-    return wallet.balance;
+    return Number(wallet.glAccount.balance);
 }
 
 // ========================================
@@ -157,6 +155,7 @@ export async function getMemberWallet(memberId: string) {
     const wallet = await db.wallet.findUnique({
         where: { memberId },
         include: {
+            glAccount: true,
             member: {
                 select: {
                     name: true,
@@ -172,7 +171,7 @@ export async function getMemberWallet(memberId: string) {
 
     return {
         id: wallet.id,
-        balance: wallet.balance,
+        balance: Number(wallet.glAccount.balance),
         memberId: wallet.memberId,
         memberName: wallet.member.name,
         memberNumber: wallet.member.memberNumber

@@ -36,7 +36,7 @@ export async function GET(req: Request) {
         });
 
         // Format for frontend
-        const formatted = transactions.map(t => ({
+        const formatted = transactions.map((t: any) => ({
             id: t.id,
             date: t.createdAt,
             memberId: t.member?.id,

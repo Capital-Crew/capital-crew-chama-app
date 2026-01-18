@@ -8,6 +8,9 @@
 
 import { Decimal, MoneyDecimal, RateDecimal, PercentDecimal, PRECISION } from './config'
 
+// Type alias for Decimal values
+type DecimalValue = number | string | Decimal
+
 // ============================================================================
 // ARITHMETIC OPERATIONS
 // ============================================================================
@@ -21,7 +24,7 @@ import { Decimal, MoneyDecimal, RateDecimal, PercentDecimal, PRECISION } from '.
  * @example
  * add("0.1", "0.2") // Returns Decimal("0.3")
  */
-export function add(a: Decimal.Value, b: Decimal.Value): Decimal {
+export function add(a: DecimalValue, b: DecimalValue): Decimal {
     return new Decimal(a).plus(b)
 }
 
@@ -31,7 +34,7 @@ export function add(a: Decimal.Value, b: Decimal.Value): Decimal {
  * @param b Subtrahend (string or Decimal)
  * @returns Difference as Decimal
  */
-export function subtract(a: Decimal.Value, b: Decimal.Value): Decimal {
+export function subtract(a: DecimalValue, b: DecimalValue): Decimal {
     return new Decimal(a).minus(b)
 }
 
@@ -41,7 +44,7 @@ export function subtract(a: Decimal.Value, b: Decimal.Value): Decimal {
  * @param b Second value (string or Decimal)
  * @returns Product as Decimal
  */
-export function multiply(a: Decimal.Value, b: Decimal.Value): Decimal {
+export function multiply(a: DecimalValue, b: DecimalValue): Decimal {
     return new Decimal(a).times(b)
 }
 
@@ -52,7 +55,7 @@ export function multiply(a: Decimal.Value, b: Decimal.Value): Decimal {
  * @returns Quotient as Decimal
  * @throws Error if divisor is zero
  */
-export function divide(a: Decimal.Value, b: Decimal.Value): Decimal {
+export function divide(a: DecimalValue, b: DecimalValue): Decimal {
     const divisor = new Decimal(b)
     if (divisor.isZero()) {
         throw new Error('Division by zero')
@@ -69,7 +72,7 @@ export function divide(a: Decimal.Value, b: Decimal.Value): Decimal {
  * @example
  * percentOf("1000", "2.5") // Returns Decimal("25")
  */
-export function percentOf(value: Decimal.Value, percent: Decimal.Value): Decimal {
+export function percentOf(value: DecimalValue, percent: DecimalValue): Decimal {
     return new Decimal(value).times(new Decimal(percent).dividedBy(100))
 }
 
@@ -83,35 +86,35 @@ export function percentOf(value: Decimal.Value, percent: Decimal.Value): Decimal
  * @param b Second value
  * @returns true if equal
  */
-export function equals(a: Decimal.Value, b: Decimal.Value): boolean {
+export function equals(a: DecimalValue, b: DecimalValue): boolean {
     return new Decimal(a).equals(b)
 }
 
 /**
  * Check if a > b
  */
-export function greaterThan(a: Decimal.Value, b: Decimal.Value): boolean {
+export function greaterThan(a: DecimalValue, b: DecimalValue): boolean {
     return new Decimal(a).greaterThan(b)
 }
 
 /**
  * Check if a >= b
  */
-export function greaterThanOrEqual(a: Decimal.Value, b: Decimal.Value): boolean {
+export function greaterThanOrEqual(a: DecimalValue, b: DecimalValue): boolean {
     return new Decimal(a).greaterThanOrEqualTo(b)
 }
 
 /**
  * Check if a < b
  */
-export function lessThan(a: Decimal.Value, b: Decimal.Value): boolean {
+export function lessThan(a: DecimalValue, b: DecimalValue): boolean {
     return new Decimal(a).lessThan(b)
 }
 
 /**
  * Check if a <= b
  */
-export function lessThanOrEqual(a: Decimal.Value, b: Decimal.Value): boolean {
+export function lessThanOrEqual(a: DecimalValue, b: DecimalValue): boolean {
     return new Decimal(a).lessThanOrEqualTo(b)
 }
 
@@ -119,24 +122,45 @@ export function lessThanOrEqual(a: Decimal.Value, b: Decimal.Value): boolean {
  * Compare two values
  * @returns -1 if a < b, 0 if a == b, 1 if a > b
  */
-export function compare(a: Decimal.Value, b: Decimal.Value): -1 | 0 | 1 {
+export function compare(a: DecimalValue, b: DecimalValue): -1 | 0 | 1 {
     return new Decimal(a).comparedTo(b)
 }
 
 /**
  * Get the minimum of multiple values
  */
-export function min(...values: Decimal.Value[]): Decimal {
+export function min(...values: DecimalValue[]): Decimal {
     if (values.length === 0) throw new Error('min requires at least one value')
-    return Decimal.min(...values)
+    return values.reduce<Decimal>((minVal, current) => {
+        const currentDec = new Decimal(current)
+        return currentDec.lessThan(minVal) ? currentDec : minVal
+    }, new Decimal(values[0]))
 }
 
 /**
  * Get the maximum of multiple values
  */
-export function max(...values: Decimal.Value[]): Decimal {
+export function max(...values: DecimalValue[]): Decimal {
     if (values.length === 0) throw new Error('max requires at least one value')
-    return Decimal.max(...values)
+    return values.reduce<Decimal>((maxVal, current) => {
+        const currentDec = new Decimal(current)
+        return currentDec.greaterThan(maxVal) ? currentDec : maxVal
+    }, new Decimal(values[0]))
+}
+
+// ... skipping rounding functions ...
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+// ... skipping check functions ...
+
+/**
+ * Sum an array of values
+ */
+export function sum(values: DecimalValue[]): Decimal {
+    return values.reduce<Decimal>((acc, val) => acc.plus(val), new Decimal(0))
 }
 
 // ============================================================================
@@ -148,7 +172,7 @@ export function max(...values: Decimal.Value[]): Decimal {
  * @param value Value to round
  * @returns Rounded Decimal
  */
-export function roundForStorage(value: Decimal.Value): Decimal {
+export function roundForStorage(value: DecimalValue): Decimal {
     return new MoneyDecimal(value).toDecimalPlaces(PRECISION.MONEY.scale)
 }
 
@@ -157,35 +181,35 @@ export function roundForStorage(value: Decimal.Value): Decimal {
  * @param value Value to round
  * @returns Rounded string
  */
-export function roundForDisplay(value: Decimal.Value): string {
+export function roundForDisplay(value: DecimalValue): string {
     return new MoneyDecimal(value).toFixed(PRECISION.DISPLAY.money)
 }
 
 /**
  * Round a rate for storage (6 decimal places)
  */
-export function roundRateForStorage(value: Decimal.Value): Decimal {
+export function roundRateForStorage(value: DecimalValue): Decimal {
     return new RateDecimal(value).toDecimalPlaces(PRECISION.RATE.scale)
 }
 
 /**
  * Round a rate for display (4 decimal places)
  */
-export function roundRateForDisplay(value: Decimal.Value): string {
+export function roundRateForDisplay(value: DecimalValue): string {
     return new RateDecimal(value).toFixed(PRECISION.DISPLAY.rate)
 }
 
 /**
  * Round a percentage for storage (2 decimal places)
  */
-export function roundPercentForStorage(value: Decimal.Value): Decimal {
+export function roundPercentForStorage(value: DecimalValue): Decimal {
     return new PercentDecimal(value).toDecimalPlaces(PRECISION.PERCENT.scale)
 }
 
 /**
  * Round a percentage for display (2 decimal places)
  */
-export function roundPercentForDisplay(value: Decimal.Value): string {
+export function roundPercentForDisplay(value: DecimalValue): string {
     return new PercentDecimal(value).toFixed(PRECISION.DISPLAY.percent)
 }
 
@@ -196,41 +220,37 @@ export function roundPercentForDisplay(value: Decimal.Value): string {
 /**
  * Check if a value is zero
  */
-export function isZero(value: Decimal.Value): boolean {
+export function isZero(value: DecimalValue): boolean {
     return new Decimal(value).isZero()
 }
 
 /**
  * Check if a value is positive
  */
-export function isPositive(value: Decimal.Value): boolean {
+export function isPositive(value: DecimalValue): boolean {
     return new Decimal(value).isPositive()
 }
 
 /**
  * Check if a value is negative
  */
-export function isNegative(value: Decimal.Value): boolean {
+export function isNegative(value: DecimalValue): boolean {
     return new Decimal(value).isNegative()
 }
 
 /**
  * Get absolute value
  */
-export function abs(value: Decimal.Value): Decimal {
+export function abs(value: DecimalValue): Decimal {
     return new Decimal(value).abs()
 }
 
 /**
  * Negate a value
  */
-export function negate(value: Decimal.Value): Decimal {
+export function negate(value: DecimalValue): Decimal {
     return new Decimal(value).negated()
 }
 
-/**
- * Sum an array of values
- */
-export function sum(values: Decimal.Value[]): Decimal {
-    return values.reduce((acc, val) => acc.plus(val), new Decimal(0))
-}
+
+

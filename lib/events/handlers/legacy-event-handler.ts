@@ -61,7 +61,7 @@ export class LegacyEventHandler {
         await db.auditLog.create({
             data: {
                 userId: event.actorId,
-                action: event.eventType,
+                action: event.eventType as any,
                 details: this.generateDescription(event)
             }
         })

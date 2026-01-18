@@ -29,7 +29,7 @@ export function LoanProductWizard({ accounts, initialData, productId }: LoanProd
     const isEditMode = !!productId
 
     const methods = useForm<LoanProductWizardValues>({
-        resolver: zodResolver(loanProductWizardSchema),
+        resolver: zodResolver(loanProductWizardSchema) as any,
         mode: "onChange",
         defaultValues: {
             currency: "KES",

@@ -37,7 +37,7 @@ export class WaterfallAllocation {
         const amountDecimal = new Prisma.Decimal(amount);
 
         // 1. Fetch Schedules (Oldest First, Unpaid Only)
-        const schedules = await tx.repaymentSchedule.findMany({
+        const schedules = await tx.repaymentInstallment.findMany({
             where: {
                 loanId,
                 isFullyPaid: false
@@ -55,7 +55,7 @@ export class WaterfallAllocation {
             if (remaining.lte(0)) break;
 
             // --- Bucket A: Penalties ---
-            const penaltyDue = schedule.penaltyAmount.minus(schedule.penaltyPaid);
+            const penaltyDue = schedule.penaltyDue.minus(schedule.penaltyPaid);
             const payPenalty = Prisma.Decimal.min(remaining, penaltyDue);
 
             if (payPenalty.gt(0)) {
@@ -145,7 +145,7 @@ export class WaterfallAllocation {
             id: string;
             principalDue: Prisma.Decimal;
             interestDue: Prisma.Decimal;
-            penaltyAmount: Prisma.Decimal;
+            penaltyDue: Prisma.Decimal;
             principalPaid: Prisma.Decimal;
             interestPaid: Prisma.Decimal;
             penaltyPaid: Prisma.Decimal;
@@ -155,10 +155,10 @@ export class WaterfallAllocation {
         const isPaid =
             schedule.principalPaid.gte(schedule.principalDue) &&
             schedule.interestPaid.gte(schedule.interestDue) &&
-            schedule.penaltyPaid.gte(schedule.penaltyAmount);
+            schedule.penaltyPaid.gte(schedule.penaltyDue);
 
         // Update DB Row
-        await tx.repaymentSchedule.update({
+        await tx.repaymentInstallment.update({
             where: { id: schedule.id },
             data: {
                 penaltyPaid: schedule.penaltyPaid,

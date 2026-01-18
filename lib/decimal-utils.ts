@@ -90,14 +90,18 @@ export function isZero(value: number | string | Decimal, epsilon: number = 0.01)
  * Get the minimum of two decimal values
  */
 export function min(a: number | string | Decimal, b: number | string | Decimal): Decimal {
-    return Decimal.min(toDecimal(a), toDecimal(b));
+    const da = toDecimal(a);
+    const db = toDecimal(b);
+    return da.lessThan(db) ? da : db;
 }
 
 /**
  * Get the maximum of two decimal values
  */
 export function max(a: number | string | Decimal, b: number | string | Decimal): Decimal {
-    return Decimal.max(toDecimal(a), toDecimal(b));
+    const da = toDecimal(a);
+    const db = toDecimal(b);
+    return da.greaterThan(db) ? da : db;
 }
 
 // Re-export Decimal class for direct usage

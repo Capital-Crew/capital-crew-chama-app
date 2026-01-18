@@ -40,7 +40,7 @@ export function DepositForm({ memberId }: { memberId?: string }) {
     const [message, setMessage] = useState('');
 
     const form = useForm<DepositFormValues>({
-        resolver: zodResolver(depositSchema),
+        resolver: zodResolver(depositSchema) as any,
         defaultValues: {
             phoneNumber: "254",
             amount: 0,

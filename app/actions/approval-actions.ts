@@ -4,7 +4,7 @@ import { auth } from "@/auth"
 import { db } from "@/lib/db"
 import { ApprovalStatus } from "@prisma/client"
 import { revalidatePath } from "next/cache"
-import { approveLoan } from "./loan-actions" // I'll need to check if this exists or I assume
+// import { approveLoan } from "./loan-actions"
 import { serializeApprovalRequest } from "@/lib/serializers"
 // I'll leave the "Trigger" logic as TODO or implementing basic if-blocks
 

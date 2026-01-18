@@ -2,10 +2,11 @@
 'use server'
 
 import prisma from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 import { auth } from '@/auth'
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
-import { generateRandomString } from '@/lib/utils' // Assuming this exists, or I'll implement a helper
+// import { generateRandomString } from '@/lib/utils'
 
 // Validation Schema
 const registrationSchema = z.object({
@@ -54,7 +55,7 @@ export async function createMemberWithWallet(formData: FormData): Promise<Regist
 
     const validated = registrationSchema.safeParse(rawData)
     if (!validated.success) {
-        return { success: false, error: validated.error.errors[0].message }
+        return { success: false, error: validated.error.issues[0].message }
     }
 
     const { firstName, lastName, mobile, email, nationalId, branchId } = validated.data
@@ -69,7 +70,7 @@ export async function createMemberWithWallet(formData: FormData): Promise<Regist
             throw new Error("System Configuration Error: Liability Account (2000) not found.")
         }
 
-        const result = await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
             // 2. Generate Next Member Number (Locking would be ideal, but for now simple Max+1)
             const stats = await tx.member.aggregate({
                 _max: { memberNumber: true }
@@ -144,7 +145,7 @@ export async function createMemberWithWallet(formData: FormData): Promise<Regist
             // 6. Audit Log
             await tx.auditLog.create({
                 data: {
-                    userId: session.user.id,
+                    userId: session.user.id!,
                     action: 'MEMBER_ADDED',
                     details: `Created Member #${nextMemberNumber} (${member.name}) with Wallet ${uniqueWalletId}`
                 }

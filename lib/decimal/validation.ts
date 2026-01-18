@@ -7,6 +7,9 @@
 
 import { Decimal, MoneyDecimal, RateDecimal, PercentDecimal } from './config'
 
+// Type alias for Decimal values
+type DecimalValue = number | string | Decimal
+
 // ============================================================================
 // VALIDATION REGEX PATTERNS
 // ============================================================================
@@ -197,9 +200,9 @@ export function fromApiString(value: string): Decimal {
  * @returns true if within range
  */
 export function isInRange(
-    value: Decimal.Value,
-    min: Decimal.Value,
-    max: Decimal.Value
+    value: DecimalValue,
+    min: DecimalValue,
+    max: DecimalValue
 ): boolean {
     const decimal = new Decimal(value)
     return decimal.greaterThanOrEqualTo(min) && decimal.lessThanOrEqualTo(max)
@@ -208,14 +211,14 @@ export function isInRange(
 /**
  * Validate that a monetary amount is positive
  */
-export function isPositiveAmount(value: Decimal.Value): boolean {
+export function isPositiveAmount(value: DecimalValue): boolean {
     return new Decimal(value).isPositive()
 }
 
 /**
  * Validate that a monetary amount is non-negative (>= 0)
  */
-export function isNonNegativeAmount(value: Decimal.Value): boolean {
+export function isNonNegativeAmount(value: DecimalValue): boolean {
     return new Decimal(value).greaterThanOrEqualTo(0)
 }
 

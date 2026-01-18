@@ -31,7 +31,7 @@ export async function requestPasswordReset(formData: FormData) {
 
     const validated = RequestResetSchema.safeParse({ email });
     if (!validated.success) {
-        return { success: false, error: validated.error.errors[0].message };
+        return { success: false, error: validated.error.issues[0].message };
     }
 
     try {
@@ -87,7 +87,7 @@ export async function resetPassword(formData: FormData) {
 
     const validated = ResetPasswordSchema.safeParse({ token, password, confirmPassword });
     if (!validated.success) {
-        return { success: false, error: validated.error.errors[0].message };
+        return { success: false, error: validated.error.issues[0].message };
     }
 
     try {

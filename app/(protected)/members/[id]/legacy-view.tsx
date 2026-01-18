@@ -72,7 +72,11 @@ export default async function MemberLegacyProfilePage({ params }: PageProps) {
             productName: loan.loanProduct.name,
             approvedAmount: loan.amount,
 
-            monthlyDue,
+            // Map to interface
+            expectedAmount: monthlyDue,
+            arrears: 0, // Defaulting to 0 as we only fetched current installment
+            nextExpectedDate: currentInstallment?.dueDate ? new Date(currentInstallment.dueDate).toISOString() : null,
+            isOverdue: currentInstallment?.dueDate ? new Date(currentInstallment.dueDate) < new Date() : false,
 
             // "Total Loan Balance" from ledger
             totalLoanBalance: financials.total

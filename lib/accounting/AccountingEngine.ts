@@ -509,10 +509,26 @@ export async function getLoanPenaltyBalance(loanId: string, tx?: DbClient): Prom
 
 // Helper to get Fee Balance (Receivable)
 export async function getLoanFeeBalance(loanId: string, tx?: DbClient): Promise<number> {
-    // Current schema treats processing/insurance fees as netted from disbursement (Capitalized or Expense)
-    // or capitalized into principal. 
-    // If we have explicit "Fee Receivables" later, we query them here.
-    return 0;
+    const client = tx ?? prisma
+
+    // Use RepaymentInstallment as source of truth for fee tracking
+    // This handles standard fees scheduled in installments
+    const installments = await client.repaymentInstallment.findMany({
+        where: {
+            loanId,
+            isFullyPaid: false
+        }
+    })
+
+    let balance = toDecimal(0)
+
+    for (const inst of installments) {
+        const feeDue = new Decimal(inst.feeDue)
+        const feesPaid = new Decimal(inst.feesPaid)
+        balance = balance.plus(feeDue).minus(feesPaid)
+    }
+
+    return toNumber(balance)
 }
 
 // ========================================

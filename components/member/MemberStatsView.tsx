@@ -67,7 +67,7 @@ export function MemberStatsView({ stats, loans, memberId, snapshot }: MemberStat
 
             {/* Loans Sub-Table */}
             <div className="mb-8">
-                <MemberAllLoansTable loans={loans} />
+                <MemberAllLoansTable loans={loans as any} />
             </div>
         </div>
     );

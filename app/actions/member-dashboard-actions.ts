@@ -665,13 +665,15 @@ export async function getMemberFullDetail(memberId: string) {
 
     console.log(`[getMemberFullDetail] Member ${memberId} has ${member?.nextOfKin?.length || 0} Next of Kin records`);
 
+    if (!member) return null;
+
     return {
         member: {
-            id: member?.id,
-            name: member?.name,
-            memberNumber: member?.memberNumber.toString(),
-            email: member?.contactInfo?.email,
-            contact: member?.contactInfo?.mobile || member?.contact
+            id: member.id,
+            name: member.name,
+            memberNumber: member.memberNumber.toString(),
+            email: member.contactInfo?.email,
+            contact: member.contactInfo?.mobile || member.contact
         },
         stats: stats.stats,
         contributions: contributions,

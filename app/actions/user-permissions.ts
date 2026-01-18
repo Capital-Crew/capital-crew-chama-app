@@ -10,7 +10,7 @@ import { auth } from '@/auth';
 import { db } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import type { UserPermissions } from '@/lib/types';
+import type { UserPermissions, UserRole } from '@/lib/types';
 
 // ========================================
 // VALIDATION SCHEMAS
@@ -126,8 +126,8 @@ export async function updateUserPermissions(input: {
 
         if (error instanceof z.ZodError) {
             const zodError = error as z.ZodError;
-            console.error('Zod Error Details:', JSON.stringify(zodError.errors, null, 2));
-            const checklist = zodError.errors || [];
+            console.error('Zod Error Details:', JSON.stringify(zodError.issues, null, 2));
+            const checklist = zodError.issues || [];
             const message = checklist.length > 0
                 ? `${checklist[0].path.join('.')}: ${checklist[0].message}`
                 : 'Invalid Usage (Empty Error List)';
@@ -186,7 +186,7 @@ export async function getAllUsersWithPermissions() {
 /**
  * Update user role
  */
-export async function updateUserRole(userId: string, role: 'CHAIRPERSON' | 'TREASURER' | 'SECRETARY' | 'MEMBER') {
+export async function updateUserRole(userId: string, role: UserRole) {
     try {
         const session = await auth();
         if (!session?.user?.id) {

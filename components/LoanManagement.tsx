@@ -164,7 +164,7 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
                 // Show prominent modal via Global Toast
                 toast.error(
                     "Application Pending",
-                    <span>You already have a loan that is <span className="font-bold text-red-500">Pending Approval</span> or <span className="font-bold text-green-600">Approved</span> (waiting for disbursement).</span>,
+                    "You already have a loan that is Pending Approval or Approved (waiting for disbursement).",
                     {
                         action: {
                             label: "Understood",
@@ -268,7 +268,7 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
                             if (isSubmitting) return; // Prevent double submission
 
                             setIsSubmitting(true);
-                            const toastId = toast.loading('Processing loan application...');
+                            toast.loading('Processing loan application...');
 
                             try {
                                 // Failsafe: Ensure memberId is always present
@@ -279,16 +279,16 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
 
                                 const res = await applyForLoan(null, formData);
                                 if (res?.error) {
-                                    toast.error(res.error, { id: toastId });
+                                    toast.error(res.error);
                                     setIsSubmitting(false); // Re-enable on error
                                 } else {
-                                    toast.success('Loan application submitted successfully!', { id: toastId });
+                                    toast.success('Loan application submitted successfully!');
                                     setIsModalOpen(false);
                                     reset(); // Reset form
                                     window.location.reload();
                                 }
                             } catch (err: any) {
-                                toast.error(err.message || 'Failed to submit application', { id: toastId });
+                                toast.error(err.message || 'Failed to submit application');
                                 setIsSubmitting(false); // Re-enable on error
                             }
                         }} className="p-8 space-y-8 overflow-x-hidden">

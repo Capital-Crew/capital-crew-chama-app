@@ -1,8 +1,5 @@
 
-import { Decimal } from 'decimal.js';
-
-// Configure Decimal precision
-Decimal.set({ precision: 20, rounding: Decimal.ROUND_HALF_UP });
+import { Decimal, min } from '@/lib/decimal-utils';
 
 export interface LoanBalances {
     penalty: number;
@@ -43,28 +40,28 @@ export function distributeRepayment(
 
     // 1. Pay Penalties
     if (remaining.gt(0) && balances.penalty > 0) {
-        const toPay = Decimal.min(remaining, new Decimal(balances.penalty));
+        const toPay = min(remaining, new Decimal(balances.penalty));
         result.paidPenalty = toPay;
         remaining = remaining.minus(toPay);
     }
 
     // 2. Pay Fees
     if (remaining.gt(0) && balances.fees > 0) {
-        const toPay = Decimal.min(remaining, new Decimal(balances.fees));
+        const toPay = min(remaining, new Decimal(balances.fees));
         result.paidFees = toPay;
         remaining = remaining.minus(toPay);
     }
 
     // 3. Pay Interest
     if (remaining.gt(0) && balances.interest > 0) {
-        const toPay = Decimal.min(remaining, new Decimal(balances.interest));
+        const toPay = min(remaining, new Decimal(balances.interest));
         result.paidInterest = toPay;
         remaining = remaining.minus(toPay);
     }
 
     // 4. Pay Principal
     if (remaining.gt(0) && balances.principal > 0) {
-        const toPay = Decimal.min(remaining, new Decimal(balances.principal));
+        const toPay = min(remaining, new Decimal(balances.principal));
         result.paidPrincipal = toPay;
         remaining = remaining.minus(toPay);
     }

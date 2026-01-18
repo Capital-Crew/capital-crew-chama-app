@@ -33,7 +33,9 @@ export async function repayLoan(loanId: string, amount: number) {
     const loan = await prisma.loan.findUnique({
         where: { id: loanId },
         include: {
-            member: true,
+            member: {
+                include: { wallet: true }
+            },
             loanProduct: true
         }
     })
@@ -126,7 +128,7 @@ export async function repayLoan(loanId: string, amount: number) {
         // Create wallet transaction (legacy compatibility)
         await tx.walletTransaction.create({
             data: {
-                walletId: loan.member.walletId!,
+                walletId: loan.member.wallet!.id,
                 type: 'REPAYMENT',
                 amount: amount,
                 description: `Loan repayment: ${loan.loanApplicationNumber}`,
@@ -155,7 +157,7 @@ export async function repayLoan(loanId: string, amount: number) {
                     eventType: 'LOAN_CLEARED',
                     description: `Loan fully repaid. Final Balance: ${verifiedBalance.toString()}`,
                     actorId: session.user.id,
-                    actorName: user.member.name,
+                    actorName: user.member!.name,
                     metadata: {
                         finalPayment: amount,
                         allocation,
@@ -168,7 +170,7 @@ export async function repayLoan(loanId: string, amount: number) {
             await tx.notification.create({
                 data: {
                     memberId: loan.memberId,
-                    type: 'LOAN_REPAID',
+                    type: 'LOAN_APPROVED',
                     message: `Congratulations! Your loan ${loan.loanApplicationNumber} is now fully paid off!`,
                     loanId: loan.id
                 }
@@ -181,7 +183,7 @@ export async function repayLoan(loanId: string, amount: number) {
                     eventType: 'REPAYMENT_MADE',
                     description: `Payment of KES ${amount.toLocaleString()} received. Balance: ${verifiedBalance.toString()}`,
                     actorId: session.user.id,
-                    actorName: user.member.name,
+                    actorName: user.member!.name,
                     metadata: {
                         paymentAmount: amount,
                         allocation,
@@ -197,8 +199,8 @@ export async function repayLoan(loanId: string, amount: number) {
         // Audit log
         await tx.auditLog.create({
             data: {
-                userId: session.user.id,
-                action: 'LOAN_REPAYMENT',
+                userId: session.user.id!,
+                action: 'LOAN_DISBURSED',
                 details: `Repayment of KES ${amount} for loan ${loan.loanApplicationNumber}. New Balance: ${verifiedBalance.toString()}`
             }
         })

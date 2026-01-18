@@ -39,11 +39,6 @@ export default async function LoansPage() {
         current_balance: Number(loan.current_balance),
         outstandingBalance: loan.outstandingBalance ? Number(loan.outstandingBalance) : 0,
         amount: Number(loan.amount),
-        processingFee: Number(loan.processingFee),
-        insuranceFee: Number(loan.insuranceFee),
-        shareCapitalDeduction: Number(loan.shareCapitalDeduction),
-        existingLoanOffset: Number(loan.existingLoanOffset),
-        totalDeductions: Number(loan.totalDeductions),
         netDisbursementAmount: Number(loan.netDisbursementAmount),
         memberSharesAtApplication: Number(loan.memberSharesAtApplication),
         grossQualifyingAmount: Number(loan.grossQualifyingAmount),
@@ -56,13 +51,13 @@ export default async function LoansPage() {
     }));
 
     // Serialize members to convert Decimal fields
-    const serializedMembers = members.map(member => ({
+    const serializedMembers = members.map((member: any) => ({
         ...member,
         shareContributions: member.shareContributions ? Number(member.shareContributions) : 0
     }));
 
     // Serialize products to convert Decimal fields
-    const serializedProducts = products.map(product => ({
+    const serializedProducts = products.map((product: any) => ({
         ...product,
         principal: product.principal ? Number(product.principal) : 0,
         minPrincipal: product.minPrincipal ? Number(product.minPrincipal) : 0,

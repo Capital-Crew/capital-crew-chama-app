@@ -188,7 +188,7 @@ export async function changePassword(data: PasswordChangeValues) {
         return { success: "Password changed successfully" };
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return { error: error.errors[0].message };
+            return { error: error.issues[0].message };
         }
         console.error("Password change error:", error);
         return { error: "Failed to change password" };

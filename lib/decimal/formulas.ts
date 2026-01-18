@@ -5,12 +5,11 @@
  * All calculations use decimal.js to eliminate floating-point errors.
  */
 
-import Decimal from 'decimal.js-light'
-import { MoneyDecimal, RateDecimal } from './config'
+import Decimal, { MoneyDecimal, RateDecimal } from './config'
 import { add, subtract, multiply, divide, isZero } from './operations'
 
 // Type alias for Decimal values
-type DecimalValue = Decimal.Value
+type DecimalValue = number | string | Decimal
 
 // ============================================================================
 // LOAN AMORTIZATION
@@ -33,8 +32,8 @@ type DecimalValue = Decimal.Value
  * calculateLoanPayment("10000", "0.12", 12) // Monthly payment for 1-year loan
  */
 export function calculateLoanPayment(
-    principal: Decimal.Value,
-    annualRate: Decimal.Value,
+    principal: DecimalValue,
+    annualRate: DecimalValue,
     periods: number
 ): MoneyDecimal {
     const P = new MoneyDecimal(principal)
@@ -72,8 +71,8 @@ export function calculateLoanPayment(
  * @returns Monthly EMI payment
  */
 export function calculateEMI(
-    principal: Decimal.Value,
-    annualInterestRate: Decimal.Value,
+    principal: DecimalValue,
+    annualInterestRate: DecimalValue,
     numberOfMonths: number
 ): MoneyDecimal {
     return calculateLoanPayment(principal, annualInterestRate, numberOfMonths)
@@ -94,9 +93,9 @@ export function calculateEMI(
  * @returns Interest amount
  */
 export function calculateSimpleInterest(
-    principal: Decimal.Value,
-    rate: Decimal.Value,
-    time: Decimal.Value
+    principal: DecimalValue,
+    rate: DecimalValue,
+    time: DecimalValue
 ): MoneyDecimal {
     const P = new MoneyDecimal(principal)
     const r = new RateDecimal(rate)
@@ -121,10 +120,10 @@ export function calculateSimpleInterest(
  * @returns Final amount (principal + interest)
  */
 export function calculateCompoundInterest(
-    principal: Decimal.Value,
-    annualRate: Decimal.Value,
+    principal: DecimalValue,
+    annualRate: DecimalValue,
     compoundingsPerYear: number,
-    years: Decimal.Value
+    years: DecimalValue
 ): MoneyDecimal {
     const P = new MoneyDecimal(principal)
     const r = new RateDecimal(annualRate)
@@ -152,8 +151,8 @@ export function calculateCompoundInterest(
  * @returns Interest for the specified days
  */
 export function calculateDailyInterest(
-    principal: Decimal.Value,
-    annualRate: Decimal.Value,
+    principal: DecimalValue,
+    annualRate: DecimalValue,
     days: number
 ): MoneyDecimal {
     const P = new MoneyDecimal(principal)
@@ -182,8 +181,8 @@ export function calculateDailyInterest(
  * @returns Penalty amount
  */
 export function calculatePenalty(
-    overdueAmount: Decimal.Value,
-    penaltyRate: Decimal.Value,
+    overdueAmount: DecimalValue,
+    penaltyRate: DecimalValue,
     daysOverdue: number
 ): MoneyDecimal {
     // Calculate daily penalty
@@ -203,8 +202,8 @@ export function calculatePenalty(
  * @returns Fee amount
  */
 export function calculatePercentageFee(
-    amount: Decimal.Value,
-    feePercent: Decimal.Value
+    amount: DecimalValue,
+    feePercent: DecimalValue
 ): MoneyDecimal {
     const base = new MoneyDecimal(amount)
     const percent = new RateDecimal(feePercent)
@@ -221,8 +220,8 @@ export function calculatePercentageFee(
  * @returns Total amount (base + fee)
  */
 export function calculateAmountWithFee(
-    amount: Decimal.Value,
-    feePercent: Decimal.Value
+    amount: DecimalValue,
+    feePercent: DecimalValue
 ): MoneyDecimal {
     const base = new MoneyDecimal(amount)
     const fee = calculatePercentageFee(amount, feePercent)
@@ -243,9 +242,9 @@ export function calculateAmountWithFee(
  * @returns New balance
  */
 export function calculateRemainingBalance(
-    currentBalance: Decimal.Value,
-    payment: Decimal.Value,
-    interestCharged: Decimal.Value
+    currentBalance: DecimalValue,
+    payment: DecimalValue,
+    interestCharged: DecimalValue
 ): MoneyDecimal {
     const balance = new MoneyDecimal(currentBalance)
     const pmt = new MoneyDecimal(payment)
@@ -267,9 +266,9 @@ export function calculateRemainingBalance(
  * @returns Object with principal and interest portions
  */
 export function splitPayment(
-    payment: Decimal.Value,
-    currentBalance: Decimal.Value,
-    interestDue: Decimal.Value
+    payment: DecimalValue,
+    currentBalance: DecimalValue,
+    interestDue: DecimalValue
 ): { principal: MoneyDecimal; interest: MoneyDecimal } {
     const pmt = new MoneyDecimal(payment)
     const interest = new MoneyDecimal(interestDue)
@@ -306,8 +305,8 @@ export function splitPayment(
  * @returns Percentage change (positive for increase, negative for decrease)
  */
 export function calculatePercentageChange(
-    oldValue: Decimal.Value,
-    newValue: Decimal.Value
+    oldValue: DecimalValue,
+    newValue: DecimalValue
 ): Decimal {
     const old = new Decimal(oldValue)
     const newVal = new Decimal(newValue)
@@ -330,7 +329,7 @@ export function calculatePercentageChange(
  * @returns Prorated amount
  */
 export function prorateAmount(
-    annualAmount: Decimal.Value,
+    annualAmount: DecimalValue,
     days: number
 ): MoneyDecimal {
     const annual = new MoneyDecimal(annualAmount)

@@ -25,7 +25,7 @@ export default function MemberProfileTabs({
     detailedStats: { stats: MemberStats, loans: LoanPortfolioItem[] } | null,
     snapshot: any
 }) {
-    const [activeTab, setActiveTab] = useState<'loans' | 'statements' | 'contributions' | 'kin'>('loans')
+    const [activeTab, setActiveTab] = useState<'loans' | 'my-loans' | 'statements' | 'contributions' | 'kin'>('loans')
 
     const tabs = [
         { id: 'loans', label: 'Member Statistics' },

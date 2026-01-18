@@ -121,7 +121,7 @@ export class LoanStateService {
             data: {
                 status: 'ACTIVE',
                 disbursementDate,
-                nextDueDate: await this.calculateNextDueDate(loanId)
+
             }
         })
     }

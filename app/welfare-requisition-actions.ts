@@ -258,8 +258,8 @@ export async function submitWelfareApproval(requisitionId: string, decision: 'AP
             where: { requisitionId }
         })
 
-        const approvalCount = votes.filter(v => v.decision === 'APPROVED').length
-        const rejectCount = votes.filter(v => v.decision === 'REJECTED').length
+        const approvalCount = votes.filter((v: any) => v.decision === 'APPROVED').length
+        const rejectCount = votes.filter((v: any) => v.decision === 'REJECTED').length
 
         let newStatus = 'PENDING'
         let eventDescription = `Vote: ${decision} by ${user.member.name}`

@@ -73,9 +73,10 @@ export function ToastDemo() {
                         "Please wait while we process your payment..."
                     )
 
+
                     // Simulate async operation
                     setTimeout(() => {
-                        toast.dismiss(loadingToast)
+                        // toast.loading() returns void, so we can't dismiss it by ID
                         toast.success("Transaction Complete", "Payment processed successfully")
                     }, 3000)
                 }}

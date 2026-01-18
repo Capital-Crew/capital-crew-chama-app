@@ -5,6 +5,7 @@ import { auth } from '@/auth'
 import { Prisma, LoanStatus, LoanEventType, NotificationType, AuditLogAction, SystemAccountType, LoanTransactionType } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 import { LoanBalanceService } from '@/services/loan-balance'
+import { WalletService } from '@/lib/services/WalletService'
 import { getSystemMappingsDict } from './system-accounting'
 import { RepaymentCalculator } from '@/lib/utils/repayment-calculator'
 import { AccountingEngine } from '@/lib/accounting/AccountingEngine'
@@ -24,7 +25,7 @@ export async function disburseLoan(loanId: string) {
     }
 
     try {
-        const result = await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
             // STEP A: VALIDATION
             const loan = await tx.loan.findUnique({
                 where: { id: loanId },
@@ -44,13 +45,9 @@ export async function disburseLoan(loanId: string) {
 
             // Verify member has a wallet
             if (!loan.member.wallet) {
-                // Auto-create wallet if missing
-                await tx.wallet.create({
-                    data: {
-                        memberId: loan.memberId,
-                        balance: 0
-                    }
-                })
+                // Auto-create wallet if missing using Service
+                await WalletService.createWallet(loan.memberId, tx)
+
                 // Refresh loan with wallet
                 const updatedLoan = await tx.loan.findUnique({
                     where: { id: loanId },
@@ -68,21 +65,25 @@ export async function disburseLoan(loanId: string) {
 
             // STEP B: THE FINANCIAL TRANSFER
 
-            // 1. Credit Member Wallet
-            await tx.wallet.update({
-                where: { memberId: loan.memberId },
-                data: { balance: { increment: netDisbursement } }
-            })
+            // 1. Credit Member Wallet - DEPRECATED (Handled by Accounting Engine via GL)
+            // Balance is on GL Account now.
 
             // 2. Record Wallet Transaction
-            const wallet = await tx.wallet.findUnique({ where: { memberId: loan.memberId } })
+            const wallet = await tx.wallet.findUnique({
+                where: { memberId: loan.memberId },
+                include: { glAccount: true }
+            })
+
+            const currentBalance = wallet?.glAccount.balance || new Prisma.Decimal(0)
+            const balanceAfter = currentBalance.plus(netDisbursement)
+
             await tx.walletTransaction.create({
                 data: {
                     walletId: wallet!.id,
                     type: 'LOAN_DISBURSEMENT',
                     amount: netDisbursement,
                     description: `Disbursement for Loan ${loan.loanApplicationNumber}`,
-                    balanceAfter: wallet!.balance,
+                    balanceAfter: balanceAfter,
                     relatedLoanId: loan.id
                 }
             })

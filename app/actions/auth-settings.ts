@@ -25,7 +25,7 @@ export async function changePassword(data: ChangePasswordValues) {
 
     const validated = changePasswordSchema.safeParse(data);
     if (!validated.success) {
-        return { error: validated.error.errors[0].message };
+        return { error: validated.error.issues[0].message };
     }
 
     const { currentPassword, newPassword } = validated.data;

@@ -32,13 +32,14 @@ async function main() {
                     dateOfBirth: new Date('1990-01-01'),
                     gender: 'MALE',
                     maritalStatus: 'SINGLE',
-                    occupation: 'Administrator',
+                    occupation: 'Administrator'
+                }
+            },
+            contactInfo: {
+                create: {
                     physicalAddress: 'Nairobi, Kenya',
                     postalAddress: 'P.O. Box 12345',
-                    postalCode: '00100',
-                    city: 'Nairobi',
-                    county: 'Nairobi',
-                    country: 'Kenya'
+                    city: 'Nairobi'
                 }
             }
         }

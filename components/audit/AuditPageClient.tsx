@@ -52,7 +52,7 @@ export default function AuditPageClient() {
     const handleExport = async () => {
         try {
             toast.promise(
-                async () => {
+                (async () => {
                     const logs = await exportAuditLogs({
                         searchTerm: search || undefined,
                         action: actionFilter !== 'ALL' ? (actionFilter as AuditLogAction) : undefined
@@ -62,7 +62,7 @@ export default function AuditPageClient() {
                     const headers = ['Timestamp', 'Actor', 'Email', 'Role', 'Action', 'Details']
                     const csvContent = [
                         headers.join(','),
-                        ...logs.map(log => [
+                        ...logs.map((log: any) => [
                             `"${new Date(log.timestamp).toISOString()}"`,
                             `"${log.user.name || ''}"`,
                             `"${log.user.email}"`,
@@ -78,7 +78,9 @@ export default function AuditPageClient() {
                     a.href = url
                     a.download = `audit-trail-${new Date().toISOString().split('T')[0]}.csv`
                     a.click()
-                },
+
+                    return 'Export complete'
+                })(),
                 {
                     loading: 'Preparing export...',
                     success: 'Audit log exported successfully',

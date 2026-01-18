@@ -336,20 +336,19 @@ export async function addLoanRepayment(input: {
     }
 
     // Fees (Need Mapping)
-    // Fees (Need Mapping)
     if (allocation.paidFees > 0) {
         // Feature Future: Add Fee Receivable mapping (RECEIVABLE_LOAN_FEES)
         // Currently fee accounts are likely tied to Disbursement (Capitalized) or separate invoices.
         // If fees are capitalized, they are paid as part of Principal.
         // If strictly tracked as separate receivable, uncomment below when mapping exists:
-        /*
+
         journalLines.push({
-            accountCode: mappings.RECEIVABLE_LOAN_FEES, 
+            accountCode: mappings.RECEIVABLE_LOAN_FEES,
             debitAmount: 0,
             creditAmount: allocation.paidFees,
             description: 'Fees paid (Waterfall)'
         })
-        */
+
     }
 
     if (allocation.paidInterest > 0) {

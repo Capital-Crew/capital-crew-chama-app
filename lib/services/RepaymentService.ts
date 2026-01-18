@@ -78,6 +78,14 @@ export class RepaymentService {
                     description: 'Penalty Re-payment'
                 })
             }
+            if (allocation.paidFees > 0) {
+                journalLines.push({
+                    accountCode: mappings.RECEIVABLE_LOAN_FEES,
+                    debitAmount: 0,
+                    creditAmount: allocation.paidFees,
+                    description: 'Fees Re-payment'
+                })
+            }
             if (allocation.paidInterest > 0) {
                 journalLines.push({
                     accountCode: mappings.RECEIVABLE_LOAN_INTEREST,

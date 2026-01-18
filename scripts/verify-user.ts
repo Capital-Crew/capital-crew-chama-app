@@ -27,7 +27,7 @@ async function verifyUser() {
 
     // Test password
     const testPassword = 'Admin123!'
-    const isPasswordValid = await bcrypt.compare(testPassword, user.password)
+    const isPasswordValid = await bcrypt.compare(testPassword, user.passwordHash)
 
     if (isPasswordValid) {
         console.log('✅ Password verification: SUCCESS')
@@ -41,7 +41,7 @@ async function verifyUser() {
         const newHash = await bcrypt.hash('Admin123!', 10)
         await prisma.user.update({
             where: { id: user.id },
-            data: { password: newHash }
+            data: { passwordHash: newHash }
         })
 
         console.log('✅ Password reset to: Admin123!')

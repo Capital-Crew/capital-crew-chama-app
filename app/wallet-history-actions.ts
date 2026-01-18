@@ -23,7 +23,7 @@ export async function getContributionHistory(memberId: string, sortOrder: 'asc' 
         take: 50 // Limit to recent 50 transactions
     })
 
-    return transactions.map(tx => ({
+    return transactions.map((tx: any) => ({
         id: tx.id,
         date: tx.createdAt,
         type: tx.type,

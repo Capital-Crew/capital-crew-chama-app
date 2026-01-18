@@ -26,7 +26,7 @@ export async function getMembers() {
         UserRole.SECRETARY
     ];
 
-    const isPrivileged = privilegedRoles.includes(role);
+    const isPrivileged = privilegedRoles.includes(role as any);
 
     // Filter Logic
     const whereClause = isPrivileged

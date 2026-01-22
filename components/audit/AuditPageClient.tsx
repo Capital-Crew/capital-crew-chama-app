@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AuditLogAction } from '@prisma/client'
-import { getAuditLogs, exportAuditLogs, type AuditLogResponse } from '@/app/actions/audit'
+import { getAuditLogs, getAuditStats, exportAuditLogs, type AuditLogResponse } from '@/app/actions/audit'
 import { Download, Loader2, Search, FilterX } from 'lucide-react'
 import { toast } from '@/lib/toast'
 
@@ -20,6 +20,14 @@ export default function AuditPageClient() {
     const [search, setSearch] = useState('')
     const [actionFilter, setActionFilter] = useState<string>('ALL')
 
+    // Separate stats state to allow independent loading
+    const [stats, setStats] = useState<any>(null);
+
+    // Initial Stats Load (Fire and forget, doesn't block UI)
+    useEffect(() => {
+        getAuditStats().then(setStats);
+    }, []);
+
     const fetchData = () => {
         startTransition(async () => {
             try {
@@ -27,13 +35,21 @@ export default function AuditPageClient() {
                     searchTerm: search || undefined,
                     action: actionFilter !== 'ALL' ? (actionFilter as AuditLogAction) : undefined
                 })
-                setData(result)
+                // Merge separate stats into result if they exist, or keep existing stats
+                setData(prev => ({ ...result, stats: stats || prev?.stats || result.stats }))
             } catch (error) {
                 // If unauthorized error, show toast
                 toast.error("Failed to load audit logs. You may not have permission.")
             }
         })
     }
+
+    // Update data when stats load
+    useEffect(() => {
+        if (stats && data) {
+            setData({ ...data, stats })
+        }
+    }, [stats])
 
     // Debounce search
     useEffect(() => {
@@ -102,7 +118,11 @@ export default function AuditPageClient() {
                     </p>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" onClick={handleExport}>
+                    <Button
+                        variant="outline"
+                        onClick={handleExport}
+                        className="bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100 font-semibold"
+                    >
                         <Download className="mr-2 h-4 w-4" />
                         Export CSV
                     </Button>
@@ -145,7 +165,7 @@ export default function AuditPageClient() {
                                 className="text-red-500 hover:text-red-600 hover:bg-red-50"
                             >
                                 <FilterX className="mr-2 h-4 w-4" />
-                                Clear Filters
+                                <span className="hidden sm:inline ml-1">Clear Filters</span>
                             </Button>
                         )}
                     </div>
@@ -168,6 +188,7 @@ export default function AuditPageClient() {
                                     size="sm"
                                     onClick={() => setPage(p => Math.max(1, p - 1))}
                                     disabled={data.page === 1 || isPending}
+                                    className="bg-white text-slate-700 border-slate-300 hover:bg-slate-50 font-medium"
                                 >
                                     Previous
                                 </Button>
@@ -176,6 +197,7 @@ export default function AuditPageClient() {
                                     size="sm"
                                     onClick={() => setPage(p => Math.min(data.totalPages, p + 1))}
                                     disabled={data.page >= data.totalPages || isPending}
+                                    className="bg-slate-900 text-white border-slate-900 hover:bg-slate-800 font-medium"
                                 >
                                     Next
                                 </Button>

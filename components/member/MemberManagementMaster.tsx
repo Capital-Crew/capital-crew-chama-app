@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Search, UserPlus, Users, ChevronRight } from 'lucide-react';
-import { MemberDetailView } from './MemberDetailView';
+import { MemberProfileView } from './MemberProfileView';
 import { getMemberFullDetail } from '@/app/actions/member-dashboard-actions';
 import { createUserAccount } from '@/app/actions';
 import { PlusCircleIcon } from '@/components/icons';
@@ -136,13 +136,14 @@ export function MemberManagementMaster({ initialMembers, initialDetail, userRole
                 <main className="flex-1 overflow-y-auto bg-white scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                     {selectedDetail ? (
                         <div className="p-8">
-                            <MemberDetailView
+                            <MemberProfileView
                                 member={selectedDetail.member}
                                 stats={selectedDetail.stats}
                                 contributions={selectedDetail.contributions}
+                                contributionStatus={selectedDetail.contributionStatus}
                                 loans={selectedDetail.loans}
                                 nextOfKin={selectedDetail.nextOfKin}
-                                showHeader={true}
+                                currentUserRole={userRole}
                             />
                         </div>
                     ) : (

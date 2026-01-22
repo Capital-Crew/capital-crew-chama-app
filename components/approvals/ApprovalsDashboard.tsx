@@ -1,13 +1,16 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { ApprovalRequest } from '@prisma/client'
 import { format } from 'date-fns'
-import { Badge } from '@/components/ui/badge'
+// import { Badge } from '@/components/ui/badge' // Unused
 import { LoanAppraisalCard } from '@/components/LoanAppraisalCard'
 import { MemberDetailsCard } from './MemberDetailsCard'
-import { UserCheck, FileText, DollarSign, Users, ChevronRight } from 'lucide-react'
+import { UserCheck, FileText, DollarSign, Users, ChevronRight, Check, X, Loader2 } from 'lucide-react'
+import { processApproval } from '@/app/actions/approval-actions'
+import { toast } from 'sonner'
+import { cn } from '@/lib/utils'
 
 // Icon mapping
 const TYPE_ICONS = {
@@ -35,6 +38,8 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
     const router = useRouter()
     const [selectedRequest, setSelectedRequest] = useState<ApprovalRequest | null>(null)
     const [filter, setFilter] = useState('ALL')
+    const [isPending, startTransition] = useTransition()
+    const [processingId, setProcessingId] = useState<string | null>(null)
 
     const visibleRequests = filter === 'ALL'
         ? requests
@@ -45,21 +50,46 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
         router.refresh()
     }
 
+    const handleQuickAction = async (e: React.MouseEvent, req: ApprovalRequest, decision: 'APPROVED' | 'REJECTED') => {
+        e.stopPropagation() // Prevent card click
+        if (processingId) return
+
+        setProcessingId(req.id)
+
+        const loadingToast = toast.loading(`${decision === 'APPROVED' ? 'Approving' : 'Rejecting'}...`)
+
+        try {
+            const result = await processApproval(req.id, decision)
+            toast.dismiss(loadingToast)
+
+            if (result.error) {
+                toast.error(`Failed: ${result.error}`)
+            } else {
+                toast.success(`${decision === 'APPROVED' ? 'Approved' : 'Rejected'} successfully`)
+                router.refresh()
+            }
+        } catch (error) {
+            toast.dismiss(loadingToast)
+            toast.error("An unexpected error occurred")
+        } finally {
+            setProcessingId(null)
+        }
+    }
+
     return (
-        <div className="space-y-8 font-sans">
-            {/* Header / Filter */}
-            <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
+        <div className="space-y-6 font-sans">
+            {/* Header / Filter - Horizontal Scroll */}
+            <div className="flex items-center gap-3 overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide">
                 {['ALL', 'LOAN', 'MEMBER', 'EXPENSE'].map(f => (
                     <button
                         key={f}
                         onClick={() => setFilter(f)}
-                        className={`
-                            px-6 py-3 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 shadow-sm whitespace-nowrap
-                            ${filter === f
-                                ? 'bg-gradient-to-r from-[#00c2e0] to-[#019ab3] text-white shadow-[#00c2e0]/30 shadow-lg scale-105'
-                                : 'bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-800 hover:shadow-md'
-                            }
-                        `}
+                        className={cn(
+                            "px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 shadow-sm whitespace-nowrap flex-shrink-0",
+                            filter === f
+                                ? 'bg-[#00c2e0] text-white shadow-lg shadow-[#00c2e0]/20 scale-105'
+                                : 'bg-white text-slate-500 border border-slate-100 hover:bg-slate-50'
+                        )}
                     >
                         {f === 'ALL' ? 'All Requests' : f + 's'}
                     </button>
@@ -67,71 +97,88 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
             </div>
 
             {/* Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
                 {visibleRequests.length === 0 ? (
-                    <div className="col-span-full py-20 text-center">
-                        <div className="bg-slate-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
-                            <UserCheck className="w-10 h-10 text-slate-300" />
+                    <div className="col-span-full py-12 md:py-20 text-center bg-white/50 rounded-3xl border border-dashed border-slate-200">
+                        <div className="bg-slate-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <UserCheck className="w-8 h-8 text-slate-300" />
                         </div>
                         <h3 className="text-slate-900 font-bold text-lg">All caught up!</h3>
-                        <p className="text-slate-500 text-sm mt-2">No pending approvals in this category.</p>
+                        <p className="text-slate-500 text-sm mt-1">No pending approvals in this category.</p>
                     </div>
                 ) : (
                     visibleRequests.map(req => {
                         const Icon = TYPE_ICONS[req.type as keyof typeof TYPE_ICONS] || FileText
                         const gradient = TYPE_COLORS[req.type as keyof typeof TYPE_COLORS] || 'from-slate-400 to-slate-600'
+                        const isProcessing = processingId === req.id
 
                         return (
                             <div
                                 key={req.id}
                                 onClick={() => setSelectedRequest(req)}
-                                className="group relative bg-white/70 backdrop-blur-xl border border-white/20 hover:border-[#00c2e0]/30 cursor-pointer transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl shadow-sm rounded-3xl p-6 overflow-hidden"
+                                className="group bg-white border border-slate-100 hover:border-[#00c2e0]/30 cursor-pointer transition-all duration-300 hover:shadow-xl shadow-sm rounded-2xl overflow-hidden flex flex-col"
                             >
-                                {/* Decorative Gradient Blur */}
-                                <div className={`absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br ${gradient} opacity-10 group-hover:opacity-20 blur-3xl transition-opacity duration-500 rounded-full pointer-events-none`} />
-
-                                <div className="flex justify-between items-start mb-6 relative z-10">
-                                    <div className="flex items-center gap-4">
-                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg bg-gradient-to-br ${gradient} text-white group-hover:scale-110 transition-transform duration-500`}>
-                                            <Icon className="w-6 h-6" />
-                                        </div>
-                                        <div>
-                                            <p className={`text-[10px] font-black uppercase tracking-[0.2em] bg-clip-text text-transparent bg-gradient-to-r ${gradient}`}>
-                                                {req.type}
-                                            </p>
-                                            <h3 className="font-bold text-slate-800 leading-tight line-clamp-1 text-lg mt-0.5 group-hover:text-[#00c2e0] transition-colors">
-                                                {req.requesterName || 'Unknown Request'}
-                                            </h3>
-                                        </div>
+                                <div className="p-5 flex-1 relative">
+                                    {/* Type Badge */}
+                                    <div className="absolute top-5 right-5">
+                                        <span className={cn(
+                                            "px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider bg-slate-50 text-slate-500",
+                                            req.type === 'LOAN' && "bg-blue-50 text-blue-600",
+                                            req.type === 'MEMBER' && "bg-purple-50 text-purple-600",
+                                            req.type === 'EXPENSE' && "bg-emerald-50 text-emerald-600"
+                                        )}>
+                                            {req.type}
+                                        </span>
                                     </div>
 
-                                    {/* Status Dot */}
-                                    <div className={`w-3 h-3 rounded-full shadow-inner ${req.status === 'PENDING' ? 'bg-amber-400 shadow-amber-400/50 animate-pulse' : 'bg-slate-300'}`} />
-                                </div>
-
-                                <div className="space-y-3 relative z-10">
-                                    <p className="text-sm text-slate-500 font-medium line-clamp-2 min-h-[40px] leading-relaxed">
-                                        {req.description || `Request for ${req.referenceTable}`}
-                                    </p>
-
-                                    {req.amount && (
-                                        <div className="flex items-baseline gap-1">
-                                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Amount</span>
-                                            <span className="text-2xl font-black text-slate-800 tracking-tight ml-auto">
-                                                <span className="text-xs text-slate-400 font-bold mr-1 align-top relative top-1">KES</span>
-                                                {Number(req.amount).toLocaleString()}
-                                            </span>
+                                    {/* Main Content */}
+                                    <div className="flex items-start gap-4">
+                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-md bg-gradient-to-br ${gradient} text-white flex-shrink-0`}>
+                                            <Icon className="w-6 h-6" />
                                         </div>
-                                    )}
+
+                                        <div className="flex-1 min-w-0 pr-16">
+                                            <h3 className="font-bold text-slate-800 leading-tight truncate group-hover:text-[#00c2e0] transition-colors">
+                                                {req.requesterName || 'Unknown'}
+                                            </h3>
+                                            <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+                                                {req.description || `Request regarding ${req.referenceTable}`}
+                                            </p>
+
+                                            {req.amount && (
+                                                <div className="mt-2 flex items-baseline gap-1">
+                                                    <span className="text-lg font-black text-slate-900">
+                                                        <span className="text-xs text-slate-400 font-bold mr-1">KES</span>
+                                                        {Number(req.amount).toLocaleString()}
+                                                    </span>
+                                                </div>
+                                            )}
+
+                                            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mt-3">
+                                                {format(new Date(req.createdAt), 'MMM d, yyyy')}
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <div className="mt-6 pt-5 border-t border-slate-100 flex justify-between items-center relative z-10">
-                                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                                        {format(new Date(req.createdAt), 'MMM d, yyyy')}
-                                    </span>
-                                    <span className="flex items-center gap-1 text-[11px] font-bold text-[#00c2e0] uppercase tracking-widest group-hover:translate-x-1 transition-transform">
-                                        Review <ChevronRight className="w-3 h-3" />
-                                    </span>
+                                {/* Actions Footer */}
+                                <div className="p-3 bg-slate-50/80 border-t border-slate-100 flex gap-2">
+                                    <button
+                                        onClick={(e) => handleQuickAction(e, req, 'REJECTED')}
+                                        disabled={!!processingId}
+                                        className="flex-1 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-600 text-xs font-bold uppercase tracking-wider hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                                    >
+                                        {isProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <X className="w-3.5 h-3.5" />}
+                                        Reject
+                                    </button>
+                                    <button
+                                        onClick={(e) => handleQuickAction(e, req, 'APPROVED')}
+                                        disabled={!!processingId}
+                                        className="flex-1 py-2.5 rounded-xl bg-[#0A192F] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#00c2e0] transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-slate-200"
+                                    >
+                                        {isProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                                        Approve
+                                    </button>
                                 </div>
                             </div>
                         )
@@ -139,7 +186,7 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
                 )}
             </div>
 
-            {/* DYNAMIC MODALS */}
+            {/* DYNAMIC MODALS (Unchanged logic, just wrappers) */}
             {selectedRequest && selectedRequest.type === 'LOAN' && (
                 <LoanAppraisalCard
                     loanId={selectedRequest.referenceId}
@@ -161,15 +208,41 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
             {/* Fallback for others */}
             {selectedRequest && !['LOAN', 'MEMBER'].includes(selectedRequest.type) && (
                 <DivWrapper onClose={handleClose}>
-                    <div className="p-8 text-center bg-white rounded-3xl">
-                        <h3 className="text-xl font-bold text-slate-800">Details for {selectedRequest.type}</h3>
-                        <p className="text-slate-500 my-4 font-medium">No specific details card implemented for this type yet.</p>
-                        <div className="bg-slate-50 p-4 rounded-xl text-left border border-slate-100">
-                            <p className="text-xs font-bold text-slate-400 uppercase">System ID</p>
-                            <p className="font-mono text-xs text-slate-600 mb-2">{selectedRequest.referenceId}</p>
+                    <div className="p-8 text-center bg-white rounded-3xl w-full max-w-sm mx-auto">
+                        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <FileText className="w-8 h-8 text-slate-400" />
+                        </div>
+                        <h3 className="text-xl font-bold text-slate-800">Review Request</h3>
+                        <div className="bg-slate-50 p-4 rounded-xl text-left border border-slate-100 mt-6 space-y-3">
+                            <div>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase">Requester</p>
+                                <p className="text-sm font-bold text-slate-700">{selectedRequest.requesterName}</p>
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase">Description</p>
+                                <p className="text-sm text-slate-600">{selectedRequest.description}</p>
+                            </div>
+                            {selectedRequest.amount && (
+                                <div>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase">Amount</p>
+                                    <p className="text-lg font-black text-slate-800">KES {Number(selectedRequest.amount).toLocaleString()}</p>
+                                </div>
+                            )}
+                        </div>
 
-                            <p className="text-xs font-bold text-slate-400 uppercase">Table Reference</p>
-                            <p className="font-mono text-xs text-slate-600">{selectedRequest.referenceTable}</p>
+                        <div className="flex gap-3 mt-8">
+                            <button
+                                onClick={(e) => { handleQuickAction(e as any, selectedRequest, 'REJECTED'); handleClose(); }}
+                                className="flex-1 py-3 rounded-xl bg-white border border-slate-200 text-slate-600 text-xs font-bold uppercase tracking-wider hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
+                            >
+                                Reject
+                            </button>
+                            <button
+                                onClick={(e) => { handleQuickAction(e as any, selectedRequest, 'APPROVED'); handleClose(); }}
+                                className="flex-1 py-3 rounded-xl bg-[#00c2e0] text-white text-xs font-black uppercase tracking-wider hover:bg-[#00a0b8] transition-colors shadow-lg shadow-[#00c2e0]/20"
+                            >
+                                Approve
+                            </button>
                         </div>
                     </div>
                 </DivWrapper>
@@ -180,13 +253,13 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
 
 function DivWrapper({ children, onClose }: { children: React.ReactNode, onClose: () => void }) {
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md transition-all duration-300">
-            <div className="w-full max-w-md relative animate-in fade-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0A192F]/80 backdrop-blur-md transition-all duration-300 animate-in fade-in">
+            <div className="w-full relative animate-in zoom-in-95 duration-300">
                 <button
                     onClick={onClose}
-                    className="absolute -top-12 right-0 text-white/50 hover:text-white transition-colors bg-white/10 hover:bg-white/20 rounded-full p-2"
+                    className="absolute -top-12 right-0 text-white/50 hover:text-white transition-colors bg-white/10 hover:bg-white/20 rounded-full p-2 backdrop-blur-md border border-white/10 z-50"
                 >
-                    ✕
+                    <X className="w-6 h-6" />
                 </button>
                 {children}
             </div>

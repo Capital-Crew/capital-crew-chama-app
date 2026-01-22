@@ -7,31 +7,11 @@ import { authConfig } from './auth.config';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
     ...authConfig,
-    callbacks: {
-        jwt({ token, user }) {
-            if (user) {
-                console.log('JWT Callback - User on Signin:', { id: user.id, memberId: user.memberId })
-                token.id = user.id;
-                // @ts-ignore
-                token.role = user.role;
-                // @ts-ignore
-                token.memberId = user.memberId;
-            }
-            return token;
-        },
-        session({ session, token }) {
-            console.log('Session Callback - Token:', token)
-            if (session.user) {
-                // @ts-ignore
-                session.user.id = token.id as string;
-                // @ts-ignore
-                session.user.role = token.role as string;
-                // @ts-ignore
-                session.user.memberId = token.memberId as string;
-            }
-            console.log('Session Callback - Final Session:', session)
-            return session;
-        },
+    // Callbacks moved to auth.config.ts for Edge compatibility
+    session: {
+        strategy: "jwt",
+        maxAge: 300, // 5 minutes
+        updateAge: 60, // Extend session every minute if active
     },
     providers: [
         Credentials({
@@ -58,18 +38,54 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     return null;
                 }
 
+                // CHECK LOCKOUT
+                if (user.lockoutUntil && user.lockoutUntil > new Date()) {
+                    const timeLeft = Math.ceil((user.lockoutUntil.getTime() - new Date().getTime()) / 60000);
+                    throw new Error(`Account is locked. Try again in ${timeLeft} minutes.`);
+                }
+
                 console.log('Authorize - User Found:', { id: user.id, memberId: user.memberId })
 
                 const passwordsMatch = await bcrypt.compare(password, user.passwordHash);
 
                 if (passwordsMatch) {
+                    // SUCCESS: Reset counters
+                    await prisma.user.update({
+                        where: { id: user.id },
+                        data: {
+                            failedLoginAttempts: 0,
+                            lockoutUntil: null
+                        }
+                    });
+
                     return {
                         id: user.id,
                         name: user.name,
                         email: user.email,
                         role: user.role,
                         memberId: user.memberId,
+                        mustChangePassword: user.mustChangePassword,
                     };
+                }
+
+                // FAILURE: Increment counters
+                const attempts = user.failedLoginAttempts + 1;
+                let lockoutUntil = null;
+
+                if (attempts >= 5) {
+                    lockoutUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 Minutes
+                }
+
+                await prisma.user.update({
+                    where: { id: user.id },
+                    data: {
+                        failedLoginAttempts: attempts,
+                        lockoutUntil: lockoutUntil
+                    }
+                });
+
+                if (lockoutUntil) {
+                    throw new Error("Account is locked due to too many failed attempts.");
                 }
 
                 return null;

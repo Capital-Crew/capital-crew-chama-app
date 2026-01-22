@@ -35,7 +35,7 @@ export function AuditLogTable({ logs }: { logs: Log[] }) {
     const formatAction = (action: string) => action.replace(/_/g, ' ')
 
     return (
-        <div className="rounded-md border bg-white">
+        <div className="rounded-md border bg-white overflow-x-auto">
             <Table>
                 <TableHeader>
                     <TableRow>
@@ -61,7 +61,7 @@ export function AuditLogTable({ logs }: { logs: Log[] }) {
                                 <TableCell>
                                     <div className="flex flex-col">
                                         <span className="font-medium text-sm">{log.user.name || 'Unknown'}</span>
-                                        <span className="text-xs text-muted-foreground">{log.user.role}</span>
+                                        <span className="text-xs text-muted-foreground hidden md:inline-block">{log.user.role}</span>
                                     </div>
                                 </TableCell>
                                 <TableCell>

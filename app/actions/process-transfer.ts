@@ -95,7 +95,11 @@ export async function processTransfer(
             }
         });
 
-        // 7. Revalidate UI cache
+        // 7. Revalidate UI cache & Loan Schedule Cache
+        if (validatedInput.destinationType === 'LOAN_REPAYMENT') {
+            const { LoanScheduleCache } = await import('@/lib/services/LoanScheduleCache')
+            await LoanScheduleCache.invalidateCache(validatedInput.destinationId)
+        }
         revalidatePath('/wallet');
         revalidatePath('/loans');
         revalidatePath('/dashboard');

@@ -56,8 +56,12 @@ export async function updateSaccoSettings(formData: FormData) {
     const welfareMonthlyContribution = parseFloat(formData.get('welfareMonthlyContribution') as string) || 0
     const welfareCurrentBalance = parseFloat(formData.get('welfareCurrentBalance') as string) || 0
 
+    // Contribution Settings
+    const monthlyContributionAmount = parseFloat(formData.get('monthlyContributionAmount') as string) || 2000
+    const latePaymentPenalty = parseFloat(formData.get('latePaymentPenalty') as string) || 200
+
     // Validate inputs
-    if (loanMultiplier < 0 || processingFeePercent < 0 || insuranceFeePercent < 0 || shareCapitalBoost < 0 || penaltyRate < 0 || rescheduleFeePercent < 0 || refinanceFeePercentage < 0 || welfareMonthlyContribution < 0 || welfareCurrentBalance < 0) {
+    if (loanMultiplier < 0 || processingFeePercent < 0 || insuranceFeePercent < 0 || shareCapitalBoost < 0 || penaltyRate < 0 || rescheduleFeePercent < 0 || refinanceFeePercentage < 0 || welfareMonthlyContribution < 0 || welfareCurrentBalance < 0 || monthlyContributionAmount < 0 || latePaymentPenalty < 0) {
         throw new Error('All values must be non-negative')
     }
 
@@ -84,7 +88,9 @@ export async function updateSaccoSettings(formData: FormData) {
                 requiredApprovalsTopUp,
                 requiredWelfareApprovals,
                 welfareMonthlyContribution,
-                welfareCurrentBalance
+                welfareCurrentBalance,
+                monthlyContributionAmount,
+                latePaymentPenalty
             }
         })
     } else {
@@ -102,7 +108,9 @@ export async function updateSaccoSettings(formData: FormData) {
                 requiredApprovalsTopUp,
                 requiredWelfareApprovals,
                 welfareMonthlyContribution,
-                welfareCurrentBalance
+                welfareCurrentBalance,
+                monthlyContributionAmount,
+                latePaymentPenalty
             }
         })
     }
@@ -112,7 +120,7 @@ export async function updateSaccoSettings(formData: FormData) {
         data: {
             userId: session.user.id!,
             action: 'SETTINGS_UPDATED',
-            details: `Updated settings: Mult=${loanMultiplier}, Proc=${processingFeePercent}%, Ins=${insuranceFeePercent}%, Pen=${penaltyRate}%, Welfare=${welfareMonthlyContribution}/mo, WelfareBal=${welfareCurrentBalance}`
+            details: `Updated settings: Mult=${loanMultiplier}, Proc=${processingFeePercent}%, Ins=${insuranceFeePercent}%, Pen=${penaltyRate}%, Welfare=${welfareMonthlyContribution}/mo, WelfareBal=${welfareCurrentBalance}, Contribution=${monthlyContributionAmount}/mo, LatePenalty=${latePaymentPenalty}`
         }
     })
 
@@ -127,7 +135,9 @@ export async function updateSaccoSettings(formData: FormData) {
         rescheduleFeePercent: Number(s.rescheduleFeePercent),
         refinanceFeePercentage: Number(s.refinanceFeePercentage),
         welfareMonthlyContribution: Number(s.welfareMonthlyContribution),
-        welfareCurrentBalance: Number(s.welfareCurrentBalance)
+        welfareCurrentBalance: Number(s.welfareCurrentBalance),
+        monthlyContributionAmount: Number(s.monthlyContributionAmount || 2000),
+        latePaymentPenalty: Number(s.latePaymentPenalty || 200)
     })
 
     const serialized = serializeSettings(settings)
@@ -149,7 +159,9 @@ function serializeSettings(s: any) {
         rescheduleFeePercent: Number(s.rescheduleFeePercent),
         refinanceFeePercentage: Number(s.refinanceFeePercentage),
         welfareMonthlyContribution: Number(s.welfareMonthlyContribution),
-        welfareCurrentBalance: Number(s.welfareCurrentBalance)
+        welfareCurrentBalance: Number(s.welfareCurrentBalance),
+        monthlyContributionAmount: Number(s.monthlyContributionAmount || 2000),
+        latePaymentPenalty: Number(s.latePaymentPenalty || 200)
     }
 }
 
@@ -165,6 +177,7 @@ function serializeSettings(s: any) {
 export async function calculateLoanQualification(memberId: string, loansToOffset: string[] = [], appliedAmount?: number) {
     const settings = await getSaccoSettings()
 
+    console.log(`[calculateLoanQualification] Fetching member: ${memberId}`);
     // Get member with shares and existing loans
     const member = await prisma.member.findUnique({
         where: { id: memberId },

@@ -357,42 +357,53 @@ function CustomFieldCreator({ welfareTypeId }: { welfareTypeId: string }) {
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-                <Button variant="outline" size="sm">Add Field</Button>
+                <Button variant="outline" size="sm" className="border-cyan-200 text-cyan-700 hover:bg-cyan-50">Add Field</Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-2xl">
                 <DialogHeader>
-                    <DialogTitle>Add Custom Field</DialogTitle>
+                    <DialogTitle className="text-slate-900">Add Custom Field</DialogTitle>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                        <Label>Field Name</Label>
-                        <Input value={data.fieldName} onChange={e => setData({ ...data, fieldName: e.target.value })} placeholder="e.g. Hospital Name" />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Field Type</Label>
-                        <Select value={data.fieldType} onValueChange={val => setData({ ...data, fieldType: val })}>
-                            <SelectTrigger><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="TEXT">Text</SelectItem>
-                                <SelectItem value="NUMBER">Number</SelectItem>
-                                <SelectItem value="DATE">Date</SelectItem>
-                                <SelectItem value="SELECT">Select/Dropdown</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <input
-                            type="checkbox"
-                            id="isRequired"
-                            className="h-4 w-4"
-                            checked={data.isRequired}
-                            onChange={e => setData({ ...data, isRequired: e.target.checked })}
-                        />
-                        <Label htmlFor="isRequired">Required Field</Label>
+                <div className="py-4">
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                        <div className="md:col-span-6 space-y-2">
+                            <Label className="text-slate-700 font-semibold">Field Name</Label>
+                            <Input
+                                value={data.fieldName}
+                                onChange={e => setData({ ...data, fieldName: e.target.value })}
+                                placeholder="e.g. Hospital Name"
+                                className="text-slate-900"
+                            />
+                        </div>
+                        <div className="md:col-span-4 space-y-2">
+                            <Label className="text-slate-700 font-semibold">Field Type</Label>
+                            <Select value={data.fieldType} onValueChange={val => setData({ ...data, fieldType: val })}>
+                                <SelectTrigger className="text-slate-900">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="TEXT">Text</SelectItem>
+                                    <SelectItem value="NUMBER">Number</SelectItem>
+                                    <SelectItem value="DATE">Date</SelectItem>
+                                    <SelectItem value="SELECT">Select/Dropdown</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="md:col-span-2 flex items-center h-10 pb-2">
+                            <div className="flex items-center space-x-2">
+                                <input
+                                    type="checkbox"
+                                    id="isRequired"
+                                    className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
+                                    checked={data.isRequired}
+                                    onChange={e => setData({ ...data, isRequired: e.target.checked })}
+                                />
+                                <Label htmlFor="isRequired" className="text-slate-700 cursor-pointer">Required</Label>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <DialogFooter>
-                    <Button onClick={handleAdd}>Add Field</Button>
+                    <Button onClick={handleAdd} className="w-full md:w-auto bg-cyan-600 hover:bg-cyan-700 text-white">Add Field</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

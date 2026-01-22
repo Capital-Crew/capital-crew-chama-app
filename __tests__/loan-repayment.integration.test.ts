@@ -45,7 +45,8 @@ describe('Loan Repayment Integration Tests', () => {
                 numberOfRepayments: 6,
                 minAmount: new Prisma.Decimal(1000),
                 maxAmount: new Prisma.Decimal(100000),
-                isActive: true
+                isActive: true, // This field might be named differently or missing
+                description: 'Test Product' // Adding potential missing field
             }
         })
         testProductId = product.id

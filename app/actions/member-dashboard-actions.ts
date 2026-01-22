@@ -1,10 +1,13 @@
 'use server'
 
 import { db } from '@/lib/db'
-import { calculateLoanSchedule } from '@/lib/services/loanCalculator';
+import { calculateLoanSchedule } from '@/lib/services/loanCalculator'; // Keep for type fallback if needed but LoanScheduleCache replaces it
 import { Prisma } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 import { MemberStats as DetailedMemberStats, LoanPortfolioItem } from '@/types/member-dashboard';
+import { serializePrisma } from '@/lib/serialization';
+import { LoanScheduleCache } from '@/lib/services/LoanScheduleCache';
+import { calculateCurrentMonthStatus } from './contribution-engine';
 
 // --- Types ---
 
@@ -32,7 +35,6 @@ export type MemberStats = {
 
 // --- Helpers ---
 
-// Helper to aggregate account balance for a member
 // Helper to aggregate account balance for a member
 async function getAccountBalance(memberId: string, accountCode: string, normalSide: 'DEBIT' | 'CREDIT') {
     const result = await db.ledgerEntry.aggregate({
@@ -154,35 +156,36 @@ export async function getDetailedMemberStats(memberId: string): Promise<{ stats:
     if (!member) return null;
 
     // 1. Fetch Balances via Accounting Engine
-    // 1. Fetch Balances via Accounting Engine
     const { WalletService } = await import('@/lib/services/WalletService')
 
-    // Member Savings = Wallet Balance (Account 2200)
-    const savingsBalance = await WalletService.getWalletBalance(memberId)
-
-    // Contributions = Member Fund (Account 1200)
-    const contributionsBalance = await getAccountBalance(memberId, '1200', 'CREDIT')
-
-    const shareCapital = await getAccountBalance(memberId, '2100', 'CREDIT');
-    const normalShares = await getAccountBalance(memberId, '2200', 'CREDIT'); // This might be redundant if wallet covers it
-    const fosaShares = await getAccountBalance(memberId, '2000', 'CREDIT');
-
-
-    // 2. Loan Calculations
-    const loansRaw = await db.loan.findMany({
-
-        where: {
-            memberId,
-            status: { in: ['ACTIVE', 'OVERDUE', 'DISBURSED'] }
-        },
-        include: {
-            loanProduct: true,
-            transactions: true,
-            repaymentInstallments: {
-                orderBy: { dueDate: 'asc' }
+    // Parallelize all independent fetches
+    const [
+        savingsBalance,
+        contributionsBalance,
+        shareCapital,
+        normalShares,
+        fosaShares,
+        loansRaw
+    ] = await Promise.all([
+        WalletService.getWalletBalance(memberId), // Savings (Account 2200)
+        getAccountBalance(memberId, '1200', 'CREDIT'), // Contributions (Account 1200)
+        getAccountBalance(memberId, '2100', 'CREDIT'), // Share Capital
+        getAccountBalance(memberId, '2200', 'CREDIT'), // Normal Shares
+        getAccountBalance(memberId, '2000', 'CREDIT'), // FOSA Shares
+        db.loan.findMany({
+            where: {
+                memberId,
+                status: { in: ['ACTIVE', 'OVERDUE', 'DISBURSED'] }
+            },
+            include: {
+                loanProduct: true,
+                transactions: true,
+                repaymentInstallments: {
+                    orderBy: { dueDate: 'asc' }
+                }
             }
-        }
-    });
+        })
+    ]);
 
     // Import statement processor for consistent balance calculation
     const { processTransactions } = await import('@/lib/statementProcessor');
@@ -238,35 +241,26 @@ export async function getDetailedMemberStats(memberId: string): Promise<{ stats:
     const loanOtherCharges = 0;
 
     // Detailed Loan List Calculation
-    const loansList: LoanPortfolioItem[] = loans.map(loan => {
+    const loansList: LoanPortfolioItem[] = await Promise.all(loans.map(async loan => {
         let principalDue = 0;
         let interestDue = 0;
 
         // Use Statement Balance
         const realTimeBalance = loan.outstandingBalance;
 
-        // Parse Schedule
-        // Parse Schedule with Fallback
+        // Parse Schedule with Cache Strategy
         let schedule: any[] = [];
         if (loan.repaymentInstallments && loan.repaymentInstallments.length > 0) {
             schedule = loan.repaymentInstallments;
+        } else if (loan.cachedSchedule) {
+            // CACHE HIT (O(1))
+            schedule = loan.cachedSchedule as any[];
         } else if (loan.repaymentSchedule && (loan.repaymentSchedule as any[]).length > 0) {
             schedule = loan.repaymentSchedule as any[];
         } else {
-            // Dynamic Fallback
-            const dynamicSched = calculateLoanSchedule({
-                principal: Number(loan.amount),
-                annualInterestRate: Number(loan.interestRate),
-                durationMonths: loan.installments || loan.loanProduct?.numberOfRepayments || 12,
-                interestType: loan.loanProduct?.interestType || 'FLAT',
-                startDate: loan.disbursementDate || loan.applicationDate || new Date()
-            });
-            schedule = dynamicSched.schedule.map(i => ({
-                dueDate: i.date,
-                principal: i.principalPayment, // Map to what this function expects below
-                interest: i.interestPayment,
-                status: 'PENDING'
-            }));
+            // CACHE MISS - Generate, Save, and Use
+            console.log(`[Cache] Generating schedule for loan ${loan.id}`)
+            schedule = await LoanScheduleCache.generateAndSaveSchedule(loan.id)
         }
         const now = new Date();
 
@@ -307,7 +301,7 @@ export async function getDetailedMemberStats(memberId: string): Promise<{ stats:
             totalDue: totalDue,
             isArrears: isArrears
         };
-    });
+    }));
 
     // Aggregates - Summing real-time balances
     totalOutstandingBalance = loansList.reduce((sum, l) => sum + l.totalLoanBalance, 0);
@@ -431,7 +425,7 @@ export async function getLoanPortfolio(memberId: string) {
     const { processTransactions } = await import('@/lib/statementProcessor');
 
     // Serialize loans to convert Decimal to number for Client Component
-    const detailedLoans = loans.map(loanItem => {
+    const detailedLoans = await Promise.all(loans.map(async loanItem => {
         const loan = loanItem as any; // Cast to bypass inference limits on Includes
 
         // Map LoanTransaction to structure expected by processTransactions
@@ -458,6 +452,19 @@ export async function getLoanPortfolio(memberId: string) {
         const statementBalance = statementRows.length > 0
             ? statementRows[statementRows.length - 1].runningBalance
             : 0;
+
+        // Use Cache for Waterfall logic
+        let waterfallSchedule: any[] = [];
+        if (loan.repaymentInstallments && loan.repaymentInstallments.length > 0) {
+            waterfallSchedule = loan.repaymentInstallments;
+        } else if (loan.cachedSchedule) {
+            waterfallSchedule = loan.cachedSchedule as any[];
+        } else if (loan.repaymentSchedule && (loan.repaymentSchedule as any[]).length > 0) {
+            waterfallSchedule = loan.repaymentSchedule as any[];
+        } else {
+            // Generate if missing
+            waterfallSchedule = await LoanScheduleCache.generateAndSaveSchedule(loan.id)
+        }
 
         return {
             ...loan,
@@ -489,35 +496,7 @@ export async function getLoanPortfolio(memberId: string) {
             approvedAmount: Number(loan.amount),
             // Waterfall Repayment Logic
             ...(() => {
-                let sched: any[] = [];
-
-                // 1. Try Relation (Most Granular & Source of Truth for Payments)
-                if (loan.repaymentInstallments && loan.repaymentInstallments.length > 0) {
-                    sched = loan.repaymentInstallments;
-                }
-                // 2. Try JSON (Legacy or Snapshot)
-                else if (loan.repaymentSchedule && (loan.repaymentSchedule as any[]).length > 0) {
-                    sched = loan.repaymentSchedule as any[];
-                }
-                // 3. Fallback: Calculate Dynamic Amortization (Same as Schedule Tab)
-                else {
-                    const dynamicSched = calculateLoanSchedule({
-                        principal: Number(loan.amount),
-                        annualInterestRate: Number(loan.interestRate),
-                        durationMonths: loan.installments || loan.loanProduct?.numberOfRepayments || 12,
-                        interestType: loan.loanProduct?.interestType || 'FLAT',
-                        startDate: loan.disbursementDate || loan.applicationDate || new Date()
-                    });
-
-                    // Map Dynamic Keys to Waterfall Keys
-                    sched = dynamicSched.schedule.map(i => ({
-                        dueDate: i.date,
-                        principalDue: i.principalPayment,
-                        interestDue: i.interestPayment,
-                        totalDue: i.totalPayment,
-                        isFullyPaid: false // Default to false since we have no record
-                    }));
-                }
+                const sched = waterfallSchedule; // Use our resolved schedule
 
                 const now = new Date();
                 const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // Start of day
@@ -530,8 +509,8 @@ export async function getLoanPortfolio(memberId: string) {
                     return d < today && !i.isFullyPaid;
                 });
 
-                const pastPrincipal = overdueItems.reduce((sum, i) => sum + Number(i.principalDue || i.principal || 0), 0);
-                const pastInterest = overdueItems.reduce((sum, i) => sum + Number(i.interestDue || i.interest || 0), 0);
+                const pastPrincipal = overdueItems.reduce((sum: number, i: any) => sum + Number(i.principalDue || i.principal || 0), 0);
+                const pastInterest = overdueItems.reduce((sum: number, i: any) => sum + Number(i.interestDue || i.interest || 0), 0);
                 // Prompt: "TotalPenalties = loan.penaltyDue". 
                 // Using loan.penalties from DB or summing from Schedule if needed. 
                 // Assuming loan.penalties is the source of truth for "Accumulated Penalties".
@@ -552,10 +531,11 @@ export async function getLoanPortfolio(memberId: string) {
                 if (currentInstallment) {
                     // Theoretical Principal (Sum of all FUTURE including current)
                     const futureItems = sched.filter((i: any) => new Date(i.dueDate || i.date) >= today);
-                    const theoreticalPrincipal = futureItems.reduce((sum, i) => sum + Number(i.principalDue || i.principal || 0), 0);
+                    const theoreticalPrincipal = futureItems.reduce((sum: number, i: any) => sum + Number(i.principalDue || i.principal || 0), 0);
 
                     // Overpayment = TheoreticalPrincipal - ActualBalance
                     // Note: ActualBalance (statementBalance) includes Interest/Penalties.
+                    // If StatementBalance < TheoreticalPrincipal, user has paid ahead on Principal.
                     // If StatementBalance < TheoreticalPrincipal, user has paid ahead on Principal.
                     const op = Math.max(0, theoreticalPrincipal - statementBalance);
 
@@ -588,7 +568,7 @@ export async function getLoanPortfolio(memberId: string) {
             totalDue: statementBalance,
             totalLoanBalance: statementBalance
         };
-    });
+    }));
 
     return detailedLoans;
 }
@@ -647,37 +627,39 @@ export async function refreshMemberStats(memberId: string) {
  * Comprehensive Fetch for Member Detailed Modal
  */
 export async function getMemberFullDetail(memberId: string) {
-    const stats = await getDetailedMemberStats(memberId);
-    if (!stats) return null;
+    // Parallelize all major dashboard fetches
+    const [stats, contributions, portfolio, member, contributionStatus] = await Promise.all([
+        getDetailedMemberStats(memberId),
+        getContributionHistory(memberId),
+        getLoanPortfolio(memberId),
+        db.member.findUnique({
+            where: { id: memberId },
+            include: {
+                contactInfo: true,
+                nextOfKin: true
+            }
+        }),
+        calculateCurrentMonthStatus(memberId)
+    ]);
 
-    const contributions = await getContributionHistory(memberId);
-    const portfolio = await getLoanPortfolio(memberId);
-
-    // member already has beneficiaries from getMemberStats but getDetailedMemberStats uses a different type
-    // Let's fetch the local member object for basics
-    const member = await db.member.findUnique({
-        where: { id: memberId },
-        include: {
-            contactInfo: true,
-            nextOfKin: true
-        }
-    });
+    if (!stats || !member) return null;
 
     console.log(`[getMemberFullDetail] Member ${memberId} has ${member?.nextOfKin?.length || 0} Next of Kin records`);
 
-    if (!member) return null;
-
-    return {
+    return serializePrisma({
         member: {
             id: member.id,
             name: member.name,
             memberNumber: member.memberNumber.toString(),
             email: member.contactInfo?.email,
-            contact: member.contactInfo?.mobile || member.contact
+            contact: member.contactInfo?.mobile || member.contact,
+            contributionArrears: Number(member.contributionArrears || 0),
+            penaltyArrears: Number(member.penaltyArrears || 0)
         },
         stats: stats.stats,
         contributions: contributions,
+        contributionStatus: contributionStatus,
         loans: portfolio,
         nextOfKin: member?.nextOfKin || []
-    };
+    });
 }

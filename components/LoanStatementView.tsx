@@ -102,7 +102,7 @@ export function LoanStatementView({ loanId }: { loanId: string }) {
                 </div>
             </div>
 
-            {/* Statement Table */}
+            {/* Statement Table/List */}
             {statementRows.length === 0 ? (
                 <div className="bg-slate-50 border border-slate-200 rounded-2xl p-12 text-center">
                     <FileTextIcon className="w-16 h-16 text-slate-300 mx-auto mb-4" />
@@ -112,79 +112,127 @@ export function LoanStatementView({ loanId }: { loanId: string }) {
                     </p>
                 </div>
             ) : (
-                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="bg-slate-50 border-b border-slate-200">
-                                    <th className="px-4 py-3 text-left text-xs font-black text-slate-500 uppercase tracking-wider">
-                                        Date
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-xs font-black text-slate-500 uppercase tracking-wider">
-                                        Desc
-                                    </th>
-                                    <th className="px-4 py-3 text-right text-xs font-black text-slate-600 uppercase tracking-wider">
-                                        Debit
-                                    </th>
-                                    <th className="px-4 py-3 text-right text-xs font-black text-emerald-600 uppercase tracking-wider">
-                                        Credit
-                                    </th>
-                                    <th className="px-4 py-3 text-right text-xs font-black text-slate-900 uppercase tracking-wider">
-                                        Balance
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {statementRows.map((row, index) => (
-                                    <tr
-                                        key={`${row.txId}-${index}`}
-                                        className="hover:bg-slate-50 transition-colors"
-                                    >
-                                        <td className="px-4 py-3 text-sm text-slate-900 font-medium whitespace-nowrap">
-                                            {row.date}
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-slate-700">
-                                            {row.description}
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-right font-medium text-slate-700">
-                                            {row.debit !== null ? (
-                                                formatCurrency(row.debit)
-                                            ) : (
-                                                <span className="text-slate-200">-</span>
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-right font-bold text-emerald-600">
-                                            {row.credit !== null ? (
-                                                formatCurrency(row.credit)
-                                            ) : (
-                                                <span className="text-slate-200">-</span>
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-right font-mono font-bold text-slate-900 bg-slate-50/50">
+                <>
+                    {/* MOBILE: Transaction Feed */}
+                    <div className="md:hidden space-y-3">
+                        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">Transactions ({statementRows.length})</h3>
+                        {statementRows.map((row, index) => {
+                            const isCredit = row.credit !== null;
+                            const amount = isCredit ? row.credit : row.debit;
+                            const amountColor = isCredit ? 'text-emerald-600' : 'text-slate-800';
+                            const sign = isCredit ? '+' : '-';
+
+                            return (
+                                <div key={`${row.txId}-${index}`} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div>
+                                            <p className="font-bold text-slate-800 text-sm line-clamp-2">{row.description}</p>
+                                            <p className="text-xs text-slate-500 font-medium mt-1">{row.date}</p>
+                                        </div>
+                                        <div className="text-right whitespace-nowrap ml-4">
+                                            <p className={`font-black text-sm ${amountColor}`}>
+                                                {sign} {amount !== null ? formatCurrency(amount) : '-'}
+                                            </p>
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Amount</p>
+                                        </div>
+                                    </div>
+                                    <div className="pt-2 mt-2 border-t border-slate-50 flex justify-between items-center">
+                                        <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Running Bal</span>
+                                        <span className="text-xs font-black text-slate-600 bg-slate-100 px-2 py-1 rounded">
                                             {formatCurrency(row.runningBalance)}
+                                        </span>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                        {/* Mobile Summary Footer */}
+                        <div className="bg-slate-800 text-white p-4 rounded-xl shadow-lg mt-4">
+                            <div className="flex justify-between items-center">
+                                <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Current Balance</span>
+                                <span className="font-black text-xl text-cyan-400">
+                                    {statementRows.length > 0
+                                        ? formatCurrency(statementRows[statementRows.length - 1].runningBalance)
+                                        : formatCurrency(0)}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* DESKTOP: Full Table */}
+                    <div className="hidden md:block bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead>
+                                    <tr className="bg-slate-50 border-b border-slate-200">
+                                        <th className="px-4 py-3 text-left text-xs font-black text-slate-500 uppercase tracking-wider">
+                                            Date
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-black text-slate-500 uppercase tracking-wider">
+                                            Desc
+                                        </th>
+                                        <th className="px-4 py-3 text-right text-xs font-black text-slate-600 uppercase tracking-wider">
+                                            Debit
+                                        </th>
+                                        <th className="px-4 py-3 text-right text-xs font-black text-emerald-600 uppercase tracking-wider">
+                                            Credit
+                                        </th>
+                                        <th className="px-4 py-3 text-right text-xs font-black text-slate-900 uppercase tracking-wider">
+                                            Balance
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {statementRows.map((row, index) => (
+                                        <tr
+                                            key={`${row.txId}-${index}`}
+                                            className="hover:bg-slate-50 transition-colors"
+                                        >
+                                            <td className="px-4 py-3 text-sm text-slate-900 font-medium whitespace-nowrap">
+                                                {row.date}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-slate-700">
+                                                {row.description}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-right font-medium text-slate-700">
+                                                {row.debit !== null ? (
+                                                    formatCurrency(row.debit)
+                                                ) : (
+                                                    <span className="text-slate-200">-</span>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-right font-bold text-emerald-600">
+                                                {row.credit !== null ? (
+                                                    formatCurrency(row.credit)
+                                                ) : (
+                                                    <span className="text-slate-200">-</span>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-right font-mono font-bold text-slate-900 bg-slate-50/50">
+                                                {formatCurrency(row.runningBalance)}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                                {/* Summary Footer */}
+                                <tfoot className="bg-slate-100 border-t-2 border-slate-300">
+                                    <tr>
+                                        <td colSpan={3} className="px-4 py-3 text-sm font-black text-slate-900 uppercase">
+                                            Current Balance
+                                        </td>
+                                        <td colSpan={2} className="px-4 py-3 text-sm text-right text-slate-600 font-bold">
+                                            {statementRows.length} transaction{statementRows.length !== 1 ? 's' : ''}
+                                        </td>
+                                        <td className="px-4 py-3 text-sm text-right font-black text-cyan-700">
+                                            {statementRows.length > 0
+                                                ? formatCurrency(statementRows[statementRows.length - 1].runningBalance)
+                                                : formatCurrency(0)}
                                         </td>
                                     </tr>
-                                ))}
-                            </tbody>
-                            {/* Summary Footer */}
-                            <tfoot className="bg-slate-100 border-t-2 border-slate-300">
-                                <tr>
-                                    <td colSpan={3} className="px-4 py-3 text-sm font-black text-slate-900 uppercase">
-                                        Current Balance
-                                    </td>
-                                    <td colSpan={2} className="px-4 py-3 text-sm text-right text-slate-600 font-bold">
-                                        {statementRows.length} transaction{statementRows.length !== 1 ? 's' : ''}
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-right font-black text-cyan-700">
-                                        {statementRows.length > 0
-                                            ? formatCurrency(statementRows[statementRows.length - 1].runningBalance)
-                                            : formatCurrency(0)}
-                                    </td>
-                                </tr>
-                            </tfoot>
-                        </table>
+                                </tfoot>
+                            </table>
+                        </div>
                     </div>
-                </div>
+                </>
             )}
 
             {/* Information Notice */}

@@ -16,7 +16,9 @@ import Link from 'next/link'
 import { useTransition } from 'react'
 import { getInitials, getAvatarUrl } from '@/lib/avatar-utils'
 
-export function SiteHeader({ user }: { user: { name: string, email?: string | null, image?: string | null, avatarPreset?: string | null } }) {
+import { MobileNav } from '@/components/MobileNav'
+
+export function SiteHeader({ user, approvalCount = 0 }: { user: { name: string, email?: string | null, image?: string | null, avatarPreset?: string | null, role: string }, approvalCount?: number }) {
     const [isPending, startTransition] = useTransition();
 
     const handleLogout = () => {
@@ -29,7 +31,12 @@ export function SiteHeader({ user }: { user: { name: string, email?: string | nu
     const initials = getInitials(user.name);
 
     return (
-        <header className="flex justify-end items-center mb-6 relative z-50">
+        <header className="flex justify-between md:justify-end items-center mb-6 relative z-50">
+            {/* Mobile Navigation Trigger - Visible only on mobile */}
+            <div className="md:hidden">
+                <MobileNav user={user as any} approvalCount={approvalCount} />
+            </div>
+
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-12 w-12 rounded-full ring-2 ring-slate-100 hover:ring-cyan-200 transition-all">

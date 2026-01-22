@@ -35,6 +35,7 @@ export async function POST(request: NextRequest) {
         }
 
         const { memberId, loanProductId, requestedAmount, contractRef } = validation.data
+        console.log(`[API] POST /loans received for memberId: ${memberId}, amount: ${requestedAmount}`);
 
         // Verify user is submitting for themselves or is admin
         const user = await prisma.user.findUnique({
@@ -58,7 +59,16 @@ export async function POST(request: NextRequest) {
 
         // Calculate loan appraisal WITH the requested amount
         // This ensures fees are calculated correctly based on the actual loan amount
-        const appraisal = await calculateLoanQualification(memberId, [], requestedAmount)
+        let appraisal;
+        try {
+            appraisal = await calculateLoanQualification(memberId, [], requestedAmount)
+        } catch (err: any) {
+            console.error(`[API] Appraisal failed: ${err.message}`);
+            if (err.message === 'Member not found') {
+                return NextResponse.json({ error: 'Member not found', message: `No member found with ID: ${memberId}` }, { status: 404 });
+            }
+            throw err;
+        }
 
         // Validate requested amount against gross qualifying limit (not net disbursement)
         // The user qualifies for up to grossQualifyingAmount, and deductions are taken from that

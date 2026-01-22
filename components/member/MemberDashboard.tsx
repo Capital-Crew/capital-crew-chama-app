@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react';
-import { MemberDetailView } from './MemberDetailView';
+import { MemberProfileView } from './MemberProfileView';
 
 interface MemberDashboardProps {
     detail: any;
@@ -20,13 +20,14 @@ export function MemberDashboard({ detail }: MemberDashboardProps) {
         <div className="p-8 bg-slate-50 min-h-screen">
             <h1 className="text-2xl font-bold text-slate-900 mb-6">My Personal Dashboard</h1>
             <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 overflow-hidden">
-                <MemberDetailView
+                <MemberProfileView
                     member={detail.member}
                     stats={detail.stats}
                     contributions={detail.contributions}
+                    contributionStatus={detail.contributionStatus}
                     loans={detail.loans}
                     nextOfKin={detail.nextOfKin}
-                    showHeader={false} // Already have h1 above
+                // showHeader={false} - MemberProfileView doesn't support this prop, but handles UI differently.
                 />
             </div>
         </div>

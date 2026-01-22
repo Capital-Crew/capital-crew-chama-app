@@ -208,30 +208,7 @@ export async function createUserAccount(formData: FormData) {
 
         // Create wallet for the member
         // Create wallet and Ledger Account for the member using WalletService
-        // WalletService.createWallet handles the transaction internally, but we are already in a transaction.
-        // We need to check if WalletService accepts an external transaction.
-        // Looking at WalletService.ts (Step 708): It uses prisma.$transaction(async (tx) => ...)
-        // It does NOT accept an external tx as argument currently.
-        // This is a problem because we are inside a transaction here.
-
-        // I need to modify WalletService to accept an optional transaction client first.
-        // OTHERWISE, I have to duplicate logic or refactor WalletService.
-
-        // Let's refactor WalletService first!
-        // I will Abort this edit and refactor WalletService first.
-
-        // Wait, I can't abort easily here. 
-        // I will comment out this block and add a TODO to use WalletService, 
-        // OR I will assume I will fix WalletService immediately after.
-
-        // Actually, if I nest transactions in Prisma (if supported? No, flat transactions only usually, or savepoints), 
-        // WalletService starts a NEW transaction. This might deadlock or fail if using SQLite/certain configs, 
-        // or just be separate. But we want ATOMICITY.
-
-        // Strategy: Modify WalletService to accept `tx`.
-        // I'll update `app/actions.ts` to CALL `WalletService.createWallet(member.id, tx)`.
-        // Then I'll update `WalletService.ts` to support it.
-
+        // WalletService handles the transaction logic (joins existing or creates new)
         const wallet = await WalletService.createWallet(member.id, tx)
 
         // Create welcome notification
@@ -271,6 +248,19 @@ export async function applyForLoan(prevState: any, formData: FormData) {
     }
     if (!amountStr || isNaN(amount) || amount <= 0) {
         return { error: 'Missing or invalid required field: Amount. Please enter a valid loan amount.' }
+    }
+
+    // NEW: Strict Arrears Check
+    const member = await prisma.member.findUnique({ where: { id: memberId } })
+    if (member) {
+        const contributionArrears = Number(member.contributionArrears || 0)
+        const penaltyArrears = Number(member.penaltyArrears || 0)
+
+        if (contributionArrears > 0 || penaltyArrears > 0) {
+            return {
+                error: `Loan Application Denied: Outstanding arrears detected. Contribution: KES ${contributionArrears.toLocaleString()}, Penalties: KES ${penaltyArrears.toLocaleString()}. Please clear arrears to proceed.`
+            }
+        }
     }
 
     // Check for existing pending/approved applications
@@ -592,10 +582,11 @@ export async function disburseLoan(loanId: string) {
     const loan = await prisma.loan.findUnique({ where: { id: loanId } })
     if (!loan) return
 
-    await prisma.loan.update({
+    const updatedLoan = await prisma.loan.update({
         where: { id: loanId },
         data: {
             disbursementDate: new Date(),
+            cachedSchedule: null // Invalidate Cache on Disbursement
         }
     })
 }

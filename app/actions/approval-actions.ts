@@ -57,14 +57,28 @@ export async function getApprovalCounts() {
 
     const userRole = session.user.role || 'MEMBER'
 
-    const requests = await db.approvalRequest.findMany({
-        where: { status: 'PENDING' },
-        select: { requiredPermission: true }
-    })
+    // Optimized Count Query
+    const userPermissions = ROLE_PERMISSIONS[userRole] || []
 
-    const count = requests.filter(req => hasPermission(userRole, req.requiredPermission)).length
-    return count
+    // If Admin/All access
+    if (userPermissions.includes('ALL')) {
+        return await db.approvalRequest.count({
+            where: { status: 'PENDING' }
+        })
+    }
+
+    // Filter by specific permissions
+    return await db.approvalRequest.count({
+        where: {
+            status: 'PENDING',
+            requiredPermission: { in: userPermissions }
+        }
+    })
 }
+
+import { submitLoanApproval } from "@/app/loan-approval-actions"
+
+// ... imports
 
 export async function processApproval(requestId: string, decision: 'APPROVED' | 'REJECTED', notes?: string) {
     const session = await auth()
@@ -75,7 +89,7 @@ export async function processApproval(requestId: string, decision: 'APPROVED' | 
     if (!request) throw new Error("Request not found")
 
     // 2. Check Permission
-    if (!hasPermission(session.user.role, request.requiredPermission)) {
+    if (!hasPermission(session.user.role || 'MEMBER', request.requiredPermission)) {
         throw new Error("Insufficient Permissions")
     }
 
@@ -83,6 +97,14 @@ export async function processApproval(requestId: string, decision: 'APPROVED' | 
 
     // 3. Process Logic
     try {
+        // LOAN SPECIAL HANDLING
+        // We use the robust voting system for loans which handles its own DB transactions and logic.
+        if (request.type === 'LOAN') {
+            await submitLoanApproval(request.referenceId, decision, notes || `Quick ${decision} via Dashboard`)
+            return { success: true }
+        }
+
+        // GENERIC HANDLING FOR OTHER TYPES
         await db.$transaction(async (tx) => {
             // A. Update the Request
             await tx.approvalRequest.update({
@@ -99,32 +121,22 @@ export async function processApproval(requestId: string, decision: 'APPROVED' | 
             // B. Trigger Business Logic based on Type
             if (decision === 'APPROVED') {
                 switch (request.type) {
-                    case 'LOAN':
-                        // Call Loan Service to register a vote
-                        // Note: This assumes 1-click full approval for now, or we plug into the voting system.
-                        // Ideally: await castLoanVote(request.referenceId, 'APPROVED', notes)
-                        // For this demo, let's assume we update status directly if it's the final approval.
-                        // I will mark this as "Business Logic Placeholder"
-                        // TODO: Integrate actual LoanApproval entry creation
-                        break;
                     case 'MEMBER':
                         // Activate Member
                         await tx.member.update({
                             where: { id: request.referenceId },
-                            data: { status: 'ACTIVE' } // Assuming MemberStatus enum has ACTIVE
+                            data: { status: 'ACTIVE' }
                         })
                         break;
                     // Add other cases
                 }
             } else {
                 // REJECTED Logic
+                // Generic rejection usually doesn't need to do much besides updating the request status,
+                // but if we need to update the reference table, do it here.
                 switch (request.type) {
-                    case 'LOAN':
-                        // Reject Loan
-                        await tx.loan.update({
-                            where: { id: request.referenceId },
-                            data: { status: 'REJECTED' }
-                        })
+                    case 'MEMBER':
+                        // Maybe mark as REJECTED in member table too if needed
                         break;
                 }
             }
@@ -132,6 +144,7 @@ export async function processApproval(requestId: string, decision: 'APPROVED' | 
 
         revalidatePath('/dashboard/approvals')
         revalidatePath('/dashboard')
+        revalidatePath('/admin/approvals') // specific page
         return { success: true }
     } catch (error: any) {
         console.error("Approval Error:", error)

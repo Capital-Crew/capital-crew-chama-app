@@ -1,7 +1,7 @@
 import { auth } from '@/auth'
 import { notFound } from 'next/navigation'
 import { getMemberFullDetail } from "@/app/actions/member-dashboard-actions"
-import { MemberDetailView } from "@/components/member/MemberDetailView"
+import { MemberProfileView } from "@/components/member/MemberProfileView"
 
 // Force dynamic rendering and disable caching
 export const dynamic = 'force-dynamic'
@@ -31,13 +31,15 @@ export default async function MemberProfilePage({ params }: PageProps) {
             <h1 className="text-2xl font-black text-slate-900 mb-6 uppercase italic italic tracking-tighter">Member Profile</h1>
 
             <div className="bg-white border border-slate-200 rounded-[2rem] shadow-sm overflow-hidden">
-                <MemberDetailView
+                <MemberProfileView
                     member={detail.member as any}
                     stats={detail.stats}
                     contributions={detail.contributions}
+                    contributionStatus={detail.contributionStatus}
                     loans={detail.loans}
                     nextOfKin={detail.nextOfKin}
                     currentUserId={session.user.id}
+                    currentUserRole={session.user.role}
                 />
             </div>
         </div>

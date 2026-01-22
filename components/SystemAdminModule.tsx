@@ -16,6 +16,7 @@ import { WelfareTypeManager } from '@/components/welfare/WelfareTypeManager'
 import { AdminRequisitionList } from '@/components/welfare/AdminRequisitionList'
 import { NotificationSettings } from '@/components/admin/NotificationSettings'
 import { UserRightsTable } from '@/components/admin/UserRightsTable'
+import { MobileDrawer } from '@/components/ui/MobileDrawer';
 
 
 interface Member {
@@ -47,7 +48,9 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
         requiredApprovals: 3,
         requiredWelfareApprovals: 3,
         welfareMonthlyContribution: 0,
-        welfareCurrentBalance: 0
+        welfareCurrentBalance: 0,
+        monthlyContributionAmount: 2000,
+        latePaymentPenalty: 200
     });
 
     // Load SACCO settings
@@ -62,9 +65,11 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
                     shareCapitalBoost: Number(settings.shareCapitalBoost),
                     penaltyRate: Number(settings.penaltyRate) || 5.0,
                     requiredApprovals: Number(settings.requiredApprovals) || 3,
-                    requiredWelfareApprovals: Number(settings.requiredWelfareApprovals) || 3, // Safe access if field missing
+                    requiredWelfareApprovals: Number(settings.requiredWelfareApprovals) || 3,
                     welfareMonthlyContribution: Number(settings.welfareMonthlyContribution) || 0,
-                    welfareCurrentBalance: Number(settings.welfareCurrentBalance) || 0
+                    welfareCurrentBalance: Number(settings.welfareCurrentBalance) || 0,
+                    monthlyContributionAmount: Number(settings.monthlyContributionAmount) || 2000,
+                    latePaymentPenalty: Number(settings.latePaymentPenalty) || 200
                 });
             });
         }
@@ -100,34 +105,38 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-cyan-50/30">
-            {/* Modern Header with Gradient */}
-            <div className="bg-gradient-to-r from-cyan-500 via-cyan-600 to-blue-600 text-white px-8 py-12 rounded-2xl shadow-xl mb-8">
-                <div className="flex items-center gap-4 mb-3">
-                    <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
-                        <Settings className="w-8 h-8" />
+            {/* Modern Header with Gradient and Blur Effects */}
+            <div className="relative overflow-hidden bg-gradient-to-br from-cyan-500 to-indigo-600 text-white px-8 py-12 rounded-2xl shadow-xl mb-8">
+                {/* Decorative Blur Circles */}
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+                <div className="absolute bottom-0 left-0 w-48 h-48 bg-black/10 rounded-full blur-2xl -ml-10 -mb-10 pointer-events-none"></div>
+
+                <div className="relative flex items-center gap-4 mb-3 z-10">
+                    <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl shadow-inner border border-white/10">
+                        <Settings className="w-8 h-8 text-white" />
                     </div>
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight">System Administration</h1>
-                        <p className="text-cyan-50 mt-1">Manage loan products, SACCO parameters, and user rights</p>
+                        <h1 className="text-sm md:text-3xl font-black tracking-tight text-white drop-shadow-sm">System Administration</h1>
+                        <p className="text-cyan-50 mt-1 font-medium text-xs md:text-lg opacity-90">Manage loan products, SACCO parameters, and user rights</p>
                     </div>
                 </div>
             </div>
 
-            {/* Modern Tab Navigation */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-2 mb-8">
-                <div className="flex gap-2">
+            {/* Modern Tab Navigation - Scrollable on Mobile */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-2 mb-8 sticky top-4 z-40 backdrop-blur-md bg-white/90">
+                <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
                     {tabs.map((tab) => {
                         const Icon = tab.icon;
                         return (
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`flex-1 flex items-center justify-center gap-3 px-6 py-4 rounded-xl font-semibold transition-all duration-200 ${activeTab === tab.id
-                                    ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg shadow-cyan-500/30'
-                                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                                className={`flex-none flex items-center justify-center gap-2 md:gap-3 px-4 md:px-6 py-3 md:py-4 rounded-xl font-bold text-sm md:text-base transition-all duration-200 whitespace-nowrap ${activeTab === tab.id
+                                    ? 'bg-gradient-to-r from-cyan-500 to-indigo-500 text-white shadow-lg shadow-cyan-500/25 ring-1 ring-white/20'
+                                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
                                     }`}
                             >
-                                <Icon className="w-5 h-5" />
+                                <Icon className="w-4 h-4 md:w-5 md:h-5" />
                                 <span>{tab.label}</span>
                             </button>
                         );
@@ -378,6 +387,47 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
                                 </div>
                             </div>
 
+                            {/* Contribution Settings Card */}
+                            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                                <div className="bg-gradient-to-r from-blue-50 to-cyan-50 px-6 py-4 border-b border-slate-200">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-white rounded-lg shadow-sm">
+                                            <TrendingUp className="w-5 h-5 text-blue-600" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-bold text-slate-900">Contribution Settings</h3>
+                                            <p className="text-sm text-slate-600">Monthly contribution requirements and penalties</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="p-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-semibold text-slate-700">Monthly Contribution Amount (KES)</label>
+                                            <input
+                                                name="monthlyContributionAmount"
+                                                type="number"
+                                                step="0.01"
+                                                defaultValue={settingsForm.monthlyContributionAmount}
+                                                className="w-full bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 rounded-xl px-4 py-3 text-sm font-medium transition-all outline-none"
+                                            />
+                                            <p className="text-xs text-slate-500">Required contribution per member per month</p>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-semibold text-slate-700">Late Payment Penalty (KES)</label>
+                                            <input
+                                                name="latePaymentPenalty"
+                                                type="number"
+                                                step="0.01"
+                                                defaultValue={settingsForm.latePaymentPenalty}
+                                                className="w-full bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 rounded-xl px-4 py-3 text-sm font-medium transition-all outline-none"
+                                            />
+                                            <p className="text-xs text-slate-500">Penalty applied when contribution is missed</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             {/* Submit Button */}
                             <button
                                 type="submit"
@@ -439,25 +489,95 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
                 </div>
             )}
 
-            {/* Modal (kept as is) */}
+            {/* Modal (Desktop Only) */}
             {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                <div className="hidden md:flex fixed inset-0 z-50 items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl p-8 w-full max-w-lg shadow-2xl">
-                        <h3 className="text-2xl font-bold mb-6">Create New Product</h3>
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-2xl font-bold text-slate-900">Create New Product</h3>
+                            <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full">
+                                <XCircle className="w-6 h-6 text-slate-400" />
+                            </button>
+                        </div>
                         <form action={async (fd) => { await createLoanProduct(fd); setIsModalOpen(false); }} className="space-y-4">
-                            <input name="name" placeholder="Product Name" className="w-full bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 rounded-xl px-4 py-3 text-sm font-medium outline-none transition-all" />
-                            <input name="principal" type="number" placeholder="Default Principal" className="w-full bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 rounded-xl px-4 py-3 text-sm font-medium outline-none transition-all" />
-                            <input name="interestRatePerPeriod" type="number" placeholder="Monthly Interest Rate (%)" className="w-full bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 rounded-xl px-4 py-3 text-sm font-medium outline-none transition-all" />
-                            <select name="interestType" className="w-full bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 rounded-xl px-4 py-3 text-sm font-medium outline-none transition-all">
-                                <option value="FLAT">Flat</option>
-                                <option value="DECLINING_BALANCE">Declining</option>
-                            </select>
-                            <button className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 text-white py-4 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all">Create Product</button>
-                            <button type="button" onClick={() => setIsModalOpen(false)} className="w-full text-center text-sm text-slate-500 hover:text-slate-700 mt-2">Cancel</button>
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-700">Product Name</label>
+                                <input name="name" required placeholder="e.g. Emergency Loan" className="w-full bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 rounded-xl px-4 py-3 text-sm font-medium outline-none transition-all" />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-700">Default Principal</label>
+                                <input name="principal" required type="number" placeholder="50000" className="w-full bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 rounded-xl px-4 py-3 text-sm font-medium outline-none transition-all" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-slate-700">Interest Rate (%)</label>
+                                    <input name="interestRatePerPeriod" required type="number" step="0.01" placeholder="1.5" className="w-full bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 rounded-xl px-4 py-3 text-sm font-medium outline-none transition-all" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-slate-700">Interest Type</label>
+                                    <div className="relative">
+                                        <select name="interestType" className="w-full appearance-none bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 rounded-xl px-4 py-3 text-sm font-medium outline-none transition-all">
+                                            <option value="FLAT">Flat Rate</option>
+                                            <option value="DECLINING_BALANCE">Declining Balance</option>
+                                        </select>
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                            <TrendingUp className="w-4 h-4" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="pt-4">
+                                <button className="w-full bg-gradient-to-r from-cyan-500 to-indigo-500 text-white py-4 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2">
+                                    <PlusCircleIcon className="w-5 h-5" />
+                                    Create Product
+                                </button>
+                            </div>
                         </form>
                     </div>
                 </div>
             )}
+
+            {/* Mobile Drawer (Mobile Only) */}
+            <MobileDrawer
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                title="Create New Product"
+            >
+                <form action={async (fd) => { await createLoanProduct(fd); setIsModalOpen(false); }} className="space-y-5 pb-8">
+                    <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700">Product Name</label>
+                        <input name="name" required placeholder="e.g. Emergency Loan" className="w-full bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 rounded-xl px-4 py-3 text-sm font-medium outline-none transition-all" />
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700">Default Principal</label>
+                        <input name="principal" required type="number" placeholder="50000" className="w-full bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 rounded-xl px-4 py-3 text-sm font-medium outline-none transition-all" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-slate-700">Interest Rate (%)</label>
+                            <input name="interestRatePerPeriod" required type="number" step="0.01" placeholder="1.5" className="w-full bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 rounded-xl px-4 py-3 text-sm font-medium outline-none transition-all" />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-slate-700">Interest Type</label>
+                            <div className="relative">
+                                <select name="interestType" className="w-full appearance-none bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 rounded-xl px-4 py-3 text-sm font-medium outline-none transition-all">
+                                    <option value="FLAT">Flat Rate</option>
+                                    <option value="DECLINING_BALANCE">Declining Balance</option>
+                                </select>
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                    <TrendingUp className="w-4 h-4" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="pt-4">
+                        <button className="w-full bg-gradient-to-r from-cyan-500 to-indigo-500 text-white py-4 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2">
+                            <PlusCircleIcon className="w-5 h-5" />
+                            Create Product
+                        </button>
+                    </div>
+                </form>
+            </MobileDrawer>
         </div>
     );
 }

@@ -27,15 +27,20 @@ export type AuditLogResponse = {
 /**
  * Fetch paginated audit logs with filtering
  */
+/**
+ * Fetch paginated audit logs with filtering (LIGHTWEIGHT)
+ */
 export async function getAuditLogs(
     page: number = 1,
     limit: number = 20,
     filters: AuditLogFilter = {}
 ): Promise<AuditLogResponse> {
     const session = await auth()
+    console.log('[getAuditLogs] Session user:', session?.user?.email, session?.user?.role);
 
     // Strict Access Control - System Admin Only
     if (!session?.user || !['SYSTEM_ADMIN', 'CHAIRPERSON'].includes(session.user.role)) {
+        console.error('[getAuditLogs] Unauthorized access attempt by:', session?.user?.email);
         throw new Error("Unauthorized: Access Restricted to System Administrator")
     }
 
@@ -56,14 +61,14 @@ export async function getAuditLogs(
                 OR: [
                     { details: { contains: searchTerm, mode: 'insensitive' } },
                     { user: { name: { contains: searchTerm, mode: 'insensitive' } } },
-                    { action: { equals: searchTerm as any } } // Try to match enum if valid, otherwise ignored
+                    { user: { name: { contains: searchTerm, mode: 'insensitive' } } }
                 ]
             } : {}
         ]
     }
 
     try {
-        const [logs, total, totalToday, totalThisMonth] = await Promise.all([
+        const [logs, total] = await Promise.all([
             prisma.auditLog.findMany({
                 where,
                 include: {
@@ -76,6 +81,38 @@ export async function getAuditLogs(
                 take: limit
             }),
             prisma.auditLog.count({ where }),
+        ])
+
+
+        console.log(`[getAuditLogs] Returning ${logs.length} logs. Total: ${total}`);
+        return {
+            logs,
+            total,
+            page,
+            totalPages: Math.ceil(total / limit),
+            stats: {
+                totalToday: 0,
+                totalThisMonth: 0,
+                criticalAlerts: 0
+            } // Placeholder - fetched separately
+        }
+    } catch (error) {
+        console.error("Failed to fetch audit logs:", error)
+        throw new Error("Failed to retrieve audit trail data")
+    }
+}
+
+/**
+ * Fetch Audit Stats Separately (HEAVY)
+ */
+export async function getAuditStats() {
+    const session = await auth()
+    if (!session?.user || !['SYSTEM_ADMIN', 'CHAIRPERSON'].includes(session.user.role)) {
+        return { totalToday: 0, totalThisMonth: 0, criticalAlerts: 0 }
+    }
+
+    try {
+        const [totalToday, totalThisMonth] = await Promise.all([
             prisma.auditLog.count({
                 where: { timestamp: { gte: new Date(new Date().setHours(0, 0, 0, 0)) } }
             }),
@@ -88,30 +125,20 @@ export async function getAuditLogs(
             })
         ])
 
-        // Mock critical alerts (could be specific actions like failed logins if we tracked them)
+        // Mock critical alerts
         const criticalFilter: Prisma.AuditLogWhereInput = {
             OR: [
                 { action: AuditLogAction.WALLET_TRANSACTION_REVERSED },
                 { action: AuditLogAction.SETTINGS_UPDATED }
             ]
         }
-
         const criticalAlerts = await prisma.auditLog.count({ where: criticalFilter })
 
-        return {
-            logs,
-            total,
-            page,
-            totalPages: Math.ceil(total / limit),
-            stats: {
-                totalToday,
-                totalThisMonth,
-                criticalAlerts
-            }
-        }
+        return { totalToday, totalThisMonth, criticalAlerts }
+
     } catch (error) {
-        console.error("Failed to fetch audit logs:", error)
-        throw new Error("Failed to retrieve audit trail data")
+        console.error("Failed to fetch audit stats:", error)
+        return { totalToday: 0, totalThisMonth: 0, criticalAlerts: 0 }
     }
 }
 

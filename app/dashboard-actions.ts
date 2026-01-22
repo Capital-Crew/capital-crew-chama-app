@@ -2,19 +2,14 @@
  * Dashboard Statistics Actions
  * 
  * Server actions for fetching group-wide dashboard metrics
- * All balances are calculated in REAL-TIME from the General Ledger
+ * Optimized for performance using bulk fetching and in-memory aggregation.
  */
 
 'use server'
 
 import { db } from '@/lib/db'
 import { auth } from '@/auth'
-import { getLoanPrincipalBalance, getLoanInterestBalance, getLoanPenaltyBalance } from '@/lib/accounting/AccountingEngine'
-
 import { serializeFinancials, Serialized } from "@/lib/safe-serialization"
-// ... existing imports ...
-
-// ... existing code ...
 
 export async function getDashboardStats(): Promise<Serialized<any>> {
     const session = await auth()
@@ -22,10 +17,9 @@ export async function getDashboardStats(): Promise<Serialized<any>> {
         throw new Error('Unauthorized')
     }
 
-    // Cast to any to access accounting models
     const prisma = db as any
 
-    // 1. Fetch Members first to ensure we only sum valid member contributions
+    // 1. Fetch Members first (Lightweight)
     const allMembers = await prisma.member.findMany({
         select: {
             id: true,
@@ -33,20 +27,23 @@ export async function getDashboardStats(): Promise<Serialized<any>> {
         }
     })
     const memberIds = allMembers.map((m: any) => m.id)
+    const memberMap = new Map(allMembers.map((m: any) => [m.id, m.name]))
 
-    // 0. Get Correct Account Code for CONTRIBUTIONS
+    // 2. Get Contribution Account Code
     const contributionMapping = await prisma.systemAccountingMapping.findUnique({
         where: { type: 'CONTRIBUTIONS' },
         include: { account: true }
     })
     const contributionAccountCode = contributionMapping?.account.code || '3000'
 
-    // Fetch remaining data in parallel
+    // 3. Parallel Fetching of Main Datasets
     const [
         allLoans,
         contributionsAgg,
-        contributorStats
+        contributorStats,
+        loanLedgerEntries
     ] = await Promise.all([
+        // A. All Loans (for historical totals and member mapping)
         prisma.loan.findMany({
             select: {
                 id: true,
@@ -55,7 +52,9 @@ export async function getDashboardStats(): Promise<Serialized<any>> {
                 status: true
             }
         }),
-        // REAL-TIME: Total Contributions (Sum of all Member Balances)
+
+        // B. Total Contributions (Sum of all Member Balances)
+        // Account 1200 / 3000 (Member Fund) - LIABILITY/EQUITY -> Credit is positive
         prisma.ledgerEntry.aggregate({
             where: {
                 ledgerAccount: { code: contributionAccountCode },
@@ -67,7 +66,8 @@ export async function getDashboardStats(): Promise<Serialized<any>> {
             },
             _sum: { debitAmount: true, creditAmount: true }
         }),
-        // Top Contributors by share capital (from ledger)
+
+        // C. Top Contributors (from ledger)
         prisma.ledgerTransaction.groupBy({
             by: ['referenceId'],
             where: {
@@ -80,106 +80,106 @@ export async function getDashboardStats(): Promise<Serialized<any>> {
                 _sum: { totalAmount: 'desc' }
             },
             take: 5
+        }),
+
+        // D. BULK FETCH: Ledger Entries for ALL Loans
+        // We fetch all ASSET entries related to loans to calculate outstanding balances
+        // This replaces the N+1 loop calls to `getLoanPrincipalBalance` etc.
+        prisma.ledgerEntry.findMany({
+            where: {
+                ledgerAccount: { type: 'ASSET' },
+                ledgerTransaction: {
+                    isReversed: false,
+                    // Filter for known loan transaction types to reduce noise
+                    referenceType: {
+                        in: [
+                            'LOAN_DISBURSEMENT',
+                            'LOAN_REPAYMENT',
+                            'LOAN_INTEREST_ACCRUAL',
+                            'LOAN_PENALTY_ACCRUAL',
+                            'LOAN_FEE_CHARGE',
+                            'REVERSAL' // Include reversals if they affect assets
+                        ]
+                    }
+                }
+            },
+            select: {
+                debitAmount: true,
+                creditAmount: true,
+                ledgerTransaction: {
+                    select: {
+                        referenceId: true // This matches loan.id
+                    }
+                }
+            }
         })
     ])
 
-    // Helper to calculate balance from aggregation
-    const getBalance = (agg: { _sum: { debitAmount: any, creditAmount: any } }, type: 'DEBIT_NORMAL' | 'CREDIT_NORMAL') => {
-        const debit = Number(agg._sum.debitAmount || 0)
-        const credit = Number(agg._sum.creditAmount || 0)
-        return type === 'DEBIT_NORMAL' ? debit - credit : credit - debit
-    }
+    // --- AGGREGATION & CALCULATIONS ---
 
-    // 1. REAL-TIME Total Contributions (cumulative from all members via ledger)
-    // Account 1200 is a LIABILITY/EQUITY (Member Fund). 
-    // Contributions are CREDITS.
-    const totalContributions = getBalance(contributionsAgg, 'CREDIT_NORMAL')
+    // 1. Total Contributions
+    // Credit Normal: Credits - Debits
+    const totalContributions = Number(contributionsAgg._sum.creditAmount || 0) - Number(contributionsAgg._sum.debitAmount || 0)
 
-    // 2. Total Loans Disbursed (all principal amounts ever issued)
-    // This is historical data - sum of all loan amounts that were disbursed
+    // 2. Total Loans Issued (Historical)
+    // Sum of amounts of valid loans
     const totalLoansIssued = allLoans
         .filter((l: any) => ['DISBURSED', 'ACTIVE', 'OVERDUE', 'CLEARED'].includes(l.status))
         .reduce((sum: number, l: any) => sum + Number(l.amount), 0)
 
-    // 3. REAL-TIME Outstanding Loans (active loans with actual balance > 0 from ledger)
-    // This calculates Principal + Interest + Penalties for each active loan
+    // 3. Calculate Real-Time Outstanding Balances from Ledger Entries
+    // Map: LoanID -> Balance
+    const loanBalances = new Map<string, number>()
+
+    loanLedgerEntries.forEach((entry: any) => {
+        const loanId = entry.ledgerTransaction.referenceId
+        const debit = Number(entry.debitAmount)
+        const credit = Number(entry.creditAmount)
+        // Asset: Debit increases (+), Credit decreases (-)
+        const net = debit - credit
+
+        const current = loanBalances.get(loanId) || 0
+        loanBalances.set(loanId, current + net)
+    })
+
+    // Filter for Active Loans (Status checks) + Positive Balance
+    // Note: We trust the ledger for the balance, but use status for filtering logic if needed.
+    // Strictly speaking, "Outstanding Loans" should be the sum of all positive loan asset balances.
+
     let outstandingLoans = 0
-    const activeLoans = allLoans.filter((l: any) => ['ACTIVE', 'OVERDUE', 'DISBURSED'].includes(l.status))
+    const memberLoanTotals = new Map<string, number>()
 
-    console.log(`[Dashboard] Calculating outstanding balances for ${activeLoans.length} active loans...`)
+    // Iterate over All Loans to link Ledger Balance to Member
+    allLoans.forEach((loan: any) => {
+        if (['ACTIVE', 'OVERDUE', 'DISBURSED'].includes(loan.status)) {
+            const balance = loanBalances.get(loan.id) || 0
 
-    for (const loan of activeLoans) {
-        try {
-            // Get real-time balances from ledger (Principal + Interest + Penalties)
-            const [principal, interest, penalty] = await Promise.all([
-                getLoanPrincipalBalance(loan.id),
-                getLoanInterestBalance(loan.id),
-                getLoanPenaltyBalance(loan.id)
-            ])
+            // Only count if balance is > 0 (floating point safety)
+            if (balance > 0.01) {
+                outstandingLoans += balance
 
-            const totalBalance = principal + interest + penalty
-
-            if (totalBalance > 0) {
-                outstandingLoans += totalBalance
-                console.log(`[Dashboard] Loan ${loan.id}: P=${principal}, I=${interest}, Pen=${penalty}, Total=${totalBalance}`)
-            }
-        } catch (error) {
-            // Fallback to loan amount if ledger not available
-            console.warn(`[Dashboard] Could not get ledger balance for loan ${loan.id}, using amount:`, error)
-            const fallbackAmount = Number(loan.amount)
-            outstandingLoans += fallbackAmount
-        }
-    }
-
-    console.log(`[Dashboard] Total Outstanding Loans: ${outstandingLoans}`)
-
-    // 4. REAL-TIME Top 5 Borrowers (by current outstanding balances from ledger)
-    const memberLoanTotals = new Map<string, { name: string; amount: number }>()
-
-    for (const loan of activeLoans) {
-        const member = (allMembers as any[]).find((m: any) => m.id === loan.memberId)
-        if (member) {
-            try {
-                // Get real-time balance from ledger
-                const [principal, interest, penalty] = await Promise.all([
-                    getLoanPrincipalBalance(loan.id),
-                    getLoanInterestBalance(loan.id),
-                    getLoanPenaltyBalance(loan.id)
-                ])
-
-                const totalBalance = principal + interest + penalty
-
-                if (totalBalance > 0) {
-                    const existing = memberLoanTotals.get(member.id)
-                    if (existing) {
-                        existing.amount += totalBalance
-                    } else {
-                        memberLoanTotals.set(member.id, { name: member.name, amount: totalBalance })
-                    }
-                }
-            } catch (error) {
-                // Fallback to loan amount
-                console.warn(`[Dashboard] Could not get ledger balance for borrower ${member.name}, using amount`)
-                const loanAmount = Number(loan.amount)
-                const existing = memberLoanTotals.get(member.id)
-                if (existing) {
-                    existing.amount += loanAmount
-                } else {
-                    memberLoanTotals.set(member.id, { name: member.name, amount: loanAmount })
-                }
+                // For Top Borrowers
+                const currentMemberTotal = memberLoanTotals.get(loan.memberId) || 0
+                memberLoanTotals.set(loan.memberId, currentMemberTotal + balance)
             }
         }
-    }
+    })
 
-    const topBorrowers = Array.from(memberLoanTotals.values())
+    console.log(`[Dashboard] Total Outstanding Loans: ${outstandingLoans.toFixed(2)}`)
+
+    // 4. Top Borrowers
+    const topBorrowers = Array.from(memberLoanTotals.entries())
+        .map(([memberId, amount]) => ({
+            name: memberMap.get(memberId) || 'Unknown Member',
+            amount
+        }))
         .sort((a, b) => b.amount - a.amount)
         .slice(0, 5)
 
-    // Map top contributors (real-time from ledger)
+    // 5. Top Contributors
     const topContributors = (contributorStats as any[]).map((stat: any) => {
-        const member = (allMembers as any[]).find((m: any) => m.id === stat.referenceId)
         return {
-            name: member?.name || 'Unknown Member',
+            name: memberMap.get(stat.referenceId) || 'Unknown Member',
             amount: Number(stat._sum.totalAmount || 0)
         }
     })
@@ -195,62 +195,116 @@ export async function getDashboardStats(): Promise<Serialized<any>> {
 
 /**
  * Fetch Monthly Trends for Charts (Last 12 Months)
+ * Optimized to fetch data in bulk and aggregate in memory.
  */
 export async function getMonthlyTrends(): Promise<Serialized<any[]>> {
-    // We can't easily group by month with Prisma in a DB-agnostic way without raw queries.
-    // For simplicity/stability with diverse DBs (Postgres/MySQL/SQLite), we will fetch raw dates and aggregate in JS.
-    // Or simpler: Iterate last 12 months and run 12 fast aggregates.
-
     const prisma = db as any;
 
     const today = new Date();
-    const trends = [];
+    // Start from 11 months ago (total 12 months including current)
+    const startDate = new Date(today.getFullYear(), today.getMonth() - 11, 1);
+    const endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0); // End of current month
 
-    // Get Contribution Account
-    const contributionMapping = await prisma.systemAccountingMapping.findUnique({ where: { type: 'CONTRIBUTIONS' }, include: { account: true } });
-    const contributionCode = contributionMapping?.account.code || '3000';
-
-    for (let i = 11; i >= 0; i--) {
-        const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-        const monthName = d.toLocaleString('default', { month: 'short' });
-        const year = d.getFullYear();
-        const startOfMonth = new Date(year, d.getMonth(), 1);
-        const endOfMonth = new Date(year, d.getMonth() + 1, 0);
-
-        // 1. Monthly Contributions
-        const contrib = await prisma.ledgerEntry.aggregate({
+    const [contributionEntries, loanDisbursements] = await Promise.all([
+        // 1. Bulk Fetch Contributions for date range
+        prisma.ledgerEntry.findMany({
             where: {
-                ledgerAccount: { code: contributionCode },
+                ledgerAccount: {
+                    // We need to resolve the code, but usually it's stable. 
+                    // Better to query by type or fetch mapping first.
+                    // For speed, let's fetch mapping ID or just join.
+                    // Let's use the relation if possible, or fetch code separate.
+                    systemMappings: {
+                        some: { type: 'CONTRIBUTIONS' }
+                    }
+                },
                 ledgerTransaction: {
                     isReversed: false,
                     referenceType: 'SHARE_CONTRIBUTION',
                     transactionDate: {
-                        gte: startOfMonth,
-                        lte: endOfMonth
+                        gte: startDate,
+                        lte: endDate
                     }
                 }
             },
-            _sum: { creditAmount: true, debitAmount: true }
-        });
-        const netContrib = Number(contrib._sum.creditAmount || 0) - Number(contrib._sum.debitAmount || 0);
+            select: {
+                debitAmount: true,
+                creditAmount: true,
+                ledgerTransaction: {
+                    select: { transactionDate: true }
+                }
+            }
+        }),
 
-        // 2. Monthly Loan Disbursements
-        const loans = await prisma.loan.aggregate({
+        // 2. Bulk Fetch Loan Disbursements
+        prisma.loan.findMany({
             where: {
                 disbursementDate: {
-                    gte: startOfMonth,
-                    lte: endOfMonth
+                    gte: startDate,
+                    lte: endDate
                 },
                 status: { in: ['ACTIVE', 'CLEARED', 'OVERDUE', 'DISBURSED'] }
             },
-            _sum: { amount: true }
-        });
-        const disbursed = Number(loans._sum.amount || 0);
+            select: {
+                amount: true,
+                disbursementDate: true
+            }
+        })
+    ]);
+
+    // Initialize buckets for the last 12 months
+    const trendsMap = new Map<string, { contributions: number, loans: number }>();
+
+    // Create keys for all 12 months
+    for (let i = 11; i >= 0; i--) {
+        const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+        const key = d.toLocaleString('default', { month: 'short', year: 'numeric' }); // "Jan 2025" or just "Jan" to match UI? 
+        // Original code used `month: 'short'` so "Jan". But checking year is safer for overlap.
+        // Let's stick to simple "Jan" if that's what UI expects, but careful of duplicates if spanning years? 
+        // Original code: `const monthName = d.toLocaleString('default', { month: 'short' });`
+        // It pushes to array.
+        // Let's use "MMM YYYY" as unique key for aggregation, then format name later.
+        const uniqueKey = `${d.getFullYear()}-${d.getMonth()}`;
+        trendsMap.set(uniqueKey, { contributions: 0, loans: 0 });
+    }
+
+    // Aggregate Contributions
+    contributionEntries.forEach((entry: any) => {
+        const date = new Date(entry.ledgerTransaction.transactionDate);
+        const key = `${date.getFullYear()}-${date.getMonth()}`;
+
+        if (trendsMap.has(key)) {
+            const val = trendsMap.get(key)!;
+            // Credit - Debit
+            const net = Number(entry.creditAmount) - Number(entry.debitAmount);
+            val.contributions += net;
+        }
+    });
+
+    // Aggregate Loans
+    loanDisbursements.forEach((loan: any) => {
+        if (loan.disbursementDate) {
+            const date = new Date(loan.disbursementDate);
+            const key = `${date.getFullYear()}-${date.getMonth()}`;
+
+            if (trendsMap.has(key)) {
+                const val = trendsMap.get(key)!;
+                val.loans += Number(loan.amount);
+            }
+        }
+    });
+
+    // Convert to Array
+    const trends = [];
+    for (let i = 11; i >= 0; i--) {
+        const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+        const uniqueKey = `${d.getFullYear()}-${d.getMonth()}`;
+        const data = trendsMap.get(uniqueKey) || { contributions: 0, loans: 0 };
 
         trends.push({
-            name: `${monthName}`,
-            contributions: netContrib,
-            loans: disbursed
+            name: d.toLocaleString('default', { month: 'short' }),
+            contributions: data.contributions,
+            loans: data.loans
         });
     }
 

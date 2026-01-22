@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { X } from 'lucide-react';
-import { MemberDetailView } from './MemberDetailView';
+import { MemberProfileView } from './MemberProfileView';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fadeIn, scaleIn } from '@/lib/animation-variants';
 
@@ -48,13 +48,12 @@ export function MemberDetailModal({
                             </button>
                         </div>
                         <div className="flex-1 overflow-y-auto">
-                            <MemberDetailView
+                            <MemberProfileView
                                 member={member}
                                 stats={stats}
                                 contributions={contributions}
                                 loans={loans}
                                 nextOfKin={nextOfKin}
-                                showHeader={true}
                             />
                         </div>
                     </motion.div>

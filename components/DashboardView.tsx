@@ -65,41 +65,43 @@ export function DashboardView({ stats, trends, personalDetail }: Props) {
     return (
         <div className="min-h-screen bg-slate-50/50">
             {/* Header Actions */}
-            <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200 px-8 py-4 flex items-center justify-end">
-                <div className="flex gap-3">
+            <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 md:px-8 py-3 md:py-4 flex items-center justify-end">
+                <div className="flex gap-2 md:gap-3">
                     {/* Date Filter Placeholder */}
-                    <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-50">
-                        <Calendar className="w-4 h-4" />
-                        Last 12 Months
+                    <button className="flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 bg-white border border-slate-200 rounded-lg text-xs md:text-sm font-semibold text-slate-600 hover:bg-slate-50">
+                        <Calendar className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                        <span className="hidden sm:inline">Last 12 Months</span>
+                        <span className="sm:hidden">12M</span>
                     </button>
 
                     {/* Export Button */}
                     <button
                         onClick={handleExport}
-                        className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-bold hover:bg-slate-800 transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 bg-slate-900 text-white rounded-lg text-xs md:text-sm font-bold hover:bg-slate-800 transition-colors"
                     >
-                        <Download className="w-4 h-4" />
-                        Export Report
+                        <Download className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                        <span className="hidden sm:inline">Export Report</span>
+                        <span className="sm:hidden">Export</span>
                     </button>
                 </div>
             </div>
 
-            <div className="p-8">
-                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="p-4 md:p-6">
+                <div className="space-y-4 md:space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     {/* Header */}
                     <div>
-                        <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tight mb-2">
+                        <h1 className="text-xl md:text-2xl font-black text-slate-900 uppercase tracking-tight mb-1 md:mb-2">
                             Financial Performance
                         </h1>
-                        <p className="text-slate-500 font-medium">
+                        <p className="text-xs md:text-base text-slate-500 font-medium">
                             Real-time insights and growth trends
                         </p>
                     </div>
 
                     {/* Metrics Grid */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                         <ModernMetricCard
-                            icon={<Wallet className="w-8 h-8" />}
+                            icon={<Wallet className="w-5 h-5 md:w-6 md:h-6" />}
                             label="Total Contributions"
                             value={stats.totalContributions}
                             subtitle="+12% vs last year" // Placeholder trend
@@ -108,7 +110,7 @@ export function DashboardView({ stats, trends, personalDetail }: Props) {
                             iconColor="text-cyan-600"
                         />
                         <ModernMetricCard
-                            icon={<TrendingUp className="w-8 h-8" />}
+                            icon={<TrendingUp className="w-5 h-5 md:w-6 md:h-6" />}
                             label="Total Loans Disbursed"
                             value={stats.totalLoansIssued}
                             subtitle="All-time principal"
@@ -117,7 +119,7 @@ export function DashboardView({ stats, trends, personalDetail }: Props) {
                             iconColor="text-purple-600"
                         />
                         <ModernMetricCard
-                            icon={<DollarSign className="w-8 h-8" />}
+                            icon={<DollarSign className="w-5 h-5 md:w-6 md:h-6" />}
                             label="Outstanding Loans"
                             value={stats.outstandingLoans}
                             subtitle="Current active portfolio"
@@ -128,14 +130,14 @@ export function DashboardView({ stats, trends, personalDetail }: Props) {
                     </div>
 
                     {/* Charts Section */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
                         {/* Trend Chart */}
-                        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-                            <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-                                <TrendingUp className="w-5 h-5 text-cyan-500" />
+                        <div className="bg-white p-4 md:p-5 rounded-2xl md:rounded-3xl shadow-sm border border-slate-100">
+                            <h3 className="text-sm md:text-base font-bold text-slate-800 mb-3 md:mb-4 flex items-center gap-2">
+                                <TrendingUp className="w-4 h-4 text-cyan-500" />
                                 Growth Trends
                             </h3>
-                            <div className="h-[300px] w-full">
+                            <div className="h-[200px] md:h-[250px] w-full min-h-[200px]">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <AreaChart data={trends}>
                                         <defs>
@@ -153,20 +155,20 @@ export function DashboardView({ stats, trends, personalDetail }: Props) {
                                             dataKey="name"
                                             axisLine={false}
                                             tickLine={false}
-                                            tick={{ fill: '#94a3b8', fontSize: 12 }}
+                                            tick={{ fill: '#94a3b8', fontSize: 10 }}
                                             dy={10}
                                         />
                                         <YAxis
                                             axisLine={false}
                                             tickLine={false}
-                                            tick={{ fill: '#94a3b8', fontSize: 12 }}
+                                            tick={{ fill: '#94a3b8', fontSize: 10 }}
                                             tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
                                         />
                                         <Tooltip
                                             contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                             formatter={(value: any) => [`KES ${Number(value).toLocaleString()}`, '']}
                                         />
-                                        <Legend />
+                                        <Legend wrapperStyle={{ fontSize: '11px' }} />
                                         <Area
                                             type="monotone"
                                             dataKey="contributions"
@@ -191,12 +193,12 @@ export function DashboardView({ stats, trends, personalDetail }: Props) {
                         </div>
 
                         {/* Comparison Chart */}
-                        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-                            <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-                                <PieChart className="w-5 h-5 text-purple-500" />
+                        <div className="bg-white p-4 md:p-5 rounded-2xl md:rounded-3xl shadow-sm border border-slate-100">
+                            <h3 className="text-sm md:text-base font-bold text-slate-800 mb-3 md:mb-4 flex items-center gap-2">
+                                <PieChart className="w-4 h-4 text-purple-500" />
                                 Monthly Volume
                             </h3>
-                            <div className="h-[300px] w-full">
+                            <div className="h-[200px] md:h-[250px] w-full min-h-[200px]">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={trends}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -204,13 +206,13 @@ export function DashboardView({ stats, trends, personalDetail }: Props) {
                                             dataKey="name"
                                             axisLine={false}
                                             tickLine={false}
-                                            tick={{ fill: '#94a3b8', fontSize: 12 }}
+                                            tick={{ fill: '#94a3b8', fontSize: 10 }}
                                             dy={10}
                                         />
                                         <YAxis
                                             axisLine={false}
                                             tickLine={false}
-                                            tick={{ fill: '#94a3b8', fontSize: 12 }}
+                                            tick={{ fill: '#94a3b8', fontSize: 10 }}
                                             tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
                                         />
                                         <Tooltip
@@ -218,20 +220,20 @@ export function DashboardView({ stats, trends, personalDetail }: Props) {
                                             contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                             formatter={(value: any) => [`KES ${Number(value).toLocaleString()}`, '']}
                                         />
-                                        <Legend />
+                                        <Legend wrapperStyle={{ fontSize: '11px' }} />
                                         <Bar
                                             dataKey="contributions"
                                             name="Inflow (Contributions)"
                                             fill="#06b6d4"
                                             radius={[4, 4, 0, 0]}
-                                            barSize={20}
+                                            barSize={16} // Reduced bar size
                                         />
                                         <Bar
                                             dataKey="loans"
                                             name="Outflow (Loans)"
                                             fill="#ef4444"
                                             radius={[4, 4, 0, 0]}
-                                            barSize={20}
+                                            barSize={16} // Reduced bar size
                                         />
                                     </BarChart>
                                 </ResponsiveContainer>
@@ -240,7 +242,7 @@ export function DashboardView({ stats, trends, personalDetail }: Props) {
                     </div>
 
                     {/* Top Lists Analysis */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
                         <TopListCard
                             title="Top Contributors"
                             subtitle="Highest capital builders"
@@ -268,20 +270,20 @@ export function DashboardView({ stats, trends, personalDetail }: Props) {
 
 function ModernMetricCard({ icon, label, value, subtitle, gradient, iconBg, iconColor }: any) {
     return (
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 relative overflow-hidden group hover:shadow-md transition-all">
-            <div className="flex items-start justify-between mb-4">
-                <div className={`${iconBg} ${iconColor} p-3 rounded-2xl`}>
+        <div className="bg-white p-4 md:p-5 rounded-2xl md:rounded-3xl shadow-sm border border-slate-100 relative overflow-hidden group hover:shadow-md transition-all">
+            <div className="flex items-start justify-between mb-3">
+                <div className={`${iconBg} ${iconColor} p-2 rounded-xl md:rounded-2xl`}>
                     {icon}
                 </div>
                 {/* Sparkline placeholder or decoration could go here */}
             </div>
 
             <div className="relative z-10">
-                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">{label}</h3>
-                <div className="text-3xl font-black text-slate-900 mb-1">
+                <h3 className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{label}</h3>
+                <div className="text-xl md:text-2xl font-black text-slate-900 mb-0.5">
                     KES {value.toLocaleString()}
                 </div>
-                <p className="text-xs font-semibold text-slate-500">{subtitle}</p>
+                <p className="text-[10px] md:text-[11px] font-semibold text-slate-500">{subtitle}</p>
             </div>
 
             {/* Hover Gradient */}
@@ -292,34 +294,34 @@ function ModernMetricCard({ icon, label, value, subtitle, gradient, iconBg, icon
 
 function TopListCard({ title, subtitle, items, type, icon, theme }: any) {
     return (
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-            <div className="flex items-center gap-3 mb-6">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl bg-${theme}-50`}>
+        <div className="bg-white p-4 md:p-5 rounded-2xl md:rounded-3xl shadow-sm border border-slate-100">
+            <div className="flex items-center gap-2 md:gap-3 mb-3 md:mb-4">
+                <div className={`w-8 h-8 rounded-lg md:rounded-xl flex items-center justify-center text-lg bg-${theme}-50`}>
                     {icon}
                 </div>
                 <div>
-                    <h3 className="text-lg font-bold text-slate-900">{title}</h3>
-                    <p className="text-xs text-slate-500 font-semibold">{subtitle}</p>
+                    <h3 className="text-sm md:text-base font-bold text-slate-900">{title}</h3>
+                    <p className="text-[10px] md:text-[11px] text-slate-500 font-semibold">{subtitle}</p>
                 </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-1 md:space-y-2">
                 {items.map((item: any, idx: number) => (
-                    <div key={idx} className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 group transition-colors">
-                        <div className="flex items-center gap-3">
-                            <span className={`w-6 h-6 rounded-lg bg-slate-100 text-slate-500 text-xs font-bold flex items-center justify-center`}>
+                    <div key={idx} className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 group transition-colors">
+                        <div className="flex items-center gap-2 md:gap-3">
+                            <span className={`w-5 h-5 md:w-6 md:h-6 rounded-md md:rounded-lg bg-slate-100 text-slate-500 text-[10px] font-bold flex items-center justify-center`}>
                                 {idx + 1}
                             </span>
-                            <Link href={`/members/${item.id}`} className="font-bold text-sm text-slate-700 hover:text-cyan-600 transition-colors">
+                            <Link href={`/members/${item.id}`} className="font-bold text-xs text-slate-700 hover:text-cyan-600 transition-colors">
                                 {item.name}
                             </Link>
                         </div>
-                        <span className="font-bold text-sm text-slate-900">
+                        <span className="font-bold text-xs text-slate-900">
                             {Number(item.amount).toLocaleString()}
                         </span>
                     </div>
                 ))}
-                {items.length === 0 && <p className="text-center text-slate-400 text-sm py-4">No data available</p>}
+                {items.length === 0 && <p className="text-center text-slate-400 text-xs py-2">No data available</p>}
             </div>
         </div>
     )

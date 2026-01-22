@@ -39,18 +39,36 @@ export const authConfig = {
                 if (!isLoggedIn) return false; // Force login
 
                 // Strict RBAC Check
-                // Note: auth.user is typed generically, cast to access role
+                // Note: auth.user is typed generically
                 const userRole = (auth?.user as any)?.role;
                 const allowedRoles = ['SYSTEM_ADMIN', 'CHAIRPERSON', 'SECRETARY', 'TREASURER', 'SYSTEM_ADMINISTRATOR'];
 
                 if (!allowedRoles.includes(userRole)) {
-                    // Redirect unauthorized users to dashboard (or 404 via rewrite ideally, but redirect is safer)
+                    // Redirect unauthorized users to dashboard
                     return Response.redirect(new URL('/dashboard', nextUrl));
                 }
             }
 
             // Allow access to public pages
             return true;
+        },
+        async jwt({ token, user }) {
+            if (user) {
+                token.id = user.id;
+                token.role = user.role;
+                token.memberId = user.memberId;
+                token.mustChangePassword = user.mustChangePassword;
+            }
+            return token;
+        },
+        async session({ session, token }) {
+            if (session.user && token.sub) {
+                session.user.id = token.sub;
+                session.user.role = token.role;
+                session.user.memberId = token.memberId;
+                session.user.mustChangePassword = token.mustChangePassword;
+            }
+            return session;
         },
     },
     providers: [], // Providers added in auth.ts (server-side only)

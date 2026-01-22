@@ -4,6 +4,8 @@ import { UserRole } from "@prisma/client";
 declare module "next-auth" {
     interface User {
         role: UserRole;
+        memberId?: string;
+        mustChangePassword: boolean;
     }
     interface Session {
         user: User;
@@ -13,5 +15,7 @@ declare module "next-auth" {
 declare module "@auth/core/jwt" {
     interface JWT {
         role: UserRole;
+        memberId?: string;
+        mustChangePassword: boolean;
     }
 }

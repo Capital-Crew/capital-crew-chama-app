@@ -44,10 +44,12 @@ export function ChangePasswordForm() {
         if (result.error) {
             setError(result.error);
         } else {
-            setSuccess("Password changed successfully! Redirecting...");
-            // Redirect handled by server action revalidate? No, forcing client pivot is better.
-            // For now, reload to clear flags.
-            window.location.href = "/dashboard";
+            setSuccess("Password successfully updated. Signing out to apply changes...");
+            // Force Sign Out to clear the old session token (which still has mustChangePassword=true)
+            // We use standard NextAuth client signout
+            import("next-auth/react").then(({ signOut }) => {
+                signOut({ callbackUrl: "/login?verified=true" });
+            });
         }
         setIsLoading(false);
     }
@@ -79,9 +81,14 @@ export function ChangePasswordForm() {
                         name="currentPassword"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Current Type Password</FormLabel>
+                                <FormLabel className="text-slate-700 font-bold">Current Type Password</FormLabel>
                                 <FormControl>
-                                    <Input type="password" placeholder="Enter temporary password" {...field} />
+                                    <Input
+                                        type="password"
+                                        placeholder="Enter temporary password"
+                                        className="bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400"
+                                        {...field}
+                                    />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -92,9 +99,14 @@ export function ChangePasswordForm() {
                         name="newPassword"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>New Password</FormLabel>
+                                <FormLabel className="text-slate-700 font-bold">New Password</FormLabel>
                                 <FormControl>
-                                    <Input type="password" placeholder="Min 6 characters" {...field} />
+                                    <Input
+                                        type="password"
+                                        placeholder="Min 6 characters"
+                                        className="bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400"
+                                        {...field}
+                                    />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -105,9 +117,14 @@ export function ChangePasswordForm() {
                         name="confirmPassword"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Confirm New Password</FormLabel>
+                                <FormLabel className="text-slate-700 font-bold">Confirm New Password</FormLabel>
                                 <FormControl>
-                                    <Input type="password" placeholder="Re-enter new password" {...field} />
+                                    <Input
+                                        type="password"
+                                        placeholder="Re-enter new password"
+                                        className="bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400"
+                                        {...field}
+                                    />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>

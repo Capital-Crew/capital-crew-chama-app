@@ -95,35 +95,35 @@ export function WalletTransactionHistory({ memberId }: { memberId: string }) {
                 const isCredit = ['CONTRIBUTION', 'LOAN_DISBURSEMENT'].includes(tx.type)
 
                 return (
-                    <div key={tx.id} className="group bg-white hover:bg-slate-50 border border-slate-100 rounded-2xl p-4 transition-all hover:shadow-md hover:border-slate-200">
-                        <div className="flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-4 flex-1">
-                                <div className={`p-3 rounded-2xl ${typeInfo.color} group-hover:scale-110 transition-transform`}>
-                                    <Icon className="w-5 h-5" />
+                    <div key={tx.id} className="group bg-white hover:bg-slate-50 border border-slate-100 rounded-2xl p-3 md:p-4 transition-all hover:shadow-md hover:border-slate-200">
+                        <div className="flex items-start justify-between gap-3 md:gap-4">
+                            <div className="flex items-start gap-3 md:gap-4 flex-1 min-w-0">
+                                <div className={`p-2.5 md:p-3 rounded-2xl ${typeInfo.color} group-hover:scale-110 transition-transform shrink-0 mt-0.5`}>
+                                    <Icon className="w-4 h-4 md:w-5 md:h-5" />
                                 </div>
 
                                 <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <h4 className="font-bold text-slate-900 truncate">{tx.description}</h4>
+                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-0.5 md:mb-1">
+                                        <h4 className="font-bold text-slate-900 text-sm md:text-base leading-tight line-clamp-1">{tx.description}</h4>
                                         {tx.relatedLoan && (
-                                            <span className="bg-slate-100 text-slate-500 text-[10px] px-2 py-0.5 rounded-full font-mono border border-slate-200">
+                                            <span className="bg-slate-100 text-slate-500 text-[9px] md:text-[10px] px-1.5 py-0.5 rounded font-mono border border-slate-200 whitespace-nowrap">
                                                 {tx.relatedLoan.loanApplicationNumber}
                                             </span>
                                         )}
                                     </div>
-                                    <div className="flex items-center gap-3 text-xs text-slate-500">
-                                        <span className="font-medium">{formatDate(tx.createdAt)}</span>
-                                        <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
-                                        <span className="uppercase tracking-wider font-bold text-slate-400">{typeInfo.label}</span>
+                                    <div className="flex items-center gap-2 text-[10px] md:text-xs text-slate-500">
+                                        <span className="font-medium whitespace-nowrap">{formatDate(tx.createdAt)}</span>
+                                        <span className="w-0.5 h-0.5 md:w-1 md:h-1 bg-slate-300 rounded-full"></span>
+                                        <span className="uppercase tracking-wider font-bold text-slate-400 line-clamp-1">{typeInfo.label}</span>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="text-right">
-                                <div className={`text-lg font-black tracking-tight ${isCredit ? 'text-emerald-600' : 'text-slate-900'}`}>
+                            <div className="text-right shrink-0">
+                                <div className={`text-sm md:text-lg font-black tracking-tight ${isCredit ? 'text-emerald-600' : 'text-slate-900'}`}>
                                     {isCredit ? '+' : '-'}{formatCurrency(tx.amount)}
                                 </div>
-                                <div className="text-xs font-medium text-slate-400 mt-0.5">
+                                <div className="text-[10px] md:text-xs font-medium text-slate-400">
                                     Bal: {formatCurrency(tx.balanceAfter)}
                                 </div>
                             </div>

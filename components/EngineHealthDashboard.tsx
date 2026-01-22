@@ -117,17 +117,18 @@ export function EngineHealthDashboard() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="text-center md:text-left">
                     <h2 className="text-2xl font-bold">Engine Health Dashboard</h2>
                     <p className="text-sm text-muted-foreground">Monitor and control critical financial engines</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex w-full md:w-auto items-center justify-center gap-2">
                     <Button
                         onClick={handleInitializeLoans}
                         variant="outline"
                         size="sm"
                         disabled={migrating}
+                        className="bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100"
                     >
                         {migrating ? (
                             <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Initializing...</>
@@ -135,7 +136,12 @@ export function EngineHealthDashboard() {
                             <>Initialize Loans</>
                         )}
                     </Button>
-                    <Button onClick={loadData} variant="outline" size="sm">
+                    <Button
+                        onClick={loadData}
+                        variant="outline"
+                        size="sm"
+                        className="bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                    >
                         <RefreshCw className="h-4 w-4 mr-2" />
                         Refresh
                     </Button>
@@ -254,17 +260,17 @@ export function EngineHealthDashboard() {
                             <p className="text-sm text-muted-foreground text-center py-4">No execution history yet</p>
                         ) : (
                             history.map((log) => (
-                                <div key={log.id} className="flex items-center justify-between p-3 border rounded-lg">
-                                    <div className="flex items-center gap-3">
-                                        <Clock className="h-4 w-4 text-muted-foreground" />
+                                <div key={log.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 border rounded-lg transition-colors hover:bg-slate-50">
+                                    <div className="flex items-start sm:items-center gap-3">
+                                        <Clock className="h-4 w-4 text-muted-foreground mt-1 sm:mt-0 flex-shrink-0" />
                                         <div>
                                             <p className="text-sm font-medium">
                                                 {log.action === 'INTEREST_ENGINE_RUN' ? 'Interest Engine' : 'Penalty Engine'}
                                             </p>
-                                            <p className="text-xs text-muted-foreground">{log.details}</p>
+                                            <p className="text-xs text-muted-foreground break-all sm:break-normal">{log.details}</p>
                                         </div>
                                     </div>
-                                    <span className="text-xs text-muted-foreground">
+                                    <span className="text-xs text-muted-foreground pl-7 sm:pl-0">
                                         {formatDistanceToNow(new Date(log.timestamp), { addSuffix: true })}
                                     </span>
                                 </div>

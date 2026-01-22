@@ -24,8 +24,9 @@ export default async function ProtectedLayout({ children }: { children: React.Re
     return (
         <div className="min-h-screen bg-slate-50 flex text-slate-800 font-sans">
             <AppSidebar user={session.user as any} approvalCount={approvalCount} />
-            <main className="flex-1 ml-80 w-full px-4 md:px-8 py-8">
-                <SiteHeader user={session.user as any} />
+
+            <main className="flex-1 w-full md:ml-80 px-4 md:px-8 py-8 transition-all duration-300 overflow-x-hidden">
+                <SiteHeader user={session.user as any} approvalCount={approvalCount} />
                 {children}
             </main>
         </div>

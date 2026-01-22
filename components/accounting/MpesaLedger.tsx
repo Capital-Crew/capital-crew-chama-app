@@ -63,6 +63,7 @@ export function MpesaLedger({ members = [] }: MpesaLedgerProps) {
     const [transactions, setTransactions] = useState<Transaction[]>([])
     const [loading, setLoading] = useState(true)
     const [activeTab, setActiveTab] = useState('completed')
+    const [viewingTransaction, setViewingTransaction] = useState<Transaction | null>(null)
 
     // Retry State
     const [selectedTx, setSelectedTx] = useState<Transaction | null>(null)
@@ -332,7 +333,7 @@ export function MpesaLedger({ members = [] }: MpesaLedgerProps) {
                             {orphanedTx.length} Unallocated
                         </Badge>
                     )}
-                    <Button variant="outline" onClick={fetchTransactions}><RefreshCw className="mr-2 h-4 w-4" /> Refresh</Button>
+                    <Button variant="outline" className="border-cyan-200 text-cyan-700 hover:bg-cyan-50" onClick={fetchTransactions}><RefreshCw className="mr-2 h-4 w-4" /> Refresh</Button>
                 </div>
             </div>
 
@@ -361,22 +362,22 @@ export function MpesaLedger({ members = [] }: MpesaLedgerProps) {
             </div>
 
             <Tabs defaultValue="pending" className="space-y-4" onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-3 mb-8 h-auto p-1 bg-slate-100 rounded-xl">
+                <TabsList className="flex flex-col md:grid md:grid-cols-3 w-full h-auto p-1 bg-slate-100 rounded-xl gap-1 md:gap-0">
                     <TabsTrigger
                         value="pending"
-                        className="h-12 rounded-lg font-bold data-[state=active]:bg-orange-500 data-[state=active]:text-white transition-all text-slate-500 hover:text-orange-600"
+                        className="w-full h-12 rounded-lg font-bold data-[state=active]:bg-orange-500 data-[state=active]:text-white transition-all text-slate-500 hover:text-orange-600 justify-start px-4 md:justify-center"
                     >
                         Pending Actions ({pendingTx.length})
                     </TabsTrigger>
                     <TabsTrigger
                         value="completed"
-                        className="h-12 rounded-lg font-bold data-[state=active]:bg-green-500 data-[state=active]:text-white transition-all text-slate-500 hover:text-green-600"
+                        className="w-full h-12 rounded-lg font-bold data-[state=active]:bg-green-500 data-[state=active]:text-white transition-all text-slate-500 hover:text-green-600 justify-start px-4 md:justify-center"
                     >
                         Successful ({completedTx.length})
                     </TabsTrigger>
                     <TabsTrigger
                         value="failed"
-                        className="h-12 rounded-lg font-bold data-[state=active]:bg-red-500 data-[state=active]:text-white transition-all text-slate-500 hover:text-red-600"
+                        className="w-full h-12 rounded-lg font-bold data-[state=active]:bg-red-500 data-[state=active]:text-white transition-all text-slate-500 hover:text-red-600 justify-start px-4 md:justify-center"
                     >
                         Failed / Cancelled
                     </TabsTrigger>
@@ -397,7 +398,7 @@ export function MpesaLedger({ members = [] }: MpesaLedgerProps) {
                             </Button>
                         </div>
                     )}
-                    <div className="rounded-md border">
+                    <div className="rounded-md border hidden md:block">
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -454,10 +455,33 @@ export function MpesaLedger({ members = [] }: MpesaLedgerProps) {
                             </TableBody>
                         </Table>
                     </div>
+
+                    {/* Mobile List View - Pending */}
+                    <div className="space-y-3 md:hidden">
+                        {pendingTx.length === 0 ? (
+                            <div className="text-center py-8 text-slate-500">No pending transactions.</div>
+                        ) : (
+                            pendingTx.map((tx) => (
+                                <div key={tx.id} onClick={() => setViewingTransaction(tx)} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm active:scale-[0.98] transition-all">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div>
+                                            <div className="font-bold text-slate-900">{tx.memberName}</div>
+                                            <div className="text-xs text-slate-500">{new Date(tx.date).toLocaleDateString()}</div>
+                                        </div>
+                                        <Badge variant="outline" className="text-orange-600 border-orange-200 bg-orange-50">Pending</Badge>
+                                    </div>
+                                    <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-100">
+                                        <div className="font-mono text-xs text-slate-500">{tx.phoneNumber}</div>
+                                        <div className="font-black text-slate-900">KES {tx.amount.toLocaleString()}</div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
                 </TabsContent>
 
                 <TabsContent value="completed" className="space-y-4">
-                    <div className="rounded-md border">
+                    <div className="rounded-md border hidden md:block">
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -502,10 +526,41 @@ export function MpesaLedger({ members = [] }: MpesaLedgerProps) {
                             </TableBody>
                         </Table>
                     </div>
+
+                    {/* Mobile List View - Completed */}
+                    <div className="space-y-3 md:hidden">
+                        {completedTx.length === 0 ? (
+                            <div className="text-center py-8 text-slate-500">No successful transactions found.</div>
+                        ) : (
+                            completedTx.map((tx) => (
+                                <div key={tx.id} onClick={() => setViewingTransaction(tx)} className={`bg-white border border-slate-200 rounded-xl p-4 shadow-sm active:scale-[0.98] transition-all ${!tx.memberId ? 'border-l-4 border-l-orange-400' : ''}`}>
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div>
+                                            <div className="font-bold text-slate-900">{tx.memberName !== 'Unknown' ? tx.memberName : 'Unassigned Member'}</div>
+                                            <div className="text-xs text-slate-500">{new Date(tx.date).toLocaleDateString()}</div>
+                                        </div>
+                                        <Badge className="bg-green-500 h-5 text-[10px]">Success</Badge>
+                                    </div>
+                                    <div className="flex justify-between items-end mt-2">
+                                        <div>
+                                            <div className="text-[10px] text-slate-400 uppercase font-bold">Receipt</div>
+                                            <div className="font-mono text-xs text-slate-600 font-bold">{tx.receipt}</div>
+                                        </div>
+                                        <div className="font-black text-slate-900 text-lg">KES {tx.amount.toLocaleString()}</div>
+                                    </div>
+                                    {!tx.memberId && (
+                                        <div className="mt-3 pt-2 border-t border-slate-100 flex justify-end">
+                                            <span className="text-xs text-orange-600 font-bold flex items-center"><UserPlus className="w-3 h-3 mr-1" /> Tap to Assign</span>
+                                        </div>
+                                    )}
+                                </div>
+                            ))
+                        )}
+                    </div>
                 </TabsContent>
 
                 <TabsContent value="failed" className="space-y-4">
-                    <div className="rounded-md border">
+                    <div className="rounded-md border hidden md:block">
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -538,6 +593,32 @@ export function MpesaLedger({ members = [] }: MpesaLedgerProps) {
                                 )}
                             </TableBody>
                         </Table>
+                    </div>
+
+                    {/* Mobile List View - Failed */}
+                    <div className="space-y-3 md:hidden">
+                        {failedTx.length === 0 ? (
+                            <div className="text-center py-8 text-slate-500">No failed transactions found.</div>
+                        ) : (
+                            failedTx.map((tx) => (
+                                <div key={tx.id} onClick={() => setViewingTransaction(tx)} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm active:scale-[0.98] transition-all">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div>
+                                            <div className="font-bold text-slate-900">{tx.memberName}</div>
+                                            <div className="text-xs text-slate-500">{new Date(tx.date).toLocaleDateString()}</div>
+                                        </div>
+                                        <Badge variant="destructive" className="h-5 text-[10px]">Failed</Badge>
+                                    </div>
+                                    <div className="bg-red-50 p-2 rounded text-xs text-red-600 font-medium mb-3 mt-1">
+                                        {tx.failureReason}
+                                    </div>
+                                    <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+                                        <div className="font-mono text-xs text-slate-500">{tx.phoneNumber}</div>
+                                        <div className="font-black text-slate-900">KES {tx.amount.toLocaleString()}</div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </TabsContent>
             </Tabs>
@@ -754,6 +835,86 @@ export function MpesaLedger({ members = [] }: MpesaLedgerProps) {
 
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsLedgerViewOpen(false)}>Close</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+            {/* Transaction Details Modal (Mobile) */}
+            <Dialog open={!!viewingTransaction} onOpenChange={(open) => !open && setViewingTransaction(null)}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Transaction Details</DialogTitle>
+                    </DialogHeader>
+                    {viewingTransaction && (
+                        <div className="space-y-4">
+                            <div className="text-center py-4 bg-slate-50 rounded-xl border border-slate-100">
+                                <div className="text-sm text-slate-500 mb-1">Amount</div>
+                                <div className="text-3xl font-black text-slate-900">KES {viewingTransaction.amount.toLocaleString()}</div>
+                                <div className="mt-2">
+                                    {viewingTransaction.status === 'COMPLETED' ? (
+                                        <Badge className="bg-green-500">Success</Badge>
+                                    ) : viewingTransaction.status === 'PENDING' ? (
+                                        <Badge variant="outline" className="text-orange-600 border-orange-200">Pending</Badge>
+                                    ) : (
+                                        <Badge variant="destructive">Failed</Badge>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="grid gap-4 text-sm">
+                                <div className="flex justify-between py-2 border-b border-slate-100">
+                                    <span className="text-slate-500">Date</span>
+                                    <span className="font-medium text-slate-900">{new Date(viewingTransaction.date).toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between py-2 border-b border-slate-100">
+                                    <span className="text-slate-500">Member</span>
+                                    <span className="font-medium text-slate-900">{viewingTransaction.memberName}</span>
+                                </div>
+                                <div className="flex justify-between py-2 border-b border-slate-100">
+                                    <span className="text-slate-500">Phone</span>
+                                    <span className="font-medium text-slate-900">{viewingTransaction.phoneNumber}</span>
+                                </div>
+                                {viewingTransaction.receipt && (
+                                    <div className="flex justify-between py-2 border-b border-slate-100">
+                                        <span className="text-slate-500">Receipt</span>
+                                        <span className="font-mono font-bold text-slate-900">{viewingTransaction.receipt}</span>
+                                    </div>
+                                )}
+                                {viewingTransaction.failureReason && (
+                                    <div className="py-2">
+                                        <span className="text-slate-500 block mb-1">Failure Reason</span>
+                                        <span className="font-medium text-red-600 bg-red-50 p-2 rounded block text-xs">
+                                            {viewingTransaction.failureReason}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex gap-2 pt-2">
+                                {viewingTransaction.status === 'PENDING' && (
+                                    <>
+                                        <Button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" onClick={() => { setViewingTransaction(null); handleCheckStatus(viewingTransaction); }}>
+                                            Check Status
+                                        </Button>
+                                        <Button variant="outline" className="flex-1" onClick={() => { setViewingTransaction(null); handleOpenManualResolve(viewingTransaction); }}>
+                                            Resolve
+                                        </Button>
+                                    </>
+                                )}
+                                {viewingTransaction.status === 'COMPLETED' && !viewingTransaction.memberId && (
+                                    <Button className="flex-1 border-orange-200 text-orange-700 hover:bg-orange-50" variant="outline" onClick={() => { setViewingTransaction(null); handleOpenReconcile(viewingTransaction); }}>
+                                        Assign User
+                                    </Button>
+                                )}
+                                {viewingTransaction.status === 'FAILED' && (
+                                    <Button className="flex-1" variant="outline" onClick={() => { setViewingTransaction(null); handleOpenRetry(viewingTransaction); }}>
+                                        Retry Payment
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setViewingTransaction(null)}>Close</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

@@ -115,7 +115,7 @@ export function TransferRequestForm({ onSuccess }: { onSuccess?: () => void }) {
                             {accounts.map(acc => (
                                 <SelectItem key={acc.id} value={acc.id}>
                                     <span className="font-mono text-slate-400 mr-2 text-xs font-bold">{acc.code}</span>
-                                    <span className="font-medium">{acc.name}</span>
+                                    <span className="font-medium text-slate-900">{acc.name}</span>
                                 </SelectItem>
                             ))}
                         </SelectContent>
@@ -145,7 +145,7 @@ export function TransferRequestForm({ onSuccess }: { onSuccess?: () => void }) {
                             {accounts.map(acc => (
                                 <SelectItem key={acc.id} value={acc.id}>
                                     <span className="font-mono text-slate-400 mr-2 text-xs font-bold">{acc.code}</span>
-                                    <span className="font-medium">{acc.name}</span>
+                                    <span className="font-medium text-slate-900">{acc.name}</span>
                                 </SelectItem>
                             ))}
                         </SelectContent>

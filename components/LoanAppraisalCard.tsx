@@ -175,230 +175,183 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                     </div>
                 ) : loan ? (
                     <>
-                        {/* Glassmorphic Header */}
-                        <div className="bg-gradient-to-br from-cyan-500 via-blue-500 to-purple-500 p-8 text-white relative overflow-hidden shrink-0">
+                        {/* Mobile Optimized Header */}
+                        <div className="bg-gradient-to-br from-cyan-500 via-blue-500 to-purple-500 p-4 md:p-8 text-white relative overflow-hidden shrink-0">
                             <div className="absolute inset-0 bg-white/10 backdrop-blur-sm" />
                             <div className="relative z-10">
-                                <div className="flex items-start justify-between mb-4">
+                                <div className="flex items-start justify-between mb-2">
                                     <div>
-                                        <h2 className="text-3xl font-black uppercase tracking-tight mb-2">
+                                        <h2 className="text-xl md:text-3xl font-black uppercase tracking-tight mb-1">
                                             {loan.loanApplicationNumber}
                                         </h2>
-                                        <p className="text-white/80 text-sm font-bold">
-                                            {loan.member.name} • Member #{loan.member.memberNumber}
+                                        <p className="text-white/80 text-xs md:text-sm font-bold">
+                                            {loan.member.name}
                                         </p>
                                     </div>
                                     <button
                                         onClick={onClose}
-                                        className="text-white/80 hover:text-white text-2xl font-bold transition-colors"
+                                        className="text-white/80 hover:text-white p-2"
                                     >
-                                        ✕
+                                        <span className="text-2xl font-bold">✕</span>
                                     </button>
                                 </div>
 
-                                <div className="flex items-center gap-4">
-                                    <LoanStatusBadge status={loan.status as any} size="lg" />
-                                    <div className="text-sm font-bold text-white/90">
-                                        {loan.loanProduct.name} • {loan.loanProduct.interestRatePerPeriod}% interest
+                                <div className="flex flex-wrap items-center gap-2 md:gap-4">
+                                    <LoanStatusBadge status={loan.status as any} size="sm" />
+                                    <div className="text-xs md:text-sm font-bold text-white/90 bg-white/10 px-2 py-1 rounded-lg">
+                                        {loan.loanProduct.name}
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Tabs */}
-                        <div className="border-b border-slate-200 px-8 shrink-0">
-                            <div className="flex gap-6">
-                                <button
+                        {/* Responsive Scrollable Tabs */}
+                        <div className="border-b border-slate-200 px-4 md:px-8 shrink-0 bg-white sticky top-0 z-20">
+                            <div className="flex gap-4 overflow-x-auto scrollbar-none pb-0.5" style={{ scrollbarWidth: 'none' }}>
+                                <TabButton
+                                    active={activeTab === 'appraisal'}
                                     onClick={() => setActiveTab('appraisal')}
-                                    className={`px-4 py-4 text-xs font-black uppercase tracking-widest transition-all border-b-2 ${activeTab === 'appraisal'
-                                        ? 'text-cyan-500 border-cyan-500'
-                                        : 'text-slate-400 border-transparent'
-                                        }`}
-                                >
-                                    Appraisal Report
-                                </button>
-                                <button
+                                    label="Appraisal"
+                                />
+                                <TabButton
+                                    active={activeTab === 'journey'}
                                     onClick={() => setActiveTab('journey')}
-                                    className={`px-4 py-4 text-xs font-black uppercase tracking-widest transition-all border-b-2 ${activeTab === 'journey'
-                                        ? 'text-cyan-500 border-cyan-500'
-                                        : 'text-slate-400 border-transparent'
-                                        }`}
-                                >
-                                    Loan Journey
-                                </button>
-                                <button
+                                    label="Timeline"
+                                />
+                                <TabButton
+                                    active={activeTab === 'schedule'}
                                     onClick={() => setActiveTab('schedule')}
-                                    className={`px-4 py-4 text-xs font-black uppercase tracking-widest transition-all border-b-2 ${activeTab === 'schedule'
-                                        ? 'text-cyan-500 border-cyan-500'
-                                        : 'text-slate-400 border-transparent'
-                                        }`}
-                                >
-                                    Loan Schedule
-                                </button>
-                                <button
+                                    label="Schedule"
+                                />
+                                <TabButton
+                                    active={activeTab === 'statement'}
                                     onClick={() => setActiveTab('statement')}
-                                    className={`px-4 py-4 text-xs font-black uppercase tracking-widest transition-all border-b-2 ${activeTab === 'statement'
-                                        ? 'text-cyan-500 border-cyan-500'
-                                        : 'text-slate-400 border-transparent'
-                                        }`}
-                                >
-                                    Loan Statement
-                                </button>
+                                    label="Statement"
+                                />
                             </div>
                         </div>
 
                         {/* Content */}
-                        <div className="p-8 overflow-y-auto flex-1 bg-white">
+                        <div className="p-4 md:p-8 overflow-y-auto flex-1 bg-white scrollbar-thin scrollbar-thumb-slate-200">
                             {activeTab === 'appraisal' ? (
-                                <div className="space-y-6">
-                                    {/* SECTION 1: Key Financials (Hero) - Updated Structure */}
-                                    <div className="bg-white border text-left border-slate-200 p-6 rounded-2xl shadow-sm relative overflow-hidden group">
-                                        <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                                            <div className="w-32 h-32 bg-slate-900 rounded-full blur-2xl -mr-10 -mt-10"></div>
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-8 relative z-10">
+                                <div className="space-y-4 md:space-y-6">
+                                    {/* SECTION 1: Key Financials (Hero) */}
+                                    <div className="bg-white border text-left border-slate-200 p-5 md:p-6 rounded-2xl shadow-sm relative overflow-hidden group">
+                                        <div className="flex flex-col md:grid md:grid-cols-2 gap-6 relative z-10">
                                             {/* Column 1: Applied Amount */}
                                             <div>
-                                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Applied Amount</p>
-                                                <div className="text-4xl font-black text-slate-900 mb-1">
+                                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Applied Amount</p>
+                                                <div className="text-3xl md:text-4xl font-black text-slate-900 mb-2">
                                                     KES {loan.amount.toLocaleString()}
                                                 </div>
-                                                <div className="flex items-center gap-2 mt-2">
+                                                <div className="flex items-center gap-2 flex-wrap">
                                                     <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase">
                                                         {loan.loanProduct.name}
                                                     </span>
-                                                    <span className="text-xs font-medium text-slate-500">
-                                                        @ {loan.loanProduct.interestRatePerPeriod}% Interest
+                                                    <span className="text-[10px] font-bold text-slate-400">
+                                                        {loan.loanProduct.interestRatePerPeriod}% Int.
                                                     </span>
                                                 </div>
                                             </div>
 
                                             {/* Column 2: Loan Term & Details */}
-                                            <div className="flex flex-col justify-center border-l border-slate-100 pl-8">
+                                            <div className="flex flex-col justify-center md:border-l border-t md:border-t-0 border-slate-100 pt-4 md:pt-0 md:pl-8">
                                                 <div className="grid grid-cols-2 gap-4">
-                                                    <div>
-                                                        <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Period</p>
-                                                        <p className="text-lg font-black text-slate-700">{loan.installments} Months</p>
+                                                    <div className="bg-slate-50 p-3 rounded-xl md:bg-transparent md:p-0">
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Period</p>
+                                                        <p className="text-base font-black text-slate-700">{loan.installments} Months</p>
                                                     </div>
-                                                    <div>
-                                                        <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Installment</p>
-                                                        <p className="text-lg font-black text-slate-700">KES {(loan.monthlyInstallment || 0).toLocaleString()}</p>
+                                                    <div className="bg-slate-50 p-3 rounded-xl md:bg-transparent md:p-0">
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Monthly</p>
+                                                        <p className="text-base font-black text-slate-700">KES {(loan.monthlyInstallment || 0).toLocaleString()}</p>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* SECTION 2: Deductions Breakdown - ENHANCED STRUCTURE */}
-                                    <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden">
-                                        {/* Header */}
-                                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                                            <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
-                                            Financial Deductions Receipt
+                                    {/* SECTION 2: Deductions Breakdown */}
+                                    <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 shadow-sm relative">
+                                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+                                            Deductions
                                         </h3>
 
-                                        <div className="space-y-4 text-sm relative z-10">
+                                        <div className="space-y-3 text-sm">
                                             {/* Standard Fees */}
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4">
+                                            <div className="grid grid-cols-1 gap-y-3">
                                                 <div className="flex justify-between items-center pb-2 border-b border-slate-200 border-dashed">
-                                                    <span className="text-slate-600 font-bold italic">Processing Fee</span>
-                                                    <span className="font-black text-red-500 text-xs">
-                                                        - KES {loan.processingFee.toLocaleString()}
-                                                    </span>
+                                                    <span className="text-slate-600 font-bold text-xs">Processing Fee</span>
+                                                    <span className="font-black text-red-500 text-xs">- KES {loan.processingFee.toLocaleString()}</span>
                                                 </div>
                                                 <div className="flex justify-between items-center pb-2 border-b border-slate-200 border-dashed">
-                                                    <span className="text-slate-600 font-bold italic">Insurance Fee</span>
-                                                    <span className="font-black text-red-500 text-xs">
-                                                        - KES {loan.insuranceFee.toLocaleString()}
-                                                    </span>
+                                                    <span className="text-slate-600 font-bold text-xs">Insurance Fee</span>
+                                                    <span className="font-black text-red-500 text-xs">- KES {loan.insuranceFee.toLocaleString()}</span>
                                                 </div>
-
                                                 {loan.shareCapitalDeduction > 0 && (
                                                     <div className="flex justify-between items-center pb-2 border-b border-slate-200 border-dashed">
-                                                        <span className="text-slate-600 font-bold italic">Share Capital Boost</span>
-                                                        <span className="font-black text-red-500 text-xs">
-                                                            - KES {loan.shareCapitalDeduction.toLocaleString()}
-                                                        </span>
+                                                        <span className="text-slate-600 font-bold text-xs">Share Capital</span>
+                                                        <span className="font-black text-red-500 text-xs">- KES {loan.shareCapitalDeduction.toLocaleString()}</span>
                                                     </div>
                                                 )}
                                             </div>
 
-                                            {/* Loan Offsets (if any) */}
-                                            {(loan.topUps && loan.topUps.length > 0) || loan.existingLoanOffset > 0 ? (
-                                                <div className="bg-orange-50/50 rounded-xl p-4 border border-orange-100 mt-4">
-                                                    <p className="text-[10px] font-bold text-orange-400 uppercase tracking-wider mb-3">Loan Clearance</p>
-                                                    <div className="space-y-3">
-                                                        {loan.topUps && loan.topUps.length > 0 ? (
+                                            {/* Loan Offsets */}
+                                            {(loan.topUps?.length > 0 || loan.existingLoanOffset > 0) && (
+                                                <div className="bg-orange-50 rounded-xl p-3 border border-orange-100 mt-2">
+                                                    <p className="text-[9px] font-bold text-orange-400 uppercase tracking-wider mb-2">Loan Clearance</p>
+                                                    <div className="space-y-2">
+                                                        {loan.topUps?.length > 0 ? (
                                                             loan.topUps.map(t => (
                                                                 <div key={t.id} className="flex justify-between items-center">
                                                                     <div className="flex flex-col">
-                                                                        <span className="text-orange-900 font-black text-xs uppercase">
-                                                                            {t.clearedLoan?.loanProduct?.name || 'Previous Loan'}
-                                                                        </span>
-                                                                        <span className="text-orange-700/60 font-medium text-[10px]">
-                                                                            Ref: {t.clearedLoan?.loanApplicationNumber}
+                                                                        <span className="text-orange-900 font-black text-[10px] uppercase truncate max-w-[120px]">
+                                                                            {t.clearedLoan?.loanProduct?.name || 'Loan'}
                                                                         </span>
                                                                     </div>
-                                                                    <span className="font-black text-orange-700 text-xs whitespace-nowrap">
-                                                                        - KES {t.totalOffset.toLocaleString()}
-                                                                    </span>
+                                                                    <span className="font-black text-orange-700 text-[10px]">- KES {t.totalOffset.toLocaleString()}</span>
                                                                 </div>
                                                             ))
                                                         ) : (
                                                             <div className="flex justify-between items-center">
-                                                                <span className="text-orange-900 font-black text-xs uppercase">Existing Debt Clearance</span>
-                                                                <span className="font-black text-orange-700 text-xs">
-                                                                    - KES {loan.existingLoanOffset.toLocaleString()}
-                                                                </span>
+                                                                <span className="text-orange-900 font-black text-[10px]">Existing Debt</span>
+                                                                <span className="font-black text-orange-700 text-[10px]">- KES {loan.existingLoanOffset.toLocaleString()}</span>
                                                             </div>
                                                         )}
                                                     </div>
                                                 </div>
-                                            ) : null}
+                                            )}
 
                                             {/* Total Deductions Footer */}
-                                            <div className="pt-4 flex justify-between items-end mt-4 border-t-2 border-slate-200/60">
-                                                <div>
-                                                    <span className="font-black text-slate-400 text-[10px] uppercase tracking-widest block mb-1">Total Deductions</span>
-                                                    <p className="text-[10px] text-slate-400 font-bold italic">Automatically withheld from gross</p>
-                                                </div>
-                                                <span className="font-black text-slate-900 text-lg">KES {loan.totalDeductions.toLocaleString()}</span>
+                                            <div className="pt-3 flex justify-between items-center mt-2 border-t border-slate-200">
+                                                <span className="font-black text-slate-400 text-[10px] uppercase tracking-widest">Total Deductions</span>
+                                                <span className="font-black text-slate-800 text-sm">KES {loan.totalDeductions.toLocaleString()}</span>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* SECTION 3: Net To Disburse (Hero Bottom) */}
-                                    <div className="bg-gradient-to-br from-purple-600 to-indigo-700 rounded-2xl p-8 text-white shadow-xl shadow-purple-200 relative overflow-hidden">
-                                        {/* Background Decoration */}
-                                        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-48 h-48 bg-white/10 rounded-full blur-3xl"></div>
-                                        <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-32 h-32 bg-purple-500/30 rounded-full blur-2xl"></div>
-
-                                        <div className="relative z-10 flex flex-col md:flex-row justify-between items-end gap-6">
-                                            <div>
-                                                <p className="text-sm font-bold text-purple-200 uppercase tracking-widest mb-2">Net to Disburse</p>
-                                                <div className="text-5xl md:text-6xl font-black tracking-tight text-white mb-2">
-                                                    KES {loan.netDisbursementAmount.toLocaleString()}
-                                                </div>
-                                                <p className="text-purple-200/80 text-sm font-medium">
-                                                    Funds will be transferred to user's wallet
-                                                </p>
+                                    {/* SECTION 3: Net To Disburse */}
+                                    <div className="bg-gradient-to-br from-purple-600 to-indigo-700 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+                                        <div className="relative z-10">
+                                            <p className="text-[10px] font-bold text-purple-200 uppercase tracking-widest mb-1">Net to Disburse</p>
+                                            <div className="text-3xl md:text-5xl font-black tracking-tight text-white mb-4">
+                                                KES {loan.netDisbursementAmount.toLocaleString()}
                                             </div>
 
-                                            <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/10 min-w-[200px]">
-                                                <p className="text-[10px] font-bold text-purple-200 uppercase mb-1">Qualifying Limit</p>
-                                                <div className="text-xl font-bold text-white mb-2">
-                                                    KES {loan.grossQualifyingAmount.toLocaleString()}
+                                            <div className="bg-white/10 backdrop-blur-md rounded-xl p-3 border border-white/10">
+                                                <div className="flex justify-between items-center mb-1">
+                                                    <p className="text-[9px] font-bold text-purple-200 uppercase">Qualifying Limit</p>
                                                 </div>
-                                                <div className="w-full bg-black/20 h-1.5 rounded-full overflow-hidden">
+                                                <div className="w-full bg-black/20 h-1.5 rounded-full overflow-hidden mb-1">
                                                     <div
-                                                        className="bg-green-400 h-full rounded-full shadow-[0_0_10px_rgba(74,222,128,0.5)]"
+                                                        className="bg-green-400 h-full rounded-full"
                                                         style={{ width: `${Math.min((loan.amount / loan.grossQualifyingAmount) * 100, 100)}%` }}
                                                     ></div>
                                                 </div>
-                                                <p className="text-[9px] text-purple-200 mt-1 text-right">
-                                                    {Math.round((loan.amount / loan.grossQualifyingAmount) * 100)}% utilized
-                                                </p>
+                                                <div className="flex justify-between text-[9px] text-purple-200">
+                                                    <span>{Math.round((loan.amount / loan.grossQualifyingAmount) * 100)}% utilized</span>
+                                                    <span>KES {loan.grossQualifyingAmount.toLocaleString()}</span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -511,3 +464,15 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
         </div>
     )
 }
+
+const TabButton = ({ active, onClick, label }: { active: boolean, onClick: () => void, label: string }) => (
+    <button
+        onClick={onClick}
+        className={`px-4 py-3 text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap border-b-2 ${active
+            ? 'text-cyan-500 border-cyan-500'
+            : 'text-slate-400 border-transparent hover:text-slate-600'
+            }`}
+    >
+        {label}
+    </button>
+)

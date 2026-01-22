@@ -1,4 +1,4 @@
-import { MemberManagementMaster } from "@/components/member/MemberManagementMaster"
+import { MembersModule } from "@/components/member/MembersModule"
 import { auth } from "@/auth"
 import { getMemberFullDetail } from "@/app/actions/member-dashboard-actions"
 import { getMembers } from "@/app/actions/get-members"
@@ -39,14 +39,23 @@ export default async function MembersPage() {
 
     let initialDetail = null;
     if (members.length > 0) {
-        initialDetail = await getMemberFullDetail(members[0].id);
+        // Optimization: For Admins, fetch first member. For Members, it's already their ID so fetch that.
+        const targetId = isPrivileged ? members[0].id : memberId;
+        if (targetId) {
+            initialDetail = await getMemberFullDetail(targetId);
+        }
     }
 
+    // For normal members who might have been redirected here or land here directly
+    // If they are not privileged, they should see their own data.
+    // The redirect logic above might handle some cases, but if they land here, ensure we pass their own ID.
+
     return (
-        <MemberManagementMaster
+        <MembersModule
             initialMembers={members}
             initialDetail={initialDetail}
             userRole={role}
+            currentUserId={session.user.id!}
         />
     )
 }

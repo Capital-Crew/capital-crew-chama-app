@@ -264,17 +264,17 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
                 {activeMainTab === 'deposits' && (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
                         <Tabs defaultValue="mpesa" className="w-full">
-                            <TabsList className="grid w-full grid-cols-4 mb-6">
-                                <TabsTrigger value="mpesa" className="data-[state=active]:bg-green-100 data-[state=active]:text-green-800">
+                            <TabsList className="w-full flex overflow-x-auto md:grid md:grid-cols-4 mb-6 gap-2 md:gap-0 p-1 md:p-1 bg-slate-100/50 md:bg-slate-100 rounded-xl md:rounded-lg scrollbar-none">
+                                <TabsTrigger value="mpesa" className="flex-1 min-w-[120px] md:min-w-0 data-[state=active]:bg-green-100 data-[state=active]:text-green-800 data-[state=active]:shadow-sm">
                                     <SmartphoneIcon className="w-4 h-4 mr-2" /> M-Pesa
                                 </TabsTrigger>
-                                <TabsTrigger value="share" className="data-[state=active]:bg-cyan-100 data-[state=active]:text-cyan-800">
+                                <TabsTrigger value="share" className="flex-1 min-w-[140px] md:min-w-0 data-[state=active]:bg-cyan-100 data-[state=active]:text-cyan-800 data-[state=active]:shadow-sm">
                                     <CoinsIcon className="w-4 h-4 mr-2" /> Contributions
                                 </TabsTrigger>
-                                <TabsTrigger value="loan" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-800">
+                                <TabsTrigger value="loan" className="flex-1 min-w-[130px] md:min-w-0 data-[state=active]:bg-blue-100 data-[state=active]:text-blue-800 data-[state=active]:shadow-sm">
                                     <TrendingUpIcon className="w-4 h-4 mr-2" /> Loan Repay
                                 </TabsTrigger>
-                                <TabsTrigger value="penalty" className="data-[state=active]:bg-red-100 data-[state=active]:text-red-800">
+                                <TabsTrigger value="penalty" className="flex-1 min-w-[110px] md:min-w-0 data-[state=active]:bg-red-100 data-[state=active]:text-red-800 data-[state=active]:shadow-sm">
                                     <AlertCircleIcon className="w-4 h-4 mr-2" /> Penalties
                                 </TabsTrigger>
                             </TabsList>

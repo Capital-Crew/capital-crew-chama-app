@@ -176,20 +176,20 @@ export function WalletDashboard({ memberId }: { memberId: string }) {
                 </button>
 
                 {/* AVAILABLE BALANCE CARD */}
-                <div className="group relative overflow-hidden rounded-3xl p-6 shadow-xl hover:shadow-2xl hover:shadow-emerald-500/20 transition-all">
-                    {/* Background Gradients */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-600 to-teal-700"></div>
-                    <div className="absolute bottom-0 left-0 w-40 h-40 bg-white/10 rounded-full blur-3xl transform -translate-x-10 translate-y-10"></div>
+                <div className="group relative overflow-hidden rounded-3xl p-6 shadow-xl hover:shadow-2xl hover:shadow-emerald-500/10 transition-all bg-white border border-slate-100">
+                    {/* Background Accents */}
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-full blur-2xl opacity-50 -mr-10 -mt-10 pointer-events-none"></div>
+                    <div className="absolute bottom-0 left-0 w-24 h-24 bg-teal-50 rounded-full blur-xl opacity-50 -ml-10 -mb-10 pointer-events-none"></div>
 
                     {/* Content */}
-                    <div className="relative text-white h-full flex flex-col justify-between">
+                    <div className="relative h-full flex flex-col justify-between">
                         <div className="flex items-start justify-between mb-6">
-                            <div className="p-3 bg-white/10 rounded-2xl backdrop-blur-sm border border-white/10">
-                                <WalletIcon className="w-6 h-6 text-emerald-50" />
+                            <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-100">
+                                <WalletIcon className="w-6 h-6 text-emerald-600" />
                             </div>
                             <button
                                 onClick={() => setShowDepositModal(true)}
-                                className="px-4 py-2 bg-white text-emerald-700 hover:bg-emerald-50 rounded-xl text-xs font-black uppercase tracking-wide flex items-center gap-2 shadow-sm hover:shadow-md transition-all active:scale-95"
+                                className="px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700 rounded-xl text-xs font-black uppercase tracking-wide flex items-center gap-2 shadow-lg hover:shadow-emerald-600/30 transition-all active:scale-95"
                             >
                                 <PlusCircleIcon className="w-4 h-4" />
                                 Top Up
@@ -200,11 +200,11 @@ export function WalletDashboard({ memberId }: { memberId: string }) {
                             onClick={() => openTransactionHistory('balance')}
                             className="text-left w-full group-hover:translate-x-1 transition-transform"
                         >
-                            <p className="text-emerald-100/80 text-xs font-bold uppercase tracking-wider mb-1">Available Balance</p>
-                            <h3 className="text-4xl font-black tracking-tight text-white mb-1">
+                            <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Available Balance</p>
+                            <h3 className="text-4xl font-black tracking-tight text-slate-900 mb-1">
                                 {formatCurrency(availBalance)}
                             </h3>
-                            <p className="text-emerald-200/60 text-xs font-medium flex items-center gap-1 hover:text-white transition-colors">
+                            <p className="text-emerald-600 text-xs font-bold flex items-center gap-1 hover:text-emerald-700 transition-colors">
                                 View transactions <ArrowUpIcon className="w-3 h-3 rotate-45" />
                             </p>
                         </button>

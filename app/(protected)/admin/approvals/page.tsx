@@ -14,7 +14,7 @@ export default async function ApprovalsPage() {
     const requests = await getPendingApprovals()
 
     return (
-        <div className="p-8 max-w-7xl mx-auto space-y-8">
+        <div className="p-4 md:p-8 w-full space-y-8">
             <div>
                 <h1 className="text-3xl font-black text-slate-900 tracking-tight">Approvals Inbox</h1>
                 <p className="text-slate-500 font-medium">pending requests requiring your decision</p>

@@ -368,6 +368,8 @@ model User {
   image              String? // Profile picture URL or Base64
   avatarPreset       String? // Selected cartoon avatar identifier
   mustChangePassword Boolean  @default(false)
+  failedLoginAttempts Int      @default(0)
+  lockoutUntil        DateTime?
 
   expensesRequested Expense[]         @relation("ExpenseRequester")
   expenseApprovals  ExpenseApproval[]
@@ -440,6 +442,10 @@ model Member {
 
   // SHARE CAPITAL (EQUITY)
   shareContributions Decimal @default(0) @db.Decimal(19, 4)
+
+  // NEW: Contribution Tracking
+  contributionArrears Decimal @default(0) @db.Decimal(19, 4)
+  penaltyArrears      Decimal @default(0) @db.Decimal(19, 4)
 
   // PII & Contact Separation (1:1)
   details     MemberDetail?
@@ -636,6 +642,7 @@ model Loan {
   approvalVotes             Json // Stores ApprovalVote[] (legacy, kept for migration)
   repaymentSchedule         Json // Stores RepaymentScheduleItem[]
   originalRepaymentSchedule Json? // Stores RepaymentScheduleItem[]
+  cachedSchedule            Json? // CACHE: Stores calculated schedule to avoid recalculations
 
   feeExemptions      Json // Stores FeeExemptions object
   productSnapshot    Json? // Stores snapshot of product at time of loan
@@ -1050,6 +1057,10 @@ model SaccoSettings {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // NEW: Contribution Settings
+  monthlyContributionAmount Decimal @default(2000) @db.Decimal(19, 4)
+  latePaymentPenalty        Decimal @default(200) @db.Decimal(19, 4)
 }
 
 model LoanApproval {

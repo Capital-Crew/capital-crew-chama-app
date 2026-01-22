@@ -80,7 +80,7 @@ export function LoanScheduleView({ loanId }: { loanId: string }) {
     }
 
     return (
-        <div className="p-6 space-y-6">
+        <div className="p-4 md:p-6 space-y-6">
             {/* Summary Cards */}
             <div>
                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Payment Summary</h3>
@@ -105,22 +105,73 @@ export function LoanScheduleView({ loanId }: { loanId: string }) {
                 </div>
             </div>
 
-            {/* Payment Schedule Table */}
+            {/* Payment Schedule Responsive View */}
             <div>
                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">
                     Repayment Schedule ({schedule.schedule.length} months)
                 </h3>
-                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+
+                {/* Mobile: Stacked Cards */}
+                <div className="md:hidden space-y-3">
+                    {schedule.schedule.map((item, index) => (
+                        <div key={item.monthNo} className={`p-4 rounded-xl border ${index === schedule.schedule.length - 1 ? 'bg-green-50 border-green-100' : 'bg-slate-50 border-slate-100'
+                            }`}>
+                            <div className="flex justify-between items-start mb-2">
+                                <div>
+                                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Month {item.monthNo}</span>
+                                    <div className="font-bold text-slate-700 text-sm">{formatDate(item.date)}</div>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Balance</span>
+                                    <div className="font-black text-purple-600 text-sm">{formatCurrency(item.remainingBalance)}</div>
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-lg p-3 border border-slate-100">
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-xs font-bold text-slate-500">Total Payment</span>
+                                    <span className="text-sm font-black text-slate-900">{formatCurrency(item.totalPayment)}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-[10px] text-slate-400">
+                                    <span>Prin: <span className="font-bold text-cyan-600">{formatCurrency(item.principalPayment)}</span></span>
+                                    <span>Int: <span className="font-bold text-orange-600">{formatCurrency(item.interestPayment)}</span></span>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+
+                    {/* Mobile Totals Card */}
+                    <div className="bg-slate-800 text-white p-4 rounded-xl shadow-lg mt-4">
+                        <h4 className="text-xs font-black uppercase tracking-widest mb-3 opacity-90">Schedule Totals</h4>
+                        <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                                <span className="text-slate-300">Total Principal</span>
+                                <span className="font-bold text-cyan-400">{formatCurrency(schedule.schedule.reduce((sum, item) => sum + item.principalPayment, 0))}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-slate-300">Total Interest</span>
+                                <span className="font-bold text-orange-400">{formatCurrency(schedule.summary.totalInterest)}</span>
+                            </div>
+                            <div className="pt-2 mt-2 border-t border-slate-700 flex justify-between text-base">
+                                <span className="font-black">Total Payable</span>
+                                <span className="font-black">{formatCurrency(schedule.summary.totalPayable)}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Desktop: Standard Table */}
+                <div className="hidden md:block bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead>
                                 <tr className="bg-slate-50 border-b border-slate-200">
-                                    <th className="px-4 py-3 text-left text-xs font-black text-slate-600 uppercase tracking-wider">Month</th>
-                                    <th className="px-4 py-3 text-left text-xs font-black text-slate-600 uppercase tracking-wider">Date</th>
-                                    <th className="px-4 py-3 text-right text-xs font-black text-slate-600 uppercase tracking-wider">Principal</th>
-                                    <th className="px-4 py-3 text-right text-xs font-black text-slate-600 uppercase tracking-wider">Interest</th>
-                                    <th className="px-4 py-3 text-right text-xs font-black text-slate-600 uppercase tracking-wider">Total Payment</th>
-                                    <th className="px-4 py-3 text-right text-xs font-black text-slate-600 uppercase tracking-wider">Balance</th>
+                                    <th className="px-4 py-3 text-left text-xs font-black text-slate-600 uppercase tracking-wider whitespace-nowrap">Month</th>
+                                    <th className="px-4 py-3 text-left text-xs font-black text-slate-600 uppercase tracking-wider whitespace-nowrap">Date</th>
+                                    <th className="px-4 py-3 text-right text-xs font-black text-slate-600 uppercase tracking-wider whitespace-nowrap">Principal</th>
+                                    <th className="px-4 py-3 text-right text-xs font-black text-slate-600 uppercase tracking-wider whitespace-nowrap">Interest</th>
+                                    <th className="px-4 py-3 text-right text-xs font-black text-slate-600 uppercase tracking-wider whitespace-nowrap">Total Payment</th>
+                                    <th className="px-4 py-3 text-right text-xs font-black text-slate-600 uppercase tracking-wider whitespace-nowrap">Balance</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -131,17 +182,17 @@ export function LoanScheduleView({ loanId }: { loanId: string }) {
                                             }`}
                                     >
                                         <td className="px-4 py-3 text-sm font-bold text-slate-900">{item.monthNo}</td>
-                                        <td className="px-4 py-3 text-sm text-slate-600">{formatDate(item.date)}</td>
-                                        <td className="px-4 py-3 text-sm text-right font-bold text-cyan-600">
+                                        <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">{formatDate(item.date)}</td>
+                                        <td className="px-4 py-3 text-sm text-right font-bold text-cyan-600 whitespace-nowrap">
                                             {formatCurrency(item.principalPayment)}
                                         </td>
-                                        <td className="px-4 py-3 text-sm text-right font-bold text-orange-600">
+                                        <td className="px-4 py-3 text-sm text-right font-bold text-orange-600 whitespace-nowrap">
                                             {formatCurrency(item.interestPayment)}
                                         </td>
-                                        <td className="px-4 py-3 text-sm text-right font-black text-slate-900">
+                                        <td className="px-4 py-3 text-sm text-right font-black text-slate-900 whitespace-nowrap">
                                             {formatCurrency(item.totalPayment)}
                                         </td>
-                                        <td className="px-4 py-3 text-sm text-right font-bold text-purple-600">
+                                        <td className="px-4 py-3 text-sm text-right font-bold text-purple-600 whitespace-nowrap">
                                             {formatCurrency(item.remainingBalance)}
                                         </td>
                                     </tr>
@@ -150,16 +201,16 @@ export function LoanScheduleView({ loanId }: { loanId: string }) {
                             <tfoot className="bg-slate-100 border-t-2 border-slate-300">
                                 <tr>
                                     <td colSpan={2} className="px-4 py-3 text-sm font-black text-slate-900 uppercase">Totals</td>
-                                    <td className="px-4 py-3 text-sm text-right font-black text-cyan-700">
+                                    <td className="px-4 py-3 text-sm text-right font-black text-cyan-700 whitespace-nowrap">
                                         {formatCurrency(schedule.schedule.reduce((sum, item) => sum + item.principalPayment, 0))}
                                     </td>
-                                    <td className="px-4 py-3 text-sm text-right font-black text-orange-700">
+                                    <td className="px-4 py-3 text-sm text-right font-black text-orange-700 whitespace-nowrap">
                                         {formatCurrency(schedule.summary.totalInterest)}
                                     </td>
-                                    <td className="px-4 py-3 text-sm text-right font-black text-slate-900">
+                                    <td className="px-4 py-3 text-sm text-right font-black text-slate-900 whitespace-nowrap">
                                         {formatCurrency(schedule.summary.totalPayable)}
                                     </td>
-                                    <td className="px-4 py-3 text-sm text-right font-black text-purple-700">
+                                    <td className="px-4 py-3 text-sm text-right font-black text-purple-700 whitespace-nowrap">
                                         KES 0.00
                                     </td>
                                 </tr>

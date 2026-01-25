@@ -122,6 +122,11 @@ export async function addCashDeposit(input: {
     // 0b. Get system mappings
     const mappings = await getSystemMappingsDict()
 
+    const cashAccountCode = mappings.EVENT_CASH_DEPOSIT || mappings.CASH_ON_HAND
+    if (!cashAccountCode) {
+        throw new Error("System Mapping 'EVENT_CASH_DEPOSIT' or 'CASH_ON_HAND' not configured.")
+    }
+
     // Post journal entry via AccountingEngine (it handles its own transaction)
     const journalEntry = await AccountingEngine.postJournalEntry({
         transactionDate: new Date(),
@@ -131,7 +136,7 @@ export async function addCashDeposit(input: {
         notes: input.description,
         lines: [
             {
-                accountCode: mappings.CASH_ON_HAND, // Cash on Hand (DR - increase asset)
+                accountCode: cashAccountCode, // Cash on Hand (DR - increase asset)
                 debitAmount: input.amount,
                 creditAmount: 0,
                 description: 'Cash received'

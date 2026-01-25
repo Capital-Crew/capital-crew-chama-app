@@ -58,6 +58,7 @@ export const authConfig = {
                 token.role = user.role;
                 token.memberId = user.memberId;
                 token.mustChangePassword = user.mustChangePassword;
+                token.permissions = user.permissions;
             }
             return token;
         },
@@ -67,6 +68,7 @@ export const authConfig = {
                 session.user.role = token.role;
                 session.user.memberId = token.memberId;
                 session.user.mustChangePassword = token.mustChangePassword;
+                session.user.permissions = token.permissions;
             }
             return session;
         },

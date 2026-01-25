@@ -6,8 +6,10 @@ import { LoanJourneyTimeline } from './LoanJourneyTimeline'
 import { LoanScheduleView } from './LoanScheduleView'
 import { LoanStatementView } from './LoanStatementView'
 import { LoanAppraisalReport } from './LoanAppraisalReport'
+import { ArrowLeft } from 'lucide-react'
 import { submitLoanApproval, getLoanJourney } from '@/app/loan-approval-actions'
 import { PostLoanButton } from './loans/PostLoanButton';
+import { ApprovalActionPanel } from './approval/ApprovalActionPanel';
 import { toast } from '@/lib/toast';
 
 interface LoanAppraisalCardProps {
@@ -83,12 +85,21 @@ interface LoanData {
             }
         }
     }>
+
+    // Audit History
+    history?: {
+        id: string
+        actorName: string
+        action: string
+        timestamp: string
+        version: number
+    }[]
 }
 
 export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, activeTab: parentActiveTab }: LoanAppraisalCardProps) {
     const [loan, setLoan] = useState<LoanData | null>(null)
     const [loading, setLoading] = useState(true)
-    const [activeTab, setActiveTab] = useState<'appraisal' | 'journey' | 'schedule' | 'statement'>('appraisal')
+    const [activeTab, setActiveTab] = useState<'appraisal' | 'journey' | 'schedule' | 'statement' | 'history'>('appraisal')
     const [approvalNotes, setApprovalNotes] = useState('')
     const [submitting, setSubmitting] = useState(false)
 
@@ -101,9 +112,10 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
     const fetchLoanData = async () => {
         setLoading(true)
         try {
-            const response = await fetch(`/api/loans/${loanId}`)
+            const response = await fetch(`/api/loans/${loanId}`, { cache: 'no-store' })
             const data = await response.json()
             setLoan(data.loan)
+            // If API returns history in loan object, we are good.
         } catch (error) {
             console.error('Failed to fetch loan:', error)
         } finally {
@@ -163,6 +175,11 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
         }
     }
 
+    const handleBack = () => {
+        toast.success("Changes saved. Returning to menu...")
+        onClose()
+    }
+
     if (!isOpen) return null
 
     return (
@@ -180,13 +197,23 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                             <div className="absolute inset-0 bg-white/10 backdrop-blur-sm" />
                             <div className="relative z-10">
                                 <div className="flex items-start justify-between mb-2">
-                                    <div>
-                                        <h2 className="text-xl md:text-3xl font-black uppercase tracking-tight mb-1">
-                                            {loan.loanApplicationNumber}
-                                        </h2>
-                                        <p className="text-white/80 text-xs md:text-sm font-bold">
-                                            {loan.member.name}
-                                        </p>
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            onClick={handleBack}
+                                            className="bg-white/20 hover:bg-white/30 px-3 py-2 rounded-lg backdrop-blur-md transition-all mr-1 flex items-center gap-2"
+                                            title="Save & Return to Loans"
+                                        >
+                                            <ArrowLeft className="w-5 h-5 text-white" />
+                                            <span className="font-bold text-sm">Back</span>
+                                        </button>
+                                        <div>
+                                            <h2 className="text-xl md:text-3xl font-black uppercase tracking-tight mb-1">
+                                                {loan.loanApplicationNumber}
+                                            </h2>
+                                            <p className="text-white/80 text-xs md:text-sm font-bold">
+                                                {loan.member.name}
+                                            </p>
+                                        </div>
                                     </div>
                                     <button
                                         onClick={onClose}
@@ -200,6 +227,16 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                                     <LoanStatusBadge status={loan.status as any} size="sm" />
                                     <div className="text-xs md:text-sm font-bold text-white/90 bg-white/10 px-2 py-1 rounded-lg">
                                         {loan.loanProduct.name}
+                                    </div>
+
+                                    {/* Approval Action Panel */}
+                                    <div className="ml-auto">
+                                        <ApprovalActionPanel
+                                            status={loan.status}
+                                            entityType="LOAN"
+                                            entityId={loan.id}
+                                            canEdit={true}
+                                        />
                                     </div>
                                 </div>
                             </div>
@@ -227,6 +264,11 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                                     active={activeTab === 'statement'}
                                     onClick={() => setActiveTab('statement')}
                                     label="Statement"
+                                />
+                                <TabButton
+                                    active={activeTab === 'history'}
+                                    onClick={() => setActiveTab('history')}
+                                    label="History"
                                 />
                             </div>
                         </div>
@@ -270,7 +312,81 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                                         </div>
                                     </div>
 
-                                    {/* SECTION 2: Deductions Breakdown */}
+                                    {/* SECTION 2: Fee Exemptions */}
+                                    <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+                                        <h3 className="text-sm font-bold text-slate-700 mb-4">Loan Exemptions</h3>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {/* Processing Fee Toggle */}
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm text-slate-600">Exempt Processing Fee</span>
+                                                <button
+                                                    onClick={async () => {
+                                                        if (loan.status !== 'APPLICATION') return
+                                                        setSubmitting(true)
+                                                        const { toggleFeeExemption } = await import('@/app/actions')
+                                                        const isExempted = loan.processingFee === 0
+                                                        await toggleFeeExemption(loan.id, 'processingFee', !isExempted)
+                                                        await fetchLoanData()
+                                                        setSubmitting(false)
+                                                    }}
+                                                    disabled={submitting || loan.status !== 'APPLICATION'}
+                                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${loan.processingFee === 0
+                                                        ? 'bg-cyan-500'
+                                                        : loan.status === 'APPLICATION'
+                                                            ? 'bg-slate-300 hover:bg-slate-400'
+                                                            : 'bg-slate-200 cursor-not-allowed'
+                                                        }`}
+                                                    title={loan.status !== 'APPLICATION' ? 'Only editable in APPLICATION stage' : ''}
+                                                >
+                                                    <span
+                                                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${loan.processingFee === 0 ? 'translate-x-6' : 'translate-x-1'
+                                                            }`}
+                                                    />
+                                                </button>
+                                            </div>
+
+                                            {/* Insurance Fee Toggle */}
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm text-slate-600">Exempt Insurance Fee</span>
+                                                <button
+                                                    onClick={async () => {
+                                                        if (loan.status !== 'APPLICATION') return
+                                                        setSubmitting(true)
+                                                        const { toggleFeeExemption } = await import('@/app/actions')
+                                                        const isExempted = loan.insuranceFee === 0
+                                                        await toggleFeeExemption(loan.id, 'insuranceFee', !isExempted)
+                                                        await fetchLoanData()
+                                                        setSubmitting(false)
+                                                    }}
+                                                    disabled={submitting || loan.status !== 'APPLICATION'}
+                                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${loan.insuranceFee === 0
+                                                        ? 'bg-cyan-500'
+                                                        : loan.status === 'APPLICATION'
+                                                            ? 'bg-slate-300 hover:bg-slate-400'
+                                                            : 'bg-slate-200 cursor-not-allowed'
+                                                        }`}
+                                                    title={loan.status !== 'APPLICATION' ? 'Only editable in APPLICATION stage' : ''}
+                                                >
+                                                    <span
+                                                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${loan.insuranceFee === 0 ? 'translate-x-6' : 'translate-x-1'
+                                                            }`}
+                                                    />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Status Message */}
+                                        {loan.status !== 'APPLICATION' && (
+                                            <div className="mt-4 pt-4 border-t border-slate-200">
+                                                <p className="text-xs text-slate-500">
+                                                    ℹ️ Exemptions can only be modified in APPLICATION stage
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* SECTION 3: Deductions Breakdown */}
                                     <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 shadow-sm relative">
                                         <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                                             <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
@@ -282,11 +398,11 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                                             <div className="grid grid-cols-1 gap-y-3">
                                                 <div className="flex justify-between items-center pb-2 border-b border-slate-200 border-dashed">
                                                     <span className="text-slate-600 font-bold text-xs">Processing Fee</span>
-                                                    <span className="font-black text-red-500 text-xs">- KES {loan.processingFee.toLocaleString()}</span>
+                                                    <span className={`font-black text-xs ${loan.processingFee === 0 ? 'text-slate-300 line-through' : 'text-red-500'}`}>- KES {loan.processingFee.toLocaleString()}</span>
                                                 </div>
                                                 <div className="flex justify-between items-center pb-2 border-b border-slate-200 border-dashed">
                                                     <span className="text-slate-600 font-bold text-xs">Insurance Fee</span>
-                                                    <span className="font-black text-red-500 text-xs">- KES {loan.insuranceFee.toLocaleString()}</span>
+                                                    <span className={`font-black text-xs ${loan.insuranceFee === 0 ? 'text-slate-300 line-through' : 'text-red-500'}`}>- KES {loan.insuranceFee.toLocaleString()}</span>
                                                 </div>
                                                 {loan.shareCapitalDeduction > 0 && (
                                                     <div className="flex justify-between items-center pb-2 border-b border-slate-200 border-dashed">
@@ -330,7 +446,7 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                                         </div>
                                     </div>
 
-                                    {/* SECTION 3: Net To Disburse */}
+                                    {/* SECTION 4: Net To Disburse */}
                                     <div className="bg-gradient-to-br from-purple-600 to-indigo-700 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
                                         <div className="relative z-10">
                                             <p className="text-[10px] font-bold text-purple-200 uppercase tracking-widest mb-1">Net to Disburse</p>
@@ -360,8 +476,41 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                                 <LoanJourneyTimeline events={loan.journeyEvents} />
                             ) : activeTab === 'schedule' ? (
                                 <LoanScheduleView loanId={loan.id} />
-                            ) : (
+                            ) : activeTab === 'statement' ? (
                                 <LoanStatementView loanId={loan.id} />
+                            ) : (
+                                <div className="space-y-6">
+                                    <div className="flex justify-between items-center">
+                                        <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Audit Trail</h3>
+                                        <span className="text-xs text-slate-500 font-bold bg-slate-100 px-2 py-1 rounded">
+                                            v{loan.history ? loan.history[0]?.version : 1}
+                                        </span>
+                                    </div>
+                                    <div className="relative border-l-2 border-slate-200 ml-3 space-y-8 pb-8">
+                                        {loan.history?.map((h, i) => (
+                                            <div key={h.id} className="relative pl-8">
+                                                <div className={`absolute -left-[9px] top-1 w-4 h-4 rounded-full border-2 border-white shadow-sm ${h.action === 'SUBMITTED' ? 'bg-blue-500' :
+                                                    h.action === 'CANCELLED' ? 'bg-orange-500' :
+                                                        h.action === 'VOTED_APPROVE' ? 'bg-green-500' :
+                                                            h.action === 'VOTED_REJECT' ? 'bg-red-500' : 'bg-slate-400'
+                                                    }`} />
+                                                <div className="flex flex-col gap-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs font-black text-slate-700 uppercase">{h.actorName}</span>
+                                                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 font-bold border border-slate-200">{h.action.replace('_', ' ')}</span>
+                                                    </div>
+                                                    <p className="text-xs text-slate-500 font-medium">
+                                                        {new Date(h.timestamp).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                                                    </p>
+                                                    {h.version && <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Version {h.version}</p>}
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {(!loan.history || loan.history.length === 0) && (
+                                            <p className="pl-6 text-sm text-slate-400 italic">No history recorded yet.</p>
+                                        )}
+                                    </div>
+                                </div>
                             )}
                         </div>
 
@@ -405,21 +554,27 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                                             if (!confirm('Are you sure you want to cancel this request? It will be moved to the applications history.')) return;
                                             setSubmitting(true);
                                             try {
-                                                const { cancelLoanApplication } = await import('@/app/loan-approval-actions');
-                                                await cancelLoanApplication(loan.id);
+                                                // Call new cancel API
+                                                const res = await fetch(`/api/loans/${loan.id}/cancel`, { method: 'POST' });
+                                                const json = await res.json();
+                                                if (!res.ok) throw new Error(json.error || 'Failed to cancel');
+
                                                 toast.success('Application cancelled successfully');
                                                 onClose();
+                                                // Optionally redirect or refresh list
+                                                window.location.reload();
                                             } catch (e: any) {
                                                 toast.error(e.message || 'Failed to cancel');
                                             } finally {
                                                 setSubmitting(false);
                                             }
                                         }}
+
                                         disabled={submitting}
-                                        className="text-[10px] font-bold text-slate-400 uppercase hover:text-red-500 transition-colors flex items-center gap-1"
+                                        className="w-full py-3 mt-4 bg-orange-50 border border-orange-200 text-orange-700 font-bold uppercase text-xs rounded-xl hover:bg-orange-100 hover:border-orange-300 transition-all flex items-center justify-center gap-2 shadow-sm "
                                     >
-                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                                        Cancel Approval Request
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        Cancel & Edit Application
                                     </button>
                                 </div>
                             </div>
@@ -461,7 +616,7 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                     </div>
                 )}
             </div>
-        </div>
+        </div >
     )
 }
 

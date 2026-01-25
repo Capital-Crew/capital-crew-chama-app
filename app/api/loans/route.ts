@@ -51,6 +51,17 @@ export async function POST(request: NextRequest) {
             }, { status: 403 })
         }
 
+        // STRICT ELIGIBILITY GUARD (Backend)
+        const { checkLoanEligibility } = await import('@/app/actions/loan-eligibility')
+        const eligibility = await checkLoanEligibility(memberId)
+
+        if (!eligibility.isEligible) {
+            return NextResponse.json({
+                error: 'Eligibility Check Failed',
+                message: eligibility.message
+            }, { status: 400 })
+        }
+
         // Get product
         const product = await prisma.loanProduct.findUnique({ where: { id: loanProductId } })
         if (!product) {
@@ -131,7 +142,7 @@ export async function POST(request: NextRequest) {
                 applicationDate: new Date(),
                 dueDate,
                 interestRate: product.interestRatePerPeriod,
-                status: 'PENDING_APPROVAL',
+                status: 'APPLICATION', // Started as APPLICATION for review
 
                 // Appraisal fields
                 memberSharesAtApplication: appraisal.memberShares,
@@ -159,8 +170,8 @@ export async function POST(request: NextRequest) {
         await prisma.loanJourneyEvent.create({
             data: {
                 loanId: loan.id,
-                eventType: 'APPLICATION_SUBMITTED',
-                description: `Loan application submitted for KES ${requestedAmount.toLocaleString()}`,
+                eventType: 'APPLICATION_SUBMITTED', // Techncially 'DRAFTED' but using SUBMITTED for timeline visibility
+                description: `Loan application started (Draft) for KES ${requestedAmount.toLocaleString()}`,
                 actorId: session.user.id,
                 actorName: user?.name || 'Unknown',
                 metadata: {
@@ -171,15 +182,7 @@ export async function POST(request: NextRequest) {
             }
         })
 
-        // Create notification
-        await prisma.notification.create({
-            data: {
-                memberId,
-                type: 'APPLICATION_RECEIVED',
-                message: `Application ${loanApplicationNumber} received. Net disbursement: KES ${appraisal.netDisbursementAmount.toLocaleString()}`,
-                loanId: loan.id
-            }
-        })
+        // Note: Notifications are deferred until SUBMISSION
 
         return NextResponse.json({
             success: true,
@@ -235,7 +238,7 @@ export async function GET(request: NextRequest) {
         }
 
         if (requiresApproval && canApprove) {
-            where.status = 'PENDING_APPROVAL'
+            where.status = { in: ['PENDING_APPROVAL', 'APPLICATION'] } // Admins see applications too
         }
 
         const loans = await prisma.loan.findMany({
@@ -249,7 +252,10 @@ export async function GET(request: NextRequest) {
                     }
                 }
             },
-            orderBy: { applicationDate: 'desc' }
+            orderBy: [
+                { updatedAt: 'desc' }, // Recently edited drafts first
+                { applicationDate: 'desc' }
+            ]
         })
 
         return NextResponse.json({ loans })

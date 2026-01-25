@@ -5,8 +5,9 @@ import { updateUserRights } from '@/app/actions/user-rights-actions'
 import { toggleMemberApprovalRight } from '@/app/loan-approval-actions'
 import { updateUserPermissions } from '@/app/actions/user-permissions'
 import { UserRole } from '@prisma/client'
-import { Search, Shield, Edit2, AlertCircle, CheckCircle, XCircle, Key, Lock } from 'lucide-react'
+import { Search, Shield, Edit2, AlertCircle, CheckCircle, XCircle, Key, Lock, Wallet, User as UserIcon, AlertTriangle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { assignUsername } from '@/app/actions/user-actions'
 
 // Define Permission Types locally or import if available
 interface UserPermissions {
@@ -39,6 +40,8 @@ const defaultPermissions: UserPermissions = {
 interface User {
     id: string
     name: string
+    contact?: string
+    username?: string | null
     email: string
     role: string
     permissions?: any // Validated via type casting usage
@@ -46,6 +49,10 @@ interface User {
         id: string
         memberNumber: string
         canApproveLoan: boolean
+        wallet?: {
+            id: string
+            accountRef: string
+        }
     }
     image?: string | null
     isActive?: boolean
@@ -67,6 +74,10 @@ export function UserRightsTable({ users: initialUsers }: UserRightsTableProps) {
     // Permission Edit State
     const [permUser, setPermUser] = useState<User | null>(null)
     const [currentPerms, setCurrentPerms] = useState<UserPermissions>(defaultPermissions)
+
+    // Username Assign State
+    const [usernameUser, setUsernameUser] = useState<User | null>(null)
+    const [newUsername, setNewUsername] = useState('')
 
     const [isSaving, setIsSaving] = useState(false)
     const [error, setError] = useState('')
@@ -177,6 +188,46 @@ export function UserRightsTable({ users: initialUsers }: UserRightsTableProps) {
         }
     }
 
+    // --- Username Assignment Handlers ---
+    const handleAssignUsernameClick = (user: User) => {
+        setUsernameUser(user)
+        setNewUsername(user.username || '') // Pre-fill if exists (though will be disabled)
+        setError('')
+    }
+
+    const handleSaveUsername = async () => {
+        if (!usernameUser) return
+        setIsSaving(true)
+        setError('')
+
+        const formData = new FormData()
+        formData.append('userId', usernameUser.id)
+        formData.append('username', newUsername)
+        if (usernameUser.member) {
+            // @ts-ignore
+            formData.append('memberNumber', usernameUser.member.memberNumber)
+        }
+
+        try {
+            const result = await assignUsername(formData)
+            if (result.success) {
+                setUsers(users.map(u => u.id === usernameUser.id ? { ...u, username: newUsername } : u))
+                setSuccessMsg('Username assigned successfully')
+                setTimeout(() => {
+                    setUsernameUser(null)
+                    setSuccessMsg('')
+                }, 1000)
+                router.refresh()
+            } else {
+                setError(result.error || 'Failed to assign username')
+            }
+        } catch (e: any) {
+            setError(e.message || 'An unexpected error occurred')
+        } finally {
+            setIsSaving(false)
+        }
+    }
+
     const getRoleBadgeColor = (role: string) => {
         switch (role) {
             case 'SYSTEM_ADMIN': return 'badge-primary'
@@ -214,6 +265,7 @@ export function UserRightsTable({ users: initialUsers }: UserRightsTableProps) {
                         <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-semibold uppercase text-xs tracking-wider">
                             <th className="py-4 pl-6">User / Member Info</th>
                             <th>Role & Access</th>
+                            <th>Wallet Status</th>
                             <th>Can Approve Loans?</th>
                             <th>Permissions</th>
                             <th className="text-right pr-6">Actions</th>
@@ -235,6 +287,11 @@ export function UserRightsTable({ users: initialUsers }: UserRightsTableProps) {
                                             <div>
                                                 <div className="font-bold text-slate-800">{user.name}</div>
                                                 <div className="text-xs text-slate-500">{user.email}</div>
+                                                {user.username && (
+                                                    <div className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-md w-fit mt-0.5">
+                                                        @{user.username}
+                                                    </div>
+                                                )}
                                                 {user.member && (
                                                     <div className="text-[10px] text-[#00c2e0] font-mono mt-0.5">
                                                         Member #{user.member.memberNumber}
@@ -280,6 +337,13 @@ export function UserRightsTable({ users: initialUsers }: UserRightsTableProps) {
                                                 title="Manage Permissions"
                                             >
                                                 <Key className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                className={`btn btn-ghost btn-xs ${user.username ? 'text-indigo-400' : 'text-slate-500 hover:text-[#00c2e0] hover:bg-cyan-50'}`}
+                                                onClick={() => handleAssignUsernameClick(user)}
+                                                title={user.username ? "View Username" : "Assign Username"}
+                                            >
+                                                <UserIcon className="w-4 h-4" />
                                             </button>
                                             <button
                                                 className="btn btn-ghost btn-xs text-slate-500 hover:text-[#00c2e0] hover:bg-cyan-50"
@@ -381,6 +445,73 @@ export function UserRightsTable({ users: initialUsers }: UserRightsTableProps) {
                     <form method="dialog" className="modal-backdrop">
                         <button onClick={() => setPermUser(null)}>close</button>
                     </form>
+                </dialog>
+            )}
+
+            {/* Username Assignment Modal */}
+            {usernameUser && (
+                <dialog className="modal modal-open">
+                    <div className="modal-box">
+                        <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                            <UserIcon className="w-5 h-5 text-[#00c2e0]" />
+                            Assign Username
+                        </h3>
+
+                        {/* Integrity Guard Viz */}
+                        <div className="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Identity Integrity Check</h4>
+                            <div className="space-y-2">
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-slate-600">Member Record found</span>
+                                    {usernameUser.member ? <CheckCircle className="w-4 h-4 text-emerald-500" /> : <XCircle className="w-4 h-4 text-red-500" />}
+                                </div>
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-slate-600">Wallet Linked</span>
+                                    {usernameUser.member?.wallet ? <CheckCircle className="w-4 h-4 text-emerald-500" /> : <XCircle className="w-4 h-4 text-red-500" />}
+                                </div>
+                                {usernameUser.member?.wallet && (
+                                    <div className="mt-2 text-xs font-mono text-emerald-600 bg-emerald-50 p-1.5 rounded text-center border border-emerald-100">
+                                        Wallet ID: {usernameUser.member.wallet.accountRef}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="form-control w-full">
+                                <label className="label">
+                                    <span className="label-text font-medium">Username</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    className="input input-bordered w-full"
+                                    value={newUsername}
+                                    onChange={(e) => setNewUsername(e.target.value)}
+                                    placeholder="Enter username"
+                                    disabled={!!usernameUser.username} // Immutable if set
+                                />
+                                {usernameUser.username && (
+                                    <p className="text-[10px] text-amber-600 font-bold mt-1">
+                                        Username is permanent and cannot be changed.
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                        {error && <div className="alert alert-error text-sm py-2"><span>{error}</span></div>}
+                        {successMsg && <div className="alert alert-success text-sm py-2 text-white"><span>{successMsg}</span></div>}
+
+                        <div className="modal-action">
+                            <button className="btn btn-ghost" onClick={() => setUsernameUser(null)} disabled={isSaving}>Cancel</button>
+                            <button
+                                className="btn btn-primary bg-[#00c2e0] border-none text-white"
+                                onClick={handleSaveUsername}
+                                disabled={isSaving || !usernameUser.member?.wallet || !!usernameUser.username}
+                                title={!usernameUser.member?.wallet ? "Cannot assign username: Missing Wallet" : (usernameUser.username ? "Username already set" : "")}
+                            >
+                                {isSaving ? 'Saving...' : 'Save Username'}
+                            </button>
+                        </div>
+                    </div>
                 </dialog>
             )}
         </div>

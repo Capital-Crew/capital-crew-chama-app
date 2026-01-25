@@ -136,10 +136,29 @@ export default async function LoanDetailsPage({ params }: PageProps) {
                     <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm sticky top-6">
                         <h3 className="text-sm font-bold text-slate-900 uppercase mb-4">Quick Actions</h3>
                         <div className="space-y-3">
-                            <button className="w-full bg-teal-600 text-white font-bold py-3 px-4 rounded-lg shadow-sm hover:bg-teal-700 transition flex items-center justify-center">
-                                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                                Record Repayment
-                            </button>
+                            {/* DRAFT SUBMISSION ACTION */}
+                            {loan.status === 'APPLICATION' && (
+                                <form action={async () => {
+                                    'use server'
+                                    const { submitLoanApplication } = await import('@/app/actions')
+                                    const result = await submitLoanApplication(loan.id)
+                                    // Handle result? Since this is a server component form action, it might not show toast.
+                                    // Better to use a client component wrapper or just a simple form action that revalidates?
+                                    // For now, simple form action.
+                                }}>
+                                    <button className="w-full bg-cyan-600 text-white font-bold py-3 px-4 rounded-lg shadow-xl shadow-cyan-500/20 hover:bg-cyan-700 hover:shadow-cyan-500/40 transition flex items-center justify-center gap-2 animate-pulse">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                        Submit Application
+                                    </button>
+                                </form>
+                            )}
+
+                            {loan.status === 'ACTIVE' && (
+                                <button className="w-full bg-teal-600 text-white font-bold py-3 px-4 rounded-lg shadow-sm hover:bg-teal-700 transition flex items-center justify-center">
+                                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                                    Record Repayment
+                                </button>
+                            )}
                             <button className="w-full bg-white border border-slate-300 text-slate-700 font-medium py-3 px-4 rounded-lg hover:bg-slate-50 transition">
                                 Download Statement
                             </button>

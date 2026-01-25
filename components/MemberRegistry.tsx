@@ -10,6 +10,8 @@ import { MemberDetailModal } from './member/MemberDetailModal';
 import { getMemberFullDetail } from '@/app/actions/member-dashboard-actions';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fadeIn, scaleIn } from '@/lib/animation-variants';
+import { getNextMemberNumber } from '@/app/actions/member-helper';
+import { Wallet, CheckCircle } from 'lucide-react';
 
 export function MemberRegistry({ members, userRole }: { members: Member[], userRole?: string }) {
     const [isOpen, setIsOpen] = useState(false);
@@ -19,6 +21,17 @@ export function MemberRegistry({ members, userRole }: { members: Member[], userR
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const [loadingDetail, setLoadingDetail] = useState(false);
     const [selectedMemberDetail, setSelectedMemberDetail] = useState<any>(null);
+
+    // Live Prediction State
+    const [nextMemberNumber, setNextMemberNumber] = useState<number | null>(null);
+
+    React.useEffect(() => {
+        if (isOpen) {
+            getNextMemberNumber().then(res => {
+                if (res.success && res.nextNumber) setNextMemberNumber(res.nextNumber);
+            });
+        }
+    }, [isOpen]);
 
     const canEnroll = userRole === 'CHAIRPERSON';
 
@@ -111,6 +124,26 @@ export function MemberRegistry({ members, userRole }: { members: Member[], userR
                                     setError(e.message || 'Failed to create account');
                                 }
                             }} className="space-y-4">
+                                {nextMemberNumber && (
+                                    <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl mb-4">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <div className="p-1 bg-emerald-100 rounded-full"><CheckCircle className="w-4 h-4 text-emerald-600" /></div>
+                                            <span className="text-xs font-black text-emerald-700 uppercase tracking-wide">Live Identity Verification</span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="text-[10px] uppercase font-bold text-emerald-600">Member Number</label>
+                                                <div className="text-lg font-black text-emerald-800">{String(nextMemberNumber).padStart(6, '0')}</div>
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] uppercase font-bold text-emerald-600 flex items-center gap-1">
+                                                    Assigned Wallet ID
+                                                </label>
+                                                <div className="text-lg font-black text-emerald-800 font-mono">WAL-{String(nextMemberNumber).padStart(6, '0')}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                                 <div>
                                     <label className="block text-[10px] font-black text-slate-400 uppercase mb-1">Full Name</label>
                                     <input name="name" required className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-black" />
@@ -146,6 +179,6 @@ export function MemberRegistry({ members, userRole }: { members: Member[], userR
                     </motion.div>
                 )}
             </AnimatePresence>
-        </div>
+        </div >
     );
 }

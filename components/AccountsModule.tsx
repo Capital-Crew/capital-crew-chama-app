@@ -153,7 +153,7 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
             } else if (activeTab === 'config') {
                 const [mappingsData, accountsData] = await Promise.all([
                     getSystemMappings(),
-                    getStrictGLAccounts()
+                    getAllAccounts() // Use ALL accounts so we can map new ones
                 ])
                 setMappings(mappingsData)
                 setAccounts(accountsData)

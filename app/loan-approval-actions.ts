@@ -29,6 +29,71 @@ export async function submitLoanApproval(loanId: string, decision: 'APPROVED' | 
     // @ts-ignore
     const approverId = session.user.memberId
 
+    // PERMISSION CHECK:
+    // User must have 'APPROVE_LOANS' permission via Role OR Granular Permissions
+    const userRole = session.user.role
+    // @ts-ignore
+    const userPermissions = session.user.permissions
+
+    const roleHasPermission = ['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER'].includes(userRole) // Quick check aligned with approval-actions
+
+    let hasGranularPermission = false
+    if (userPermissions) {
+        if (Array.isArray(userPermissions)) {
+            hasGranularPermission = userPermissions.includes('APPROVE_LOANS') || userPermissions.includes('ALL')
+        } else if (typeof userPermissions === 'object') {
+            // @ts-ignore
+            hasGranularPermission =
+                userPermissions['APPROVE_LOANS'] === true ||
+                userPermissions['canApprove'] === true || // Added mapped key
+                userPermissions['ALL'] === true
+        }
+    }
+
+    if (!roleHasPermission && !hasGranularPermission) {
+        // CHECK FOR DELEGATED AUTHORITY
+        // If user lacks direct permission, check if they have a valid delegation from an authorized approver
+        const activeDelegations = await prisma.approvalDelegation.findMany({
+            where: {
+                toUserId: session.user.id,
+                revokedAt: null,
+                OR: [
+                    { expiresAt: null },
+                    { expiresAt: { gt: new Date() } }
+                ],
+                AND: [
+                    {
+                        OR: [
+                            { entityType: null },
+                            { entityType: 'LOAN' }
+                        ]
+                    },
+                    {
+                        OR: [
+                            { entityId: null },
+                            { entityId: loanId }
+                        ]
+                    }
+                ]
+            },
+            include: {
+                fromUser: true
+            }
+        })
+
+        // Check if any of the delegators have permission
+        const hasValidDelegation = activeDelegations.some(d => {
+            const delegatorRole = d.fromUser.role
+            // Check if delegator is an authorized approver
+            return ['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER'].includes(delegatorRole)
+            // Note: We could also check granular permissions of delegator here if needed
+        })
+
+        if (!hasValidDelegation) {
+            throw new Error("Unauthorized: You do not have permission (direct or delegated) to approve loans")
+        }
+    }
+
     // 1. Transaction to record vote and check quorum
     await prisma.$transaction(async (tx) => {
         // MAKER-CHECKER VALIDATION: Prevent self-approval

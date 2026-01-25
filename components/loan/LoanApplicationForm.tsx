@@ -38,6 +38,10 @@ export function LoanApplicationForm({
     const [calculatingQualification, setCalculatingQualification] = useState(false);
     const [calcError, setCalcError] = useState<string | null>(null);
 
+    // Fee exemption state
+    const [exemptProcessingFee, setExemptProcessingFee] = useState(false);
+    const [exemptInsuranceFee, setExemptInsuranceFee] = useState(false);
+
     const { register, watch, setValue, reset } = useForm({
         defaultValues: {
             memberId: currentMemberId || '',
@@ -80,6 +84,9 @@ export function LoanApplicationForm({
         }
     }, [debouncedMemberId]);
 
+    // Eligibility state
+    const [eligibility, setEligibility] = useState<{ isEligible: boolean; message?: string } | null>(null);
+
     // Calculate qualification
     useEffect(() => {
         if (debouncedMemberId) {
@@ -93,15 +100,31 @@ export function LoanApplicationForm({
                     setCalcError(error.message || 'Failed to calculate fees. Please try again.');
                 })
                 .finally(() => setCalculatingQualification(false));
+
+            // NEW: Check Eligibility
+            import('@/app/actions/loan-eligibility').then(({ checkLoanEligibility }) => {
+                checkLoanEligibility(debouncedMemberId).then(result => {
+                    setEligibility(result);
+                    if (!result.isEligible) {
+                        toast.error(result.message || 'You are not eligible for a new loan.');
+                    }
+                });
+            });
+
         } else {
             setQualification(null);
             setCalcError(null);
+            setEligibility(null);
         }
     }, [debouncedMemberId, selectedLoansToOffset, debouncedAmount]);
 
     return (
         <form action={async (formData) => {
-            if (isSubmitting) return;
+            // Prevent duplicate submissions
+            if (isSubmitting) {
+                console.log('Submission already in progress, ignoring...');
+                return;
+            }
 
             setIsSubmitting(true);
             toast.loading('Processing loan application...');
@@ -117,10 +140,14 @@ export function LoanApplicationForm({
                     toast.error(res.error);
                     setIsSubmitting(false);
                 } else {
-                    toast.success('Loan application submitted successfully!');
+                    toast.success('Application draft created! Please review and submit.');
                     reset();
                     onSuccess();
-                    window.location.reload();
+                    // Redirect to loan details for final submission
+                    // Use a hard reload/redirect to the loan page if we have the ID,
+                    // Since we don't have the ID here yet, we'll reload which goes to the list?
+                    // Ideally, we redirect to `/loans`.
+                    window.location.href = '/loans';
                 }
             } catch (err: any) {
                 toast.error(err.message || 'Failed to submit application');
@@ -129,6 +156,21 @@ export function LoanApplicationForm({
         }} className="space-y-8 pb-8">
             {/* Hidden Failsafe Input - React Hook Form */}
             <input type="hidden" {...register('memberId')} />
+
+            {/* ERROR ALERT */}
+            {eligibility && !eligibility.isEligible && (
+                <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-xl shadow-sm mb-6 animate-pulse">
+                    <div className="flex items-start gap-3">
+                        <div className="text-2xl">🚫</div>
+                        <div>
+                            <h3 className="text-red-800 font-black text-sm uppercase mb-1">Application Blocked</h3>
+                            <p className="text-red-700 text-xs font-medium leading-relaxed">
+                                {eligibility.message}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* 1. Applicant Identity & Snapshot */}
             <div className="space-y-6">
@@ -216,7 +258,89 @@ export function LoanApplicationForm({
                 <input key={loanId} type="hidden" name="loansToOffset" value={loanId} />
             ))}
 
-            {/* 4. Qualification Logic & Receipt */}
+            {/* 4. Loan Exemptions - Always Visible */}
+            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+                <h3 className="text-sm font-bold text-slate-700 mb-4">Loan Exemptions</h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Processing Fee Toggle */}
+                    <div className="flex items-center justify-between">
+                        <span className="text-sm text-slate-600">Exempt Processing Fee</span>
+                        <button
+                            type="button"
+                            onClick={() => setExemptProcessingFee(!exemptProcessingFee)}
+                            disabled={!qualification}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${!qualification
+                                ? 'bg-slate-200 cursor-not-allowed'
+                                : exemptProcessingFee
+                                    ? 'bg-cyan-500'
+                                    : 'bg-slate-300 hover:bg-slate-400'
+                                }`}
+                            title={!qualification ? 'Enter loan details to enable exemptions' : ''}
+                        >
+                            <span
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${exemptProcessingFee ? 'translate-x-6' : 'translate-x-1'
+                                    }`}
+                            />
+                        </button>
+                    </div>
+
+                    {/* Insurance Fee Toggle */}
+                    <div className="flex items-center justify-between">
+                        <span className="text-sm text-slate-600">Exempt Insurance Fee</span>
+                        <button
+                            type="button"
+                            onClick={() => setExemptInsuranceFee(!exemptInsuranceFee)}
+                            disabled={!qualification}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${!qualification
+                                ? 'bg-slate-200 cursor-not-allowed'
+                                : exemptInsuranceFee
+                                    ? 'bg-cyan-500'
+                                    : 'bg-slate-300 hover:bg-slate-400'
+                                }`}
+                            title={!qualification ? 'Enter loan details to enable exemptions' : ''}
+                        >
+                            <span
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${exemptInsuranceFee ? 'translate-x-6' : 'translate-x-1'
+                                    }`}
+                            />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Fee Summary */}
+                {qualification && (
+                    <div className="mt-4 pt-4 border-t border-slate-200 grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <span className="text-slate-500">Processing Fee:</span>
+                            <span className={`ml-2 font-bold ${exemptProcessingFee ? 'text-green-600' : 'text-slate-700'}`}>
+                                {exemptProcessingFee ? 'KES 0' : `KES ${qualification.processingFee.toLocaleString()}`}
+                            </span>
+                        </div>
+                        <div>
+                            <span className="text-slate-500">Insurance Fee:</span>
+                            <span className={`ml-2 font-bold ${exemptInsuranceFee ? 'text-green-600' : 'text-slate-700'}`}>
+                                {exemptInsuranceFee ? 'KES 0' : `KES ${qualification.insuranceFee.toLocaleString()}`}
+                            </span>
+                        </div>
+                    </div>
+                )}
+
+                {/* Info Message */}
+                {!qualification && (
+                    <div className="mt-4 pt-4 border-t border-slate-200">
+                        <p className="text-xs text-slate-500">
+                            ℹ️ Enter loan details above to enable fee exemptions
+                        </p>
+                    </div>
+                )}
+
+                {/* Hidden inputs for exemptions */}
+                <input type="hidden" name="exemptProcessingFee" value={exemptProcessingFee ? 'true' : 'false'} />
+                <input type="hidden" name="exemptInsuranceFee" value={exemptInsuranceFee ? 'true' : 'false'} />
+            </div>
+
+            {/* 5. Qualification Logic & Receipt */}
             <div className="space-y-6 relative">
                 {calculatingQualification && (
                     <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center backdrop-blur-[2px] rounded-2xl transition-all">
@@ -235,7 +359,7 @@ export function LoanApplicationForm({
                             <div className="bg-white border text-left border-slate-200 p-6 rounded-2xl shadow-sm relative overflow-hidden group">
                                 <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Applied Amount</p>
                                 <div className="text-4xl font-black text-slate-900 mb-1">
-                                    KES {(watchedAmount ? parseFloat(watchedAmount) : qualification.grossQualifyingAmount).toLocaleString()}
+                                    KES {(watchedAmount && parseFloat(watchedAmount) > 0 ? parseFloat(watchedAmount) : 0).toLocaleString()}
                                 </div>
                                 <div className="flex items-center gap-2 mt-2">
                                     <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase">
@@ -248,10 +372,16 @@ export function LoanApplicationForm({
                             <div className="bg-purple-50 text-left border border-purple-100 p-6 rounded-2xl shadow-sm relative overflow-hidden">
                                 <p className="text-xs font-bold text-purple-600 uppercase tracking-wider mb-2">Net To Disburse</p>
                                 <div className="text-4xl font-black text-purple-700 mb-1">
-                                    KES {qualification.netDisbursementAmount.toLocaleString()}
+                                    KES {(
+                                        (watchedAmount && parseFloat(watchedAmount) > 0 ? parseFloat(watchedAmount) : 0) -
+                                        (exemptProcessingFee ? 0 : qualification.processingFee) -
+                                        (exemptInsuranceFee ? 0 : qualification.insuranceFee) -
+                                        (qualification.shareCapitalDeduction || 0) -
+                                        (qualification.topUpFee || 0)
+                                    ).toLocaleString()}
                                 </div>
                                 <p className="text-xs font-bold text-purple-600/70 mt-2">
-                                    After {qualification.totalDeductions > 0 ? `deducting KES ${qualification.totalDeductions.toLocaleString()}` : 'no deductions'}
+                                    After deducting fees {(exemptProcessingFee || exemptInsuranceFee) && '(some fees exempted)'}
                                 </p>
                             </div>
                         </div>
@@ -266,13 +396,13 @@ export function LoanApplicationForm({
                             <div className="space-y-3 text-sm">
                                 <div className="flex justify-between items-center py-2 border-b border-slate-200/50 border-dashed">
                                     <span className="text-slate-600 font-bold italic">Processing Fee</span>
-                                    <span className="font-black text-red-500 text-xs text-right">
+                                    <span className={`font-black text-xs text-right ${exemptProcessingFee ? 'text-slate-300 line-through' : 'text-red-500'}`}>
                                         - KES {qualification.processingFee.toLocaleString()}
                                     </span>
                                 </div>
                                 <div className="flex justify-between items-center py-2 border-b border-slate-200/50 border-dashed">
                                     <span className="text-slate-600 font-bold italic">Insurance Fee</span>
-                                    <span className="font-black text-red-500 text-xs text-right">
+                                    <span className={`font-black text-xs text-right ${exemptInsuranceFee ? 'text-slate-300 line-through' : 'text-red-500'}`}>
                                         - KES {qualification.insuranceFee.toLocaleString()}
                                     </span>
                                 </div>
@@ -316,12 +446,17 @@ export function LoanApplicationForm({
                                 <div className="pt-4 flex justify-between items-center mt-2 border-t border-slate-200">
                                     <span className="font-black text-slate-400 text-[10px] uppercase tracking-widest">Total Applied Deductions</span>
                                     <div className="text-right">
-                                        <span className="font-black text-slate-900">KES {qualification.totalDeductions.toLocaleString()}</span>
+                                        <span className="font-black text-slate-900">KES {(
+                                            (exemptProcessingFee ? 0 : qualification.processingFee) +
+                                            (exemptInsuranceFee ? 0 : qualification.insuranceFee) +
+                                            (qualification.shareCapitalDeduction || 0) +
+                                            (qualification.topUpFee || 0)
+                                        ).toLocaleString()}</span>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Blocking Validation Overlay */}
+                            {/* Blocking Validation Overlay - REMOVED to allow Draft Creation
                             {qualification.netDisbursementAmount <= 0 && (
                                 <div className="absolute inset-0 bg-white/50 backdrop-blur-[2px] flex items-center justify-center rounded-2xl z-10 p-6">
                                     <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 text-xs text-red-700 font-black leading-relaxed shadow-lg max-w-sm text-center">
@@ -330,6 +465,7 @@ export function LoanApplicationForm({
                                     </div>
                                 </div>
                             )}
+                            */}
                         </div>
                     </div>
                 ) : (
@@ -378,7 +514,7 @@ export function LoanApplicationForm({
             <div className="flex gap-3 pt-4">
                 <button
                     type="submit"
-                    disabled={isSubmitting || !qualification || qualification.netDisbursementAmount <= 0}
+                    disabled={isSubmitting}
                     className="flex-1 bg-cyan-500 text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg hover:bg-cyan-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all"
                 >
                     {isSubmitting ? (

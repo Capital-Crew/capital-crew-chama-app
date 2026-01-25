@@ -1,4 +1,5 @@
 
+import { serializeMember, serializeMembers } from "@/lib/serializers"
 import prisma from "@/lib/prisma"
 import { LoanManagement } from "@/components/LoanManagement"
 
@@ -30,11 +31,8 @@ export default async function LoansPage() {
     // Serialize loans to convert Decimal to number for Client Component
     const serializedLoans = loans.map((loan: any) => ({
         ...loan,
-        // Serialize nested member object
-        member: loan.member ? {
-            ...loan.member,
-            shareContributions: loan.member.shareContributions ? Number(loan.member.shareContributions) : 0
-        } : loan.member,
+        // Serialize nested member object using our new helper
+        member: loan.member ? serializeMember(loan.member) : loan.member,
         // Serialize loan Decimal fields
         current_balance: Number(loan.current_balance),
         outstandingBalance: loan.outstandingBalance ? Number(loan.outstandingBalance) : 0,
@@ -51,10 +49,7 @@ export default async function LoansPage() {
     }));
 
     // Serialize members to convert Decimal fields
-    const serializedMembers = members.map((member: any) => ({
-        ...member,
-        shareContributions: member.shareContributions ? Number(member.shareContributions) : 0
-    }));
+    const serializedMembers = serializeMembers(members);
 
     // Serialize products to convert Decimal fields
     const serializedProducts = products.map((product: any) => ({

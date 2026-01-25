@@ -41,6 +41,9 @@ export async function GET(
                             }
                         }
                     }
+                },
+                history: {
+                    orderBy: { timestamp: 'desc' }
                 }
             }
         })
@@ -57,7 +60,14 @@ export async function GET(
 
         const isAdmin = user?.role && ['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER', 'SECRETARY'].includes(user.role)
 
-        if (!isAdmin && user?.member?.id !== loan.memberId) {
+        // Granular Checks
+        const perms = (user?.permissions as any) || {}
+        const hasGranularAccess =
+            perms['canViewAll'] === true ||
+            perms['canApprove'] === true ||
+            perms['APPROVE_LOANS'] === true // Safety fallback
+
+        if (!isAdmin && !hasGranularAccess && user?.member?.id !== loan.memberId) {
             return NextResponse.json({
                 error: 'You can only view your own loans'
             }, { status: 403 })

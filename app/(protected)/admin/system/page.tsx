@@ -50,19 +50,22 @@ export default async function SystemAdminPage() {
             select: {
                 id: true,
                 name: true,
+                username: true,
                 email: true,
                 role: true,
                 permissions: true,
                 member: {
                     select: {
-                        id: true,
                         memberNumber: true,
-                        canApproveLoan: true
+                        canApproveLoan: true,
+                        wallet: {
+                            select: { id: true, accountRef: true }
+                        }
                     }
                 }
             },
             orderBy: { name: 'asc' },
-            where: { email: { not: 'admin@capitalcrew.co.ke' } } // Optional safety: Don't let them mess up the root seed admin easily? Or just fetch all.
+            where: { email: { not: 'admin@capitalcrew.co.ke' } }
         })
     ])
 

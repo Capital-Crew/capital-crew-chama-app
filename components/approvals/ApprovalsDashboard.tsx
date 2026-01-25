@@ -29,14 +29,18 @@ const TYPE_COLORS = {
     'OTHER': 'from-slate-400 to-slate-600'
 }
 
+export interface ExtendedApprovalRequest extends ApprovalRequest {
+    canApprove?: boolean
+}
+
 interface ApprovalsDashboardProps {
-    requests: ApprovalRequest[]
+    requests: ExtendedApprovalRequest[]
     currentUserId: string
 }
 
 export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboardProps) {
     const router = useRouter()
-    const [selectedRequest, setSelectedRequest] = useState<ApprovalRequest | null>(null)
+    const [selectedRequest, setSelectedRequest] = useState<ExtendedApprovalRequest | null>(null)
     const [filter, setFilter] = useState('ALL')
     const [isPending, startTransition] = useTransition()
     const [processingId, setProcessingId] = useState<string | null>(null)
@@ -50,9 +54,15 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
         router.refresh()
     }
 
-    const handleQuickAction = async (e: React.MouseEvent, req: ApprovalRequest, decision: 'APPROVED' | 'REJECTED') => {
+    const handleQuickAction = async (e: React.MouseEvent, req: ExtendedApprovalRequest, decision: 'APPROVED' | 'REJECTED') => {
         e.stopPropagation() // Prevent card click
         if (processingId) return
+
+        // Final safety check
+        if (!req.canApprove) {
+            toast.error("You do not have permission to action this request")
+            return
+        }
 
         setProcessingId(req.id)
 
@@ -111,6 +121,7 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
                         const Icon = TYPE_ICONS[req.type as keyof typeof TYPE_ICONS] || FileText
                         const gradient = TYPE_COLORS[req.type as keyof typeof TYPE_COLORS] || 'from-slate-400 to-slate-600'
                         const isProcessing = processingId === req.id
+                        const canAction = req.canApprove
 
                         return (
                             <div
@@ -163,22 +174,30 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
 
                                 {/* Actions Footer */}
                                 <div className="p-3 bg-slate-50/80 border-t border-slate-100 flex gap-2">
-                                    <button
-                                        onClick={(e) => handleQuickAction(e, req, 'REJECTED')}
-                                        disabled={!!processingId}
-                                        className="flex-1 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-600 text-xs font-bold uppercase tracking-wider hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                                    >
-                                        {isProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <X className="w-3.5 h-3.5" />}
-                                        Reject
-                                    </button>
-                                    <button
-                                        onClick={(e) => handleQuickAction(e, req, 'APPROVED')}
-                                        disabled={!!processingId}
-                                        className="flex-1 py-2.5 rounded-xl bg-[#0A192F] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#00c2e0] transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-slate-200"
-                                    >
-                                        {isProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                                        Approve
-                                    </button>
+                                    {canAction ? (
+                                        <>
+                                            <button
+                                                onClick={(e) => handleQuickAction(e, req, 'REJECTED')}
+                                                disabled={!!processingId}
+                                                className="flex-1 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-600 text-xs font-bold uppercase tracking-wider hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                                            >
+                                                {isProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <X className="w-3.5 h-3.5" />}
+                                                Reject
+                                            </button>
+                                            <button
+                                                onClick={(e) => handleQuickAction(e, req, 'APPROVED')}
+                                                disabled={!!processingId}
+                                                className="flex-1 py-2.5 rounded-xl bg-[#0A192F] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#00c2e0] transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-slate-200"
+                                            >
+                                                {isProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                                                Approve
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <div className="w-full py-2.5 text-center text-xs font-bold text-slate-400 uppercase tracking-wider bg-slate-100/50 rounded-xl border border-slate-200 border-dashed">
+                                            Permission Required
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )
@@ -231,18 +250,26 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
                         </div>
 
                         <div className="flex gap-3 mt-8">
-                            <button
-                                onClick={(e) => { handleQuickAction(e as any, selectedRequest, 'REJECTED'); handleClose(); }}
-                                className="flex-1 py-3 rounded-xl bg-white border border-slate-200 text-slate-600 text-xs font-bold uppercase tracking-wider hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
-                            >
-                                Reject
-                            </button>
-                            <button
-                                onClick={(e) => { handleQuickAction(e as any, selectedRequest, 'APPROVED'); handleClose(); }}
-                                className="flex-1 py-3 rounded-xl bg-[#00c2e0] text-white text-xs font-black uppercase tracking-wider hover:bg-[#00a0b8] transition-colors shadow-lg shadow-[#00c2e0]/20"
-                            >
-                                Approve
-                            </button>
+                            {selectedRequest.canApprove ? (
+                                <>
+                                    <button
+                                        onClick={(e) => { handleQuickAction(e as any, selectedRequest, 'REJECTED'); handleClose(); }}
+                                        className="flex-1 py-3 rounded-xl bg-white border border-slate-200 text-slate-600 text-xs font-bold uppercase tracking-wider hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
+                                    >
+                                        Reject
+                                    </button>
+                                    <button
+                                        onClick={(e) => { handleQuickAction(e as any, selectedRequest, 'APPROVED'); handleClose(); }}
+                                        className="flex-1 py-3 rounded-xl bg-[#00c2e0] text-white text-xs font-black uppercase tracking-wider hover:bg-[#00a0b8] transition-colors shadow-lg shadow-[#00c2e0]/20"
+                                    >
+                                        Approve
+                                    </button>
+                                </>
+                            ) : (
+                                <div className="flex-1 py-3 rounded-xl bg-slate-100 text-slate-400 text-xs font-bold uppercase tracking-wider text-center border border-slate-200">
+                                    Action Restricted
+                                </div>
+                            )}
                         </div>
                     </div>
                 </DivWrapper>

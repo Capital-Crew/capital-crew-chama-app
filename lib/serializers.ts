@@ -1,4 +1,25 @@
-import { Loan } from '@prisma/client'
+import { Loan, Member } from '@prisma/client'
+
+/**
+ * Serializes a member object by converting all Prisma Decimal fields to plain JavaScript numbers.
+ */
+export function serializeMember<T extends Partial<Member>>(member: T): T {
+    return {
+        ...member,
+        shareContributions: member.shareContributions ? Number(member.shareContributions) : 0,
+        contributionArrears: member.contributionArrears ? Number(member.contributionArrears) : 0,
+        penaltyArrears: member.penaltyArrears ? Number(member.penaltyArrears) : 0,
+        welfareArrears: (member as any).welfareArrears ? Number((member as any).welfareArrears) : 0,
+    } as T
+}
+
+/**
+ * Serializes an array of member objects
+ */
+export function serializeMembers<T extends Partial<Member>>(members: T[]): T[] {
+    return members.map(serializeMember)
+}
+
 
 /**
  * Serializes a loan object by converting all Prisma Decimal fields to plain JavaScript numbers.

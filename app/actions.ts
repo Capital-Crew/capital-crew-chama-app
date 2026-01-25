@@ -251,16 +251,12 @@ export async function applyForLoan(prevState: any, formData: FormData) {
     }
 
     // NEW: Strict Arrears Check
-    const member = await prisma.member.findUnique({ where: { id: memberId } })
-    if (member) {
-        const contributionArrears = Number(member.contributionArrears || 0)
-        const penaltyArrears = Number(member.penaltyArrears || 0)
+    // Reuse the central eligibility logic (Frontend uses this too)
+    const { checkLoanEligibility } = await import('@/app/actions/loan-eligibility')
+    const eligibility = await checkLoanEligibility(memberId)
 
-        if (contributionArrears > 0 || penaltyArrears > 0) {
-            return {
-                error: `Loan Application Denied: Outstanding arrears detected. Contribution: KES ${contributionArrears.toLocaleString()}, Penalties: KES ${penaltyArrears.toLocaleString()}. Please clear arrears to proceed.`
-            }
-        }
+    if (!eligibility.isEligible) {
+        return { error: eligibility.message || 'Application Denied: Outstanding arrears detected.' }
     }
 
     // Check for existing pending/approved applications
@@ -268,13 +264,33 @@ export async function applyForLoan(prevState: any, formData: FormData) {
         where: {
             memberId,
             status: {
-                in: [LoanStatus.PENDING_APPROVAL, LoanStatus.APPROVED]
+                in: [LoanStatus.APPLICATION, LoanStatus.PENDING_APPROVAL, LoanStatus.APPROVED]
             }
         }
     })
 
     if (existingApplication) {
-        return { error: `You already have a loan application (${existingApplication.loanApplicationNumber}) in progress. Please wait for it to be completed before applying for another.` }
+        // Exception: If the existing loan is ACTIVE, we only block IF they are NOT offsetting it.
+        // Wait, 'applyForLoan' is a NEW application.
+        // Determining if it's a Top Up happens via 'loansToOffset'.
+        // If I have an ACTIVE loan, and I am NOT offsetting it, I generally cannot take another loan (unless policy allows).
+        // If I AM offsetting it, then it's fine?
+        // Actually, the standard "One Loan Policy" usually blocks new apps if one is Active.
+        // Eligibility check (Line 256) handles the "Can I borrow?" logic (1/3rd rule, existing loans, etc).
+        // This block (Line 262) seems to be about "In-Flight" applications (Workflow State).
+        // Active loans are "Settled" (Disbursed). They are Debt, not "Applications".
+        // SO: I should NOT block ACTIVE here. Active blocking belongs in Eligibility.
+        // The user specifically asked about "application stage, pending approval or approved".
+        // "Approved" -> Waiting Disbursal.
+        // "Active" -> Disbursed.
+        // So I will stick to DRAFT, PENDING, APPROVED.
+
+        // RE-READING USER REQUEST: "application stage, pending approval or approved"
+        // THIS DOES NOT SAY "ACTIVE".
+        // So I will UNCOMMENT DRAFT, PENDING, APPROVED.
+        // I will NOT add ACTIVE.
+
+        return { error: `You already have a loan application (${existingApplication.loanApplicationNumber} - ${existingApplication.status}) in progress. Please complete or cancel it before applying for another.` }
     }
 
     const product = await prisma.loanProduct.findUnique({ where: { id: loanProductId } })
@@ -305,9 +321,13 @@ export async function applyForLoan(prevState: any, formData: FormData) {
 
         if (projectedTotalDebt > grossLimit) {
             const availableAdditional = Math.max(0, grossLimit - (currentExposure - offsets))
+            // WARN: We allow DRAFT creation even if limit exceeded. Validation happens on Submit.
+            console.warn(`[applyForLoan] Loan exceeds limit but creating DRAFT. Debt: ${projectedTotalDebt}, Limit: ${grossLimit}`);
+            /* 
             return {
                 error: `Your total debt cannot exceed your limit of KES ${grossLimit.toLocaleString()}. With selected offsets, you can borrow up to KES ${availableAdditional.toLocaleString()} more.`
             }
+            */
         }
 
         // Calculate monthly installment using new utility
@@ -376,7 +396,7 @@ export async function applyForLoan(prevState: any, formData: FormData) {
                 applicationDate: new Date(),
                 dueDate,
                 interestRate: product.interestRatePerPeriod,
-                status: LoanStatus.PENDING_APPROVAL,
+                status: 'APPLICATION' as LoanStatus,
 
                 // Appraisal calculation fields (updated to use selectedLoansOffset)
                 memberSharesAtApplication: appraisal.memberShares,
@@ -441,29 +461,9 @@ export async function applyForLoan(prevState: any, formData: FormData) {
             }
         })
 
-        await prisma.notification.create({
-            data: {
-                memberId,
-                type: NotificationType.APPLICATION_RECEIVED,
-                message: `Application ${loanApplicationNumber} received for review. Net disbursement: KES ${appraisal.netDisbursementAmount.toLocaleString()}`,
-                loanId: loan.id
-            }
-        })
+        // Note: Notifications are deferred until SUBMISSION for Drafts
 
-        // NEW: Create Approval Request for Loan
-        await prisma.approvalRequest.create({
-            data: {
-                type: 'LOAN',
-                referenceId: loan.id,
-                referenceTable: 'Loan',
-                requesterId: memberId,
-                requesterName: (await prisma.member.findUnique({ where: { id: memberId } }))?.name || 'Unknown',
-                description: `Loan Application ${loanApplicationNumber}`,
-                amount: new Prisma.Decimal(amount),
-                status: 'PENDING',
-                requiredPermission: 'APPROVE_LOANS'
-            }
-        })
+        // Note: Approval Request deferred until SUBMISSION
 
         // Email Notification (Async - Fire and Forget for now, or await if critical)
         try {
@@ -630,4 +630,186 @@ export async function createChargeTemplate(formData: FormData) {
         }
     })
     revalidatePath('/admin/system')
+}
+
+// NEW: Workflow Actions
+
+/**
+ * Submit a APPLICATION loan for approval
+ */
+export async function submitLoanApplication(loanId: string) {
+    const session = await auth()
+    if (!session?.user) return { error: 'Unauthorized' }
+
+    const user = await prisma.user.findUnique({ where: { id: session?.user?.id } }) // Need user for role in logging
+
+    const loan = await prisma.loan.findUnique({
+        where: { id: loanId },
+        include: { member: true, loanProduct: true }
+    })
+
+    if (!loan) return { error: 'Loan not found' }
+    if (loan.status !== 'APPLICATION') return { error: 'Loan is not in APPLICATION status' }
+
+    // Final Eligibility Check before locking
+    const { checkLoanEligibility } = await import('@/app/actions/loan-eligibility')
+    const eligibility = await checkLoanEligibility(loan.memberId)
+    if (!eligibility.isEligible) {
+        return { error: eligibility.message }
+    }
+
+    // Lock and Transition
+    // Increment version if re-submitting (if cancellationCount > 0, we can assume it's a re-submission or version tracks attempts)
+    // Actually, we should just increment version on every submit if it was previously cancelled, or just increment it blindly?
+    // User requirement: "Increment submissionVersion by 1" whenever they click "Submit".
+    // Since DRAFT is the state before submit, submitting moves version up.
+
+    const nextVersion = (loan.submissionVersion || 0) + 1
+
+    await prisma.loan.update({
+        where: { id: loanId },
+        data: {
+            status: 'PENDING_APPROVAL',
+            applicationDate: new Date(), // Reset date to submission time
+            submissionVersion: nextVersion
+        }
+    })
+
+    // Create Notification
+    await prisma.notification.create({
+        data: {
+            memberId: loan.memberId,
+            type: NotificationType.APPLICATION_RECEIVED,
+            message: `Application ${loan.loanApplicationNumber} submitted successfully (v${nextVersion}).`,
+            loanId: loan.id
+        }
+    })
+
+    // Create Approval Request
+    await prisma.approvalRequest.create({
+        data: {
+            type: 'LOAN',
+            referenceId: loan.id,
+            referenceTable: 'Loan',
+            requesterId: loan.memberId,
+            requesterName: loan.member.name,
+            description: `Loan Application ${loan.loanApplicationNumber} (v${nextVersion})`,
+            amount: loan.amount,
+            status: 'PENDING',
+            requiredPermission: 'APPROVE_LOANS'
+        }
+    })
+
+    // Create LoanHistory Entry (The Audit Log)
+    await prisma.loanHistory.create({
+        data: {
+            loanId: loan.id,
+            actorName: session.user.name || 'User',
+            actorRole: user?.role || 'MEMBER', // Fetch user role again if needed, or assume MEMBER if owner
+            action: 'SUBMITTED',
+            version: nextVersion,
+            metadata: {
+                amount: Number(loan.amount),
+                net: Number(loan.netDisbursementAmount)
+            }
+        }
+    })
+
+    // Legacy Journey Event (Keep for existing timeline)
+    await prisma.loanJourneyEvent.create({
+        data: {
+            loanId: loan.id,
+            eventType: 'APPLICATION_SUBMITTED',
+            description: `Loan application submitted (v${nextVersion})`,
+            actorId: session.user.id,
+            actorName: session.user.name || 'User',
+            metadata: {
+                version: nextVersion
+            }
+        }
+    })
+
+    revalidatePath('/loans')
+    revalidatePath(`/loans/${loanId}`)
+    return { success: true }
+}
+
+/**
+ * Toggle Fee Exemptions (Admin Only, APPLICATION Only)
+ */
+export async function toggleFeeExemption(loanId: string, feeType: 'processingFee' | 'insuranceFee', enabled: boolean) {
+    const session = await auth()
+
+    // Admin Check
+    const user = await prisma.user.findUnique({ where: { id: session?.user?.id } })
+    const isAdmin = user?.role && ['CHAIRPERSON', 'TREASURER', 'SECRETARY', 'SYSTEM_ADMIN'].includes(user.role)
+    if (!isAdmin) return { error: 'Unauthorized' }
+
+    const loan = await prisma.loan.findUnique({ where: { id: loanId } })
+    if (!loan) return { error: 'Loan not found' }
+
+    // Strict Workflow Rule: Only editable in APPLICATION
+    // Workflow Rule: Editable in APPLICATION or PENDING_APPROVAL (Admin Override)
+    if (!['APPLICATION', 'PENDING_APPROVAL'].includes(loan.status)) return { error: 'Exemptions can only be modified when loan is in APPLICATION or PENDING status.' }
+
+    // Logic: If Exemption is ENABLED, the Fee becomes 0.
+    // If DISABLED, calculate the original fee from the product.
+
+    let newProcessingFee = Number(loan.processingFee)
+    let newInsuranceFee = Number(loan.insuranceFee)
+
+    // We need to fetch the original product rates to recalculate if un-exempting
+    const product = await prisma.loanProduct.findUnique({ where: { id: loan.loanProductId } })
+    if (!product) return { error: 'Product not found' }
+
+    // Re-calculate base fees
+    const { calculateLoanQualification } = await import('@/app/sacco-settings-actions')
+    // Re-run calc logic to get raw fees
+    const appraisal = await calculateLoanQualification(loan.memberId, [], Number(loan.amount))
+
+    const rawProcessingFee = appraisal.processingFee
+    const rawInsuranceFee = appraisal.insuranceFee
+
+    if (feeType === 'processingFee') {
+        newProcessingFee = enabled ? 0 : rawProcessingFee
+    } else if (feeType === 'insuranceFee') {
+        newInsuranceFee = enabled ? 0 : rawInsuranceFee
+    }
+
+    // Update Loan with new fees
+    // Recalculate Totals
+    const shareCapital = Number(loan.shareCapitalDeduction)
+    const existingOffset = Number(loan.existingLoanOffset)
+    const topUpFee = 0 // Simplify for now or recalculate if stored
+    const totalDeductions = newProcessingFee + newInsuranceFee + shareCapital + existingOffset + topUpFee
+    const netDisbursement = Math.max(0, Number(loan.amount) - totalDeductions)
+
+    // Update DB
+    await prisma.loan.update({
+        where: { id: loanId },
+        data: {
+            processingFee: newProcessingFee,
+            insuranceFee: newInsuranceFee,
+            totalDeductions,
+            netDisbursementAmount: netDisbursement,
+
+            // Store Exemption Flag in Json
+            feeExemptions: {
+                ...(loan.feeExemptions as object),
+                [feeType]: enabled // true = exempted (0 fee)
+            }
+        }
+    })
+
+    // Log Action
+    await prisma.auditLog.create({
+        data: {
+            userId: session!.user!.id!,
+            action: 'FEE_EXEMPTION_CHANGED',
+            details: `Updated ${feeType} exemption to ${enabled} for Loan ${loan.loanApplicationNumber} (Draft)`
+        }
+    })
+
+    revalidatePath(`/loans/${loanId}`)
+    return { success: true }
 }

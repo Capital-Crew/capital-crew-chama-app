@@ -51,6 +51,11 @@ export async function addContribution(input: {
     // 0. Get system mappings
     const mappings = await getSystemMappingsDict()
 
+    // Validate required mapping exists
+    if (!mappings.CONTRIBUTIONS) {
+        throw new Error('System mapping for CONTRIBUTIONS not found. Please run: npx tsx prisma/seed-mappings.ts')
+    }
+
     // Check wallet balance
     const walletBalance = await getMemberWalletBalance(input.memberId)
     if (input.amount > walletBalance) {
@@ -176,6 +181,11 @@ export async function addPenaltyPayment(input: {
 
     // 0. Get system mappings
     const mappings = await getSystemMappingsDict()
+
+    // Validate required mapping exists
+    if (!mappings.INCOME_LOAN_PENALTY) {
+        throw new Error('System mapping for INCOME_LOAN_PENALTY not found. Please run: npx tsx prisma/seed-mappings.ts')
+    }
 
     // 0a. Resolve Wallet Account
     const wallet = await WalletService.createWallet(input.memberId)
@@ -316,6 +326,20 @@ export async function addLoanRepayment(input: {
 
     // 0. Get system mappings
     const mappings = await getSystemMappingsDict()
+
+    // Validate required mappings exist
+    const requiredMappings = [
+        'RECEIVABLE_LOAN_PENALTY',
+        'RECEIVABLE_LOAN_FEES',
+        'RECEIVABLE_LOAN_INTEREST',
+        'EVENT_LOAN_REPAYMENT_PRINCIPAL'
+    ] as const
+
+    for (const mapping of requiredMappings) {
+        if (!mappings[mapping]) {
+            throw new Error(`System mapping for ${mapping} not found. Please run: npx tsx prisma/seed-mappings.ts`)
+        }
+    }
 
     // Check wallet balance
     const walletBalance = await getMemberWalletBalance(input.memberId)

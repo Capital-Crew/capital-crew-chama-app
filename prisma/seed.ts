@@ -96,7 +96,7 @@ async function main() {
     })
 
     // Hash the admin password
-    const hashedPassword = await bcrypt.hash('Admin@2025', 10)
+    const hashedPassword = await bcrypt.hash('Admin123!', 10)
 
     const adminUser = await prisma.user.upsert({
         where: { email: 'admin@capitalcrew.com' },
@@ -107,10 +107,12 @@ async function main() {
                 canManageSettings: true, canViewReports: true, canViewAudit: true,
                 canManageUserRights: true, canExemptFees: true, canEnrollMembers: true,
                 canReverse: true
-            }
+            },
+            passwordHash: hashedPassword // Ensure password is updated if user exists
         },
         create: {
             name: 'System Administrator',
+            username: 'admin',
             email: 'admin@capitalcrew.com',
             passwordHash: hashedPassword,
             role: UserRole.SYSTEM_ADMIN,
@@ -127,7 +129,7 @@ async function main() {
     console.log('✅ Database seeded successfully!')
     console.log('\n📧 Admin Credentials:')
     console.log('   Email: admin@capitalcrew.com')
-    console.log('   Password: Admin@2025')
+    console.log('   Password: Admin123!')
     console.log('\n⚠️  Please change this password after first login!\n')
     console.log({ product1, member1, adminUser })
 }

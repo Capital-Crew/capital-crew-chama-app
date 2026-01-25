@@ -21,11 +21,29 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'MEMBER': []
 }
 
-function hasPermission(userRole: string, requiredPermission: string | null) {
+function hasPermission(userRole: string, requiredPermission: string | null, userPermissions?: string[] | any) {
     if (!requiredPermission) return true // No specific permission needed
-    const perms = ROLE_PERMISSIONS[userRole] || []
-    if (perms.includes('ALL')) return true
-    return perms.includes(requiredPermission)
+
+    // 1. Check Role-Based Permissions
+    const rolePerms = ROLE_PERMISSIONS[userRole] || []
+    if (rolePerms.includes('ALL')) return true
+    if (rolePerms.includes(requiredPermission)) return true
+
+    // 2. Check Granular User Permissions
+    if (userPermissions && Array.isArray(userPermissions)) {
+        if (userPermissions.includes('ALL')) return true
+        if (userPermissions.includes(requiredPermission)) return true
+    }
+
+    // Parse if permissions is stored as a stringified object (unlikely with Json type, but safe)
+    // or if the structure is { [key: string]: boolean }
+    if (userPermissions && typeof userPermissions === 'object' && !Array.isArray(userPermissions)) {
+        // Assume format { "APPROVE_LOANS": true }
+        if (userPermissions[requiredPermission] === true) return true
+        if (userPermissions['ALL'] === true) return true
+    }
+
+    return false
 }
 
 // ==========================================
@@ -37,6 +55,7 @@ export async function getPendingApprovals() {
     if (!session?.user) return []
 
     const userRole = session.user.role || 'MEMBER'
+    const userPermissions = session.user.permissions
 
     // Fetch all pending
     const requests = await db.approvalRequest.findMany({
@@ -45,35 +64,61 @@ export async function getPendingApprovals() {
         // include: { requester: false } // requesterId is just ID.
     })
 
-    // Filter by Permission (In-memory filter for RBAC flexibility)
-    const filtered = requests.filter(req => hasPermission(userRole, req.requiredPermission))
-
-    return filtered.map(serializeApprovalRequest)
+    // Return ALL requests, but mark if user can approve
+    return requests.map(req => ({
+        ...serializeApprovalRequest(req),
+        canApprove: hasPermission(userRole, req.requiredPermission, userPermissions)
+    }))
 }
 
 export async function getApprovalCounts() {
-    const session = await auth()
-    if (!session?.user) return 0
+    try {
+        const session = await auth()
+        if (!session?.user) return 0
 
-    const userRole = session.user.role || 'MEMBER'
+        const userRole = session.user.role || 'MEMBER'
+        // @ts-ignore
+        const userPermissions = session.user.permissions
 
-    // Optimized Count Query
-    const userPermissions = ROLE_PERMISSIONS[userRole] || []
+        // 1. Get Base Role Permissions
+        const rolePerms = ROLE_PERMISSIONS[userRole] || []
 
-    // If Admin/All access
-    if (userPermissions.includes('ALL')) {
-        return await db.approvalRequest.count({
-            where: { status: 'PENDING' }
-        })
-    }
+        // 2. Merge Granular Permissions
+        let combinedPermissions: string[] = [...rolePerms]
 
-    // Filter by specific permissions
-    return await db.approvalRequest.count({
-        where: {
-            status: 'PENDING',
-            requiredPermission: { in: userPermissions }
+        if (userPermissions && Array.isArray(userPermissions)) {
+            combinedPermissions = [...combinedPermissions, ...userPermissions]
+        } else if (userPermissions && typeof userPermissions === 'object') {
+            // If object (legacy/map), assume keys are permissions
+            const extraKeys = Object.keys(userPermissions).filter(k => userPermissions[k] === true)
+            combinedPermissions = [...combinedPermissions, ...extraKeys]
         }
-    })
+
+        // 3. Check for ALL
+        const hasAll = combinedPermissions.includes('ALL')
+
+        // Check if user has permission to approve loans
+        const canApproveLoans = hasAll ||
+            combinedPermissions.includes('APPROVE_LOANS') ||
+            combinedPermissions.includes('canApprove') ||
+            ['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER'].includes(userRole)
+
+        let totalCount = 0
+
+        if (canApproveLoans) {
+            const loanCount = await db.loan.count({
+                where: { status: 'PENDING_APPROVAL' }
+            })
+            totalCount += loanCount
+        }
+
+        // Future: Add Member/Expense counts here when implemented
+
+        return totalCount
+    } catch (error) {
+        console.error('Error fetching approval counts:', error)
+        return 0 // Return 0 on error to prevent layout crash
+    }
 }
 
 import { submitLoanApproval } from "@/app/loan-approval-actions"
@@ -89,7 +134,7 @@ export async function processApproval(requestId: string, decision: 'APPROVED' | 
     if (!request) throw new Error("Request not found")
 
     // 2. Check Permission
-    if (!hasPermission(session.user.role || 'MEMBER', request.requiredPermission)) {
+    if (!hasPermission(session.user.role || 'MEMBER', request.requiredPermission, session.user.permissions)) {
         throw new Error("Insufficient Permissions")
     }
 

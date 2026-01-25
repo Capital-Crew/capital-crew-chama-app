@@ -80,7 +80,9 @@ export async function getMemberStats(memberId: string): Promise<MemberStats | nu
         // Import WalletService dynamically or statically
         const { WalletService } = await import('@/lib/services/WalletService')
 
-        const shareCapital = await getAccountBalance(memberId, '2100', 'CREDIT')
+        const ledgerShareCapital = await getAccountBalance(memberId, '2100', 'CREDIT')
+        const legacyShares = Number(member.shareContributions) || 0
+        const shareCapital = ledgerShareCapital > 0 ? ledgerShareCapital : legacyShares
         const savingsBalance = await WalletService.getWalletBalance(memberId)
 
         // Loan Balance (Account 1200) - Debit Normal (Asset)
@@ -161,8 +163,8 @@ export async function getDetailedMemberStats(memberId: string): Promise<{ stats:
     // Parallelize all independent fetches
     const [
         savingsBalance,
-        contributionsBalance,
-        shareCapital,
+        ledgerContributions,
+        ledgerShareCapital,
         normalShares,
         fosaShares,
         loansRaw
@@ -186,6 +188,13 @@ export async function getDetailedMemberStats(memberId: string): Promise<{ stats:
             }
         })
     ]);
+
+    // FALLBACK LOGIC: Sync with Wallet Module
+    // If Ledger is empty (0), use the legacy `member.shareContributions` field
+    // This ensures "Total Contributions" matches the User Wallet view
+    const legacyShares = Number(member.shareContributions) || 0;
+    const shareCapital = ledgerShareCapital > 0 ? ledgerShareCapital : legacyShares;
+    const contributionsBalance = ledgerContributions > 0 ? ledgerContributions : legacyShares;
 
     // Import statement processor for consistent balance calculation
     const { processTransactions } = await import('@/lib/statementProcessor');

@@ -113,7 +113,8 @@ export async function disburseLoan(loanId: string) {
             const loanPortfolioId = await getAccountIdHelper('EVENT_LOAN_DISBURSEMENT') // Debit Principal
             const memberWalletId = await getAccountIdHelper('MEMBER_WALLET') // Credit Net
             const processingIncomeId = await getAccountIdHelper('INCOME_LOAN_PROCESSING_FEE') // Credit
-            const generalIncomeId = await getAccountIdHelper('INCOME_GENERAL_FEE') // Credit (Insurance, TopUp)
+            const refinanceIncomeId = await getAccountIdHelper('INCOME_REFINANCE_FEE') // Credit
+            const generalIncomeId = await getAccountIdHelper('INCOME_GENERAL_FEE') // Credit (Insurance)
             const shareCapitalId = await getAccountIdHelper('EVENT_SHARE_CONTRIBUTION') // Credit
 
             // Calculate TopUp / Refinance Fee
@@ -168,9 +169,10 @@ export async function disburseLoan(loanId: string) {
             }
 
             // 5. CREDIT: Top Up / Refinance Fee
-            if (totalRefinanceFee.gt(0) && generalIncomeId) {
+            const topUpIncomeAccId = refinanceIncomeId || generalIncomeId
+            if (totalRefinanceFee.gt(0) && topUpIncomeAccId) {
                 journalLines.push({
-                    accountId: generalIncomeId,
+                    accountId: topUpIncomeAccId,
                     debitAmount: 0,
                     creditAmount: Number(totalRefinanceFee),
                     description: `Top Up / Refinance Fee`
@@ -238,28 +240,9 @@ export async function disburseLoan(loanId: string) {
                 }
             })
 
-            // Clear Process Offsets if any
-            for (const topUp of loan.topUps) {
-                // Record repayment on old loan
-                await tx.loanTransaction.create({
-                    data: {
-                        loanId: topUp.oldLoanId,
-                        type: 'REPAYMENT',
-                        amount: new Prisma.Decimal(topUp.totalOffset),
-                        description: `Offset by Refinance ${loan.loanApplicationNumber}`,
-                        postedAt: new Date()
-                    }
-                })
-
-                // Update old loan balance and status
-                await LoanBalanceService.updateLoanBalance(topUp.oldLoanId, tx)
-                const oldLoan = await tx.loan.findUnique({ where: { id: topUp.oldLoanId } })
-                if (oldLoan && oldLoan.outstandingBalance.lte(0)) {
-                    await tx.loan.update({
-                        where: { id: topUp.oldLoanId },
-                        data: { status: 'CLEARED' }
-                    })
-                }
+            // Process Offsets using dedicated handler
+            if (loan.topUps.length > 0) {
+                await processLoanOffset(loan.topUps, loan.loanApplicationNumber, tx)
             }
 
             // Create Journey Event
@@ -298,8 +281,70 @@ export async function disburseLoan(loanId: string) {
         revalidatePath('/wallet')
         return result
 
+
     } catch (error: any) {
         console.error('Disbursement Failed:', error)
         return { error: error.message || "Failed to disburse loan" }
+    }
+}
+
+/**
+ * Process Loan Offsets (Refinancing)
+ * 
+ * Executes the Sub-Ledger transactions to clear old loans.
+ * CRITICAL: Separates the Balance Clearance from the Refinance Fee.
+ * 
+ * - Old Loan: Credited with Clearance Amount ONLY (Principal + Interest + Penalties).
+ * - Refinance Fee: Handled in GL (Income), NOT placed on the Old Loan ledger.
+ */
+async function processLoanOffset(topUps: any[], newLoanNumber: string, tx: Prisma.TransactionClient) {
+    for (const topUp of topUps) {
+        // Calculate the actual Clearance Amount (Total Offset - Fee)
+        // This ensures the Old Loan balance goes up to exactly 0, not negative
+
+        // Handle Decimal conversion safely
+        const totalOffset = new Prisma.Decimal(topUp.totalOffset)
+        const refinanceFee = new Prisma.Decimal(topUp.refinanceFee || 0)
+
+        // Clearance Amount = The Debt we are wiping out
+        const clearanceAmount = totalOffset.sub(refinanceFee)
+
+        if (clearanceAmount.gt(0)) {
+            // Record repayment on old loan (Sub-Ledger)
+            await tx.loanTransaction.create({
+                data: {
+                    loanId: topUp.oldLoanId,
+                    type: 'REPAYMENT', // Reduces Balance
+                    amount: clearanceAmount, // ONLY the debt amount
+                    description: `Refinance Clearance via ${newLoanNumber}`,
+                    postedAt: new Date()
+                }
+            })
+
+            // Force Update old loan balance
+            const verifiedBalance = await LoanBalanceService.updateLoanBalance(topUp.oldLoanId, tx)
+
+            // Close the loan if fully paid (tolerant to tiny precision errors)
+            if (verifiedBalance.lte(0.01)) {
+                await tx.loan.update({
+                    where: { id: topUp.oldLoanId },
+                    data: {
+                        status: 'CLEARED',
+                        outstandingBalance: new Prisma.Decimal(0)
+                    }
+                })
+
+                // Optional: Log closure event
+                await tx.loanJourneyEvent.create({
+                    data: {
+                        loanId: topUp.oldLoanId,
+                        eventType: 'LOAN_CLEARED',
+                        description: `Loan cleared via refinance (Offset by ${newLoanNumber})`,
+                        actorId: 'SYSTEM',
+                        actorName: 'System'
+                    }
+                })
+            }
+        }
     }
 }

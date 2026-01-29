@@ -23,10 +23,9 @@ export class RepaymentCalculator {
             interestDue: new Prisma.Decimal(item.interestDue),
             principalPaid: new Prisma.Decimal(0),
             interestPaid: new Prisma.Decimal(0),
-            penaltyAmount: new Prisma.Decimal(0),
+            penaltyDue: new Prisma.Decimal(0),
             penaltyPaid: new Prisma.Decimal(0),
-            isFullyPaid: false,
-            penaltyStatus: 'NONE' as const
+            isFullyPaid: false
         }));
     }
 }

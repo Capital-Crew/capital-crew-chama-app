@@ -5,6 +5,8 @@ import { auth } from "@/auth"
 import { AdjustmentCategory } from "@/lib/types"
 import { revalidatePath } from "next/cache"
 import { SystemAccountType, Prisma } from "@prisma/client"
+import { getLoanOutstandingBalance } from "@/lib/accounting/AccountingEngine"
+import { LoanBalanceService } from "@/lib/services/LoanBalanceService"
 
 export async function searchLoans(query: string) {
     if (!query) return []
@@ -71,7 +73,18 @@ export async function searchLoans(query: string) {
         take: 5
     })
 
-    return loans
+    // 3. ENRICH WITH REAL-TIME LEDGER BALANCE
+    // The outstandingBalance field can be stale. We fetch the truth from the ledger.
+    const enrichedLoans = await Promise.all(loans.map(async (loan) => ({
+        ...loan,
+        outstandingBalance: (await getLoanOutstandingBalance(loan.id)).toString(),
+        loanProduct: {
+            ...loan.loanProduct,
+            productName: loan.loanProduct.name // Map for UI compatibility
+        }
+    })))
+
+    return enrichedLoans
 }
 
 export async function postLoanAdjustment(data: {
@@ -109,37 +122,43 @@ export async function postLoanAdjustment(data: {
     const getCode = (type: string) => mappings[type as SystemAccountType]
 
     // Determine Accounts
-    const loanPortfolioCode = '1200'
+    // Use the correctly mapped Asset accounts instead of hardcoded Equity (1200)
+    const portfolioAcc = await prisma.ledgerAccount.findUnique({ where: { code: '1310' } })
+    const interestAcc = await prisma.ledgerAccount.findUnique({ where: { code: '1320' } })
+    const incomeAcc = await prisma.ledgerAccount.findUnique({ where: { code: '4100' } })
 
-    // 2. Contra Account (Income or Expense)
-    let contraAccountCode = '4000' // Default Income
+    let contraAccountCode = '4100'
 
     if (adjustmentType === 'increase') {
-        // CHARGE/PENALTY -> Credit Income
+        // CHARGE/PENALTY -> Credit Income, Debit Asset
         // Map category to System Account Type
         switch (category) {
             case AdjustmentCategory.PENALTY:
             case AdjustmentCategory.BOUNCED_CHEQUE:
-                contraAccountCode = getCode('INCOME_LOAN_PENALTY') || '4000'
+                contraAccountCode = getCode('INCOME_LOAN_PENALTY') || '4100'
                 break;
             case AdjustmentCategory.LEGAL_FEE:
             case AdjustmentCategory.RECOVERY_COST:
-                contraAccountCode = getCode('INCOME_GENERAL_FEE') || '4000'
+                contraAccountCode = getCode('INCOME_GENERAL_FEE') || '4100'
                 break;
             default:
-                contraAccountCode = '4000'
+                contraAccountCode = '4100'
         }
     } else {
-        // WAIVER/DECREASE -> Debit Expense (Waiver Expense)
-        contraAccountCode = '6000' // General Expense for now unless specific Waiver account
+        // WAIVER/DECREASE -> Debit Expense (Waiver Expense), Credit Asset
+        contraAccountCode = '6000'
     }
 
-    // Find Accounts IDs
-    const loanAccount = await prisma.ledgerAccount.findUnique({ where: { code: loanPortfolioCode } })
+    // Determine target Loan Asset account
+    // Principal adjustments should hit 1310, Interest should hit 1320
+    const targetAssetAccount = (category === AdjustmentCategory.INTEREST || category === AdjustmentCategory.PENALTY)
+        ? interestAcc
+        : portfolioAcc
+
     const contraAccount = await prisma.ledgerAccount.findUnique({ where: { code: contraAccountCode } })
 
-    if (!loanAccount || !contraAccount) {
-        throw new Error(`Ledger accounts configuration error. Missing ${loanPortfolioCode} or ${contraAccountCode}`)
+    if (!targetAssetAccount || !contraAccount) {
+        throw new Error(`Ledger accounts configuration error. Missing asset or contra account.`)
     }
 
     // 3. Post Journal Entry
@@ -172,18 +191,18 @@ export async function postLoanAdjustment(data: {
                 ledgerEntries: {
                     create: adjustmentType === 'increase' ? [
                         {
-                            // Debit Loan
-                            ledgerAccount: { connect: { id: loanAccount.id } },
+                            // Debit Loan Asset
+                            ledgerAccount: { connect: { id: targetAssetAccount.id } },
                             debitAmount: amount,
                             creditAmount: 0,
-                            description: `Loan Check - ${loan.loanApplicationNumber}`
+                            description: `Manual Charge - ${loan.loanApplicationNumber} (${category})`
                         },
                         {
                             // Credit Income
                             ledgerAccount: { connect: { id: contraAccount.id } },
                             debitAmount: 0,
                             creditAmount: amount,
-                            description: `${category} - ${loan.loanApplicationNumber}`
+                            description: `Accrued ${category} - ${loan.loanApplicationNumber}`
                         }
                     ] : [
                         {
@@ -191,31 +210,42 @@ export async function postLoanAdjustment(data: {
                             ledgerAccount: { connect: { id: contraAccount.id } },
                             debitAmount: amount,
                             creditAmount: 0,
-                            description: `Waiver/Adjustment - ${loan.loanApplicationNumber}`
+                            description: `Manual Waiver/Adjustment - ${loan.loanApplicationNumber}`
                         },
                         {
-                            // Credit Loan (Reduce Asset)
-                            ledgerAccount: { connect: { id: loanAccount.id } },
+                            // Credit Loan Asset (Reduce Asset)
+                            ledgerAccount: { connect: { id: targetAssetAccount.id } },
                             debitAmount: 0,
                             creditAmount: amount,
-                            description: `Ref: ${loan.loanApplicationNumber}`
+                            description: `Waiver Ref: ${loan.loanApplicationNumber}`
                         }
                     ]
                 }
             }
         })
 
-        // Also create LoanTransaction for statement visibility
+        // Also create LoanTransaction sub-ledger record for statement visibility
         await tx.loanTransaction.create({
             data: {
                 loanId: loan.id,
-                type: adjustmentType === 'increase' ? 'PENALTY' : 'WAIVER',
+                type: adjustmentType === 'increase' ? (category === AdjustmentCategory.INTEREST ? 'INTEREST' : 'PENALTY') : 'WAIVER',
                 amount: amount,
                 description: description,
                 referenceId: journal.id,
-                penaltyAmount: adjustmentType === 'increase' ? amount : 0,
-                principalAmount: adjustmentType === 'decrease' ? amount : 0
+                // Breakdown
+                principalAmount: (adjustmentType === 'decrease' && targetAssetAccount.id === portfolioAcc?.id) ? amount : 0,
+                interestAmount: (targetAssetAccount.id === interestAcc?.id) ? amount : 0,
+                penaltyAmount: (adjustmentType === 'increase' && category === AdjustmentCategory.PENALTY) ? amount : 0,
             }
+        })
+
+        // AUTO-SYNC BALANCE
+        // This ensures the outstandingBalance field reflects the new truth immediately
+        const { getLoanOutstandingBalance } = await import('@/lib/accounting/AccountingEngine')
+        const realtimeBalance = await getLoanOutstandingBalance(loan.id, tx)
+        await tx.loan.update({
+            where: { id: loan.id },
+            data: { outstandingBalance: realtimeBalance }
         })
     })
 

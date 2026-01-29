@@ -406,25 +406,60 @@ export async function getMemberShareBalance(memberId: string, tx?: DbClient): Pr
 export async function getLoanOutstandingBalance(loanId: string, tx?: DbClient): Promise<number> {
     const client = tx ?? prisma
 
-    // Fetch all journal lines linked to this loan
-    const lines = await client.ledgerEntry.findMany({
+    // 1. Fetch Loan Application Number for descriptive matching
+    const loan = await client.loan.findUnique({
+        where: { id: loanId },
+        select: { loanApplicationNumber: true }
+    });
+
+    if (!loan) return 0;
+
+    // 2. Fetch entries by Reference ID (Strict Link)
+    const refEntries = await client.ledgerEntry.findMany({
         where: {
             ledgerTransaction: {
                 referenceId: loanId,
                 isReversed: false
             },
-            ledgerAccount: {
-                type: 'ASSET'
-            }
+            ledgerAccount: { type: 'ASSET' }
         },
-        include: {
-            ledgerAccount: true
+        include: { ledgerAccount: true }
+    });
+
+    // 3. Fetch entries by Keyword (Description Link)
+    const keywordEntries = await client.ledgerEntry.findMany({
+        where: {
+            ledgerTransaction: { isReversed: false },
+            ledgerAccount: { type: 'ASSET' },
+            description: { contains: loan.loanApplicationNumber }
+        },
+        include: { ledgerAccount: true }
+    });
+
+    // 4. Merge and Deduplicate
+    const allEntriesMap = new Map<string, any>();
+    refEntries.forEach(e => allEntriesMap.set(e.id, e));
+    keywordEntries.forEach(e => allEntriesMap.set(e.id, e));
+
+    const lines = Array.from(allEntriesMap.values());
+
+    // 5. Intelligent Filtering for multi-loan transactions
+    // If a line was picked up by Reference ID, but mentions a COMPLETELY DIFFERENT loan number, skip it for this loan.
+    // Example: A transaction for LN010 has a line "Repayment - LN005". 
+    // This line should NOT be counted for LN010's balance.
+    const filteredLines = lines.filter(line => {
+        const desc = line.description || "";
+        // If it mentions ANOTHER loan and DOES NOT mention THIS loan, exclude it.
+        if (desc.includes("LN") && !desc.includes(loan.loanApplicationNumber)) {
+            return false;
         }
-    })
+        return true;
+    });
+
 
     let balance = toDecimal(0)
 
-    for (const line of lines) {
+    for (const line of filteredLines) {
         // For Assets: Debit increases (Disbursement, Accrual), Credit decreases (Repayment)
         balance = balance.plus(line.debitAmount).minus(line.creditAmount)
     }

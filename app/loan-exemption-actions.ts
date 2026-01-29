@@ -51,7 +51,7 @@ export async function updateLoanExemptions(loanId: string, exemptions: LoanExemp
         await db.loan.update({
             where: { id: loanId },
             data: {
-                feeExemptions: exemptions
+                feeExemptions: exemptions as any
             }
         })
 

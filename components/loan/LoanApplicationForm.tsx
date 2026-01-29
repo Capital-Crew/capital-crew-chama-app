@@ -42,8 +42,8 @@ export function LoanApplicationForm({
 }: LoanApplicationFormProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [selectedLoansToOffset, setSelectedLoansToOffset] = useState<string[]>(
-        initialData?.existingLoanOffset && initialData.topUps
-            ? initialData.topUps.map((t: any) => t.oldLoanId)
+        initialData?.existingLoanOffset && (initialData as any).topUps
+            ? (initialData as any).topUps.map((t: any) => t.oldLoanId)
             : []
     );
     const [feeExemptions, setFeeExemptions] = useState<any>((initialData?.feeExemptions as any) || {});

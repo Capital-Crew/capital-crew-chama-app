@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma"
 import { auth } from "@/auth"
 import { AdjustmentCategory } from "@/lib/types"
 import { revalidatePath } from "next/cache"
-import { SystemAccountType } from "@prisma/client"
+import { SystemAccountType, Prisma } from "@prisma/client"
 
 export async function searchLoans(query: string) {
     if (!query) return []
@@ -146,7 +146,7 @@ export async function postLoanAdjustment(data: {
     // INCREASE: Debit Loan (Asset), Credit Income
     // DECREASE: Debit Expense (Waiver), Credit Loan (Asset)
 
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         // Update Loan Balance
         const newBalance = adjustmentType === 'increase'
             ? Number(loan.outstandingBalance) + amount
@@ -163,45 +163,42 @@ export async function postLoanAdjustment(data: {
         const journal = await tx.ledgerTransaction.create({
             data: {
                 transactionDate: new Date(),
+                totalAmount: amount,
                 description: `Manual Adjustment: ${description} (${category})`,
-                referenceType: adjustmentType === 'increase' ? 'LOAN_PENALTY' : 'LOAN_WAIVER',
+                referenceType: 'MANUAL_ADJUSTMENT',
                 referenceId: loan.id,
-                createdById: session.user.id,
+                createdBy: session.user.id || '',
 
-                lines: {
+                ledgerEntries: {
                     create: adjustmentType === 'increase' ? [
                         {
                             // Debit Loan
-                            ledgerAccountId: loanAccount.id,
+                            ledgerAccount: { connect: { id: loanAccount.id } },
                             debitAmount: amount,
                             creditAmount: 0,
-                            description: `Loan Check - ${loan.loanApplicationNumber}`,
-                            accountType: 'ASSET'
+                            description: `Loan Check - ${loan.loanApplicationNumber}`
                         },
                         {
                             // Credit Income
-                            ledgerAccountId: contraAccount.id,
+                            ledgerAccount: { connect: { id: contraAccount.id } },
                             debitAmount: 0,
                             creditAmount: amount,
-                            description: `${category} - ${loan.loanApplicationNumber}`,
-                            accountType: 'INCOME'
+                            description: `${category} - ${loan.loanApplicationNumber}`
                         }
                     ] : [
                         {
                             // Debit Expense (Waiver)
-                            ledgerAccountId: contraAccount.id,
+                            ledgerAccount: { connect: { id: contraAccount.id } },
                             debitAmount: amount,
                             creditAmount: 0,
-                            description: `Waiver/Adjustment - ${loan.loanApplicationNumber}`,
-                            accountType: 'EXPENSE'
+                            description: `Waiver/Adjustment - ${loan.loanApplicationNumber}`
                         },
                         {
                             // Credit Loan (Reduce Asset)
-                            ledgerAccountId: loanAccount.id,
+                            ledgerAccount: { connect: { id: loanAccount.id } },
                             debitAmount: 0,
                             creditAmount: amount,
-                            description: `Ref: ${loan.loanApplicationNumber}`,
-                            accountType: 'ASSET'
+                            description: `Ref: ${loan.loanApplicationNumber}`
                         }
                     ]
                 }

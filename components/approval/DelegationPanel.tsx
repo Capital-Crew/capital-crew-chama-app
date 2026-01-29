@@ -39,7 +39,7 @@ export function DelegationPanel({ isOpen, onClose }: DelegationPanelProps) {
             ])
 
             if ('error' in delegations) {
-                toast.error(delegations.error)
+                toast.error(delegations.error || 'Unknown error')
             } else {
                 setDelegatedFrom(delegations.delegatedFrom || [])
                 setDelegatedTo(delegations.delegatedTo || [])

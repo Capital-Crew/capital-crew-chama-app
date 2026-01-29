@@ -25,7 +25,7 @@ export function ApprovalActionPanel({ status, entityType, entityId, canEdit }: A
         setSubmitting(true)
         try {
             const res = await handleWorkflowTransition(entityType, entityId, action)
-            if (res.error) {
+            if (res?.error) {
                 toast.error(res.error)
             } else {
                 toast.success(action === 'SEND' ? 'Request Submitted' : 'Request Cancelled')

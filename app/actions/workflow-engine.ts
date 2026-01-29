@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth"
 import prisma from "@/lib/prisma"
-import { EntityType, ApprovalAction, WorkflowStatus, UserRole } from "@prisma/client" // Ensure these are exported from generated client once migrated
+import { EntityType, ApprovalAction, WorkflowStatus, UserRole, Prisma } from "@prisma/client" // Ensure these are exported from generated client once migrated
 import { revalidatePath } from "next/cache"
 
 // Helper to check role hierarchy or specific permission
@@ -101,7 +101,7 @@ export async function processWorkflowAction(requestId: string, action: ApprovalA
     }
 
     // 3. Execution
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         // Double Voting Check
         const existingVote = await tx.workflowAction.findFirst({
             where: {
@@ -158,7 +158,7 @@ export async function processWorkflowAction(requestId: string, action: ApprovalA
                 const currentStep = request.currentStage!.stepNumber
                 const allStages = request.workflow.stages // Ordered asc
 
-                const nextStage = allStages.find(s => s.stepNumber > currentStep)
+                const nextStage = allStages.find((s: any) => s.stepNumber > currentStep)
 
                 if (nextStage) {
                     // Advance

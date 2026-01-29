@@ -4,7 +4,8 @@
  * This file shows before/after examples for migrating to the truncation policy
  */
 
-import { formatMoney, formatCurrency, truncateToDecimals, CurrencyDisplay } from '@/lib/currency';
+import { formatMoney, formatCurrency, truncateToDecimals, subtractMoney, addMoney, calculatePercentage, decimalToNumber } from '@/lib/currency';
+import { CurrencyDisplay, CurrencyInput } from '@/components/ui/CurrencyDisplay';
 
 // ============================================
 // EXAMPLE 1: Basic Number Formatting
@@ -41,7 +42,7 @@ function calculateOldProcessingFee(loanAmount: number, feePercent: number) {
 }
 
 // ✅ AFTER (Truncates)
-import { calculatePercentage } from '@/lib/currency';
+
 
 function calculateNewProcessingFee(loanAmount: number, feePercent: number) {
     return calculatePercentage(loanAmount, feePercent); // CORRECT! Truncates to 2500.99
@@ -62,7 +63,7 @@ function calculateOldTotalDeductions(
 }
 
 // ✅ AFTER (Precise truncation)
-import { addMoney } from '@/lib/currency';
+
 
 function calculateNewTotalDeductions(
     processingFee: number,
@@ -118,7 +119,7 @@ function OldAmountInput({ value, onChange }: any) {
 }
 
 // ✅ AFTER
-import { CurrencyInput } from '@/components/ui/CurrencyDisplay';
+
 
 function NewAmountInput({ value, onChange }: any) {
     return (
@@ -140,7 +141,7 @@ async function getOldLoanAmount(loanId: string) {
 }
 
 // ✅ AFTER
-import { decimalToNumber } from '@/lib/currency';
+
 
 async function getNewLoanAmount(loanId: string) {
     const loan = await prisma.loan.findUnique({ where: { id: loanId } });

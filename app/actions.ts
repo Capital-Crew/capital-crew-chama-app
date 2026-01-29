@@ -235,6 +235,10 @@ export async function applyForLoan(prevState: any, formData: FormData) {
     const loansToOffset = formData.getAll('loansToOffset') as string[]
     const submitAction = formData.get('submitAction') as string || 'save'
 
+    // Parse fee exemptions if any
+    const feeExemptionsStr = formData.get('feeExemptions') as string
+    const feeExemptions = feeExemptionsStr ? JSON.parse(feeExemptionsStr) : {}
+
     // Determine Status
     const newStatus = submitAction === 'send' ? LoanStatus.PENDING_APPROVAL : LoanStatus.APPLICATION;
     const isDraft = newStatus === LoanStatus.APPLICATION;
@@ -392,22 +396,25 @@ export async function applyForLoan(prevState: any, formData: FormData) {
 
         // Generate Repayment Schedule
         const { generateRepaymentSchedule } = await import('../lib/utils')
-        const schedule = generateRepaymentSchedule({
-            amount: appraisal.netDisbursementAmount, // Schedule based on NET or PRINCIPAL? Usually Principal. 
-            // Wait, standard practice: Repay the PRINCIPAL (amount requested), receive the NET. 
-            // So schedule should be based on `amount` (the principal).
-            // Let's check logic: if I borrow 10k, fees 1k, I get 9k. I repay 10k + interest.
-            // So schedule amount = amount.
-            amount: amount,
-            interestRate: product.interestRatePerPeriod,
-            installments: installments || product.numberOfRepayments, // Use user selected installments
-            repaymentFrequency: product.repaymentFrequencyType, // e.g. MONTHS
-            repaymentEvery: product.repaymentEvery,
-            startDate: new Date(), // Starts now? Or next month? Utils usually handles "next period"
-            interestType: product.interestType
-        })
 
-        const monthlyInstallment = schedule.length > 0 ? schedule[0].amount : 0
+        // Create a product variant with the custom installments if provided
+        // This ensures the schedule generator uses the user-selected term
+        const productForSchedule = {
+            ...product,
+            numberOfRepayments: installments || product.numberOfRepayments
+        }
+
+        const schedule = generateRepaymentSchedule(
+            {
+                amount: amount ? Number(amount) : 0,
+                applicationDate: new Date()
+            } as any,
+            productForSchedule
+        )
+
+        const monthlyInstallment = schedule.length > 0 ? schedule[0].total : 0
+
+
 
 
         const loanIdValue = formData.get('loanId') as string;
@@ -444,7 +451,7 @@ export async function applyForLoan(prevState: any, formData: FormData) {
                     installments: installments || 12,
                     monthlyInstallment,
                     interestRatePerMonth: product.interestRatePerPeriod,
-                    penaltyRate,
+                    penaltyRate: product.defaultPenaltyRate || 0,
 
                     repaymentSchedule: JSON.parse(JSON.stringify(schedule)),
                     feeExemptions,
@@ -492,7 +499,7 @@ export async function applyForLoan(prevState: any, formData: FormData) {
                     installments: installments || 12, // Fallback
                     monthlyInstallment,
                     interestRatePerMonth: product.interestRatePerPeriod,
-                    penaltyRate,
+                    penaltyRate: product.defaultPenaltyRate || 0,
 
                     approvalVotes: [],
                     repaymentSchedule: JSON.parse(JSON.stringify(schedule)), // Json

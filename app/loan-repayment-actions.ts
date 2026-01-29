@@ -52,7 +52,7 @@ export async function repayLoan(loanId: string, amount: number) {
         throw new Error('Payment amount must be greater than 0')
     }
 
-    return await prisma.$transaction(async (tx) => {
+    return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         // Get outstanding balances from General Ledger (source of truth)
         const outstandingPenalty = await getLoanPenaltyBalance(loanId)
         const outstandingInterest = await getLoanInterestBalance(loanId)

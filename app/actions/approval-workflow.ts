@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import prisma from '@/lib/prisma'
 import { auth } from '@/auth'
-import { EntityType, ApprovalAction, LoanStatus } from '@prisma/client'
+import { Prisma, EntityType, ApprovalAction, LoanStatus } from '@prisma/client'
 
 /**
  * Universal Workflow Transition Handler
@@ -19,13 +19,13 @@ export async function handleWorkflowTransition(
     const session = await auth()
     if (!session?.user) return { error: 'Unauthorized' }
 
-    const actorId = session.user.id
+    const actorId = session.user.id || ''
     const actorName = session.user.name || 'Unknown User'
 
     try {
         // 1. Switch Logic based on Entity Type
         if (entityType === 'LOAN') {
-            return await handleLoanTransition(entityId, action, actorId, actorName)
+            return await handleLoanTransition(entityId, action, actorId, actorName || 'Unknown User')
         } else if (entityType === 'MEMBER') {
             return { error: 'Member workflow not yet implemented' }
         } else if (entityType === 'WELFARE') {
@@ -56,7 +56,7 @@ async function handleLoanTransition(loanId: string, action: 'SEND' | 'CANCEL', a
 
         const nextVersion = (loan.submissionVersion || 0) + 1
 
-        await prisma.$transaction(async (tx) => {
+        await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
             // Update Loan
             await tx.loan.update({
                 where: { id: loanId },
@@ -106,7 +106,7 @@ async function handleLoanTransition(loanId: string, action: 'SEND' | 'CANCEL', a
             return { error: 'Cannot cancel a processed loan.' }
         }
 
-        await prisma.$transaction(async (tx) => {
+        await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
             // Revert Status to APPLICATION (Editable)
             await tx.loan.update({
                 where: { id: loanId },

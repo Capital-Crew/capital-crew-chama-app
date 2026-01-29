@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 
 /**
  * POST /api/loans/[id]/cancel
@@ -48,7 +49,7 @@ export async function POST(
         }
 
         // Execution
-        await prisma.$transaction(async (tx) => {
+        await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
             // 1. Update Loan
             await tx.loan.update({
                 where: { id: loanId },

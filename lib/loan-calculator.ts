@@ -28,6 +28,11 @@ export function calculateMonthlyInstallment(input: LoanCalculationInput): number
     const { principal, interestRatePerMonth, installments, amortizationType } = input
     const r = interestRatePerMonth / 100 // Convert 2% to 0.02
 
+    if (r === 0) {
+        // Zero interest: Simple division
+        return Math.round((principal / installments) * 100) / 100
+    }
+
     if (amortizationType === 'EQUAL_INSTALLMENTS') {
         // EMI Formula: P * [r(1+r)^n] / [(1+r)^n - 1]
         // This ensures equal monthly payments with reducing interest

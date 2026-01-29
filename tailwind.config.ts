@@ -1,6 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config = {
+    darkMode: ["class", "lemon"], // Enable class-based lemon theme
     content: [
         "./app/**/*.{js,ts,jsx,tsx,mdx}",
         "./pages/**/*.{js,ts,jsx,tsx,mdx}",

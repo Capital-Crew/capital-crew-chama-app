@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import prisma from '@/lib/prisma'
 import { serializeLoan } from '@/lib/serializers'
+import { getMemberContributionBalance } from '@/lib/accounting/AccountingEngine'
 
 /**
  * GET /api/loans/:id - Fetch full loan card with appraisal, approvals, and journey
@@ -11,11 +12,15 @@ export async function GET(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        console.log(`API Loan GET: Headers Cookie: ${request.headers.get('cookie')?.substring(0, 20)}...`)
         const session = await auth()
+        console.log(`API Loan GET: Session user: ${session?.user?.email}, ID: ${session?.user?.id}`)
+
         const { id } = await params
 
         if (!session?.user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+            console.log('API Loan GET: Unauthorized - No Session User')
+            return NextResponse.json({ error: 'Unauthorized', debug: 'No session' }, { status: 401 })
         }
 
         const loan = await prisma.loan.findUnique({
@@ -25,7 +30,11 @@ export async function GET(
                 loanProduct: true,
                 approvals: {
                     include: {
-                        approver: true
+                        approver: {
+                            include: {
+                                user: true
+                            }
+                        }
                     },
                     orderBy: { timestamp: 'asc' }
                 },
@@ -98,7 +107,23 @@ export async function GET(
         const calculatedTotalDeductions = processingFee + insuranceFee + shareCapitalDeduction + calculatedOffset
         const calculatedNetDisbursement = Number(loan.amount) - calculatedTotalDeductions
 
-        return NextResponse.json({
+        // FIX: Handle classic negative equity bug
+        // 1. If snapshot is negative, make it positive (historical fix)
+        let effectiveShares = Number(loan.memberSharesAtApplication)
+        if (effectiveShares < 0) effectiveShares = Math.abs(effectiveShares)
+
+        // 2. If loan is PENDING, fetch fresh balance to ensure accuracy for appraisal
+        if (loan.status === 'PENDING_APPROVAL') {
+            try {
+                const freshBalance = await getMemberContributionBalance(loan.memberId)
+                if (freshBalance > 0) effectiveShares = freshBalance
+            } catch (e) {
+                console.warn('Failed to refresh member balance on loan fetch', e)
+            }
+        }
+
+        // Prepare Loan Data Object (sanitized/serialized)
+        const loanData = {
             loan: serializeLoan({
                 ...loan,
                 // Map topUps to match frontend interface (clearedLoan)
@@ -115,6 +140,7 @@ export async function GET(
                 })),
 
                 // Override with dynamic calculations
+                memberSharesAtApplication: effectiveShares, // Use corrected value
                 existingLoanOffset: calculatedOffset,
                 totalDeductions: calculatedTotalDeductions,
                 netDisbursementAmount: calculatedNetDisbursement,
@@ -123,9 +149,37 @@ export async function GET(
                 currentUserHasApproved,
                 approvalsRequired: requiredApprovals
             })
+        }
+
+        // Fetch Active Workflow Request (if any)
+        const workflowRequest = await prisma.workflowRequest.findFirst({
+            where: {
+                entityId: loan.id,
+                entityType: 'LOAN',
+                status: { not: 'CANCELLED' } // Get active or final, but maybe not cancelled?
+            },
+            include: {
+                currentStage: true,
+                workflow: { include: { stages: { orderBy: { stepNumber: 'asc' } } } },
+                actions: {
+                    include: {
+                        actor: true,
+                        stage: true
+                    },
+                    orderBy: { timestamp: 'desc' }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        })
+
+        // Combine and Return
+        return NextResponse.json({
+            ...loanData,
+            workflowRequest
         })
 
     } catch (error: any) {
+        // Syntax fixed
         console.error('Get loan error:', error)
         return NextResponse.json({
             error: 'Failed to fetch loan',

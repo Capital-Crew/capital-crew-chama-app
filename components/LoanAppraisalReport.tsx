@@ -209,6 +209,9 @@ export function LoanAppraisalReport({
                     </div>
                 </div>
 
+                {/* EXEMPTIONS SECTION - Positioned below loan details */}
+                {/* This will be passed from LoanAppraisalCard */}
+
                 {/* 3. LOAN TERMS BAR (4 Columns) */}
                 <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-5 mb-8 rounded-lg shadow-lg">
                     <div className="grid grid-cols-3 gap-8 text-center">
@@ -393,24 +396,7 @@ export function LoanAppraisalReport({
                     </div>
                 </div>
 
-                {/* Footer / Signature Area */}
-                <div className="mt-10 pt-6 border-t-2 border-slate-400 grid grid-cols-3 gap-8 text-sm">
-                    <div>
-                        <div className="h-16 border-b-2 border-slate-900"></div>
-                        <p className="font-bold text-slate-700 mt-2">Prepared By</p>
-                        <p className="text-xs text-slate-500 mt-1">Date: {new Date().toLocaleDateString()}</p>
-                    </div>
-                    <div>
-                        <div className="h-16 border-b-2 border-slate-900"></div>
-                        <p className="font-bold text-slate-700 mt-2">Reviewed By</p>
-                        <p className="text-xs text-slate-500 mt-1">Signature & Date</p>
-                    </div>
-                    <div>
-                        <div className="h-16 border-b-2 border-slate-900"></div>
-                        <p className="font-bold text-slate-700 mt-2">Approved By</p>
-                        <p className="text-xs text-slate-500 mt-1">Signature & Date</p>
-                    </div>
-                </div>
+
             </div>
 
             {/* Print Styles */}

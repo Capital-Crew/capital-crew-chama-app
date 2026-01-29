@@ -26,6 +26,7 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
     const [activeTab, setActiveTab] = useState<'application' | 'approvals' | 'approved' | 'disbursed'>('application');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedLoanId, setSelectedLoanId] = useState<string | null>(null);
+    const [editingLoan, setEditingLoan] = useState<Loan | null>(null); // State for editing draft
     const [requiredApprovals, setRequiredApprovals] = useState(3);
 
     useEffect(() => {
@@ -35,17 +36,23 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
     }, []);
 
     const handleLoanClick = (loanId: string) => {
-        setSelectedLoanId(loanId);
+        const loan = loans.find(l => l.id === loanId);
+        if (loan && loan.status === 'APPLICATION') {
+            // Edit Draft
+            setEditingLoan(loan);
+            setIsModalOpen(true);
+        } else {
+            // View Appraisal Card
+            setSelectedLoanId(loanId);
+        }
     };
 
     // Memoized tab filtering
     const allApplications = useMemo(() => loans.filter(l =>
-        String(l.status) !== 'PENDING_APPROVAL' &&
-        String(l.status) !== 'APPROVED' &&
-        String(l.status) !== 'DISBURSED' &&
-        String(l.status) !== 'ACTIVE' &&
-        String(l.status) !== 'CLEARED' &&
-        String(l.status) !== 'OVERDUE'
+        String(l.status) === 'APPLICATION' ||
+        String(l.status) === 'REJECTED' ||
+        String(l.status) === 'CANCELLED' ||
+        String(l.status) === 'WRITTEN_OFF'
     ), [loans]);
 
     const pendingApprovals = useMemo(() =>
@@ -111,8 +118,8 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
             <div className="bg-gradient-to-r from-slate-50 to-slate-100 rounded-2xl p-2 shadow-inner overflow-x-auto scrollbar-none">
                 <div className="flex gap-2 min-w-max">
                     <TabButton
-                        label="All"
-                        fullLabel="All Applications"
+                        label="Drafts"
+                        fullLabel="Drafts / Returned"
                         active={activeTab === 'application'}
                         onClick={() => setActiveTab('application')}
                         count={allApplications.length}
@@ -218,15 +225,23 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
                     products={products}
                     currentMemberId={currentMemberId}
                     creditSnapshot={creditSnapshot}
-                    onSuccess={() => setIsModalOpen(false)}
-                    onCancel={() => setIsModalOpen(false)}
+                    initialData={editingLoan as any}
+                    onSuccess={() => {
+                        setIsModalOpen(false);
+                        setEditingLoan(null);
+                        setActiveTab('application');
+                    }}
+                    onCancel={() => {
+                        setIsModalOpen(false);
+                        setEditingLoan(null);
+                    }}
                 />
             </MobileDrawer>
 
             {/* Desktop Modal (Only visible on MD+) */}
             {isModalOpen && (
                 <div className="hidden md:flex fixed inset-0 z-50 items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl max-h-[85vh] overflow-y-auto">
                         <div className="bg-gradient-to-br from-cyan-500 to-blue-500 p-6 text-white sticky top-0 z-10">
                             <h3 className="text-2xl font-black uppercase tracking-tight">New Loan Application</h3>
                             <p className="text-white/80 text-sm mt-1">Provide details to calculate your borrowing power</p>
@@ -237,8 +252,16 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
                                 products={products}
                                 currentMemberId={currentMemberId}
                                 creditSnapshot={creditSnapshot}
-                                onSuccess={() => setIsModalOpen(false)}
-                                onCancel={() => setIsModalOpen(false)}
+                                initialData={editingLoan as any} // Pass data for editing
+                                onSuccess={() => {
+                                    setIsModalOpen(false);
+                                    setEditingLoan(null); // Reset
+                                    setActiveTab('application'); // Return to All Applications
+                                }}
+                                onCancel={() => {
+                                    setIsModalOpen(false);
+                                    setEditingLoan(null); // Reset
+                                }}
                             />
                         </div>
                     </div>

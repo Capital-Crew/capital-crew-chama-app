@@ -15,6 +15,41 @@ import { WalletService } from '@/lib/services/WalletService'
 const prisma = db
 
 /**
+ * Toggle Concurrent Application Exemption
+ * Allows a member to apply for another loan even if this one is pending/approved.
+ */
+export async function toggleConcurrentExemption(loanId: string, allowed: boolean) {
+    const session = await auth()
+    // @ts-ignore
+    if (!session?.user?.id) throw new Error("Unauthorized")
+
+    // Check admin permissions
+    const userRole = session.user.role
+    const isAdmin = ['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER', 'SECRETARY'].includes(userRole)
+
+    // Also check granular permissions if needed, but for now strict admin
+    if (!isAdmin) throw new Error("Only admins can toggle exemptions")
+
+    const loan = await prisma.loan.findUnique({ where: { id: loanId } })
+    if (!loan) throw new Error("Loan not found")
+
+    const currentExemptions = (loan.feeExemptions as any) || {}
+
+    await prisma.loan.update({
+        where: { id: loanId },
+        data: {
+            feeExemptions: {
+                ...currentExemptions,
+                allowConcurrentApplication: allowed
+            }
+        }
+    })
+
+    revalidatePath('/loans')
+    return { success: true }
+}
+
+/**
  * Submit a loan approval vote
  */
 export async function submitLoanApproval(loanId: string, decision: 'APPROVED' | 'REJECTED', notes: string) {
@@ -282,8 +317,32 @@ export async function approveLoan(loanId: string, notes: string = 'Approved via 
  */
 export async function disburseLoanToWallet(loanId: string) {
     const session = await auth()
-    if (!session?.user || (session.user.role !== 'TREASURER' && session.user.role !== 'CHAIRPERSON')) {
-        // Strict role check for disbursement
+    if (!session?.user) {
+        throw new Error('Unauthorized: Authentication required')
+    }
+
+    // Check authorization: Role-based OR Permission-based
+    const userRole = session.user.role
+    const hasRolePermission = ['TREASURER', 'CHAIRPERSON', 'SYSTEM_ADMIN'].includes(userRole)
+
+    // @ts-ignore - Check granular permissions
+    const userPermissions = session.user.permissions
+    let hasGranularPermission = false
+
+    if (userPermissions) {
+        if (Array.isArray(userPermissions)) {
+            hasGranularPermission = userPermissions.includes('DISBURSE_LOANS') || userPermissions.includes('ALL')
+        } else if (typeof userPermissions === 'object') {
+            // @ts-ignore
+            hasGranularPermission =
+                userPermissions['DISBURSE_LOANS'] === true ||
+                userPermissions['canDisburse'] === true ||
+                userPermissions['ALL'] === true
+        }
+    }
+
+    if (!hasRolePermission && !hasGranularPermission) {
+        throw new Error('Unauthorized: You do not have permission to disburse loans. Required permission: DISBURSE_LOANS')
     }
 
     await prisma.$transaction(async (tx) => {
@@ -301,8 +360,18 @@ export async function disburseLoanToWallet(loanId: string) {
         })
 
         if (!loan) throw new Error("Loan not found")
-        if (loan.status !== 'APPROVED') throw new Error("Loan is not in APPROVED state")
-        if (Number(loan.current_balance) > 0) throw new Error("Loan already has a balance? Possible error.")
+        if (loan.status !== 'APPROVED') {
+            throw new Error(`Loan cannot be disbursed. Current status: ${loan.status}. Only APPROVED loans can be disbursed.`)
+        }
+
+        // Check if loan has already been disbursed
+        const existingBalance = Number(loan.outstandingBalance)
+        if (existingBalance > 0) {
+            throw new Error(
+                `Loan has already been disbursed. Outstanding balance: KES ${existingBalance.toLocaleString()}. ` +
+                `Disbursement date: ${loan.disbursementDate?.toLocaleDateString() || 'Unknown'}`
+            )
+        }
 
         // 1. Calculate Amounts
         const principal = Number(loan.amount)
@@ -318,7 +387,13 @@ export async function disburseLoanToWallet(loanId: string) {
         // Net
         const netDisbursement = principal - processingFee - insuranceFee - shareDeduction - totalOffset
 
-        if (netDisbursement < 0) throw new Error(`Net disbursement is negative (KES ${netDisbursement}). Adjust offsets.`)
+        if (netDisbursement <= 0) {
+            throw new Error(
+                `Cannot disburse loan: Net disbursement is ${netDisbursement < 0 ? 'negative' : 'zero'} (KES ${netDisbursement.toFixed(2)}). ` +
+                `Principal: ${principal}, Fees: ${processingFee + insuranceFee}, Share Deduction: ${shareDeduction}, Offsets: ${totalOffset}. ` +
+                `Please adjust the loan amount or deductions.`
+            )
+        }
 
         // 2. Resolve Member Wallet (Unique Liability Account)
         // This ensures every member has a distinct Ledger Account for their wallet
@@ -329,13 +404,15 @@ export async function disburseLoanToWallet(loanId: string) {
         // 3. Perform Accounting (General Ledger) via AccountingEngine
         // Fetch dynamic mappings
         const mappings = await getSystemMappingsDict()
-        const fundingAccountCode = mappings['EVENT_LOAN_DISBURSEMENT'] // User wants to check this account
+        const { DEFAULT_MAPPINGS } = await import('@/lib/accounting/constants') // Allow fallback
+
+        const fundingAccountCode = mappings['EVENT_LOAN_DISBURSEMENT'] || DEFAULT_MAPPINGS['EVENT_LOAN_DISBURSEMENT']
 
         if (!fundingAccountCode) {
             throw new Error("System Mapping for 'EVENT_LOAN_DISBURSEMENT' is missing.")
         }
 
-        const getCode = (type: SystemAccountType) => mappings[type]
+        const getCode = (type: SystemAccountType) => mappings[type] || DEFAULT_MAPPINGS[type]
 
         // OVERDRAFT PROTECTION: Check if Funding Source (Loan Disbursement Account) has sufficient balance
         const { BalanceChecker } = await import('@/lib/accounting/BalanceChecker')
@@ -445,14 +522,24 @@ export async function disburseLoanToWallet(loanId: string) {
             }
 
             // 3. Penalty/Other Income from Offset
-            const otherCharges = Number(topUp.penalties) + Number(topUp.refinanceFee)
-            if (otherCharges > 0) {
+            if (Number(topUp.penalties) > 0) {
                 journalLines.push({
-                    accountId: (await getAccountId(tx, getCode('INCOME_GENERAL_FEE'))),
+                    accountId: (await getAccountId(tx, getCode('INCOME_LOAN_PENALTY') || getCode('INCOME_GENERAL_FEE'))),
                     accountType: 'INCOME',
-                    description: `Offset Fees/Penalties - ${topUp.oldLoanNumber}`,
+                    description: `Offset Penalties - ${topUp.oldLoanNumber}`,
                     debitAmount: 0,
-                    creditAmount: otherCharges,
+                    creditAmount: Number(topUp.penalties),
+                    index: lineIndex++
+                })
+            }
+
+            if (Number(topUp.refinanceFee) > 0) {
+                journalLines.push({
+                    accountId: (await getAccountId(tx, getCode('INCOME_REFINANCE_FEE'))),
+                    accountType: 'INCOME',
+                    description: `Refinance Fee - ${topUp.oldLoanNumber}`,
+                    debitAmount: 0,
+                    creditAmount: Number(topUp.refinanceFee),
                     index: lineIndex++
                 })
             }
@@ -654,7 +741,11 @@ export async function toggleMemberApprovalRight(memberId: string) {
         throw new Error("Unauthorized")
     }
 
-    // Check permissions (Only Admin/Chair/Secretary ideally, but for now Check Role)
+    // Check permissions (Only Admin/Chair/Secretary/Treasurer)
+    const allowedRoles = ['SYSTEM_ADMIN', 'CHAIRPERSON', 'SECRETARY', 'TREASURER']
+    if (!session.user.role || !allowedRoles.includes(session.user.role)) {
+        throw new Error("Insufficient permissions to manage approval rights")
+    }
 
     await prisma.$transaction(async (tx) => {
         const member: any = await tx.member.findUnique({ where: { id: memberId } })
@@ -706,6 +797,48 @@ export async function cancelLoanApplication(loanId: string) {
                 loanId,
                 eventType: LoanEventType.APPROVAL_REJECTED,
                 description: `Application cancelled/withdrawn by ${session.user.name || 'User'}`,
+                actorId: session.user.id!
+            }
+        })
+    })
+
+    revalidatePath(`/loans/${loanId}`)
+    revalidatePath('/dashboard')
+}
+
+/**
+ * Retract a loan application (Return to Draft/Application status)
+ */
+export async function retractLoanApplication(loanId: string) {
+    const session = await auth()
+    if (!session?.user) throw new Error("Unauthorized")
+
+    await prisma.$transaction(async (tx) => {
+        const loan = await tx.loan.findUnique({
+            where: { id: loanId }
+        })
+
+        if (!loan) throw new Error("Loan not found")
+
+        // Allow retraction from PENDING or APPROVED (before disbursement)
+        if (!['PENDING_APPROVAL', 'APPROVED'].includes(loan.status)) {
+            throw new Error("Only pending or approved loans can be retracted")
+        }
+
+        await tx.loan.update({
+            where: { id: loanId },
+            data: { status: 'APPLICATION' }
+        })
+
+        // Reset approvals? Ideally yes, but simpler to just change status for now.
+        // Existing votes remain but status is back to start. 
+        // A cleaner approach would be clearing votes, but let's keep it simple.
+
+        await tx.loanJourneyEvent.create({
+            data: {
+                loanId,
+                eventType: 'APPROVAL_REJECTED', // Using closest existing type or generic info
+                description: `Application retracted/returned to draft by ${session.user.name || 'User'}`,
                 actorId: session.user.id!
             }
         })

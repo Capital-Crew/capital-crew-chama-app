@@ -177,7 +177,7 @@ export async function disburseLoan(loanId: string) {
                 })
             }
 
-            // 6. CREDIT: Share Capital Deduction
+            // 6. CREDIT: Contributions Deduction
             if (shareCapitalDeduction.gt(0) && shareCapitalId) {
                 journalLines.push({
                     accountId: shareCapitalId,

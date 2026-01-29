@@ -5,6 +5,8 @@ import { redirect } from "next/navigation"
 
 import { SiteHeader } from "@/components/SiteHeader"
 
+import { getApprovalCounts } from '@/app/actions/approval-actions';
+
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
     const session = await auth()
     if (!session?.user) redirect("/login")
@@ -18,11 +20,10 @@ export default async function ProtectedLayout({ children }: { children: React.Re
     }
 
     // Fetch Approval Count
-    const { getApprovalCounts } = await import('@/app/actions/approval-actions');
     const approvalCount = await getApprovalCounts();
 
     return (
-        <div className="min-h-screen bg-slate-50 flex text-slate-800 font-sans">
+        <div className="min-h-screen bg-slate-50 lemon:bg-yellow-50 flex text-slate-800 lemon:text-yellow-900 font-sans">
             <AppSidebar user={session.user as any} approvalCount={approvalCount} />
 
             <main className="flex-1 w-full md:ml-80 px-4 md:px-8 py-8 transition-all duration-300 overflow-x-hidden">

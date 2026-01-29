@@ -59,7 +59,7 @@ export function ApprovalActionPanel({ status, entityType, entityId, canEdit }: A
                     className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 border border-red-200 rounded-lg text-xs font-bold uppercase hover:bg-red-100 disabled:opacity-50 transition-all"
                 >
                     {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
-                    Cancel Request
+                    Cancel Approval Request
                 </button>
             )}
 

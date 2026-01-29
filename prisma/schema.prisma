@@ -389,6 +389,12 @@ model User {
   delegationsFrom ApprovalDelegation[] @relation("DelegationsFrom")
   delegationsTo   ApprovalDelegation[] @relation("DelegationsTo")
 
+  loanDrafts LoanDraft[] // Auto-save drafts
+
+  // Workflow Relations
+  workflowRequests WorkflowRequest[]
+  workflowActions  WorkflowAction[]
+
   auditLogs AuditLog[]
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
@@ -695,6 +701,23 @@ model Loan {
   submissionVersion Int @default(1)
 
   history            LoanHistory[]
+}
+
+// Auto-Save Draft Storage for Loan Applications
+model LoanDraft {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  loanType  String?  // e.g., "EMERGENCY", "DEVELOPMENT", "NORMAL"
+  step      Int      @default(1) // Current step in multi-step form (1-4)
+  data      Json     // Stores complete form state
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([updatedAt])
 }
 // ========================================
 
@@ -1284,6 +1307,7 @@ enum SystemAccountType {
   RECEIVABLE_LOAN_PENALTY
   INCOME_LOAN_PROCESSING_FEE
   INCOME_GENERAL_FEE
+  INCOME_REFINANCE_FEE
   RECEIVABLE_LOAN_FEES
 
   // Legacy / Fallbacks (Optional, keeping for safety if code references them)
@@ -1670,4 +1694,103 @@ model ApprovalDelegation {
   @@index([fromUserId, toUserId])
   @@index([toUserId, entityType])
   @@index([toUserId, expiresAt])
+}
+
+// ========================================
+// WORKFLOW ENGINE MODELS
+// ========================================
+
+enum WorkflowStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+  DRAFT
+}
+
+model WorkflowDefinition {
+  id          String      @id @default(cuid())
+  entityType  EntityType  @unique // One workflow per entity type for now (e.g. LOAN)
+  name        String
+  description String?
+  isActive    Boolean     @default(true)
+
+  stages      WorkflowStage[]
+  requests    WorkflowRequest[]
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model WorkflowStage {
+  id          String      @id @default(cuid())
+  workflowId  String
+  workflow    WorkflowDefinition @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  stepNumber   Int
+  name         String
+  requiredRole UserRole 
+  canReject    Boolean     @default(true)
+  isFinal      Boolean     @default(false)
+  minVotesRequired Int     @default(1) // Number of approvals needed
+
+  // Reverse relation for current stage tracking
+  currentInRequests WorkflowRequest[]
+
+  // Reverse relation for actions taken in this stage
+  actions      WorkflowAction[]
+
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@unique([workflowId, stepNumber])
+}
+
+model WorkflowRequest {
+  id             String             @id @default(cuid())
+  workflowId     String
+  workflow       WorkflowDefinition @relation(fields: [workflowId], references: [id])
+
+  // Track progress
+  currentStageId String?
+  currentStage   WorkflowStage?     @relation(fields: [currentStageId], references: [id])
+  
+  status         WorkflowStatus     @default(PENDING)
+
+  // Entity Reference
+  entityType     EntityType
+  entityId       String
+  
+  // Requester
+  requesterId    String
+  requester      User               @relation(fields: [requesterId], references: [id])
+
+  // History
+  actions        WorkflowAction[]
+
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@index([entityType, entityId])
+  @@index([status])
+  @@index([requesterId])
+}
+
+model WorkflowAction {
+  id          String          @id @default(cuid())
+  requestId   String
+  request     WorkflowRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  stageId     String
+  stage       WorkflowStage   @relation(fields: [stageId], references: [id])
+
+  actorId     String
+  actor       User            @relation(fields: [actorId], references: [id])
+
+  action      ApprovalAction 
+  notes       String?
+  timestamp   DateTime        @default(now())
+
+  @@index([requestId])
+  @@index([actorId])
 }

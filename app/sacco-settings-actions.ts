@@ -174,7 +174,21 @@ function serializeSettings(s: any) {
  * @param memberId - Member ID
  * @param loansToOffset - Optional array of loan IDs to offset/top-up (only these will be deducted)
  */
-export async function calculateLoanQualification(memberId: string, loansToOffset: string[] = [], appliedAmount?: number) {
+export async function calculateLoanQualification(memberId: string, loansToOffset: string[] = [], appliedAmount?: number, exemptions?: any) {
+    // Import strict currency helpers
+    const {
+        truncateToDecimals,
+        calculatePercentage,
+        addMoney,
+        subtractMoney,
+        multiplyMoney,
+        formatCurrency,
+        decimalToNumber
+    } = await import('@/lib/currency')
+
+    // Import statement processor for accurate balance calculation
+    const { processTransactions } = await import('@/lib/statementProcessor')
+
     const settings = await getSaccoSettings()
 
     console.log(`[calculateLoanQualification] Fetching member: ${memberId}`);
@@ -184,7 +198,10 @@ export async function calculateLoanQualification(memberId: string, loansToOffset
         include: {
             loans: {
                 where: {
-                    status: { in: ['ACTIVE', 'OVERDUE'] }
+                    status: { in: ['APPROVED', 'DISBURSED', 'ACTIVE', 'OVERDUE'] }
+                },
+                include: {
+                    transactions: true // Needed for accurate balance calculation
                 }
             }
         }
@@ -199,15 +216,15 @@ export async function calculateLoanQualification(memberId: string, loansToOffset
     const { getMemberContributionBalance } = await import('@/lib/accounting/AccountingEngine')
     // NOTE: getMemberShareBalance was removed as it returns the same value as getMemberContributionBalance
     // Both use the CONTRIBUTIONS account, so using it twice was double-counting
-    const memberContributions = await getMemberContributionBalance(memberId)
+    const memberContributions = truncateToDecimals(await getMemberContributionBalance(memberId))
 
     // Calculate gross qualifying amount (contributions × multiplier)
     // Using only memberContributions to avoid double-counting
-    const grossQualifyingAmount = memberContributions * Number(settings.loanMultiplier)
+    const grossQualifyingAmount = multiplyMoney(memberContributions, Number(settings.loanMultiplier))
 
     // CRITICAL: Only calculate fees if user has entered an applied amount
     // Do NOT fall back to grossQualifyingAmount - that's just their borrowing capacity
-    const baseAmount = appliedAmount || 0
+    const baseAmount = truncateToDecimals(appliedAmount || 0)
 
     console.log('[calculateLoanQualification] Debug:', {
         memberId,
@@ -215,13 +232,18 @@ export async function calculateLoanQualification(memberId: string, loansToOffset
         grossQualifyingAmount,
         appliedAmount,
         baseAmount,
-        loansToOffset: loansToOffset.length
+        loansToOffset: loansToOffset.length,
+        exemptions
     });
 
     // Calculate fees based on the applied amount (0 if not provided)
-    const processingFee = (baseAmount * Number(settings.processingFeePercent)) / 100
-    const insuranceFee = (baseAmount * Number(settings.insuranceFeePercent)) / 100
-    const shareCapitalDeduction = Number(settings.shareCapitalBoost) || 0
+    // Check exemptions
+    const exemptProcessing = exemptions?.processingFee === true || exemptions?.processingFee === 'true';
+    const exemptInsurance = exemptions?.insuranceFee === true || exemptions?.insuranceFee === 'true';
+
+    const processingFee = exemptProcessing ? 0 : calculatePercentage(baseAmount, Number(settings.processingFeePercent))
+    const insuranceFee = exemptInsurance ? 0 : calculatePercentage(baseAmount, Number(settings.insuranceFeePercent))
+    const shareCapitalDeduction = truncateToDecimals(Number(settings.shareCapitalBoost) || 0)
 
     // Cast member to any to access duplicate loans property
     const memberWithLoans = member as any;
@@ -234,25 +256,45 @@ export async function calculateLoanQualification(memberId: string, loansToOffset
             where: {
                 id: { in: loansToOffset },
                 memberId: memberId  // Security: ensure loans belong to this member
+            },
+            include: {
+                transactions: true // Critical for accurate balance
             }
         });
 
         console.log('[calculateLoanQualification] Selected loans for offset:', selectedLoans.length);
-        console.log('[calculateLoanQualification] Loan IDs requested:', loansToOffset);
-        console.log('[calculateLoanQualification] Loan IDs found:', selectedLoans.map((l: any) => l.id));
 
         // Calculate total offset amount (full clearance of each loan)
         for (const loan of selectedLoans) {
-            // Use outstandingBalance if available, otherwise calculate from ledger
-            const outstandingBalance = Number(loan.outstandingBalance || loan.current_balance || 0);
+            // Use statement processor logic for accurate buffer-free calculation
+            const rawTransactions = loan.transactions ? loan.transactions.map((tx: any) => ({
+                ...tx,
+                amount: Number(tx.amount),
+                createdAt: tx.postedAt,
+                type: tx.type
+            })) : [];
+
+            const mappedTransactions = rawTransactions.map((tx: any) => ({
+                ...tx,
+                type: tx.type === 'LOAN_DISBURSEMENT' || tx.type === 'DISBURSEMENT' ? 'DISBURSEMENT' :
+                    tx.type === 'LOAN_REPAYMENT' || tx.type === 'REPAYMENT' ? 'REPAYMENT' :
+                        tx.type
+            }));
+
+            const statementRows = processTransactions(mappedTransactions as any[]);
+            const statementBalance = statementRows.length > 0
+                ? statementRows[statementRows.length - 1].runningBalance
+                : 0;
+
+            const outstandingBalance = truncateToDecimals(statementBalance);
 
             if (outstandingBalance > 0) {
-                selectedLoansOffset += outstandingBalance;
+                selectedLoansOffset = addMoney(selectedLoansOffset, outstandingBalance);
                 console.log(`[calculateLoanQualification] Loan ${loan.loanApplicationNumber}: Outstanding Balance = ${outstandingBalance}`);
             } else {
                 // Fallback: use net disbursement or original loan amount if balance is 0
-                const fallbackAmount = Number(loan.netDisbursementAmount || loan.amount || 0);
-                selectedLoansOffset += fallbackAmount;
+                const fallbackAmount = truncateToDecimals(Number(loan.netDisbursementAmount || loan.amount || 0));
+                selectedLoansOffset = addMoney(selectedLoansOffset, fallbackAmount);
                 console.log(`[calculateLoanQualification] Loan ${loan.loanApplicationNumber}: Using fallback amount = ${fallbackAmount} (stored balance was 0)`);
             }
         }
@@ -260,7 +302,7 @@ export async function calculateLoanQualification(memberId: string, loansToOffset
 
     // Top-up fee: Calculated as percentage of OFFSET AMOUNT (loans being paid off), not applied amount
     const topUpFee = (selectedLoansOffset > 0)
-        ? (selectedLoansOffset * (Number(settings.refinanceFeePercentage) || 0)) / 100
+        ? calculatePercentage(selectedLoansOffset, Number(settings.refinanceFeePercentage))
         : 0
 
     console.log('[calculateLoanQualification] Fees:', {
@@ -277,26 +319,46 @@ export async function calculateLoanQualification(memberId: string, loansToOffset
     let totalExposure = 0;
     for (const loan of memberWithLoans.loans) {
         try {
-            const { getLoanPenaltyBalance, getLoanInterestBalance, getLoanPrincipalBalance } = await import('@/lib/accounting/AccountingEngine');
-            const principal = await getLoanPrincipalBalance(loan.id);
-            const interest = await getLoanInterestBalance(loan.id);
-            const penalty = await getLoanPenaltyBalance(loan.id);
-            totalExposure += (principal + interest + penalty);
+            // Re-calculate balance using statement logic if possible, or fallback manually
+            const rawTransactions = (loan as any).transactions ? (loan as any).transactions.map((tx: any) => ({
+                ...tx,
+                amount: Number(tx.amount),
+                createdAt: tx.postedAt,
+                type: tx.type
+            })) : [];
+
+            if (rawTransactions.length > 0) {
+                const mappedTransactions = rawTransactions.map((tx: any) => ({
+                    ...tx,
+                    type: tx.type === 'LOAN_DISBURSEMENT' || tx.type === 'DISBURSEMENT' ? 'DISBURSEMENT' :
+                        tx.type === 'LOAN_REPAYMENT' || tx.type === 'REPAYMENT' ? 'REPAYMENT' :
+                            tx.type
+                }));
+                const rows = processTransactions(mappedTransactions);
+                const bal = rows.length > 0 ? rows[rows.length - 1].runningBalance : 0;
+                totalExposure = addMoney(totalExposure, bal);
+            } else {
+                // Try Accounting Engine fallback
+                const { getLoanOutstandingBalance } = await import('@/lib/accounting/AccountingEngine');
+                const bal = await getLoanOutstandingBalance(loan.id);
+                totalExposure = addMoney(totalExposure, bal);
+            }
         } catch (error) {
-            totalExposure += (loan.netDisbursementAmount || loan.amount);
+            const fallback = truncateToDecimals(Number(loan.netDisbursementAmount || loan.amount));
+            totalExposure = addMoney(totalExposure, fallback);
         }
     }
 
     // Calculate deductions (fees only - NOT including loan offsets)
-    const feeDeductions = processingFee + insuranceFee + Number(shareCapitalDeduction) + topUpFee
+    const feeDeductions = addMoney(addMoney(addMoney(processingFee, insuranceFee), shareCapitalDeduction), topUpFee)
 
     // Total deductions includes both fees AND loan offsets
-    const totalDeductions = feeDeductions + selectedLoansOffset
+    const totalDeductions = addMoney(feeDeductions, selectedLoansOffset)
 
     // Net disbursement amount calculation:
     // Use the SAME baseAmount we used for fee calculations
     // Subtract all deductions (fees + offsets)
-    const netDisbursementAmount = Math.max(0, baseAmount - totalDeductions)
+    const netDisbursementAmount = Math.max(0, subtractMoney(baseAmount, totalDeductions))
 
     console.log('[calculateLoanQualification] Final calculation:', {
         baseAmount,
@@ -309,20 +371,18 @@ export async function calculateLoanQualification(memberId: string, loansToOffset
         netDisbursementAmount
     });
 
-
-
     return {
-        memberShares: Number(memberContributions),  // Convert to number
-        grossQualifyingAmount: Number(grossQualifyingAmount),
-        totalExposure: Number(totalExposure),
-        processingFee: Number(processingFee),
-        insuranceFee: Number(insuranceFee),
-        shareCapitalDeduction: Number(shareCapitalDeduction),
-        topUpFee: Number(topUpFee),
-        selectedLoansOffset: Number(selectedLoansOffset),
-        totalDeductions: Number(totalDeductions),
-        netDisbursementAmount: Number(netDisbursementAmount),
-        loanMultiplier: Number(settings.loanMultiplier)
+        memberShares: memberContributions,
+        grossQualifyingAmount: grossQualifyingAmount,
+        totalExposure: totalExposure,
+        processingFee: processingFee,
+        insuranceFee: insuranceFee,
+        shareCapitalDeduction: shareCapitalDeduction,
+        topUpFee: topUpFee,
+        selectedLoansOffset: selectedLoansOffset,
+        totalDeductions: totalDeductions,
+        netDisbursementAmount: netDisbursementAmount,
+        loanMultiplier: truncateToDecimals(Number(settings.loanMultiplier))
     }
 }
 
@@ -331,50 +391,86 @@ export async function calculateLoanQualification(memberId: string, loansToOffset
  * Used for loan offset selection in application form
  */
 export async function getMemberActiveLoans(memberId: string) {
-    const { getLoanPenaltyBalance, getLoanInterestBalance, getLoanPrincipalBalance } = await import('@/lib/accounting/AccountingEngine')
+    console.log('[getMemberActiveLoans] Fetching for member:', memberId);
+    try {
+        // Import statement processor for consistent balance calculation (same as Loans tab)
+        const { processTransactions } = await import('@/lib/statementProcessor')
 
-    const loans = await prisma.loan.findMany({
-        where: {
-            memberId,
-            status: { in: ['ACTIVE', 'OVERDUE'] }
-        },
-        include: {
-            loanProduct: {
-                select: { name: true }
-            }
-        },
-        orderBy: { disbursementDate: 'desc' }
-    })
+        const loans = await prisma.loan.findMany({
+            where: {
+                memberId,
+                status: { in: ['APPROVED', 'DISBURSED', 'ACTIVE', 'OVERDUE'] }
+            },
+            include: {
+                loanProduct: {
+                    select: { name: true }
+                },
+                transactions: true // Fetch LoanTransaction records for statement processing
+            },
+            orderBy: { disbursementDate: 'desc' }
+        })
 
-    // Get outstanding balances for each loan
-    const loansWithBalances = await Promise.all(
-        loans.map(async (loanItem: any) => {
+        console.log(`[getMemberActiveLoans] Found ${loans.length} active loans`);
+
+        // Calculate balances using the SAME logic as the Loans tab
+        const loansWithBalances = loans.map((loanItem: any) => {
             const loan = loanItem;
-            let penalty = 0
-            let interest = 0
-            let principal = 0
 
             try {
-                penalty = await getLoanPenaltyBalance(loan.id)
-                interest = await getLoanInterestBalance(loan.id)
-                principal = await getLoanPrincipalBalance(loan.id)
-            } catch (error) {
-                // If accounts not seeded, use loan amount
-                principal = Number(loan.amount)
-            }
+                // Map LoanTransaction to structure expected by processTransactions
+                const rawTransactions = loan.transactions ? loan.transactions.map((tx: any) => ({
+                    ...tx,
+                    amount: Number(tx.amount),
+                    createdAt: tx.postedAt,
+                    type: tx.type
+                })) : [];
 
-            const outstanding = penalty + interest + principal
+                // Map transaction types to match statement processor expectations
+                const mappedTransactions = rawTransactions.map((tx: any) => ({
+                    ...tx,
+                    type: tx.type === 'LOAN_DISBURSEMENT' || tx.type === 'DISBURSEMENT' ? 'DISBURSEMENT' :
+                        tx.type === 'LOAN_REPAYMENT' || tx.type === 'REPAYMENT' ? 'REPAYMENT' :
+                            tx.type
+                }));
 
-            return {
-                id: loan.id,
-                loanApplicationNumber: loan.loanApplicationNumber,
-                productName: loan.loanProduct?.name || 'Loan',
-                disbursedAmount: Number(loan.netDisbursementAmount || loan.amount),
-                outstandingBalance: outstanding,
-                status: loan.status
+                // Process transactions to get running balance (same as Loans tab)
+                const statementRows = processTransactions(mappedTransactions as any[]);
+                const statementBalance = statementRows.length > 0
+                    ? statementRows[statementRows.length - 1].runningBalance
+                    : 0;
+
+                return {
+                    id: loan.id,
+                    loanApplicationNumber: loan.loanApplicationNumber,
+                    productName: loan.loanProduct?.name || 'Loan',
+                    disbursedAmount: Number(loan.netDisbursementAmount || loan.amount),
+                    outstandingBalance: statementBalance, // Use statement balance (same as Loans tab)
+                    status: loan.status,
+                    // Add missing fields required by frontend interface
+                    disbursementDate: loan.disbursementDate || loan.applicationDate, // Fallback to application date
+                    interestRate: Number(loan.interestRate || loan.loanProduct?.interestRate || 0),
+                    penalties: 0 // Default to 0 as we don't have separate penalty tracking yet
+                }
+            } catch (err) {
+                console.error(`[getMemberActiveLoans] Error processing loan ${loan.id}:`, err);
+                // Return safe fallback
+                return {
+                    id: loan.id,
+                    loanApplicationNumber: loan.loanApplicationNumber,
+                    productName: loan.loanProduct?.name || 'Loan',
+                    disbursedAmount: Number(loan.netDisbursementAmount || loan.amount),
+                    outstandingBalance: Number(loan.netDisbursementAmount || loan.amount), // Fallback balance
+                    status: loan.status,
+                    disbursementDate: loan.disbursementDate || loan.applicationDate,
+                    interestRate: 0,
+                    penalties: 0
+                };
             }
         })
-    )
 
-    return loansWithBalances
+        return loansWithBalances
+    } catch (e) {
+        console.error('[getMemberActiveLoans] FAILED:', e);
+        throw e;
+    }
 }

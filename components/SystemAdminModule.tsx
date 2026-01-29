@@ -11,7 +11,10 @@ import { toggleMemberApprovalRight } from '@/app/loan-approval-actions';
 import { toggleLoanProductStatus } from '@/app/actions/loan-product';
 import { PermissionControlPanel } from '@/components/PermissionControlPanel';
 import { EngineHealthDashboard } from '@/components/EngineHealthDashboard';
-import { Settings, DollarSign, Users, TrendingUp, Shield, CheckCircle, XCircle, Edit, Package, HeartHandshake, Mail } from 'lucide-react';
+import { LoanAdjustmentModal } from '@/components/admin/LoanAdjustmentModal';
+import { postLoanAdjustment } from '@/app/actions/loan-adjustment-actions';
+import { Settings, DollarSign, Users, TrendingUp, Shield, CheckCircle, XCircle, Edit, Package, HeartHandshake, Mail, Scale } from 'lucide-react';
+import { toast } from 'sonner';
 import { WelfareTypeManager } from '@/components/welfare/WelfareTypeManager'
 import { AdminRequisitionList } from '@/components/welfare/AdminRequisitionList'
 import { NotificationSettings } from '@/components/admin/NotificationSettings'
@@ -52,6 +55,8 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
         monthlyContributionAmount: 2000,
         latePaymentPenalty: 200
     });
+
+    const [isAdjustmentModalOpen, setIsAdjustmentModalOpen] = useState(false);
 
     // Load SACCO settings
     useEffect(() => {
@@ -94,9 +99,20 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
         }
     };
 
+    const handleAdjustmentSubmit = async (data: any) => {
+        try {
+            await postLoanAdjustment(data);
+            toast.success("Adjustment posted successfully");
+            setIsAdjustmentModalOpen(false);
+        } catch (error: any) {
+            toast.error(error.message || "Failed to post adjustment");
+        }
+    };
+
     const tabs = [
         { id: 'engines', label: 'Engine Health', icon: TrendingUp },
         { id: 'products', label: 'Loan Products', icon: Package },
+        { id: 'adjustments', label: 'Loan Adjustments', icon: Scale },
         { id: 'sacco', label: 'SACCO Settings', icon: Settings },
         { id: 'welfare', label: 'Welfare', icon: HeartHandshake },
         { id: 'notifications', label: 'Notifications', icon: Mail },
@@ -241,6 +257,42 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
                             </Link>
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* Adjustments Tab */}
+            {activeTab === 'adjustments' && (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h2 className="text-2xl font-bold text-slate-900">Loan Adjustments</h2>
+                            <p className="text-slate-600 mt-1">Manually adjust loan balances (Penalties, Waivers, Corrections)</p>
+                        </div>
+                        <button
+                            onClick={() => setIsAdjustmentModalOpen(true)}
+                            className="flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white px-6 py-3 rounded-xl font-semibold shadow-lg shadow-cyan-500/30 hover:shadow-xl hover:shadow-cyan-500/40 transition-all duration-200"
+                        >
+                            <Scale className="w-5 h-5" />
+                            New Adjustment
+                        </button>
+                    </div>
+
+                    <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center">
+                        <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <Scale className="w-10 h-10 text-slate-400" />
+                        </div>
+                        <h3 className="text-xl font-bold text-slate-900 mb-2">Manual Adjustments</h3>
+                        <p className="text-slate-600 max-w-md mx-auto mb-8">
+                            Use this tool to post manual penalties, waive charges, or correct system errors.
+                            All adjustments are audited and will reflect in the General Ledger.
+                        </p>
+                        <button
+                            onClick={() => setIsAdjustmentModalOpen(true)}
+                            className="inline-flex items-center gap-2 text-cyan-600 font-bold hover:text-cyan-700 hover:underline"
+                        >
+                            Post Adjustment Now &rarr;
+                        </button>
+                    </div>
                 </div>
             )}
 
@@ -488,6 +540,13 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
                     <UserRightsTable users={users} />
                 </div>
             )}
+
+            {/* Loan Adjustment Modal */}
+            <LoanAdjustmentModal
+                isOpen={isAdjustmentModalOpen}
+                onClose={() => setIsAdjustmentModalOpen(false)}
+                onAdjustmentSubmit={handleAdjustmentSubmit}
+            />
 
             {/* Modal (Desktop Only) */}
             {isModalOpen && (

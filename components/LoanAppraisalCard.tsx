@@ -9,8 +9,10 @@ import { LoanAppraisalReport } from './LoanAppraisalReport'
 import { ArrowLeft } from 'lucide-react'
 import { submitLoanApproval, getLoanJourney } from '@/app/loan-approval-actions'
 import { PostLoanButton } from './loans/PostLoanButton';
-import { ApprovalActionPanel } from './approval/ApprovalActionPanel';
 import { toast } from '@/lib/toast';
+
+import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 
 interface LoanAppraisalCardProps {
     loanId: string
@@ -27,7 +29,9 @@ interface LoanData {
     status: string
     applicationDate: Date
     disbursementDate?: Date
-
+    feeExemptions?: {
+        allowConcurrentApplication?: boolean
+    }
     member: {
         id: string
         name: string
@@ -94,7 +98,25 @@ interface LoanData {
         timestamp: string
         version: number
     }[]
+
+    // Workflow Engine
+    workflowRequest?: {
+        id: string
+        status: string // PENDING, APPROVED, etc.
+        currentStage?: {
+            id: string
+            name: string
+            stepNumber: number
+            requiredRole: string
+        }
+        workflow: {
+            name: string
+            stages: any[]
+        }
+    }
 }
+
+import { VotingRecordsModal } from './loan/VotingRecordsModal';
 
 export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, activeTab: parentActiveTab }: LoanAppraisalCardProps) {
     const [loan, setLoan] = useState<LoanData | null>(null)
@@ -102,6 +124,7 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
     const [activeTab, setActiveTab] = useState<'appraisal' | 'journey' | 'schedule' | 'statement' | 'history'>('appraisal')
     const [approvalNotes, setApprovalNotes] = useState('')
     const [submitting, setSubmitting] = useState(false)
+    const [showVotingRecords, setShowVotingRecords] = useState(false)
 
     useEffect(() => {
         if (isOpen && loanId) {
@@ -112,7 +135,10 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
     const fetchLoanData = async () => {
         setLoading(true)
         try {
-            const response = await fetch(`/api/loans/${loanId}`, { cache: 'no-store' })
+            const response = await fetch(`/api/loans/${loanId}`, {
+                cache: 'no-store',
+                credentials: 'include'
+            })
             const data = await response.json()
             setLoan(data.loan)
             // If API returns history in loan object, we are good.
@@ -127,7 +153,16 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
         if (!loan) return
         setSubmitting(true)
         try {
-            await submitLoanApproval(loan.id, 'APPROVED', approvalNotes)
+            if (loan.workflowRequest && loan.workflowRequest.status === 'PENDING') {
+                // Use Workflow Engine
+                const { processWorkflowAction } = await import('@/app/actions/workflow-engine')
+                // Type casting action string as any to match server action signature if strictly typed there
+                await processWorkflowAction(loan.workflowRequest.id, 'APPROVED', approvalNotes)
+            } else {
+                // Legacy Fallback
+                await submitLoanApproval(loan.id, 'APPROVED', approvalNotes)
+            }
+
             await fetchLoanData() // Refresh
             setApprovalNotes('')
             toast.success('Your approval has been recorded')
@@ -174,6 +209,7 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
             setSubmitting(false)
         }
     }
+
 
     const handleBack = () => {
         toast.success("Changes saved. Returning to menu...")
@@ -223,21 +259,94 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                                     </button>
                                 </div>
 
-                                <div className="flex flex-wrap items-center gap-2 md:gap-4">
-                                    <LoanStatusBadge status={loan.status as any} size="sm" />
-                                    <div className="text-xs md:text-sm font-bold text-white/90 bg-white/10 px-2 py-1 rounded-lg">
-                                        {loan.loanProduct.name}
+                                <div className="flex flex-wrap items-center justify-between gap-2 md:gap-4">
+                                    <div className="flex items-center gap-2 md:gap-4">
+                                        <LoanStatusBadge status={loan.status as any} size="sm" />
+                                        <div className="text-xs md:text-sm font-bold text-white/90 bg-white/10 px-2 py-1 rounded-lg">
+                                            {loan.loanProduct.name}
+                                        </div>
+                                        {loan.workflowRequest?.currentStage && (
+                                            <div className="text-xs md:text-sm font-bold text-white/90 bg-purple-500/20 border border-purple-300/30 px-2 py-1 rounded-lg flex items-center gap-2">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-purple-300 animate-pulse" />
+                                                <span>{loan.workflowRequest.currentStage.name}</span>
+                                            </div>
+                                        )}
                                     </div>
 
-                                    {/* Approval Action Panel */}
-                                    <div className="ml-auto">
-                                        <ApprovalActionPanel
-                                            status={loan.status}
-                                            entityType="LOAN"
-                                            entityId={loan.id}
-                                            canEdit={true}
-                                        />
-                                    </div>
+                                    {/* Action Buttons - Only show for PENDING_APPROVAL */}
+                                    {loan.status === 'PENDING_APPROVAL' && (
+                                        <div className="flex items-center gap-2">
+                                            {/* Approvals Button */}
+                                            <button
+                                                onClick={() => setShowVotingRecords(true)}
+                                                className="px-3 md:px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-200/40 text-white font-bold uppercase text-[10px] md:text-xs rounded-lg transition-all backdrop-blur-sm flex items-center gap-2"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                                                Approvals
+                                            </button>
+
+                                            {/* Reject Button */}
+                                            <button
+                                                onClick={handleReject}
+                                                disabled={submitting}
+                                                className="px-3 md:px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-200/40 text-white font-bold uppercase text-[10px] md:text-xs rounded-lg transition-all disabled:opacity-50 backdrop-blur-sm"
+                                            >
+                                                Reject
+                                            </button>
+
+                                            {/* Approve Button */}
+                                            <button
+                                                onClick={handleApprove}
+                                                disabled={submitting}
+                                                className="px-3 md:px-4 py-2 bg-green-500 hover:bg-green-600 text-white font-bold uppercase text-[10px] md:text-xs rounded-lg transition-all flex items-center gap-1.5 shadow-lg disabled:opacity-50"
+                                            >
+                                                {submitting ? (
+                                                    <div className="w-3 h-3 md:w-4 md:h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                ) : (
+                                                    <svg className="w-3 h-3 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
+                                                )}
+                                                <span className="hidden md:inline">Approve</span>
+                                            </button>
+
+
+
+
+                                            {/* Cancel Approval Request Button */}
+                                            <Button
+                                                onClick={async () => {
+                                                    if (!confirm('Are you sure you want to cancel this approval request? It will be moved back to draft status.')) return;
+                                                    setSubmitting(true);
+                                                    try {
+                                                        const res = await fetch(`/api/loans/${loan.id}/cancel`, { method: 'POST' });
+                                                        const json = await res.json();
+                                                        if (!res.ok) throw new Error(json.error || 'Failed to cancel');
+
+                                                        toast.success('Approval request cancelled successfully');
+                                                        onClose();
+                                                        window.location.reload();
+                                                    } catch (e: any) {
+                                                        toast.error(e.message || 'Failed to cancel');
+                                                    } finally {
+                                                        setSubmitting(false);
+                                                    }
+                                                }}
+                                                disabled={submitting}
+                                                className="bg-red-500/90 hover:bg-red-600 shadow-lg"
+                                            >
+                                                {submitting ? (
+                                                    <>
+                                                        <Spinner className="mr-2 h-4 w-4" />
+                                                        Cancelling...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <svg className="w-3 h-3 md:w-4 md:h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                        <span className="hidden md:inline">Cancel Approval Request</span>
+                                                    </>
+                                                )}
+                                            </Button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -276,202 +385,43 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                         {/* Content */}
                         <div className="p-4 md:p-8 overflow-y-auto flex-1 bg-white scrollbar-thin scrollbar-thumb-slate-200">
                             {activeTab === 'appraisal' ? (
-                                <div className="space-y-4 md:space-y-6">
-                                    {/* SECTION 1: Key Financials (Hero) */}
-                                    <div className="bg-white border text-left border-slate-200 p-5 md:p-6 rounded-2xl shadow-sm relative overflow-hidden group">
-                                        <div className="flex flex-col md:grid md:grid-cols-2 gap-6 relative z-10">
-                                            {/* Column 1: Applied Amount */}
-                                            <div>
-                                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Applied Amount</p>
-                                                <div className="text-3xl md:text-4xl font-black text-slate-900 mb-2">
-                                                    KES {loan.amount.toLocaleString()}
-                                                </div>
-                                                <div className="flex items-center gap-2 flex-wrap">
-                                                    <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase">
-                                                        {loan.loanProduct.name}
-                                                    </span>
-                                                    <span className="text-[10px] font-bold text-slate-400">
-                                                        {loan.loanProduct.interestRatePerPeriod}% Int.
-                                                    </span>
-                                                </div>
-                                            </div>
-
-                                            {/* Column 2: Loan Term & Details */}
-                                            <div className="flex flex-col justify-center md:border-l border-t md:border-t-0 border-slate-100 pt-4 md:pt-0 md:pl-8">
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div className="bg-slate-50 p-3 rounded-xl md:bg-transparent md:p-0">
-                                                        <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Period</p>
-                                                        <p className="text-base font-black text-slate-700">{loan.installments} Months</p>
-                                                    </div>
-                                                    <div className="bg-slate-50 p-3 rounded-xl md:bg-transparent md:p-0">
-                                                        <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Monthly</p>
-                                                        <p className="text-base font-black text-slate-700">KES {(loan.monthlyInstallment || 0).toLocaleString()}</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* SECTION 2: Fee Exemptions */}
-                                    <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
-                                        <h3 className="text-sm font-bold text-slate-700 mb-4">Loan Exemptions</h3>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {/* Processing Fee Toggle */}
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-sm text-slate-600">Exempt Processing Fee</span>
-                                                <button
-                                                    onClick={async () => {
-                                                        if (loan.status !== 'APPLICATION') return
-                                                        setSubmitting(true)
-                                                        const { toggleFeeExemption } = await import('@/app/actions')
-                                                        const isExempted = loan.processingFee === 0
-                                                        await toggleFeeExemption(loan.id, 'processingFee', !isExempted)
-                                                        await fetchLoanData()
-                                                        setSubmitting(false)
-                                                    }}
-                                                    disabled={submitting || loan.status !== 'APPLICATION'}
-                                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${loan.processingFee === 0
-                                                        ? 'bg-cyan-500'
-                                                        : loan.status === 'APPLICATION'
-                                                            ? 'bg-slate-300 hover:bg-slate-400'
-                                                            : 'bg-slate-200 cursor-not-allowed'
-                                                        }`}
-                                                    title={loan.status !== 'APPLICATION' ? 'Only editable in APPLICATION stage' : ''}
-                                                >
-                                                    <span
-                                                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${loan.processingFee === 0 ? 'translate-x-6' : 'translate-x-1'
-                                                            }`}
-                                                    />
-                                                </button>
-                                            </div>
-
-                                            {/* Insurance Fee Toggle */}
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-sm text-slate-600">Exempt Insurance Fee</span>
-                                                <button
-                                                    onClick={async () => {
-                                                        if (loan.status !== 'APPLICATION') return
-                                                        setSubmitting(true)
-                                                        const { toggleFeeExemption } = await import('@/app/actions')
-                                                        const isExempted = loan.insuranceFee === 0
-                                                        await toggleFeeExemption(loan.id, 'insuranceFee', !isExempted)
-                                                        await fetchLoanData()
-                                                        setSubmitting(false)
-                                                    }}
-                                                    disabled={submitting || loan.status !== 'APPLICATION'}
-                                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${loan.insuranceFee === 0
-                                                        ? 'bg-cyan-500'
-                                                        : loan.status === 'APPLICATION'
-                                                            ? 'bg-slate-300 hover:bg-slate-400'
-                                                            : 'bg-slate-200 cursor-not-allowed'
-                                                        }`}
-                                                    title={loan.status !== 'APPLICATION' ? 'Only editable in APPLICATION stage' : ''}
-                                                >
-                                                    <span
-                                                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${loan.insuranceFee === 0 ? 'translate-x-6' : 'translate-x-1'
-                                                            }`}
-                                                    />
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        {/* Status Message */}
-                                        {loan.status !== 'APPLICATION' && (
-                                            <div className="mt-4 pt-4 border-t border-slate-200">
-                                                <p className="text-xs text-slate-500">
-                                                    ℹ️ Exemptions can only be modified in APPLICATION stage
-                                                </p>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* SECTION 3: Deductions Breakdown */}
-                                    <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 shadow-sm relative">
-                                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
-                                            Deductions
-                                        </h3>
-
-                                        <div className="space-y-3 text-sm">
-                                            {/* Standard Fees */}
-                                            <div className="grid grid-cols-1 gap-y-3">
-                                                <div className="flex justify-between items-center pb-2 border-b border-slate-200 border-dashed">
-                                                    <span className="text-slate-600 font-bold text-xs">Processing Fee</span>
-                                                    <span className={`font-black text-xs ${loan.processingFee === 0 ? 'text-slate-300 line-through' : 'text-red-500'}`}>- KES {loan.processingFee.toLocaleString()}</span>
-                                                </div>
-                                                <div className="flex justify-between items-center pb-2 border-b border-slate-200 border-dashed">
-                                                    <span className="text-slate-600 font-bold text-xs">Insurance Fee</span>
-                                                    <span className={`font-black text-xs ${loan.insuranceFee === 0 ? 'text-slate-300 line-through' : 'text-red-500'}`}>- KES {loan.insuranceFee.toLocaleString()}</span>
-                                                </div>
-                                                {loan.shareCapitalDeduction > 0 && (
-                                                    <div className="flex justify-between items-center pb-2 border-b border-slate-200 border-dashed">
-                                                        <span className="text-slate-600 font-bold text-xs">Share Capital</span>
-                                                        <span className="font-black text-red-500 text-xs">- KES {loan.shareCapitalDeduction.toLocaleString()}</span>
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            {/* Loan Offsets */}
-                                            {(loan.topUps?.length > 0 || loan.existingLoanOffset > 0) && (
-                                                <div className="bg-orange-50 rounded-xl p-3 border border-orange-100 mt-2">
-                                                    <p className="text-[9px] font-bold text-orange-400 uppercase tracking-wider mb-2">Loan Clearance</p>
-                                                    <div className="space-y-2">
-                                                        {loan.topUps?.length > 0 ? (
-                                                            loan.topUps.map(t => (
-                                                                <div key={t.id} className="flex justify-between items-center">
-                                                                    <div className="flex flex-col">
-                                                                        <span className="text-orange-900 font-black text-[10px] uppercase truncate max-w-[120px]">
-                                                                            {t.clearedLoan?.loanProduct?.name || 'Loan'}
-                                                                        </span>
-                                                                    </div>
-                                                                    <span className="font-black text-orange-700 text-[10px]">- KES {t.totalOffset.toLocaleString()}</span>
-                                                                </div>
-                                                            ))
-                                                        ) : (
-                                                            <div className="flex justify-between items-center">
-                                                                <span className="text-orange-900 font-black text-[10px]">Existing Debt</span>
-                                                                <span className="font-black text-orange-700 text-[10px]">- KES {loan.existingLoanOffset.toLocaleString()}</span>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {/* Total Deductions Footer */}
-                                            <div className="pt-3 flex justify-between items-center mt-2 border-t border-slate-200">
-                                                <span className="font-black text-slate-400 text-[10px] uppercase tracking-widest">Total Deductions</span>
-                                                <span className="font-black text-slate-800 text-sm">KES {loan.totalDeductions.toLocaleString()}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* SECTION 4: Net To Disburse */}
-                                    <div className="bg-gradient-to-br from-purple-600 to-indigo-700 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
-                                        <div className="relative z-10">
-                                            <p className="text-[10px] font-bold text-purple-200 uppercase tracking-widest mb-1">Net to Disburse</p>
-                                            <div className="text-3xl md:text-5xl font-black tracking-tight text-white mb-4">
-                                                KES {loan.netDisbursementAmount.toLocaleString()}
-                                            </div>
-
-                                            <div className="bg-white/10 backdrop-blur-md rounded-xl p-3 border border-white/10">
-                                                <div className="flex justify-between items-center mb-1">
-                                                    <p className="text-[9px] font-bold text-purple-200 uppercase">Qualifying Limit</p>
-                                                </div>
-                                                <div className="w-full bg-black/20 h-1.5 rounded-full overflow-hidden mb-1">
-                                                    <div
-                                                        className="bg-green-400 h-full rounded-full"
-                                                        style={{ width: `${Math.min((loan.amount / loan.grossQualifyingAmount) * 100, 100)}%` }}
-                                                    ></div>
-                                                </div>
-                                                <div className="flex justify-between text-[9px] text-purple-200">
-                                                    <span>{Math.round((loan.amount / loan.grossQualifyingAmount) * 100)}% utilized</span>
-                                                    <span>KES {loan.grossQualifyingAmount.toLocaleString()}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                <>
+                                    <LoanAppraisalReport
+                                        loanNo={loan.loanApplicationNumber}
+                                        applicationDate={new Date(loan.applicationDate).toLocaleDateString('en-GB')}
+                                        loanType={loan.loanProduct.name}
+                                        memberNo={loan.member.memberNumber.toString()}
+                                        memberName={loan.member.name}
+                                        amountApplied={loan.amount}
+                                        memberContribution={loan.memberSharesAtApplication}
+                                        maxAvailable={loan.grossQualifyingAmount}
+                                        depositsMultiplier={loan.memberSharesAtApplication > 0 ? Number((loan.grossQualifyingAmount / loan.memberSharesAtApplication).toFixed(2)) : 0}
+                                        loanBalance={loan.existingLoanOffset}
+                                        topUpAmount={loan.existingLoanOffset}
+                                        balanceAfterTopup={0}
+                                        netLoan={loan.amount - loan.existingLoanOffset}
+                                        interestRate={loan.loanProduct.interestRatePerPeriod}
+                                        installments={loan.installments}
+                                        monthlyRepayment={loan.monthlyInstallment || 0}
+                                        topUpItems={loan.topUps?.map(t => ({
+                                            loanNo: t.clearedLoan?.loanApplicationNumber || '-',
+                                            product: t.clearedLoan?.loanProduct?.name || 'Top Up',
+                                            principalTopUp: t.principalOffset,
+                                            interestTopUp: t.interestOffset,
+                                            penalty: t.penaltyOffset,
+                                            refinanceFee: t.otherCharges,
+                                            totalTopUp: t.totalOffset
+                                        })) || []}
+                                        recommendedAmount={loan.grossQualifyingAmount}
+                                        approvedAmount={loan.amount}
+                                        processingFee={loan.processingFee}
+                                        insuranceFee={loan.insuranceFee}
+                                        shareCapitalDeduction={loan.shareCapitalDeduction}
+                                        existingLoanOffset={loan.existingLoanOffset}
+                                        totalDeductions={loan.totalDeductions}
+                                        netDisbursed={loan.netDisbursementAmount}
+                                    />
+                                </>
                             ) : activeTab === 'journey' ? (
                                 <LoanJourneyTimeline events={loan.journeyEvents} />
                             ) : activeTab === 'schedule' ? (
@@ -515,70 +465,9 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                         </div>
 
                         {/* Approval Footer - Only show if PENDING_APPROVAL and user hasn't approved */}
-                        {loan.status === 'PENDING_APPROVAL' && !loan.currentUserHasApproved && (
-                            <div className="p-6 bg-slate-50 border-t border-slate-200 flex flex-col gap-4 shrink-0">
-                                <div className="flex items-center justify-between gap-4">
-                                    <div className="flex-1">
-                                        <textarea
-                                            placeholder="Add notes for your decision (optional for approval, required for rejection)..."
-                                            className="w-full text-sm p-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-cyan-500 min-h-[50px] resize-none bg-white"
-                                            value={approvalNotes}
-                                            onChange={(e) => setApprovalNotes(e.target.value)}
-                                        />
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <button
-                                            onClick={handleReject}
-                                            disabled={submitting}
-                                            className="px-6 py-3 bg-white border border-red-200 text-red-600 font-black uppercase text-xs rounded-xl hover:bg-red-50 hover:border-red-300 transition-all disabled:opacity-50"
-                                        >
-                                            Reject
-                                        </button>
-                                        <button
-                                            onClick={handleApprove}
-                                            disabled={submitting}
-                                            className="px-8 py-3 bg-cyan-500 text-white font-black uppercase text-xs rounded-xl hover:bg-cyan-400 hover:shadow-lg hover:shadow-cyan-500/20 hover:-translate-y-0.5 transition-all disabled:opacity-50 flex items-center gap-2"
-                                        >
-                                            {submitting ? (
-                                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                            ) : (
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
-                                            )}
-                                            Approve Application
-                                        </button>
-                                    </div>
-                                </div>
-                                <div className="flex justify-end border-t border-slate-200/50 pt-2">
-                                    <button
-                                        onClick={async () => {
-                                            if (!confirm('Are you sure you want to cancel this request? It will be moved to the applications history.')) return;
-                                            setSubmitting(true);
-                                            try {
-                                                // Call new cancel API
-                                                const res = await fetch(`/api/loans/${loan.id}/cancel`, { method: 'POST' });
-                                                const json = await res.json();
-                                                if (!res.ok) throw new Error(json.error || 'Failed to cancel');
+                        {/* Removed as per instruction */}
 
-                                                toast.success('Application cancelled successfully');
-                                                onClose();
-                                                // Optionally redirect or refresh list
-                                                window.location.reload();
-                                            } catch (e: any) {
-                                                toast.error(e.message || 'Failed to cancel');
-                                            } finally {
-                                                setSubmitting(false);
-                                            }
-                                        }}
-
-                                        disabled={submitting}
-                                        className="w-full py-3 mt-4 bg-orange-50 border border-orange-200 text-orange-700 font-bold uppercase text-xs rounded-xl hover:bg-orange-100 hover:border-orange-300 transition-all flex items-center justify-center gap-2 shadow-sm "
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                        Cancel & Edit Application
-                                    </button>
-                                </div>
-                            </div>
-                        )}
+                        {/* NEW: Admin Controls (Exemption) */}
 
                         {/* Disbursement Footer - Only show if APPROVED */}
                         {loan.status === 'APPROVED' && (
@@ -616,6 +505,15 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                     </div>
                 )}
             </div>
+
+            {loan && (
+                <VotingRecordsModal
+                    isOpen={showVotingRecords}
+                    onOpenChange={setShowVotingRecords}
+                    approvals={loan.approvals || []}
+                    requiredApprovals={loan.approvalsRequired || 3}
+                />
+            )}
         </div >
     )
 }

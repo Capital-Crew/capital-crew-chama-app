@@ -12,7 +12,8 @@ export default async function SystemAdminPage() {
         select: { role: true }
     });
 
-    if (user?.role !== "CHAIRPERSON" && user?.role !== "SYSTEM_ADMIN") {
+    const allowedRoles = ["CHAIRPERSON", "SYSTEM_ADMIN", "TREASURER", "SECRETARY"];
+    if (!user?.role || !allowedRoles.includes(user.role)) {
         return (
             <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
                 <h1 className="text-2xl font-bold text-red-500">Access Denied</h1>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { CheckSquare, Square, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react'
+import { getMemberActiveLoans } from '@/app/sacco-settings-actions'
 
 interface ActiveLoan {
     id: string
@@ -31,19 +32,32 @@ export function LoanOffsetSelector({
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
+
+    // ... imports
+
     useEffect(() => {
         if (!memberId) return
 
-        // Fetch member's active loans
+        // Fetch member's active loans using Server Action
         setLoading(true)
-        fetch(`/api/members/${memberId}/active-loans`)
-            .then(res => res.json())
+        setError(null)
+        getMemberActiveLoans(memberId)
             .then(data => {
-                if (data.error) {
-                    setError(data.error)
-                } else {
-                    setActiveLoans(data.loans || [])
-                }
+                console.log('Raw loan data from server:', data)
+
+                // Adapt Server Action result to component state
+                const adaptedLoans = data.map((l: any) => {
+                    const adapted = {
+                        ...l,
+                        loanProduct: { name: l.productName || 'Loan' },
+                        current_balance: l.outstandingBalance || 0,
+                        outstandingBalance: l.outstandingBalance || 0
+                    }
+                    console.log('Adapted loan:', adapted)
+                    return adapted
+                })
+
+                setActiveLoans(adaptedLoans)
             })
             .catch(err => {
                 console.error('Failed to fetch active loans:', err)
@@ -154,8 +168,11 @@ export function LoanOffsetSelector({
                                         <div className="font-black text-xs text-slate-900 uppercase tracking-tight">
                                             {loan.loanApplicationNumber}
                                         </div>
-                                        <div className="text-[10px] text-orange-600 font-black mt-0.5">
-                                            Balance: {formatCurrency(loan.outstandingBalance || loan.current_balance)}
+                                        <div className="text-[10px] text-slate-500 font-medium mt-0.5">
+                                            {loan.loanProduct.name}
+                                        </div>
+                                        <div className="text-xs text-orange-600 font-black mt-1">
+                                            Balance: {formatCurrency(loan.outstandingBalance || 0)}
                                         </div>
                                     </div>
 

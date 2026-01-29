@@ -1,35 +1,35 @@
 
-import { db } from '../lib/db'
+import { PrismaClient } from '@prisma/client'
 
-async function fixAccountType() {
-    console.log('=== FIXING ACCOUNT 1200 TYPE ===')
+const prisma = new PrismaClient()
 
-    // 1. Check current state
-    const account = await db.account.findUnique({ where: { code: '1200' } })
-    console.log('Current State:', account)
+async function main() {
+    console.log('--- FIX ACCOUNT TYPE ---')
 
-    if (account?.type === 'ASSET') {
-        console.log('Updating Account 1200 to EQUITY...')
-        await db.account.update({
-            where: { code: '1200' },
-            data: { type: 'EQUITY' }
-        })
-        console.log('Update complete.')
-    } else {
-        console.log('Account is not ASSET, no change needed (or already fixed).')
-    }
-
-    // 2. Check Mappings
-    console.log('\n=== CHECKING APP MAPPINGS ===')
-    const mappings = await db.systemAccountingMapping.findMany({
+    // 1. Get Mapping
+    const mapping = await prisma.systemAccountingMapping.findUnique({
+        where: { type: 'CONTRIBUTIONS' },
         include: { account: true }
     })
 
-    mappings.forEach(m => {
-        console.log(`Mapping: ${m.type} -> Account: ${m.account.code} (${m.account.name})`)
+    if (!mapping) return
+
+    console.log(`Updating Account ${mapping.account.code} (${mapping.account.id})`)
+    console.log(`Current Type: ${mapping.account.type}`)
+
+    // 2. Update to EQUITY
+    await prisma.ledgerAccount.update({
+        where: { id: mapping.account.id },
+        data: { type: 'EQUITY' } // or LIABILITY
     })
 
-    await db.$disconnect()
+    console.log('Updated to EQUITY')
+
+    // Verify
+    const fresh = await prisma.ledgerAccount.findUnique({ where: { id: mapping.account.id } })
+    console.log(`New Type: ${fresh?.type}`)
 }
 
-fixAccountType().catch(console.error)
+main()
+    .catch(console.error)
+    .finally(() => prisma.$disconnect())

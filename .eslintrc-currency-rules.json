@@ -1,0 +1,26 @@
+{
+    "rules": {
+        "no-restricted-syntax": [
+            "error",
+            {
+                "selector": "CallExpression[callee.property.name='toFixed']",
+                "message": "❌ BANNED: .toFixed() rounds values. Use formatMoney() from @/lib/currency instead."
+            },
+            {
+                "selector": "CallExpression[callee.object.name='Math'][callee.property.name='round']",
+                "message": "❌ BANNED: Math.round() rounds values. Use truncateToDecimals() from @/lib/currency instead."
+            },
+            {
+                "selector": "CallExpression[callee.property.name='toLocaleString'][arguments.length>0]:has(Property[key.name='minimumFractionDigits'])",
+                "message": "⚠️ WARNING: toLocaleString() may round. Consider using formatMoney() from @/lib/currency for monetary values."
+            }
+        ],
+        "no-restricted-globals": [
+            "error",
+            {
+                "name": "parseFloat",
+                "message": "⚠️ Use parseCurrency() from @/lib/currency for monetary values to ensure truncation."
+            }
+        ]
+    }
+}

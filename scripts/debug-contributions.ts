@@ -1,101 +1,68 @@
-/**
- * Debug script to check Total Contributions calculation
- * Run with: npx tsx scripts/debug-contributions.ts
- */
 
-import { db } from '../lib/db'
+import { PrismaClient } from '@prisma/client'
 
-async function debugContributions() {
-    console.log('=== DEBUGGING TOTAL CONTRIBUTIONS ===\n')
+const prisma = new PrismaClient()
 
-    // 1. Check Account 1200 exists and its type
-    const account1200 = await db.account.findUnique({
-        where: { code: '1200' }
-    })
+async function main() {
+    console.log('Investigating Contribution Balance...')
 
-    console.log('Account 1200 Details:')
-    console.log(account1200)
-    console.log('')
-
-    // 2. Get all journal lines for Account 1200
-    const journalLines = await db.journalLine.findMany({
-        where: {
-            account: { code: '1200' },
-            journalEntry: { isReversed: false }
-        },
+    // 1. Get a member with transactions
+    const member = await prisma.member.findFirst({
         include: {
-            journalEntry: {
-                select: {
-                    id: true,
-                    referenceType: true,
-                    referenceId: true,
-                    description: true,
-                    transactionDate: true
-                }
-            }
-        },
-        orderBy: {
-            journalEntry: {
-                transactionDate: 'desc'
-            }
-        },
-        take: 20
-    })
-
-    console.log(`Found ${journalLines.length} journal lines for Account 1200:\n`)
-
-    let totalDebits = 0
-    let totalCredits = 0
-
-    journalLines.forEach((line: any, index) => {
-        const debit = Number(line.debitAmount)
-        const credit = Number(line.creditAmount)
-        totalDebits += debit
-        totalCredits += credit
-
-        console.log(`${index + 1}. ${line.journalEntry.description}`)
-        console.log(`   Date: ${line.journalEntry.transactionDate}`)
-        console.log(`   Type: ${line.journalEntry.referenceType}`)
-        console.log(`   Debit: ${debit}, Credit: ${credit}`)
-        console.log('')
-    })
-
-    console.log('=== SUMMARY ===')
-    console.log(`Total Debits: ${totalDebits}`)
-    console.log(`Total Credits: ${totalCredits}`)
-    console.log(`Balance (Credit - Debit): ${totalCredits - totalDebits}`)
-    console.log('')
-
-    // 3. Check aggregation (what dashboard uses)
-    const agg = await db.journalLine.aggregate({
-        where: {
-            account: { code: '1200' },
-            journalEntry: { isReversed: false }
-        },
-        _sum: { debitAmount: true, creditAmount: true }
-    })
-
-    const aggDebit = Number(agg._sum.debitAmount || 0)
-    const aggCredit = Number(agg._sum.creditAmount || 0)
-    const balance = aggCredit - aggDebit
-
-    console.log('=== AGGREGATION (Dashboard Calculation) ===')
-    console.log(`Sum of Debits: ${aggDebit}`)
-    console.log(`Sum of Credits: ${aggCredit}`)
-    console.log(`Balance (Credit - Debit): ${balance}`)
-    console.log('')
-
-    // 4. Check if there are any reversed entries
-    const reversedCount = await db.journalLine.count({
-        where: {
-            account: { code: '1200' },
-            journalEntry: { isReversed: true }
+            shareTransactions: true
         }
     })
 
-    console.log(`Reversed entries (excluded): ${reversedCount}`)
+    if (!member) {
+        console.error('No member found')
+        return
+    }
 
-    await db.$disconnect()
+    console.log(`Checking Member: ${member.name} (${member.id})`)
+
+    // 2. Get Ledger Entries for Account 1200
+    const account = await prisma.ledgerAccount.findUnique({ where: { code: '1200' } })
+    if (!account) { console.error('Account 1200 not found'); return; }
+
+    console.log(`Account 1200 Type: ${account.type}`)
+
+    const entries = await prisma.ledgerEntry.findMany({
+        where: {
+            ledgerAccountId: account.id,
+            // Filter by this member if possible? 
+            // LedgerEntry doesn't link to member directly, need to trace back via Transaction -> Reference?
+            // Or we can rely on `getAccountBalance` filtering logic if it exists.
+        },
+        include: { ledgerTransaction: true }
+    })
+
+    console.log(`Found ${entries.length} entries for Account 1200 globally.`)
+
+    // 3. Inspect a sample entry
+    if (entries.length > 0) {
+        console.log('Sample Entry:', JSON.stringify(entries[0], null, 2))
+    }
+
+    // 4. Run Balance Calculation via Engine
+    // We can't import the Engine easily in this script without complex setup, so we re-implement the math to check.
+
+    let balance = 0
+    for (const entry of entries) {
+        // If EQUITY: Credit - Debit
+        const debit = Number(entry.debitAmount)
+        const credit = Number(entry.creditAmount)
+        const net = credit - debit
+        balance += net
+    }
+
+    console.log(`Calculated Global Contribution Balance (Equity Rules): ${balance}`)
 }
 
-debugContributions().catch(console.error)
+main()
+    .catch(e => {
+        console.error(e)
+        process.exit(1)
+    })
+    .finally(async () => {
+        await prisma.$disconnect()
+    })

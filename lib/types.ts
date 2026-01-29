@@ -28,6 +28,15 @@ export {
     NotificationType, AuditLogAction
 } from '@prisma/client';
 
+export enum AdjustmentCategory {
+    PENALTY = 'PENALTY',
+    LEGAL_FEE = 'LEGAL_FEE',
+    BOUNCED_CHEQUE = 'BOUNCED_CHEQUE',
+    RECOVERY_COST = 'RECOVERY_COST',
+    SYSTEM_CORRECTION = 'SYSTEM_CORRECTION',
+    WAIVER = 'WAIVER'
+}
+
 // JSON Types (Not managed by Prisma tables directly in this consolidation)
 export enum RepaymentStatus {
     PENDING = 'PENDING',

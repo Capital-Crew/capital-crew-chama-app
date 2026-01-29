@@ -65,7 +65,7 @@ export default async function LoansPage() {
         <div className="space-y-4">
             <LoanManagement
                 loans={serializedLoans as any} // Cast because of Json fields
-                members={serializedMembers}
+                members={serializedMembers as any}
                 products={serializedProducts as any}
                 currentUserId={session?.user?.id || ''}
                 currentMemberId={memberId || ''}

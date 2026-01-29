@@ -285,6 +285,7 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
         'RECEIVABLE_LOAN_PENALTY',
         'INCOME_LOAN_PROCESSING_FEE',
         'INCOME_GENERAL_FEE',
+        'INCOME_REFINANCE_FEE',
         // Assets/Wallet
         'EVENT_EXPENSE_PAYMENT',
         'EVENT_CASH_DEPOSIT',

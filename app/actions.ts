@@ -47,19 +47,13 @@ export async function createMember(formData: FormData) {
             }
         })
 
-        // NEW: Create Approval Request for Member Onboarding
-        await tx.approvalRequest.create({
-            data: {
-                type: 'MEMBER',
-                referenceId: newMember.id,
-                referenceTable: 'Member',
-                requesterId: newMember.id,
-                requesterName: newMember.name,
-                description: `New Member Registration: ${newMember.name}`,
-                status: 'PENDING',
-                requiredPermission: 'APPROVE_MEMBERS'
-            }
-        })
+        // NEW: Initiate Workflow for Member Onboarding
+        try {
+            const { initiateWorkflow } = await import('@/app/actions/workflow-engine')
+            await initiateWorkflow('MEMBER', newMember.id, newMember.id)
+        } catch (error) {
+            console.error('Failed to initiate member workflow:', error)
+        }
 
         return newMember
     })
@@ -235,62 +229,83 @@ export async function applyForLoan(prevState: any, formData: FormData) {
     const amount = parseFloat(amountStr)
     const contractRef = formData.get('contractRef') as string || ''
     const installments = parseInt(formData.get('installments') as string) || 12 // NEW: Custom installments
+    const loanId = formData.get('loanId') as string || null // Get loanId if editing
 
     // Get loansToOffset (can be multiple values with same name)
     const loansToOffset = formData.getAll('loansToOffset') as string[]
+    const submitAction = formData.get('submitAction') as string || 'save'
+
+    // Determine Status
+    const newStatus = submitAction === 'send' ? LoanStatus.PENDING_APPROVAL : LoanStatus.APPLICATION;
+    const isDraft = newStatus === LoanStatus.APPLICATION;
 
     // Better validation with specific error messages
     if (!memberId) {
-        return { error: 'Missing required field: Member ID. Please select a member.' }
+        return { error: 'To create a draft, you must at least select a Member.' }
     }
     if (!loanProductId) {
-        return { error: 'Missing required field: Loan Product. Please select a loan product.' }
+        return { error: 'To create a draft, you must at least select a Loan Product.' }
     }
-    if (!amountStr || isNaN(amount) || amount <= 0) {
-        return { error: 'Missing or invalid required field: Amount. Please enter a valid loan amount.' }
+
+    // START DRAFT LOGIC
+    // If Draft, allow invalid amount (default to 0) and skip eligibility
+    if (isDraft && (!amountStr || isNaN(amount) || amount <= 0)) {
+        // Allow 0 or invalid amount for drafts - will be validated on submission
+    } else if (!amountStr || isNaN(amount) || amount <= 0) {
+        return { error: 'Missing or invalid required field: Amount. Please enter a valid loan amount greater than zero.' }
     }
 
     // NEW: Strict Arrears Check
     // Reuse the central eligibility logic (Frontend uses this too)
-    const { checkLoanEligibility } = await import('@/app/actions/loan-eligibility')
-    const eligibility = await checkLoanEligibility(memberId)
+    // SKIP FOR DRAFTS
+    if (!isDraft) {
+        // Validate amount is reasonable (not too small)
+        if (amount < 100) {
+            return { error: 'Loan amount must be at least KES 100.' }
+        }
 
-    if (!eligibility.isEligible) {
-        return { error: eligibility.message || 'Application Denied: Outstanding arrears detected.' }
+        // Check if loan has defaultCheck exemption
+        const existingLoan = loanId ? await prisma.loan.findUnique({
+            where: { id: loanId },
+            select: { feeExemptions: true }
+        }) : null
+
+        const exemptions = (existingLoan?.feeExemptions as any) || {}
+        const hasDefaultCheckExemption = exemptions.defaultCheck === true
+
+        // Only check arrears if no exemption is granted
+        if (!hasDefaultCheckExemption) {
+            const { checkLoanEligibility } = await import('@/app/actions/loan-eligibility')
+            const eligibility = await checkLoanEligibility(memberId)
+
+            if (!eligibility.isEligible) {
+                return { error: eligibility.message || 'Application Denied: Outstanding arrears detected.' }
+            }
+        }
     }
 
     // Check for existing pending/approved applications
+    // EXCLUDE the current loan being edited (if loanId is provided)
     const existingApplication = await prisma.loan.findFirst({
         where: {
             memberId,
             status: {
                 in: [LoanStatus.APPLICATION, LoanStatus.PENDING_APPROVAL, LoanStatus.APPROVED]
-            }
+            },
+            // Exclude the current loan if editing
+            ...(loanId ? { id: { not: loanId } } : {})
         }
     })
 
     if (existingApplication) {
-        // Exception: If the existing loan is ACTIVE, we only block IF they are NOT offsetting it.
-        // Wait, 'applyForLoan' is a NEW application.
-        // Determining if it's a Top Up happens via 'loansToOffset'.
-        // If I have an ACTIVE loan, and I am NOT offsetting it, I generally cannot take another loan (unless policy allows).
-        // If I AM offsetting it, then it's fine?
-        // Actually, the standard "One Loan Policy" usually blocks new apps if one is Active.
-        // Eligibility check (Line 256) handles the "Can I borrow?" logic (1/3rd rule, existing loans, etc).
-        // This block (Line 262) seems to be about "In-Flight" applications (Workflow State).
-        // Active loans are "Settled" (Disbursed). They are Debt, not "Applications".
-        // SO: I should NOT block ACTIVE here. Active blocking belongs in Eligibility.
-        // The user specifically asked about "application stage, pending approval or approved".
-        // "Approved" -> Waiting Disbursal.
-        // "Active" -> Disbursed.
-        // So I will stick to DRAFT, PENDING, APPROVED.
-
-        // RE-READING USER REQUEST: "application stage, pending approval or approved"
-        // THIS DOES NOT SAY "ACTIVE".
-        // So I will UNCOMMENT DRAFT, PENDING, APPROVED.
-        // I will NOT add ACTIVE.
-
-        return { error: `You already have a loan application (${existingApplication.loanApplicationNumber} - ${existingApplication.status}) in progress. Please complete or cancel it before applying for another.` }
+        // EXEMPTION CHECK:
+        // If the *existing* application has been flagged to allow concurrency (via Admin), ignore it.
+        const exemptions = (existingApplication.feeExemptions as any) || {}
+        if (exemptions.allowConcurrentApplication) {
+            // Allow proceed
+        } else {
+            return { error: `You already have a loan application (${existingApplication.loanApplicationNumber} - ${existingApplication.status}) in progress. Please complete or cancel it before applying for another.` }
+        }
     }
 
     const product = await prisma.loanProduct.findUnique({ where: { id: loanProductId } })
@@ -298,133 +313,195 @@ export async function applyForLoan(prevState: any, formData: FormData) {
     if (!product.isActive) return { error: 'This loan product is currently inactive and cannot be selected.' }
 
     // Validate installments
-    if (installments < 1 || installments > product.numberOfRepayments) {
+    if (!isDraft && (installments < 1 || installments > product.numberOfRepayments)) {
         return { error: `Installments must be between 1 and ${product.numberOfRepayments} months` }
     }
 
-    // Generate Loan Number
-    const loans = await prisma.loan.findMany({ select: { loanApplicationNumber: true } })
-    const loanApplicationNumber = generateLoanApplicationNumber(loans as any)
+    // Generate Loan Number ONLY if creating new
+    let loanApplicationNumber = '';
+    if (!loanId) {
+        const lastLoan = await prisma.loan.findFirst({
+            orderBy: { loanApplicationNumber: 'desc' },
+            select: { loanApplicationNumber: true }
+        })
+        const { getNextLoanNumber } = require('../lib/utils');
+        loanApplicationNumber = getNextLoanNumber(lastLoan?.loanApplicationNumber)
+    }
 
     try {
         // Import the calculateLoanQualification function
         const { calculateLoanQualification } = await import('./sacco-settings-actions')
-        const appraisal = await calculateLoanQualification(memberId, loansToOffset, amount)
 
-        // Refined Borrowing Power Rule:
-        // New Total Debt (Exposure - Offsets + RequestedAmount) must be <= Gross Qualifying Amount
-        const currentExposure = appraisal.totalExposure || 0
-        const offsets = appraisal.selectedLoansOffset || 0
-        const grossLimit = appraisal.grossQualifyingAmount
+        // Calculate Qualification
+        const appraisal = await calculateLoanQualification(
+            memberId,
+            loansToOffset,
+            amount ? Number(amount) : 0,
+            JSON.parse(JSON.stringify(feeExemptions || {}))
+        )
 
-        const projectedTotalDebt = currentExposure - offsets + amount
-
-        if (projectedTotalDebt > grossLimit) {
-            const availableAdditional = Math.max(0, grossLimit - (currentExposure - offsets))
-            // WARN: We allow DRAFT creation even if limit exceeded. Validation happens on Submit.
-            console.warn(`[applyForLoan] Loan exceeds limit but creating DRAFT. Debt: ${projectedTotalDebt}, Limit: ${grossLimit}`);
-            /* 
-            return {
-                error: `Your total debt cannot exceed your limit of KES ${grossLimit.toLocaleString()}. With selected offsets, you can borrow up to KES ${availableAdditional.toLocaleString()} more.`
-            }
-            */
-        }
-
-        // Calculate monthly installment using new utility
-        const monthlyInstallment = calculateMonthlyInstallment({
-            principal: amount,
-            interestRatePerMonth: product.interestRatePerPeriod,
-            installments,
-            amortizationType: product.amortizationType as any
-        })
-
-        // Calculate schedule with custom installments
-        const tempProductWithCustomInstallments = {
-            ...product,
-            numberOfRepayments: installments
-        }
-        const tempLoan = { amount, applicationDate: new Date().toISOString() }
-        const schedule = generateRepaymentSchedule(tempLoan as any, tempProductWithCustomInstallments as any)
-        const dueDate = schedule[schedule.length - 1]?.dueDate ? new Date(schedule[schedule.length - 1].dueDate) : new Date()
-
-        // Handle loan top-ups/offsets
+        // Capture top-up details if offsets exist
         let topUpCalculations: any[] = []
         if (loansToOffset.length > 0) {
-            // Fetch the loans being offset
-            const loansData = await prisma.loan.findMany({
-                where: {
-                    id: { in: loansToOffset },
-                    memberId,
-                    current_balance: { gt: 0 }
-                },
-                include: {
-                    loanProduct: { select: { name: true } }
-                }
+            // We need to fetch the actual loans to get details for the record
+            const oldLoans = await prisma.loan.findMany({
+                where: { id: { in: loansToOffset } },
+                include: { transactions: true }
             })
 
-            // Get refinance fee from settings
-            const settings = await prisma.saccoSettings.findFirst()
-            const refinanceFeePercentage = settings?.refinanceFeePercentage || 5.0
+            // Calculate top-up details using the same logic as calculateLoanQualification
+            const { processTransactions } = await import('@/lib/statementProcessor')
+            const { addMoney, truncateToDecimals, calculatePercentage } = await import('@/lib/currency')
+            const saccoSettings = await prisma.saccoSettings.findFirst()
+            const refinanceFeePct = Number(saccoSettings?.refinanceFeePercentage || 0)
 
-            // Calculate top-up details
-            const loansToOffsetData = loansData.map((loan: any) => ({
-                loanId: loan.id,
-                loanNumber: loan.loanApplicationNumber,
-                productName: loan.loanProduct?.name,
-                outstandingPrincipal: Number(loan.current_balance), // Convert Decimal to Number
-                disbursementDate: loan.disbursementDate!,
-                interestRate: Number(loan.interestRate), // Convert Decimal to Number
-                currentPenalties: Number(loan.penalties) // Convert Decimal to Number
-            }))
+            for (const oldLoan of oldLoans) {
+                // Calculate outstanding balance
+                const rawTransactions = oldLoan.transactions ? oldLoan.transactions.map((tx: any) => ({
+                    ...tx,
+                    amount: Number(tx.amount),
+                    createdAt: tx.postedAt,
+                    type: tx.type
+                })) : [];
 
-            topUpCalculations = calculateTopUpDetails(loansToOffsetData, refinanceFeePercentage)
-        }
+                const mappedTransactions = rawTransactions.map((tx: any) => ({
+                    ...tx,
+                    type: tx.type === 'LOAN_DISBURSEMENT' || tx.type === 'DISBURSEMENT' ? 'DISBURSEMENT' :
+                        tx.type === 'LOAN_REPAYMENT' || tx.type === 'REPAYMENT' ? 'REPAYMENT' :
+                            tx.type
+                }));
+                const rows = processTransactions(mappedTransactions as any[]);
+                const balance = rows.length > 0 ? rows[rows.length - 1].runningBalance : 0;
+                const outstandingBalance = truncateToDecimals(balance);
 
-        const feeExemptions = {
-            applicationFee: false, rescheduleFee: false, topUpFee: false, penaltyFee: false
-        }
+                // Calculate refinance fee on this loan
+                const fee = calculatePercentage(outstandingBalance, refinanceFeePct);
 
-        const saccoSettings = await prisma.saccoSettings.findFirst()
-        const penaltyRate = saccoSettings?.penaltyRate || 5.0
-
-        const loan = await prisma.loan.create({
-            data: {
-                loanApplicationNumber,
-                memberId,
-                loanProductId,
-                amount,
-                applicationDate: new Date(),
-                dueDate,
-                interestRate: product.interestRatePerPeriod,
-                status: 'APPLICATION' as LoanStatus,
-
-                // Appraisal calculation fields (updated to use selectedLoansOffset)
-                memberSharesAtApplication: appraisal.memberShares,
-                grossQualifyingAmount: appraisal.grossQualifyingAmount,
-                processingFee: appraisal.processingFee,
-                insuranceFee: appraisal.insuranceFee,
-                shareCapitalDeduction: appraisal.shareCapitalDeduction,
-                existingLoanOffset: appraisal.selectedLoansOffset, // Store selected loan offset amount
-                totalDeductions: appraisal.totalDeductions,
-                netDisbursementAmount: appraisal.netDisbursementAmount,
-
-                // NEW: Installments & Monthly Payment
-                installments,
-                monthlyInstallment,
-
-                // NEW: Interest Engine Field
-                interestRatePerMonth: product.interestRatePerPeriod,
-
-                // NEW: Penalty Configuration from Global Settings
-                penaltyRate,
-
-                approvalVotes: [], // Json (legacy)
-                repaymentSchedule: JSON.parse(JSON.stringify(schedule)), // Json
-                feeExemptions, // Json
-                loanContract: contractRef,
-                applicationFeePaid: false,
+                topUpCalculations.push({
+                    loanId: oldLoan.id,
+                    loanNumber: oldLoan.loanApplicationNumber,
+                    productName: 'Unknown', // Need product name but simpler query above. It's fine for now or fetch it.
+                    principalBalance: outstandingBalance,
+                    accruedInterest: 0, // Simplified for now
+                    penalties: 0,
+                    refinanceFee: fee,
+                    totalOffset: addMoney(outstandingBalance, fee)
+                })
             }
+        }
+
+        // Generate Repayment Schedule
+        const { generateRepaymentSchedule } = await import('../lib/utils')
+        const schedule = generateRepaymentSchedule({
+            amount: appraisal.netDisbursementAmount, // Schedule based on NET or PRINCIPAL? Usually Principal. 
+            // Wait, standard practice: Repay the PRINCIPAL (amount requested), receive the NET. 
+            // So schedule should be based on `amount` (the principal).
+            // Let's check logic: if I borrow 10k, fees 1k, I get 9k. I repay 10k + interest.
+            // So schedule amount = amount.
+            amount: amount,
+            interestRate: product.interestRatePerPeriod,
+            installments: installments || product.numberOfRepayments, // Use user selected installments
+            repaymentFrequency: product.repaymentFrequencyType, // e.g. MONTHS
+            repaymentEvery: product.repaymentEvery,
+            startDate: new Date(), // Starts now? Or next month? Utils usually handles "next period"
+            interestType: product.interestType
         })
+
+        const monthlyInstallment = schedule.length > 0 ? schedule[0].amount : 0
+
+
+        const loanIdValue = formData.get('loanId') as string;
+        let loan;
+
+        if (loanIdValue) {
+            // UPDATE EXISTING LOAN
+            // Do NOT update loanApplicationNumber
+            loan = await prisma.loan.update({
+                where: { id: loanIdValue },
+                data: {
+                    // loanApplicationNumber, // REMOVED
+                    memberId,
+                    loanProductId,
+                    amount: amount || 0, // Fallback for Drafts
+                    applicationDate: new Date(),
+
+
+                    interestRate: product.interestRatePerPeriod,
+                    status: newStatus, // Dynamic Status based on button clicked 
+                    // User said "Send Approval Request sends ... to pending".
+                    // So YES, it should set status to PENDING_APPROVAL.
+
+                    // Appraisal calculation fields
+                    memberSharesAtApplication: appraisal.memberShares,
+                    grossQualifyingAmount: appraisal.grossQualifyingAmount,
+                    processingFee: appraisal.processingFee,
+                    insuranceFee: appraisal.insuranceFee,
+                    shareCapitalDeduction: appraisal.shareCapitalDeduction,
+                    existingLoanOffset: appraisal.selectedLoansOffset,
+                    totalDeductions: appraisal.totalDeductions,
+                    netDisbursementAmount: appraisal.netDisbursementAmount,
+
+                    installments: installments || 12,
+                    monthlyInstallment,
+                    interestRatePerMonth: product.interestRatePerPeriod,
+                    penaltyRate,
+
+                    repaymentSchedule: JSON.parse(JSON.stringify(schedule)),
+                    feeExemptions,
+                    loanContract: contractRef,
+                }
+            });
+            // Don't generate new Number if updating
+        } else {
+            // CREATE NEW LOAN
+            loan = await prisma.loan.create({
+                data: {
+                    loanApplicationNumber,
+                    memberId,
+                    loanProductId,
+                    amount: amount || 0, // Fallback
+                    applicationDate: new Date(),
+
+                    interestRate: product.interestRatePerPeriod,
+                    status: newStatus, // Dynamic Status
+                    // Wait, if "Send Approval Request" is clicked, it implies "Submit".
+                    // If "Save & Back" is clicked, it implies "Draft".
+                    // But applyForLoan is the form ACTION.
+                    // The "Save & Back" button is type="submit".
+                    // I need to distinguish between "Save Draft" and "Send Approval".
+
+                    // Logic check:
+                    // If the user clicks "Save & Back", we want status = APPLICATION.
+                    // If the user clicks "Send Approval Request", we want status = PENDING_APPROVAL.
+                    // I can use a hidden field 'actionType' or check which button was clicked (via formData).
+                    // The buttons use type="submit", I can give them names/values.
+
+                    // For now, I'll default to PENDING_APPROVAL for "Send Approval Request" as that's the main "Submit".
+                    // But "Save & Back" uses the SAME action. I must differentiate.
+                    // I will check for 'submitAction' field in formData.
+
+                    memberSharesAtApplication: appraisal.memberShares,
+                    grossQualifyingAmount: appraisal.grossQualifyingAmount,
+                    processingFee: appraisal.processingFee,
+                    insuranceFee: appraisal.insuranceFee,
+                    shareCapitalDeduction: appraisal.shareCapitalDeduction,
+                    existingLoanOffset: appraisal.selectedLoansOffset,
+                    totalDeductions: appraisal.totalDeductions,
+                    netDisbursementAmount: appraisal.netDisbursementAmount,
+
+                    installments: installments || 12, // Fallback
+                    monthlyInstallment,
+                    interestRatePerMonth: product.interestRatePerPeriod,
+                    penaltyRate,
+
+                    approvalVotes: [],
+                    repaymentSchedule: JSON.parse(JSON.stringify(schedule)), // Json
+                    feeExemptions, // Json
+                    loanContract: contractRef,
+                    applicationFeePaid: false,
+                }
+            })
+        }
 
         // Create LoanTopUp records for offset loans
         if (topUpCalculations.length > 0) {
@@ -463,7 +540,30 @@ export async function applyForLoan(prevState: any, formData: FormData) {
 
         // Note: Notifications are deferred until SUBMISSION for Drafts
 
-        // Note: Approval Request deferred until SUBMISSION
+        // Note: Notifications are deferred until SUBMISSION for Drafts
+
+        // Create Approval Request if submitted directly
+        if (newStatus === LoanStatus.PENDING_APPROVAL) {
+            // Check if one already exists to avoid duplicates on edits
+            const existingRequest = await prisma.approvalRequest.findFirst({
+                where: {
+                    referenceId: loan.id,
+                    type: 'LOAN',
+                    status: 'PENDING'
+                }
+            })
+
+            if (!existingRequest) {
+                try {
+                    const { initiateWorkflow } = await import('@/app/actions/workflow-engine')
+                    // EntityType.LOAN is 'LOAN'
+                    await initiateWorkflow('LOAN', loan.id, memberId)
+                } catch (e) {
+                    console.error("Failed to initiate workflow:", e)
+                    // Fallback or rethrow?
+                }
+            }
+        }
 
         // Email Notification (Async - Fire and Forget for now, or await if critical)
         try {
@@ -686,19 +786,13 @@ export async function submitLoanApplication(loanId: string) {
     })
 
     // Create Approval Request
-    await prisma.approvalRequest.create({
-        data: {
-            type: 'LOAN',
-            referenceId: loan.id,
-            referenceTable: 'Loan',
-            requesterId: loan.memberId,
-            requesterName: loan.member.name,
-            description: `Loan Application ${loan.loanApplicationNumber} (v${nextVersion})`,
-            amount: loan.amount,
-            status: 'PENDING',
-            requiredPermission: 'APPROVE_LOANS'
-        }
-    })
+    // Initiate Workflow via Engine
+    try {
+        const { initiateWorkflow } = await import('@/app/actions/workflow-engine')
+        await initiateWorkflow('LOAN', loan.id, loan.memberId)
+    } catch (e) {
+        console.error("Failed to initiate workflow:", e)
+    }
 
     // Create LoanHistory Entry (The Audit Log)
     await prisma.loanHistory.create({

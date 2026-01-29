@@ -9,12 +9,25 @@ export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
 
+
+/**
+ * Format currency with strict truncation (no rounding)
+ * 
+ * @deprecated Use formatCurrency from @/lib/currency for new code
+ * This function is kept for backward compatibility but now uses truncation
+ */
 export const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('en-KE', {
-        style: 'currency',
-        currency: 'KES',
-    }).format(amount);
+    // Truncate to 2 decimals using Math.floor
+    const truncated = Math.floor(amount * 100) / 100;
+
+    // Format with thousand separators
+    const parts = truncated.toString().split('.');
+    const integerPart = parseInt(parts[0]).toLocaleString('en-KE');
+    const decimalPart = (parts[1] || '').padEnd(2, '0').slice(0, 2);
+
+    return `KES ${integerPart}.${decimalPart}`;
 };
+
 
 export const formatDate = (dateString: string | Date): string => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -71,13 +84,53 @@ export const addFrequencyOffset = (date: Date, every: number, type: RepaymentFre
 };
 
 export const generateLoanApplicationNumber = (loans: Loan[]): string => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = (now.getMonth() + 1).toString().padStart(2, '0');
-    const prefix = `LN-${year}${month}-`;
+    // Deprecated? No, let's just keep strict logic here or update it.
+    // User wants LN001.
+    // This function took an array.
+    // Let's create a new one to be safe: generateSequentialLoanNumber
+    return "";
+};
 
-    const sequence = loans.filter(l => l.loanApplicationNumber.startsWith(prefix)).length + 1;
-    return `${prefix}${sequence.toString().padStart(3, '0')}`;
+export const getNextLoanNumber = (lastLoanNumber: string | null | undefined): string => {
+    // Handle null/undefined case
+    if (!lastLoanNumber) {
+        return 'LN001';
+    }
+
+    // Handle old format (LN-YYYYMM-XXX) - start fresh with new format
+    if (lastLoanNumber.includes('-')) {
+        return 'LN001';
+    }
+
+    // Handle new format (LNXXX)
+    if (!lastLoanNumber.startsWith('LN')) {
+        console.warn(`Unexpected loan number format: ${lastLoanNumber}. Starting from LN001`);
+        return 'LN001';
+    }
+
+    try {
+        // Extract numeric part (remove 'LN' prefix)
+        const numberPart = lastLoanNumber.substring(2);
+        const number = parseInt(numberPart, 10);
+
+        // Validate parsed number
+        if (isNaN(number) || number < 0) {
+            console.warn(`Invalid loan number: ${lastLoanNumber}. Starting from LN001`);
+            return 'LN001';
+        }
+
+        // Check for overflow (max 999 with 3 digits)
+        if (number >= 999) {
+            console.warn(`Loan number approaching maximum (${number}). Consider expanding format.`);
+        }
+
+        const nextNumber = number + 1;
+        // Pad with zeros to maintain 3-digit format
+        return `LN${nextNumber.toString().padStart(3, '0')}`;
+    } catch (error) {
+        console.error(`Error generating loan number from ${lastLoanNumber}:`, error);
+        return 'LN001';
+    }
 };
 
 export const calculateTotalContributions = (memberId: string, incomes: Income[]): number => {

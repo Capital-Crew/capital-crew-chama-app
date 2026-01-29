@@ -28,7 +28,7 @@ async function fixGLAccounts() {
         {
             code: '1200',
             name: 'Contributions',
-            type: 'ASSET',
+            type: 'EQUITY',
             description: 'Member contributions and disbursed loans'
         },
         {

@@ -59,7 +59,6 @@ export async function getDashboardStats(): Promise<Serialized<any>> {
             where: {
                 ledgerAccount: { code: contributionAccountCode },
                 ledgerTransaction: {
-                    isReversed: false,
                     referenceType: 'SHARE_CONTRIBUTION',
                     referenceId: { in: memberIds }
                 }
@@ -72,7 +71,6 @@ export async function getDashboardStats(): Promise<Serialized<any>> {
             by: ['referenceId'],
             where: {
                 referenceType: 'SHARE_CONTRIBUTION',
-                isReversed: false,
                 referenceId: { in: memberIds }
             },
             _sum: { totalAmount: true },
@@ -89,7 +87,6 @@ export async function getDashboardStats(): Promise<Serialized<any>> {
             where: {
                 ledgerAccount: { type: 'ASSET' },
                 ledgerTransaction: {
-                    isReversed: false,
                     // Filter for known loan transaction types to reduce noise
                     referenceType: {
                         in: [
@@ -219,7 +216,6 @@ export async function getMonthlyTrends(): Promise<Serialized<any[]>> {
                     }
                 },
                 ledgerTransaction: {
-                    isReversed: false,
                     referenceType: 'SHARE_CONTRIBUTION',
                     transactionDate: {
                         gte: startDate,

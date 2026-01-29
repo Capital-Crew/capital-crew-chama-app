@@ -70,14 +70,11 @@ export async function POST(
             // I should update it if it exists.
             try {
                 // Attempt to update pending approval request
-                await tx.approvalRequest.updateMany({
+                // Delete the pending approval request
+                await tx.approvalRequest.deleteMany({
                     where: {
                         referenceId: loanId,
                         status: 'PENDING'
-                    },
-                    data: {
-                        status: 'CANCELLED',
-                        updatedAt: new Date()
                     }
                 })
             } catch (e) {

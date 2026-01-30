@@ -91,12 +91,14 @@ export function LoanAdjustmentModal({
             : currentLoanBalance - parseFloat(amount)
         : currentLoanBalance;
 
-    const isValid =
-        (activeLoan) &&
+    const isValid = Boolean(
+        activeLoan?.id &&
         amount &&
+        !isNaN(parseFloat(amount)) &&
         parseFloat(amount) > 0 &&
-        description.length >= 10 &&
-        (useCustomCategory ? customCategory.trim() !== '' : category !== '');
+        description.trim().length >= 10 &&
+        (useCustomCategory ? customCategory.trim() !== '' : category !== '')
+    );
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

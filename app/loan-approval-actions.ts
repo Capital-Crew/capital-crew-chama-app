@@ -10,6 +10,7 @@ import { getSystemMappingsDict } from './actions/system-accounting'
 import { getSaccoSettings } from './sacco-settings-actions'
 import { AccountingEngine } from '@/lib/accounting/AccountingEngine'
 import { WalletService } from '@/lib/services/WalletService'
+import { LoanService } from '@/services/loan-service'
 
 // Use global db instance
 const prisma = db
@@ -494,45 +495,22 @@ export async function disburseLoanToWallet(loanId: string) {
 
         // Credit: Loan Offsets (Clearing old loans)
         for (const topUp of loan.topUps) {
-            // We need to credit the Old Loan Portfolio (Asset) for the principal being paid off
-            // And Credit Income for the interest/penalties being paid off
+            // Calculate actual debt clearance (Total Offset - Refinance Fee)
+            const clearanceAmount = Number(topUp.totalOffset) - Number(topUp.refinanceFee || 0);
 
-            // 1. Principal Base
-            if (Number(topUp.principalBalance) > 0) {
+            // 1. Principal & Debt Clearance (Asset reduction)
+            if (clearanceAmount > 0) {
                 journalLines.push({
-                    accountId: (await getAccountId(tx, getCode('RECEIVABLES'))), // Reduce Loan Asset (1300)
+                    accountId: (await getAccountId(tx, getCode('RECEIVABLES'))), // Reduce Loan Asset
                     accountType: 'ASSET',
-                    description: `Offset Principal - ${topUp.oldLoanNumber}`,
+                    description: `Offset Clearance - ${topUp.oldLoanNumber}`,
                     debitAmount: 0,
-                    creditAmount: Number(topUp.principalBalance),
+                    creditAmount: clearanceAmount,
                     index: lineIndex++
                 })
             }
 
-            // 2. Interest Income
-            if (Number(topUp.accruedInterest) > 0) {
-                journalLines.push({
-                    accountId: (await getAccountId(tx, getCode('RECEIVABLE_LOAN_INTEREST') || getCode('INCOME_LOAN_INTEREST'))),
-                    accountType: 'ASSET', // Reducing Receivable
-                    description: `Offset Interest - ${topUp.oldLoanNumber}`,
-                    debitAmount: 0,
-                    creditAmount: Number(topUp.accruedInterest),
-                    index: lineIndex++
-                })
-            }
-
-            // 3. Penalty/Other Income from Offset
-            if (Number(topUp.penalties) > 0) {
-                journalLines.push({
-                    accountId: (await getAccountId(tx, getCode('INCOME_LOAN_PENALTY') || getCode('INCOME_GENERAL_FEE'))),
-                    accountType: 'INCOME',
-                    description: `Offset Penalties - ${topUp.oldLoanNumber}`,
-                    debitAmount: 0,
-                    creditAmount: Number(topUp.penalties),
-                    index: lineIndex++
-                })
-            }
-
+            // 2. Refinance Fee Income (If any)
             if (Number(topUp.refinanceFee) > 0) {
                 journalLines.push({
                     accountId: (await getAccountId(tx, getCode('INCOME_REFINANCE_FEE'))),
@@ -578,12 +556,15 @@ export async function disburseLoanToWallet(loanId: string) {
 
         // 2d. Process Offsets (Old Loans - REPAYMENT)
         for (const topUp of loan.topUps) {
-            // Create Repayment Transaction for old loan
+            // Calculate actual debt clearance (Total Offset - Refinance Fee)
+            const clearanceAmount = new Prisma.Decimal(topUp.totalOffset).sub(new Prisma.Decimal(topUp.refinanceFee || 0));
+
+            // Create Repayment Transaction for old loan (ONLY for the debt amount)
             await tx.loanTransaction.create({
                 data: {
                     loanId: topUp.oldLoanId,
-                    type: 'REPAYMENT', // Effectively a repayment
-                    amount: new Prisma.Decimal(topUp.totalOffset),
+                    type: 'REPAYMENT',
+                    amount: clearanceAmount,
                     description: `Offset by New Loan ${loan.loanApplicationNumber}`,
                     referenceId: je.id,
                     postedAt: new Date()

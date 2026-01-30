@@ -5,7 +5,7 @@ import { redirect } from "next/navigation"
 
 import { SiteHeader } from "@/components/SiteHeader"
 
-import { getApprovalCounts } from '@/app/actions/approval-actions';
+import { getApprovalCounts } from '@/lib/data/approval-data';
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
     const session = await auth()

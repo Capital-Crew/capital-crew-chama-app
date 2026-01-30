@@ -69,7 +69,7 @@ const NavItem: React.FC<NavItemProps> = ({ icon, label, href, active, hidden, ba
     );
 };
 
-export function AppSidebar({ user, approvalCount = 0 }: { user: { name: string, role: string }, approvalCount?: number }) {
+export function AppSidebar({ user, approvalCount = 0, pendingLoanCount = 0 }: { user: { name: string, role: string }, approvalCount?: number, pendingLoanCount?: number }) {
     const pathname = usePathname();
     const isAdmin = user.role !== 'Member';
 
@@ -105,7 +105,13 @@ export function AppSidebar({ user, approvalCount = 0 }: { user: { name: string, 
                 />
 
                 <NavItem icon={<MembersIcon className="w-5 h-5" />} label="Members" href="/members" active={pathname.startsWith('/members')} />
-                <NavItem icon={<LoansIcon className="w-5 h-5" />} label="Loans" href="/loans" active={pathname === '/loans'} />
+                <NavItem
+                    icon={<LoansIcon className="w-5 h-5" />}
+                    label="Loans"
+                    href="/loans"
+                    active={pathname === '/loans'}
+                    badge={pendingLoanCount > 0 ? pendingLoanCount : undefined}
+                />
                 <NavItem icon={<WalletIcon className="w-5 h-5" />} label="Wallet" href="/wallet" active={pathname === '/wallet'} />
                 <NavItem icon={<HeartHandshake className="w-5 h-5" />} label="Welfare" href="/welfare" active={pathname.startsWith('/welfare')} />
 

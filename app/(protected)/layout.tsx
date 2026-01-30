@@ -20,11 +20,20 @@ export default async function ProtectedLayout({ children }: { children: React.Re
     }
 
     // Fetch Approval Count
-    const approvalCount = await getApprovalCounts();
+    // const approvalCount = await getApprovalCounts(); // Existing logic (likely expensive if not optimized)
+
+    // Parallel Fetching for performance
+    const [approvalCount, pendingLoanCountResult] = await Promise.all([
+        getApprovalCounts(),
+        import('@/app/actions/loan-actions').then(mod => mod.getPendingLoanCount())
+    ]);
+
+    // Ensure we handle the potential 0 or error returns safely
+    const pendingLoanCount = typeof pendingLoanCountResult === 'number' ? pendingLoanCountResult : 0;
 
     return (
         <div className="min-h-screen bg-slate-50 lemon:bg-yellow-50 flex text-slate-800 lemon:text-yellow-900 font-sans">
-            <AppSidebar user={session.user as any} approvalCount={approvalCount} />
+            <AppSidebar user={session.user as any} approvalCount={approvalCount} pendingLoanCount={pendingLoanCount} />
 
             <main className="flex-1 w-full md:ml-80 px-4 md:px-8 py-8 transition-all duration-300 overflow-x-hidden">
                 <SiteHeader user={session.user as any} approvalCount={approvalCount} />

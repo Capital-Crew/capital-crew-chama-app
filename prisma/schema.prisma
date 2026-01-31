@@ -28,6 +28,7 @@ enum LoanStatus {
   REJECTED
   CANCELLED
   WRITTEN_OFF
+  DRAFT
 }
 
 enum ApprovalStatus {
@@ -629,16 +630,16 @@ model Loan {
   loanApplicationNumber String      @unique
   memberId              String
   member                Member      @relation(fields: [memberId], references: [id])
-  loanProductId         String
-  loanProduct           LoanProduct @relation(fields: [loanProductId], references: [id])
+  loanProductId         String?
+  loanProduct           LoanProduct? @relation(fields: [loanProductId], references: [id])
 
-  amount             Decimal    @db.Decimal(19, 4)
+  amount             Decimal?    @db.Decimal(19, 4)
   current_balance    Decimal    @default(0) @db.Decimal(19, 4) // Legacy
   outstandingBalance Decimal    @default(0) @db.Decimal(19, 4) // NEW: Strict Decimal Balance
-  applicationDate    DateTime
+  applicationDate    DateTime?
   disbursementDate   DateTime?
   dueDate            DateTime?
-  interestRate       Decimal    @db.Decimal(10, 6)
+  interestRate       Decimal?    @db.Decimal(10, 6)
   penalties          Decimal    @default(0) @db.Decimal(19, 4)
   status             LoanStatus @default(PENDING_APPROVAL)
 
@@ -653,11 +654,11 @@ model Loan {
   netDisbursementAmount     Decimal @default(0) @db.Decimal(19, 4)
 
   approvalVotes             Json // Stores ApprovalVote[] (legacy, kept for migration)
-  repaymentSchedule         Json // Stores RepaymentScheduleItem[]
+  repaymentSchedule         Json? // Stores RepaymentScheduleItem[]
   originalRepaymentSchedule Json? // Stores RepaymentScheduleItem[]
   cachedSchedule            Json? // CACHE: Stores calculated schedule to avoid recalculations
 
-  feeExemptions      Json // Stores FeeExemptions object
+  feeExemptions      Json? // Stores FeeExemptions object
   productSnapshot    Json? // Stores snapshot of product at time of loan
   loanContract       String?
   applicationFeePaid Boolean @default(false)

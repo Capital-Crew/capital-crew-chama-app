@@ -11,6 +11,9 @@ import { CreditSnapshot } from '@/lib/utils/credit-limit';
 import { toast } from '@/lib/toast';
 import { MobileDrawer } from './ui/MobileDrawer';
 import { LoanApplicationForm } from './loan/LoanApplicationForm';
+import { DraftsList } from './loans/DraftsList';
+import { startLoanApplication } from '@/app/actions/loan-application-actions';
+import { useRouter } from 'next/navigation';
 
 interface LoanManagementProps {
     loans: (Loan & { member?: Member })[];
@@ -23,10 +26,11 @@ interface LoanManagementProps {
 }
 
 export function LoanManagement({ loans, members, products, currentUserId, currentMemberId, userRole, creditSnapshot }: LoanManagementProps) {
+    const router = useRouter();
     const [activeTab, setActiveTab] = useState<'application' | 'approvals' | 'approved' | 'disbursed'>('application');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedLoanId, setSelectedLoanId] = useState<string | null>(null);
-    const [editingLoan, setEditingLoan] = useState<Loan | null>(null); // State for editing draft
+    const [isCreating, setIsCreating] = useState(false);
     const [requiredApprovals, setRequiredApprovals] = useState(3);
 
     useEffect(() => {
@@ -37,19 +41,32 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
 
     const handleLoanClick = (loanId: string) => {
         const loan = loans.find(l => l.id === loanId);
-        if (loan && loan.status === 'APPLICATION') {
-            // Edit Draft
-            setEditingLoan(loan);
-            setIsModalOpen(true);
-        } else {
-            // View Appraisal Card
-            setSelectedLoanId(loanId);
+        // If Draft (APPLICATION status), redirect to edit page
+        if (loan && (loan.status === 'APPLICATION' || loan.status === 'DRAFT')) {
+            router.push(`/loans/application/${loan.id}`);
+            return;
         }
+        // Otherwise View Appraisal Card
+        setSelectedLoanId(loanId);
     };
 
     // Memoized tab filtering
-    const allApplications = useMemo(() => loans.filter(l =>
-        String(l.status) === 'APPLICATION' ||
+    const drafts = useMemo(() => {
+        const d = loans.filter(l =>
+            String(l.status) === 'APPLICATION' ||
+            String(l.status) === 'DRAFT'
+        );
+
+        // If Member, only show MY drafts
+        if (userRole === 'MEMBER' && currentMemberId) {
+            return d.filter(l => l.memberId === currentMemberId);
+        }
+
+        // Admins see all drafts
+        return d;
+    }, [loans, userRole, currentMemberId]);
+
+    const otherApplications = useMemo(() => loans.filter(l =>
         String(l.status) === 'REJECTED' ||
         String(l.status) === 'CANCELLED' ||
         String(l.status) === 'WRITTEN_OFF'
@@ -71,7 +88,10 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
 
     const getActiveData = () => {
         switch (activeTab) {
-            case 'application': return allApplications;
+            case 'application': return otherApplications; // Only show non-drafts here? Or separate drafts?
+            // Actually, we want to show Drafts specially at the top, then other "Application" status items (like Rejected/Cancelled history) in the list?
+            // The user requested "In the section called DRAFTS /RETURNED".
+            // So we can show DraftsList component, and then the table for others.
             case 'approvals': return pendingApprovals;
             case 'approved': return approvedLoans;
             case 'disbursed': return disbursedLoans;
@@ -79,7 +99,10 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
         }
     };
 
-    const handleNewApplication = () => {
+    const handleNewApplication = async () => {
+        if (isCreating) return;
+
+        // 1. Check Credit/Pending Limits (Frontend check)
         if (currentMemberId) {
             const myPending = loans.some(l =>
                 l.memberId === currentMemberId &&
@@ -89,12 +112,34 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
             if (myPending) {
                 toast.error(
                     "Application Pending",
-                    "You already have a loan that is Pending Approval or Approved (waiting for disbursement)."
+                    "You already have a loan that is Pending Approval or Approved."
                 );
                 return;
             }
         }
-        setIsModalOpen(true);
+
+        setIsCreating(true);
+        const loadingToast = toast.loading("Initializing Application...");
+
+        try {
+            // 2. Start Server Action to Create Empty Draft
+            const result = await startLoanApplication(currentMemberId);
+
+            if (result.success && result.loanId) {
+                toast.success("Application Started", { id: loadingToast });
+                // 3. Redirect to Edit Page
+                router.push(`/loans/application/${result.loanId}`);
+            } else {
+                throw new Error("Failed to generate loan ID");
+            }
+        } catch (error: any) {
+            console.error(error);
+            toast.error("Failed to start application", {
+                description: error.message || "Please try again.",
+                id: loadingToast
+            });
+            setIsCreating(false);
+        }
     };
 
     return (
@@ -122,7 +167,7 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
                         fullLabel="Drafts / Returned"
                         active={activeTab === 'application'}
                         onClick={() => setActiveTab('application')}
-                        count={allApplications.length}
+                        count={drafts.length}
                     />
                     <TabButton
                         label="Pending"
@@ -147,6 +192,20 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
                     />
                 </div>
             </div>
+
+            {/* DRAFTS SECTION - Moved below tabs */}
+            {activeTab === 'application' && (
+                <div className="mb-6">
+                    <DraftsList drafts={drafts.map(d => ({
+                        id: d.id,
+                        loanApplicationNumber: d.loanApplicationNumber,
+                        amount: d.amount ? Number(d.amount) : 0,
+                        createdAt: d.applicationDate || d.createdAt,
+                        member: members.find(m => m.id === d.memberId),
+                        status: d.status
+                    }))} />
+                </div>
+            )}
 
             {/* Mobile: Card List */}
             <div className="md:hidden space-y-3">
@@ -214,59 +273,7 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
                 </table>
             </div>
 
-            {/* Mobile Drawer */}
-            <MobileDrawer
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                title="New Loan Application"
-            >
-                <LoanApplicationForm
-                    members={members}
-                    products={products}
-                    currentMemberId={currentMemberId}
-                    creditSnapshot={creditSnapshot}
-                    initialData={editingLoan as any}
-                    onSuccess={() => {
-                        setIsModalOpen(false);
-                        setEditingLoan(null);
-                        setActiveTab('application');
-                    }}
-                    onCancel={() => {
-                        setIsModalOpen(false);
-                        setEditingLoan(null);
-                    }}
-                />
-            </MobileDrawer>
-
-            {/* Desktop Modal (Only visible on MD+) */}
-            {isModalOpen && (
-                <div className="hidden md:flex fixed inset-0 z-50 items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl max-h-[85vh] overflow-y-auto">
-                        <div className="bg-gradient-to-br from-cyan-500 to-blue-500 p-6 text-white sticky top-0 z-10">
-                            <h3 className="text-2xl font-black uppercase tracking-tight">New Loan Application</h3>
-                            <p className="text-white/80 text-sm mt-1">Provide details to calculate your borrowing power</p>
-                        </div>
-                        <div className="p-8">
-                            <LoanApplicationForm
-                                members={members}
-                                products={products}
-                                currentMemberId={currentMemberId}
-                                creditSnapshot={creditSnapshot}
-                                initialData={editingLoan as any} // Pass data for editing
-                                onSuccess={() => {
-                                    setIsModalOpen(false);
-                                    setEditingLoan(null); // Reset
-                                    setActiveTab('application'); // Return to All Applications
-                                }}
-                                onCancel={() => {
-                                    setIsModalOpen(false);
-                                    setEditingLoan(null); // Reset
-                                }}
-                            />
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* Desktop Modal Removed - Using Page Flow */}
 
             {selectedLoanId && (
                 <LoanAppraisalCard

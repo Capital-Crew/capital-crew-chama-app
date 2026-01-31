@@ -57,7 +57,8 @@ export async function searchLoans(query: string) {
         select: {
             id: true,
             loanApplicationNumber: true,
-            outstandingBalance: true,
+            outstandingBalance: true, // Keep for fallback/reference
+            amount: true, // Needed for parsing
             member: {
                 select: {
                     name: true,
@@ -68,21 +69,54 @@ export async function searchLoans(query: string) {
                 select: {
                     name: true
                 }
+            },
+            transactions: { // Fetch transactions
+                orderBy: { postedAt: 'asc' }
             }
         },
         take: 5
     })
 
-    // 3. ENRICH WITH REAL-TIME LEDGER BALANCE
-    // The outstandingBalance field can be stale. We fetch the truth from the ledger.
-    const enrichedLoans = await Promise.all(loans.map(async (loan) => ({
-        ...loan,
-        outstandingBalance: (await getLoanOutstandingBalance(loan.id)).toString(),
-        loanProduct: {
-            ...loan.loanProduct,
-            productName: loan.loanProduct.name // Map for UI compatibility
+    // Import statement processor for consistent balance calculation
+    const { processTransactions } = await import('@/lib/statementProcessor');
+
+    // 3. ENRICH WITH REAL-TIME BALANCE FROM TRANSACTIONS
+    const enrichedLoans = loans.map((loan) => {
+        // Map LoanTransaction to structure expected by processTransactions
+        const rawTransactions = loan.transactions ? loan.transactions.map((tx: any) => ({
+            ...tx,
+            amount: Number(tx.amount),
+            createdAt: tx.postedAt,
+            type: tx.type
+        })) : [];
+
+        const mappedTransactions = rawTransactions.map((tx: any) => ({
+            ...tx,
+            type: tx.type === 'LOAN_DISBURSEMENT' || tx.type === 'DISBURSEMENT' ? 'DISBURSEMENT' :
+                tx.type === 'LOAN_REPAYMENT' || tx.type === 'REPAYMENT' ? 'REPAYMENT' :
+                    tx.type
+        }));
+
+        const statementRows = processTransactions(mappedTransactions as any[]);
+        const statementBalance = statementRows.length > 0
+            ? statementRows[statementRows.length - 1].runningBalance
+            : 0;
+
+        // Fallback: If no transactions (e.g. legacy/migration), use DB outstandingBalance
+        // If transactions exist, statementBalance is the truth.
+        const finalBalance = mappedTransactions.length > 0 ? statementBalance : Number(loan.outstandingBalance || 0);
+
+        return {
+            id: loan.id,
+            loanApplicationNumber: loan.loanApplicationNumber,
+            outstandingBalance: finalBalance.toString(),
+            member: loan.member,
+            loanProduct: {
+                name: loan.loanProduct.name,
+                productName: loan.loanProduct.name
+            }
         }
-    })))
+    })
 
     return enrichedLoans
 }

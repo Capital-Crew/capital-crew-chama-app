@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { toast } from '@/lib/toast';
 import { applyForLoan } from '@/app/actions';
@@ -14,7 +15,7 @@ import { formatCurrency } from '@/lib/utils';
 import { ChevronLeft, Send, X, FileText } from 'lucide-react';
 import { useFormAutoSave } from '@/hooks/useFormAutoSave';
 import { AutoSaveIndicator } from './AutoSaveIndicator';
-import { deleteLoanDraft } from '@/app/loan-draft-actions';
+// import { deleteLoanDraft } from '@/app/loan-draft-actions'; // Removed
 import { LoanExemptionsSection } from './LoanExemptionsSection';
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -26,8 +27,8 @@ interface LoanApplicationFormProps {
     creditSnapshot?: CreditSnapshot | null;
     initialData?: Loan; // Added initialData prop
     draftData?: any; // Auto-saved draft data
-    onSuccess: () => void;
-    onCancel: () => void;
+    onSuccess?: () => void;
+    onCancel?: () => void;
 }
 
 export function LoanApplicationForm({
@@ -38,8 +39,13 @@ export function LoanApplicationForm({
     initialData, // Destructure initialData
     draftData, // Auto-saved draft
     onSuccess,
-    onCancel
+    onCancel,
 }: LoanApplicationFormProps) {
+    const router = useRouter() // Ensure next/navigation is imported
+
+    // Default handlers if not provided
+    const handleSuccess = onSuccess || (() => router.push('/loans'))
+    const handleCancel = onCancel || (() => router.push('/loans'))
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [selectedLoansToOffset, setSelectedLoansToOffset] = useState<string[]>(
         initialData?.existingLoanOffset && (initialData as any).topUps
@@ -56,6 +62,11 @@ export function LoanApplicationForm({
 
 
 
+    // Status check for read-only mode or auto-save disable
+    const isPending = initialData?.status &&
+        initialData.status !== 'APPLICATION' &&
+        initialData.status !== 'DRAFT';
+
     const { register, watch, setValue, reset } = useForm({
         defaultValues: {
             memberId: draftData?.memberId || initialData?.memberId || currentMemberId || '',
@@ -69,7 +80,16 @@ export function LoanApplicationForm({
     const { status: autoSaveStatus, lastSaved, error: autoSaveError, save: saveDraft } = useFormAutoSave({
         watch,
         debounceMs: 1000,
-        enabled: !initialData // Only auto-save for new applications, not edits
+        enabled: !isPending, // Enabled for drafts/application, disabled if Pending/Approved
+        onSave: async (data: any) => {
+            // We need to use updateLoanDraft here, but useFormAutoSave might expect a specific signature.
+            // Usually useFormAutoSave takes a server action. 
+            // We'll wrap updateLoanDraft.
+            if (initialData?.id) {
+                const { updateLoanDraft } = await import('@/app/actions/loan-application-actions');
+                await updateLoanDraft(initialData.id, data);
+            }
+        }
     });
 
     const watchedMemberId = watch('memberId');
@@ -144,7 +164,6 @@ export function LoanApplicationForm({
     // Button Visibility Logic
     const isEditMode = !!initialData;
     const isDraft = !initialData || initialData.status === 'APPLICATION';
-    const isPending = initialData?.status === 'PENDING_APPROVAL';
 
     return (
         <form action={async (formData) => {
@@ -168,16 +187,13 @@ export function LoanApplicationForm({
                     toast.error(res.error);
                     setIsSubmitting(false);
                 } else {
-                    // Delete draft on successful submission
-                    await deleteLoanDraft();
-                    toast.success('Loan application saved successfully!');
+                    // SUCCESS
+                    toast.success('Loan application submitted successfully!');
                     reset();
-                    onSuccess();
-                    // Redirect to loan details for final submission
-                    // Use a hard reload/redirect to the loan page if we have the ID,
-                    // Since we don't have the ID here yet, we'll reload which goes to the list?
-                    // Ideally, we redirect to `/loans`.
-                    // NO RELOAD: Handled by onSuccess prop which closes modal and switches tab
+                    handleSuccess();
+                    // Note: onSuccess typically handles navigation. 
+                    // If running in Page mode, we might want manual redirect if onSuccess doesn't do it.
+                    // But LoanDraftPage passes onSuccess={() => window.location.href = "/loans"}
                 }
             } catch (err: any) {
                 toast.error(err.message || 'Failed to submit application');
@@ -216,7 +232,7 @@ export function LoanApplicationForm({
                                         console.error('Failed to save draft:', error);
                                     }
                                 }
-                                onCancel();
+                                handleCancel();
                             }}
                             disabled={isSubmitting}
                             className="flex items-center gap-2 px-3 py-2 bg-white border-2 border-slate-300 text-slate-700 font-bold text-sm rounded-xl hover:bg-slate-50 hover:border-slate-400 transition-all shadow-sm disabled:opacity-50"

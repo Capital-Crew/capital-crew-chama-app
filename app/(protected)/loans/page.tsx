@@ -34,18 +34,24 @@ export default async function LoansPage() {
         // Serialize nested member object using our new helper
         member: loan.member ? serializeMember(loan.member) : loan.member,
         // Serialize loan Decimal fields
-        current_balance: Number(loan.current_balance),
-        outstandingBalance: loan.outstandingBalance ? Number(loan.outstandingBalance) : 0,
-        amount: Number(loan.amount),
-        netDisbursementAmount: Number(loan.netDisbursementAmount),
-        memberSharesAtApplication: Number(loan.memberSharesAtApplication),
-        grossQualifyingAmount: Number(loan.grossQualifyingAmount),
-        monthlyInstallment: loan.monthlyInstallment ? Number(loan.monthlyInstallment) : 0,
-        accruedInterestTotal: loan.accruedInterestTotal ? Number(loan.accruedInterestTotal) : 0,
-        penaltyRate: loan.penaltyRate ? Number(loan.penaltyRate) : 0,
-        interestRate: Number(loan.interestRate),
-        interestRatePerMonth: loan.interestRatePerMonth ? Number(loan.interestRatePerMonth) : 0,
-        penalties: loan.penalties ? Number(loan.penalties) : 0,
+        current_balance: Number(loan.current_balance || 0),
+        outstandingBalance: Number(loan.outstandingBalance || 0),
+        amount: Number(loan.amount || 0),
+        netDisbursementAmount: Number(loan.netDisbursementAmount || 0),
+        memberSharesAtApplication: Number(loan.memberSharesAtApplication || 0),
+        grossQualifyingAmount: Number(loan.grossQualifyingAmount || 0),
+        monthlyInstallment: Number(loan.monthlyInstallment || 0),
+        accruedInterestTotal: Number(loan.accruedInterestTotal || 0),
+        penaltyRate: Number(loan.penaltyRate || 0),
+        interestRate: Number(loan.interestRate || 0),
+        interestRatePerMonth: Number(loan.interestRatePerMonth || 0),
+        penalties: Number(loan.penalties || 0),
+        // Fix for missing items
+        processingFee: Number(loan.processingFee || 0),
+        insuranceFee: Number(loan.insuranceFee || 0),
+        shareCapitalDeduction: Number(loan.shareCapitalDeduction || 0),
+        existingLoanOffset: Number(loan.existingLoanOffset || 0),
+        totalDeductions: Number(loan.totalDeductions || 0),
     }));
 
     // Serialize members to convert Decimal fields

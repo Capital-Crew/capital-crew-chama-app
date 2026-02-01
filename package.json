@@ -62,6 +62,9 @@
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
+  "overrides": {
+    "nodemailer": "^7.0.13"
+  },
   "browserslist": [
     "defaults",
     "not ie 11",

@@ -70,8 +70,8 @@ export default async function NewLoanApplicationPage() {
                     products={serializedProducts as any}
                     currentMemberId={currentMemberId}
                     creditSnapshot={creditSnapshot}
-                    draftData={null}
-                    initialData={null}
+                    draftData={undefined}
+                    initialData={undefined}
                 />
             </div>
         </div>

@@ -481,6 +481,10 @@ model Member {
   nextOfKin         NextOfKin[]
   mpesaTransactions Transaction[]     // M-Pesa Transactions
 
+  // NEW: Contributions Waterfall
+  monthlyTrackers MonthlyTracker[]
+  contributionTransactions ContributionTransaction[]
+
   // Welfare Relations
   welfareRequisitions WelfareRequisition[] @relation("WelfareRequisitionMember")
   welfareApprovals    WelfareApproval[]    @relation("WelfareApprover")
@@ -1022,6 +1026,7 @@ model Wallet {
   // balance IS REMOVED. Use glAccount.balance
 
   transactions WalletTransaction[]
+  contributionTransactions ContributionTransaction[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1427,7 +1432,64 @@ model PasswordResetToken {
   expires   DateTime
   createdAt DateTime @default(now())
 
+
   @@unique([email, token])
+}
+
+// ========================================
+// CONTRIBUTIONS WATERFALL MODULE
+// ========================================
+
+enum MonthlyTrackerStatus {
+  PAID
+  PARTIAL
+  PENDING
+}
+
+model MonthlyTracker {
+  id        String   @id @default(cuid())
+  memberId  String
+  member    Member   @relation(fields: [memberId], references: [id])
+
+  month     DateTime // The first day of the month being tracked
+  year      Int
+  
+  required  Decimal  @db.Decimal(19, 4) // Snapshot of expected amount
+  paid      Decimal  @default(0) @db.Decimal(19, 4)
+  balance   Decimal  @db.Decimal(19, 4) // Computed: required - paid
+  
+  status    MonthlyTrackerStatus @default(PENDING)
+  
+  isPenalized     Boolean @default(false)
+  penaltyApplied  Decimal @default(0) @db.Decimal(19, 4)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([memberId, month, year]) // One tracker per month per member
+  @@index([memberId])
+  @@index([status])
+}
+
+model ContributionTransaction {
+  id        String   @id @default(cuid())
+  
+  memberId  String
+  member    Member   @relation(fields: [memberId], references: [id])
+
+  walletId  String
+  wallet    Wallet   @relation(fields: [walletId], references: [id])
+
+  amount    Decimal  @db.Decimal(19, 4)
+  date      DateTime @default(now())
+  
+  // Link to Ledger for audit
+  ledgerTransactionId String? @unique
+  
+  createdAt DateTime @default(now())
+
+  @@index([memberId])
+  @@index([walletId])
 }
 
 // ========================================

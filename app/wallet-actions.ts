@@ -6,6 +6,35 @@ import { WalletTransactionType, LedgerTransactionType } from '@prisma/client'
 import { z } from 'zod'
 
 import { WalletService } from '@/lib/services/WalletService'
+import { ContributionsService } from '@/lib/services/contributions-service'
+
+/**
+ * Record a new contribution with waterfall logic
+ */
+export async function addContribution(prevState: any, formData: FormData) {
+    const amount = Number(formData.get('amount'))
+    const memberId = String(formData.get('memberId'))
+    const walletId = String(formData.get('walletId'))
+
+    try {
+        const schema = z.object({
+            amount: z.number().min(50, 'Minimum contribution is 50'),
+            memberId: z.string(),
+            walletId: z.string()
+        })
+
+        const data = schema.parse({ amount, memberId, walletId })
+
+        await ContributionsService.recordContribution(data.memberId, data.amount, data.walletId)
+
+        revalidatePath('/dashboard')
+        revalidatePath(`/members/${memberId}`)
+
+        return { success: true, message: 'Contribution recorded successfully' }
+    } catch (error: any) {
+        return { success: false, message: error.message || 'Failed to record contribution' }
+    }
+}
 
 // Zod schema for validation (not exported - internal use only)
 const walletTransactionSchema = z.object({

@@ -15,35 +15,31 @@ export async function calculateCurrentMonthStatus(memberId: string) {
     const start = startOfMonth(now)
     const end = endOfMonth(now)
 
-    // Using INCOME model for contributions as per schema
-    // Category: MONTHLY_CONTRIBUTION
-    const contributions = await db.income.aggregate({
+    // 3. Fetch MonthlyTracker for Current Month (Source of Truth)
+    const currentMonthTracker = await db.monthlyTracker.findUnique({
         where: {
-            memberId: memberId,
-            category: 'MONTHLY_CONTRIBUTION',
-            date: {
-                gte: start,
-                lte: end
+            memberId_month_year: {
+                memberId,
+                month: start,
+                year: start.getFullYear()
             }
-        },
-        _sum: {
-            amount: true
         }
     })
 
-    const totalPaid = Number(contributions._sum.amount || 0)
-    let balance = monthlyDue - totalPaid
+    if (currentMonthTracker) {
+        return {
+            monthlyDue: Number(currentMonthTracker.required),
+            totalPaid: Number(currentMonthTracker.paid),
+            balance: Number(currentMonthTracker.balance),
+            status: currentMonthTracker.status
+        }
+    }
 
-    // If overpaid, balance is 0 (or negative to indicate advance, but UI usually expects Due Amount)
-    // The prompt says: "If the result is negative (user overpaid), show 0 or 'Advance'."
-    // We'll return the raw balance, negative means advance.
-
-    const status = balance <= 0 ? 'PAID' : (totalPaid > 0 ? 'PARTIAL' : 'PENDING')
-
+    // Default if no tracker exists yet (Implies PENDING)
     return {
         monthlyDue,
-        totalPaid,
-        balance, // Positive = Due, Negative = Advance
-        status
+        totalPaid: 0,
+        balance: monthlyDue,
+        status: 'PENDING'
     }
 }

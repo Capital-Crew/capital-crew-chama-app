@@ -223,6 +223,12 @@ export async function createUserAccount(formData: FormData) {
 }
 
 export async function applyForLoan(prevState: any, formData: FormData) {
+    // SECURITY: Authenticate user session
+    const session = await auth()
+    if (!session?.user) {
+        return { error: 'Unauthorized: You must be logged in to apply for a loan.' }
+    }
+
     const memberId = formData.get('memberId') as string
     const loanProductId = formData.get('loanProductId') as string
     const amountStr = formData.get('amount') as string
@@ -244,6 +250,48 @@ export async function applyForLoan(prevState: any, formData: FormData) {
 
     // Validation
     if (!memberId) return { error: 'Member ID is required.' }
+
+    // SECURITY: Authorization Check - Ensure user can ONLY apply for loans under their own name
+    // Fetch the logged-in user's details
+    const currentUser = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: {
+            memberId: true,
+            role: true,
+            permissions: true
+        }
+    })
+
+    if (!currentUser) {
+        return { error: 'User account not found.' }
+    }
+
+    // STRICT OWNERSHIP CHECK: No exceptions, even for admins
+    // Every user can ONLY apply for loans under their own memberId
+    if (memberId !== currentUser.memberId) {
+        return {
+            error: 'Unauthorized: You can only apply for loans under your own name. No exceptions.'
+        }
+    }
+
+    // Additional check: If updating an existing loan, verify ownership
+    if (loanId) {
+        const existingLoan = await prisma.loan.findUnique({
+            where: { id: loanId },
+            select: { memberId: true }
+        })
+
+        if (!existingLoan) {
+            return { error: 'Loan application not found.' }
+        }
+
+        // Verify the user owns this loan - NO EXCEPTIONS
+        if (existingLoan.memberId !== currentUser.memberId) {
+            return {
+                error: 'Unauthorized: You can only modify your own loan applications.'
+            }
+        }
+    }
 
     // For Drafts, we allow minimal data. For Submission, we need everything.
     if (!isDraftSave) {

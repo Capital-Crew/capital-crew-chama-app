@@ -43,7 +43,7 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
     const handleLoanClick = (loanId: string) => {
         const loan = loans.find(l => l.id === loanId);
         // If Draft (APPLICATION status), redirect to edit page
-        if (loan && (loan.status === 'APPLICATION' || loan.status === 'DRAFT')) {
+        if (loan && (String(loan.status) === 'APPLICATION' || String(loan.status) === 'DRAFT')) {
             router.push(`/loans/application/${loan.id}`);
             return;
         }
@@ -66,6 +66,16 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
         // Admins see all drafts
         return d;
     }, [loans, userRole, currentMemberId]);
+
+    // Check if current user has a draft for button text
+    const myDraft = useMemo(() =>
+        currentMemberId
+            ? loans.find(l =>
+                l.memberId === currentMemberId &&
+                (String(l.status) === 'DRAFT' || String(l.status) === 'APPLICATION')
+            )
+            : null
+        , [loans, currentMemberId]);
 
     const otherApplications = useMemo(() => loans.filter(l =>
         String(l.status) === 'REJECTED' ||
@@ -101,10 +111,18 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
     };
 
     const handleNewApplication = async () => {
-        // Block if draft exists - force user to resume
-        if (loanDraft) {
+        // Check if current user has their own draft - use the filtered drafts array
+        const myDraft = currentMemberId
+            ? loans.find(l =>
+                l.memberId === currentMemberId &&
+                (l.status === 'DRAFT' || l.status === 'APPLICATION')
+            )
+            : null;
+
+        // Block if MY draft exists - force user to resume
+        if (myDraft) {
             toast.info('You have an incomplete application. Please resume your draft first.');
-            router.push('/loans/draft');
+            router.push(`/loans/application/${myDraft.id}`);
             return;
         }
 
@@ -140,8 +158,8 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
                     className="bg-cyan-500 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl font-bold shadow-lg hover:bg-cyan-600 transition-all flex items-center gap-2 text-xs md:text-sm"
                 >
                     <PlusCircleIcon className="w-4 h-4 md:w-5 md:h-5" />
-                    <span className="hidden md:inline">{loanDraft ? 'Resume Draft' : 'New Application'}</span>
-                    <span className="md:hidden">{loanDraft ? 'Resume' : 'New App'}</span>
+                    <span className="hidden md:inline">{myDraft ? 'Resume Draft' : 'New Application'}</span>
+                    <span className="md:hidden">{myDraft ? 'Resume' : 'New App'}</span>
                 </button>
             </div>
 

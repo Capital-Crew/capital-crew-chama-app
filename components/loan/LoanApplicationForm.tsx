@@ -303,13 +303,19 @@ export function LoanApplicationForm({
                     <label className="block text-xs font-black text-slate-700 uppercase">Applicant Profile <span className="text-red-500">*</span></label>
                     <select
                         {...register('memberId')}
+                        value={watchedMemberId || currentMemberId || ''}
+                        onChange={(e) => setValue('memberId', e.target.value)}
                         disabled={!!currentMemberId}
-                        className="w-full bg-white border-2 border-slate-300 rounded-xl px-4 py-3 text-sm font-bold focus:border-cyan-500 outline-none"
+                        className="w-full bg-white border-2 border-slate-300 rounded-xl px-4 py-3 text-sm font-bold focus:border-cyan-500 outline-none disabled:bg-slate-50 disabled:cursor-not-allowed"
                     >
                         <option value="">Select Member...</option>
                         {members.map(m => <option key={m.id} value={m.id}>{m.name} • #{m.memberNumber}</option>)}
                     </select>
-                    {currentMemberId && <p className="text-[10px] text-cyan-600 font-bold">Locked to your account</p>}
+                    {currentMemberId && (
+                        <p className="text-[10px] text-cyan-600 font-bold">
+                            🔒 Locked to your account: {members.find(m => m.id === currentMemberId)?.name || 'Your Account'}
+                        </p>
+                    )}
                 </div>
 
                 {/* Loan Product & Amount */}

@@ -33,6 +33,28 @@ export default async function NewLoanApplicationPage() {
 
     const currentMemberId = user?.memberId || ''
 
+    // VALIDATION: Ensure user has a member profile
+    if (!currentMemberId) {
+        return (
+            <div className="container max-w-5xl mx-auto py-8 px-4">
+                <div className="bg-red-50 border-l-4 border-red-500 p-6 rounded-r-xl shadow-sm">
+                    <div className="flex items-start gap-3">
+                        <div className="text-2xl">⚠️</div>
+                        <div>
+                            <h3 className="text-red-800 font-black text-lg uppercase mb-2">Member Profile Required</h3>
+                            <p className="text-red-700 text-sm leading-relaxed mb-3">
+                                Your user account is not linked to a member profile. You must have a member profile to apply for loans.
+                            </p>
+                            <p className="text-red-600 text-xs">
+                                Please contact the system administrator to link your account to a member profile.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
     // Calculate credit snapshot
     let creditSnapshot = null
     if (currentMemberId) {
@@ -77,3 +99,4 @@ export default async function NewLoanApplicationPage() {
         </div>
     )
 }
+

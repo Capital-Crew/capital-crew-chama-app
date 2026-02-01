@@ -29,67 +29,72 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 const email = parsed.data.email.toLowerCase().trim();
                 const password = parsed.data.password;
 
-                const user = await prisma.user.findUnique({
-                    where: { email },
-                });
+                try {
+                    const user = await prisma.user.findUnique({
+                        where: { email },
+                    });
 
-                if (!user) {
-                    console.log('Authorize - User not found:', email)
-                    return null;
-                }
+                    if (!user) {
+                        console.log('Authorize - User not found:', email)
+                        return null;
+                    }
 
-                // CHECK LOCKOUT
-                if (user.lockoutUntil && user.lockoutUntil > new Date()) {
-                    const timeLeft = Math.ceil((user.lockoutUntil.getTime() - new Date().getTime()) / 60000);
-                    throw new Error(`Account is locked. Try again in ${timeLeft} minutes.`);
-                }
+                    // CHECK LOCKOUT
+                    if (user.lockoutUntil && user.lockoutUntil > new Date()) {
+                        const timeLeft = Math.ceil((user.lockoutUntil.getTime() - new Date().getTime()) / 60000);
+                        throw new Error(`Account is locked. Try again in ${timeLeft} minutes.`);
+                    }
 
-                console.log('Authorize - User Found:', { id: user.id, memberId: user.memberId })
+                    console.log('Authorize - User Found:', { id: user.id, memberId: user.memberId })
 
-                const passwordsMatch = await bcrypt.compare(password, user.passwordHash);
+                    const passwordsMatch = await bcrypt.compare(password, user.passwordHash);
 
-                if (passwordsMatch) {
-                    // SUCCESS: Reset counters
+                    if (passwordsMatch) {
+                        // SUCCESS: Reset counters
+                        await prisma.user.update({
+                            where: { id: user.id },
+                            data: {
+                                failedLoginAttempts: 0,
+                                lockoutUntil: null
+                            }
+                        });
+
+                        return {
+                            id: user.id,
+                            name: user.name,
+                            email: user.email,
+                            role: user.role,
+                            memberId: user.memberId,
+                            mustChangePassword: user.mustChangePassword,
+                            permissions: user.permissions,
+                        };
+                    }
+
+                    // FAILURE: Increment counters
+                    const attempts = user.failedLoginAttempts + 1;
+                    let lockoutUntil = null;
+
+                    if (attempts >= 5) {
+                        lockoutUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 Minutes
+                    }
+
                     await prisma.user.update({
                         where: { id: user.id },
                         data: {
-                            failedLoginAttempts: 0,
-                            lockoutUntil: null
+                            failedLoginAttempts: attempts,
+                            lockoutUntil: lockoutUntil
                         }
                     });
 
-                    return {
-                        id: user.id,
-                        name: user.name,
-                        email: user.email,
-                        role: user.role,
-                        memberId: user.memberId,
-                        mustChangePassword: user.mustChangePassword,
-                        permissions: user.permissions,
-                    };
-                }
-
-                // FAILURE: Increment counters
-                const attempts = user.failedLoginAttempts + 1;
-                let lockoutUntil = null;
-
-                if (attempts >= 5) {
-                    lockoutUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 Minutes
-                }
-
-                await prisma.user.update({
-                    where: { id: user.id },
-                    data: {
-                        failedLoginAttempts: attempts,
-                        lockoutUntil: lockoutUntil
+                    if (lockoutUntil) {
+                        throw new Error("Account is locked due to too many failed attempts.");
                     }
-                });
 
-                if (lockoutUntil) {
-                    throw new Error("Account is locked due to too many failed attempts.");
+                    return null;
+                } catch (error) {
+                    console.error('Authorize Credentials Error:', error);
+                    return null;
                 }
-
-                return null;
             },
         }),
     ],

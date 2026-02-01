@@ -2,9 +2,8 @@
 
 import React from 'react'
 import { useRouter } from 'next/navigation'
-import { deleteLoanDraft } from '@/app/loan-draft-actions'
 import { toast } from '@/lib/toast'
-import { FileText, Clock, Trash2, ArrowRight } from 'lucide-react'
+import { FileText, Clock, ArrowRight } from 'lucide-react'
 
 interface DraftSummaryCardProps {
     draft: {
@@ -17,24 +16,7 @@ interface DraftSummaryCardProps {
 
 export function DraftSummaryCard({ draft }: DraftSummaryCardProps) {
     const router = useRouter()
-    const [isDiscarding, setIsDiscarding] = React.useState(false)
 
-    const handleDiscard = async () => {
-        if (!confirm('Are you sure you want to discard this draft? This action cannot be undone.')) {
-            return
-        }
-
-        setIsDiscarding(true)
-        const result = await deleteLoanDraft()
-
-        if (result.error) {
-            toast.error(result.error)
-            setIsDiscarding(false)
-        } else {
-            toast.success('Draft discarded successfully')
-            router.refresh()
-        }
-    }
 
     const handleContinue = () => {
         router.push('/loans/apply')
@@ -107,18 +89,6 @@ export function DraftSummaryCard({ draft }: DraftSummaryCardProps) {
                 >
                     <ArrowRight className="w-4 h-4" />
                     Continue Application
-                </button>
-                <button
-                    onClick={handleDiscard}
-                    disabled={isDiscarding}
-                    className="flex items-center justify-center px-4 py-3 bg-white border-2 border-red-200 text-red-600 font-bold text-sm rounded-xl hover:bg-red-50 transition-all disabled:opacity-50"
-                    title="Discard Draft"
-                >
-                    {isDiscarding ? (
-                        <div className="animate-spin w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full" />
-                    ) : (
-                        <Trash2 className="w-4 h-4" />
-                    )}
                 </button>
             </div>
         </div>

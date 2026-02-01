@@ -22,7 +22,7 @@ export async function GET(
             where: {
                 memberId,
                 current_balance: { gt: 0 },
-                status: { in: ['ACTIVE', 'DISBURSED'] }
+                status: { in: ['ACTIVE'] }
             },
             include: {
                 loanProduct: {

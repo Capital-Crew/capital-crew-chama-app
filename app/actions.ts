@@ -475,6 +475,14 @@ export async function applyForLoan(prevState: any, formData: FormData) {
             const { initiateWorkflow } = await import('@/app/actions/workflow-engine')
             await initiateWorkflow('LOAN', loan.id, memberId).catch(console.error)
 
+            // Delete LoanDraft since application is now submitted
+            const session = await auth()
+            if (session?.user?.id) {
+                await prisma.loanDraft.deleteMany({
+                    where: { userId: session.user.id }
+                }).catch(err => console.error('Failed to delete draft:', err))
+            }
+
             // Notifications & Emails (Async)
             // ... (Call email service here)
         }

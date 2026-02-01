@@ -82,12 +82,14 @@ export function LoanApplicationForm({
         debounceMs: 1000,
         enabled: !isPending, // Enabled for drafts/application, disabled if Pending/Approved
         onSave: async (data: any) => {
-            // We need to use updateLoanDraft here, but useFormAutoSave might expect a specific signature.
-            // Usually useFormAutoSave takes a server action. 
-            // We'll wrap updateLoanDraft.
             if (initialData?.id) {
+                // Editing existing Loan record (DRAFT/APPLICATION status)
                 const { updateLoanDraft } = await import('@/app/actions/loan-application-actions');
                 await updateLoanDraft(initialData.id, data);
+            } else {
+                // New application - save to LoanDraft table
+                const { saveLoanDraft } = await import('@/app/loan-draft-actions');
+                await saveLoanDraft({ formData: data });
             }
         }
     });

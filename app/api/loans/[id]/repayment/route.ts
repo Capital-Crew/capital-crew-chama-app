@@ -54,7 +54,7 @@ export async function POST(
             )
         }
 
-        if (!['ACTIVE', 'OVERDUE', 'DISBURSED'].includes(loan.status)) {
+        if (!['ACTIVE', 'OVERDUE'].includes(loan.status)) {
             return NextResponse.json(
                 { error: `Cannot process payment for loan with status: ${loan.status}` },
                 { status: 400 }

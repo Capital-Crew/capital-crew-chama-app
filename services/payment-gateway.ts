@@ -211,18 +211,45 @@ export class PaymentGateway {
                 if (input.description) jeInput.notes = input.description;
 
                 const journalEntry = await AccountingEngine.postJournalEntry(jeInput, tx);
+                journalEntryNumber = journalEntry.entryNumber;
+
+                // 4. Check if loan is fully paid and update status to CLEARED
+                const { LoanBalanceService } = await import('@/services/loan-balance');
+                const updatedBalance = await LoanBalanceService.updateLoanBalance(loan.id, tx);
+
+                // If balance is exactly zero, mark loan as CLEARED
+                if (updatedBalance.eq(0)) {
+                    await tx.loan.update({
+                        where: { id: loan.id },
+                        data: {
+                            status: 'CLEARED',
+                            outstandingBalance: new Prisma.Decimal(0)
+                        }
+                    });
+
+                    // Log clearance event
+                    await tx.loanJourneyEvent.create({
+                        data: {
+                            loanId: loan.id,
+                            eventType: 'LOAN_CLEARED',
+                            description: `Loan fully repaid and cleared. Final payment: KES ${input.amount.toLocaleString()}`,
+                            actorId: input.userId,
+                            actorName: input.userName || 'System'
+                        }
+                    });
+                }
+
+                newDestinationBalance = updatedBalance.toNumber();
 
 
-            }
-
-            return {
-                walletTransactionId: walletTransaction.id,
-                newWalletBalance: newWalletBalance.toNumber(),
-                allocation,
-                journalEntryNumber,
-                newDestinationBalance
-            };
-        });
+                return {
+                    walletTransactionId: walletTransaction.id,
+                    newWalletBalance: newWalletBalance.toNumber(),
+                    allocation,
+                    journalEntryNumber,
+                    newDestinationBalance
+                };
+            });
 
         // ========================================
         // RETURN RESULT

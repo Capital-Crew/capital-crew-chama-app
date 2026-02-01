@@ -200,19 +200,7 @@ export async function postLoanAdjustment(data: {
     // DECREASE: Debit Expense (Waiver), Credit Loan (Asset)
 
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-        // Update Loan Balance
-        const newBalance = adjustmentType === 'increase'
-            ? Number(loan.outstandingBalance) + amount
-            : Number(loan.outstandingBalance) - amount
-
-        await tx.loan.update({
-            where: { id: loan.id },
-            data: {
-                outstandingBalance: newBalance
-            }
-        })
-
-        // Create Transaction Record
+        // Create ledger transaction
         const journal = await tx.ledgerTransaction.create({
             data: {
                 transactionDate: new Date(),
@@ -258,7 +246,7 @@ export async function postLoanAdjustment(data: {
             }
         })
 
-        // Also create LoanTransaction sub-ledger record for statement visibility
+        // Create LoanTransaction sub-ledger record for statement visibility
         await tx.loanTransaction.create({
             data: {
                 loanId: loan.id,
@@ -266,6 +254,7 @@ export async function postLoanAdjustment(data: {
                 amount: amount,
                 description: description,
                 referenceId: journal.id,
+                postedAt: new Date(),
                 // Breakdown
                 principalAmount: (adjustmentType === 'decrease' && targetAssetAccount.id === portfolioAcc?.id) ? amount : 0,
                 interestAmount: (targetAssetAccount.id === interestAcc?.id) ? amount : 0,
@@ -273,14 +262,31 @@ export async function postLoanAdjustment(data: {
             }
         })
 
-        // AUTO-SYNC BALANCE
-        // This ensures the outstandingBalance field reflects the new truth immediately
-        const { getLoanOutstandingBalance } = await import('@/lib/accounting/AccountingEngine')
-        const realtimeBalance = await getLoanOutstandingBalance(loan.id, tx)
-        await tx.loan.update({
-            where: { id: loan.id },
-            data: { outstandingBalance: realtimeBalance }
-        })
+        // ✅ FIX: Use LoanBalanceService to calculate from transaction history
+        const { LoanBalanceService } = await import('@/services/loan-balance')
+        const verifiedBalance = await LoanBalanceService.updateLoanBalance(loan.id, tx)
+
+        // ✅ FIX: Check if loan should be cleared (exact zero check)
+        if (verifiedBalance.eq(0)) {
+            await tx.loan.update({
+                where: { id: loan.id },
+                data: {
+                    status: 'CLEARED',
+                    outstandingBalance: new Prisma.Decimal(0)
+                }
+            })
+
+            // Log clearance event
+            await tx.loanJourneyEvent.create({
+                data: {
+                    loanId: loan.id,
+                    eventType: 'LOAN_CLEARED',
+                    description: `Loan cleared via adjustment: ${description}`,
+                    actorId: session.user.id || 'SYSTEM',
+                    actorName: session.user.name || 'System'
+                }
+            })
+        }
     })
 
     revalidatePath('/admin/system')

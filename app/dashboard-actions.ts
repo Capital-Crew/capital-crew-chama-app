@@ -121,7 +121,7 @@ export async function getDashboardStats(): Promise<Serialized<any>> {
     // 2. Total Loans Issued (Historical)
     // Sum of amounts of valid loans
     const totalLoansIssued = allLoans
-        .filter((l: any) => ['DISBURSED', 'ACTIVE', 'OVERDUE', 'CLEARED'].includes(l.status))
+        .filter((l: any) => ['ACTIVE', 'OVERDUE', 'CLEARED'].includes(l.status))
         .reduce((sum: number, l: any) => sum + Number(l.amount), 0)
 
     // 3. Calculate Real-Time Outstanding Balances from Ledger Entries
@@ -148,7 +148,7 @@ export async function getDashboardStats(): Promise<Serialized<any>> {
 
     // Iterate over All Loans to link Ledger Balance to Member
     allLoans.forEach((loan: any) => {
-        if (['ACTIVE', 'OVERDUE', 'DISBURSED'].includes(loan.status)) {
+        if (['ACTIVE', 'OVERDUE'].includes(loan.status)) {
             const balance = loanBalances.get(loan.id) || 0
 
             // Only count if balance is > 0 (floating point safety)
@@ -239,7 +239,7 @@ export async function getMonthlyTrends(): Promise<Serialized<any[]>> {
                     gte: startDate,
                     lte: endDate
                 },
-                status: { in: ['ACTIVE', 'CLEARED', 'OVERDUE', 'DISBURSED'] }
+                status: { in: ['ACTIVE', 'CLEARED', 'OVERDUE'] }
             },
             select: {
                 amount: true,

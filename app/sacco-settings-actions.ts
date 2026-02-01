@@ -198,7 +198,7 @@ export async function calculateLoanQualification(memberId: string, loansToOffset
         include: {
             loans: {
                 where: {
-                    status: { in: ['APPROVED', 'DISBURSED', 'ACTIVE', 'OVERDUE'] }
+                    status: { in: ['APPROVED', 'ACTIVE', 'OVERDUE'] }
                 },
                 include: {
                     transactions: true // Needed for accurate balance calculation

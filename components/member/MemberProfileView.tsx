@@ -93,7 +93,7 @@ export function MemberProfileView({
                     <TabButton
                         isActive={activeTab === 'contributions'}
                         onClick={() => setActiveTab('contributions')}
-                        label="Contributions"
+                        label={`Contributions (${formatCurrency(stats?.cumulativeContributions || stats?.contributions || 0)})`}
                     />
                     <TabButton
                         isActive={activeTab === 'kin'}
@@ -128,7 +128,7 @@ export function MemberProfileView({
                     </CollapsibleSection>
 
                     <CollapsibleSection
-                        title="Contributions"
+                        title={`Contributions (${formatCurrency(stats?.cumulativeContributions || stats?.contributions || 0)})`}
                         isOpen={activeTab === 'contributions'}
                         onToggle={() => setActiveTab('contributions')}
                         icon={CheckCircle2}

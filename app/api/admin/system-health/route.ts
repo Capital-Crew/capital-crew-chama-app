@@ -12,7 +12,7 @@ export async function GET() {
         const [loansWithInstallments, loansWithoutInstallments, totalActiveLoans] = await Promise.all([
             db.loan.count({
                 where: {
-                    status: { in: ['ACTIVE', 'OVERDUE', 'DISBURSED'] },
+                    status: { in: ['ACTIVE', 'OVERDUE'] },
                     repaymentInstallments: {
                         some: {}
                     }

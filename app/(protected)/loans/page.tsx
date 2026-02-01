@@ -9,7 +9,7 @@ export default async function LoansPage() {
     const session = await auth()
 
     // Fetch critical data
-    const [loans, members, products] = await Promise.all([
+    const [loans, members, products, loanDraft] = await Promise.all([
         prisma.loan.findMany({
             include: {
                 member: true,
@@ -18,7 +18,11 @@ export default async function LoansPage() {
             orderBy: { applicationDate: 'desc' }
         }),
         prisma.member.findMany({ orderBy: { name: 'asc' } }),
-        prisma.loanProduct.findMany({ where: { isActive: true } })
+        prisma.loanProduct.findMany({ where: { isActive: true } }),
+        // Fetch LoanDraft for current user
+        session?.user?.id
+            ? prisma.loanDraft.findUnique({ where: { userId: session.user.id } })
+            : Promise.resolve(null)
     ])
 
     const memberId = (session?.user as any)?.memberId
@@ -77,6 +81,7 @@ export default async function LoansPage() {
                 currentMemberId={memberId || ''}
                 userRole={session?.user?.role || 'MEMBER'}
                 creditSnapshot={creditSnapshot}
+                loanDraft={loanDraft}
             />
         </div>
     );

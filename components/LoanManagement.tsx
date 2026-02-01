@@ -23,9 +23,10 @@ interface LoanManagementProps {
     currentMemberId?: string;
     userRole: string;
     creditSnapshot?: CreditSnapshot | null;
+    loanDraft?: { id: string; data: any } | null; // Add LoanDraft prop
 }
 
-export function LoanManagement({ loans, members, products, currentUserId, currentMemberId, userRole, creditSnapshot }: LoanManagementProps) {
+export function LoanManagement({ loans, members, products, currentUserId, currentMemberId, userRole, creditSnapshot, loanDraft }: LoanManagementProps) {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<'application' | 'approvals' | 'approved' | 'disbursed'>('application');
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -100,7 +101,12 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
     };
 
     const handleNewApplication = async () => {
-        if (isCreating) return;
+        // Block if draft exists - force user to resume
+        if (loanDraft) {
+            toast.info('You have an incomplete application. Please resume your draft first.');
+            router.push('/loans/draft');
+            return;
+        }
 
         // 1. Check Credit/Pending Limits (Frontend check)
         if (currentMemberId) {
@@ -118,28 +124,8 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
             }
         }
 
-        setIsCreating(true);
-        const loadingToast = toast.loading("Initializing Application...");
-
-        try {
-            // 2. Start Server Action to Create Empty Draft
-            const result = await startLoanApplication(currentMemberId);
-
-            if (result.success && result.loanId) {
-                toast.success("Application Started", { id: loadingToast });
-                // 3. Redirect to Edit Page
-                router.push(`/loans/application/${result.loanId}`);
-            } else {
-                throw new Error("Failed to generate loan ID");
-            }
-        } catch (error: any) {
-            console.error(error);
-            toast.error("Failed to start application", {
-                description: error.message || "Please try again.",
-                id: loadingToast
-            });
-            setIsCreating(false);
-        }
+        // 2. Navigate directly to form (no Loan creation)
+        router.push('/loans/apply');
     };
 
     return (
@@ -154,8 +140,8 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
                     className="bg-cyan-500 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl font-bold shadow-lg hover:bg-cyan-600 transition-all flex items-center gap-2 text-xs md:text-sm"
                 >
                     <PlusCircleIcon className="w-4 h-4 md:w-5 md:h-5" />
-                    <span className="hidden md:inline">New Application</span>
-                    <span className="md:hidden">New App</span>
+                    <span className="hidden md:inline">{loanDraft ? 'Resume Draft' : 'New Application'}</span>
+                    <span className="md:hidden">{loanDraft ? 'Resume' : 'New App'}</span>
                 </button>
             </div>
 

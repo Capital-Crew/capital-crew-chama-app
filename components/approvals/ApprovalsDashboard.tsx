@@ -4,10 +4,9 @@ import React, { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { ApprovalRequest } from '@prisma/client'
 import { format } from 'date-fns'
-// import { Badge } from '@/components/ui/badge' // Unused
 import { LoanAppraisalCard } from '@/components/LoanAppraisalCard'
 import { MemberDetailsCard } from './MemberDetailsCard'
-import { UserCheck, FileText, DollarSign, Users, ChevronRight, Check, X, Loader2 } from 'lucide-react'
+import { UserCheck, FileText, DollarSign, Users, ChevronRight, Check, X, Loader2, Calendar, Hash, Percent } from 'lucide-react'
 import { processApproval } from '@/app/actions/approval-actions'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -31,6 +30,7 @@ const TYPE_COLORS = {
 
 export interface ExtendedApprovalRequest extends ApprovalRequest {
     canApprove?: boolean
+    entityDetails?: any
 }
 
 interface ApprovalsDashboardProps {
@@ -156,7 +156,66 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
                                                 {req.description || `Request regarding ${req.referenceTable}`}
                                             </p>
 
-                                            {req.amount && (
+                                            {/* Entity Details Snapshot */}
+                                            {req.entityDetails && req.type === 'LOAN' && (
+                                                <div className="mt-3 space-y-2 bg-slate-50/80 rounded-lg p-3 border border-slate-100">
+                                                    <div className="flex items-center justify-between text-xs">
+                                                        <span className="text-slate-500 font-medium flex items-center gap-1">
+                                                            <Hash className="w-3 h-3" />
+                                                            {req.entityDetails.loanApplicationNumber}
+                                                        </span>
+                                                        <span className="text-slate-700 font-bold">
+                                                            {req.entityDetails.loanProduct?.productName}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-baseline gap-1">
+                                                        <span className="text-lg font-black text-slate-900">
+                                                            <span className="text-xs text-slate-400 font-bold mr-1">KES</span>
+                                                            {Number(req.entityDetails.amount).toLocaleString()}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-4 text-[10px] text-slate-500">
+                                                        <span className="flex items-center gap-1">
+                                                            <Calendar className="w-3 h-3" />
+                                                            {req.entityDetails.installments} months
+                                                        </span>
+                                                        <span className="flex items-center gap-1">
+                                                            <Percent className="w-3 h-3" />
+                                                            {req.entityDetails.interestRate}% interest
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-[10px] text-slate-600 font-medium pt-1 border-t border-slate-200">
+                                                        Member: {req.entityDetails.member?.name} ({req.entityDetails.member?.memberNumber})
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {req.entityDetails && req.type === 'MEMBER' && (
+                                                <div className="mt-3 space-y-2 bg-slate-50/80 rounded-lg p-3 border border-slate-100">
+                                                    <div className="flex items-center justify-between text-xs">
+                                                        <span className="text-slate-500 font-medium">
+                                                            {req.entityDetails.memberNumber}
+                                                        </span>
+                                                        <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-[10px] font-bold">
+                                                            {req.entityDetails.status}
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-xs space-y-1">
+                                                        <div className="text-slate-600">
+                                                            📧 {req.entityDetails.email || 'N/A'}
+                                                        </div>
+                                                        <div className="text-slate-600">
+                                                            📱 {req.entityDetails.phoneNumber || 'N/A'}
+                                                        </div>
+                                                        <div className="text-slate-600">
+                                                            🆔 {req.entityDetails.nationalId || 'N/A'}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Fallback for requests without entity details */}
+                                            {!req.entityDetails && req.amount && (
                                                 <div className="mt-2 flex items-baseline gap-1">
                                                     <span className="text-lg font-black text-slate-900">
                                                         <span className="text-xs text-slate-400 font-bold mr-1">KES</span>

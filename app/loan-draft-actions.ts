@@ -83,25 +83,16 @@ export async function getLoanDraft() {
 
 /**
  * Delete loan application draft for current user
- * Called when application is successfully submitted or user discards
+ * 
+ * ⚠️ DISABLED: Drafts cannot be deleted once saved.
+ * This protects user data and ensures loan applications are not accidentally lost.
+ * 
+ * Drafts are automatically cleaned up when:
+ * - Application is successfully submitted
+ * - Application is approved/rejected
  */
 export async function deleteLoanDraft() {
-    try {
-        const session = await auth()
-        if (!session?.user?.id) {
-            return { error: 'Unauthorized' }
-        }
-
-        await db.loanDraft.delete({
-            where: { userId: session.user.id }
-        }).catch(() => {
-            // Ignore error if draft doesn't exist
-        })
-
-        revalidatePath('/loans')
-        return { success: true }
-    } catch (error: any) {
-        console.error('Error deleting loan draft:', error)
-        return { error: error.message || 'Failed to delete draft' }
+    return {
+        error: 'Draft deletion is disabled. Drafts are automatically removed when the application is submitted.'
     }
 }

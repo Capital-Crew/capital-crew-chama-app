@@ -44,7 +44,7 @@ export async function repayLoan(loanId: string, amount: number) {
         throw new Error('Loan not found')
     }
 
-    if (loan.status !== 'DISBURSED' && loan.status !== 'ACTIVE') {
+    if (loan.status !== 'ACTIVE') {
         throw new Error('Loan is not active')
     }
 
@@ -60,7 +60,8 @@ export async function repayLoan(loanId: string, amount: number) {
 
         const totalOutstanding = outstandingPenalty + outstandingInterest + outstandingPrincipal
 
-        if (amount > totalOutstanding + 0.01) { // Allow tiny epsilon for floating point
+        // STRICT: Reject overpayments - payment must not exceed outstanding balance
+        if (amount > totalOutstanding) {
             throw new Error(`Payment amount (${amount.toLocaleString()}) exceeds total outstanding balance (${totalOutstanding.toLocaleString()}). Please adjust the amount.`)
         }
 
@@ -138,8 +139,8 @@ export async function repayLoan(loanId: string, amount: number) {
             }
         })
 
-        // Check if loan is now fully paid based on STRICT balance
-        const isFullyPaid = verifiedBalance.toNumber() <= 0.01;
+        // Check if loan is now fully paid (EXACT zero balance)
+        const isFullyPaid = verifiedBalance.toNumber() === 0;
 
         if (isFullyPaid) {
             // Loan is fully paid!

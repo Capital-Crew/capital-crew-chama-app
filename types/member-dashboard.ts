@@ -9,6 +9,7 @@ export interface MemberStats {
     // Real-time fields
     memberSavings?: number;
     contributions?: number;
+    cumulativeContributions?: number;
 
     // Legacy / Calculated
     totalBorrowed?: number;

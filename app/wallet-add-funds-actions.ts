@@ -276,7 +276,7 @@ export async function addLoanRepayment(input: {
         throw new Error('Loan does not belong to this member')
     }
 
-    if (!['ACTIVE', 'OVERDUE', 'DISBURSED'].includes(loan.status)) {
+    if (!['ACTIVE', 'OVERDUE'].includes(loan.status)) {
         throw new Error(`Cannot repay loan with status: ${loan.status}`)
     }
 
@@ -300,7 +300,7 @@ export async function addLoanRepayment(input: {
 
     let totalOutstanding = balances.penalty + balances.fees + balances.interest + balances.principal
 
-    // Fallback: If ledger is empty (0) but loan is ACTIVE/DISBURSED, assume it's fully outstanding
+    // Fallback: If ledger is empty (0) but loan is ACTIVE, assume it's fully outstanding
     if (totalOutstanding <= 0) {
         balances.principal = Number(loan.amount)
         principalBalance = balances.principal
@@ -506,7 +506,7 @@ export async function getActiveLoansByMember(memberId: string) {
     const loans = await prisma.loan.findMany({
         where: {
             memberId,
-            status: { in: ['ACTIVE', 'OVERDUE', 'DISBURSED'] }
+            status: { in: ['ACTIVE', 'OVERDUE'] }
         },
         include: {
             loanProduct: {

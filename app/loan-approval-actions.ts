@@ -598,7 +598,7 @@ export async function disburseLoanToWallet(loanId: string) {
         await tx.loan.update({
             where: { id: loanId },
             data: {
-                status: 'DISBURSED',
+                status: 'ACTIVE',
                 current_balance: strictBalance.toNumber(),
                 outstandingBalance: strictBalance,
                 disbursementDate: new Date(),

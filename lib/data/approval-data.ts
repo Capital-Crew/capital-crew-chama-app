@@ -54,11 +54,86 @@ export async function getPendingApprovals() {
         orderBy: { createdAt: 'desc' },
     })
 
-    // Return ALL requests, but mark if user can approve
-    return requests.map(req => ({
-        ...serializeApprovalRequest(req),
-        canApprove: hasPermission(userRole, req.requiredPermission, userPermissions)
-    }))
+    // Fetch related entities for rich display
+    const enrichedRequests = await Promise.all(
+        requests.map(async (req) => {
+            let entityDetails: any = null
+
+            try {
+                // Fetch entity details based on type
+                if (req.type === 'LOAN') {
+                    entityDetails = await db.loan.findUnique({
+                        where: { id: req.referenceId },
+                        select: {
+                            id: true,
+                            loanApplicationNumber: true,
+                            amount: true,
+                            installments: true,
+                            interestRate: true,
+                            status: true,
+                            member: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    memberNumber: true,
+                                    phoneNumber: true
+                                }
+                            },
+                            loanProduct: {
+                                select: {
+                                    productName: true,
+                                    maxAmount: true,
+                                    interestRate: true
+                                }
+                            }
+                        }
+                    })
+                } else if (req.type === 'MEMBER') {
+                    entityDetails = await db.member.findUnique({
+                        where: { id: req.referenceId },
+                        select: {
+                            id: true,
+                            name: true,
+                            memberNumber: true,
+                            email: true,
+                            phoneNumber: true,
+                            nationalId: true,
+                            status: true,
+                            createdAt: true
+                        }
+                    })
+                } else if (req.type === 'EXPENSE') {
+                    // Add expense details if needed
+                    entityDetails = null
+                } else if (req.type === 'WELFARE') {
+                    entityDetails = await db.loan.findUnique({
+                        where: { id: req.referenceId },
+                        select: {
+                            id: true,
+                            loanApplicationNumber: true,
+                            amount: true,
+                            member: {
+                                select: {
+                                    name: true,
+                                    memberNumber: true
+                                }
+                            }
+                        }
+                    })
+                }
+            } catch (error) {
+                console.error(`Error fetching entity details for ${req.type}:`, error)
+            }
+
+            return {
+                ...serializeApprovalRequest(req),
+                canApprove: hasPermission(userRole, req.requiredPermission, userPermissions),
+                entityDetails // Attach the related entity data
+            }
+        })
+    )
+
+    return enrichedRequests
 }
 
 export async function getApprovalCounts() {

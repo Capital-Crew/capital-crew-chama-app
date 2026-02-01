@@ -72,11 +72,8 @@ export async function getMemberRealtimeStats(memberId: string): Promise<Serializ
             where: {
                 memberId: memberId,
                 status: {
-                    in: ['DISBURSED', 'ACTIVE', 'OVERDUE']
+                    in: ['ACTIVE', 'OVERDUE']
                     // Exclude CLEARED, REJECTED, CANCELLED, PENDING_APPROVAL
-                    // Assuming 'ACTIVE' covers it if used, or DISBURSED.
-                    // LoanStatus enum has: DISBURSED, ACTIVE, OVERDUE?
-                    // Checked schema: DISBURSED, ACTIVE, OVERDUE exist.
                 }
             }
         })

@@ -38,7 +38,7 @@ export async function getRefactoredLoanPortfolio(memberId: string): Promise<Refa
         where: {
             memberId,
             status: {
-                in: ['ACTIVE', 'OVERDUE', 'CLEARED', 'DISBURSED']
+                in: ['ACTIVE', 'OVERDUE', 'CLEARED']
             }
         },
         include: {

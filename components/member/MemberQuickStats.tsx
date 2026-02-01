@@ -12,6 +12,7 @@ interface MemberQuickStatsProps {
         financials: {
             memberSavings?: number
             contributions?: number
+            cumulativeContributions?: number
             outstandingLoans?: number
             // Legacy fields fallback
             totalContributions?: number
@@ -24,7 +25,7 @@ export function MemberQuickStats({ stats }: MemberQuickStatsProps) {
     // Correctly prioritize real-time fields
     const memberSavings = stats.financials.memberSavings ?? 0
     // Contributions can be 0 if new member
-    const contributions = stats.financials.contributions ?? stats.financials.totalContributions ?? 0
+    const contributions = stats.financials.cumulativeContributions ?? stats.financials.contributions ?? stats.financials.totalContributions ?? 0
 
     // Loan balance might be computed
     const outstandingLoans = stats.financials.outstandingLoans ?? stats.financials.cumulativeLoanBalance ?? 0

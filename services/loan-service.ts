@@ -134,7 +134,7 @@ export class LoanService {
             throw new Error('Loan not found')
         }
 
-        if (!['ACTIVE', 'OVERDUE', 'DISBURSED'].includes(loan.status)) {
+        if (!['ACTIVE', 'OVERDUE'].includes(loan.status)) {
             throw new Error(`Cannot repay loan with status: ${loan.status}`)
         }
 
@@ -241,7 +241,7 @@ export class LoanService {
             // 8. Calculate new outstanding (DECIMAL)
             const newOutstandingDecimal = balances.total.minus(amountDecimal)
             const newOutstanding = newOutstandingDecimal.toNumber()
-            const isFullyPaid = newOutstandingDecimal.abs().lt(0.01)
+            const isFullyPaid = newOutstandingDecimal.eq(0)
 
             // 9. Update loan status/balance (atomic with journal posting)
             let finalStatus = loan.status

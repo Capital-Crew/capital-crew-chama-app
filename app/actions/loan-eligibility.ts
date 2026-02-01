@@ -15,7 +15,7 @@ export type EligibilityResult = {
 
 /**
  * STRICT ELIGIBILITY GUARD
- * Checks if a member has ANY outstanding arrears on ACTIVE/DISBURSED loans.
+ * Checks if a member has ANY outstanding arrears on ACTIVE loans.
  */
 export async function checkLoanEligibility(memberId: string): Promise<EligibilityResult> {
     try {
@@ -23,7 +23,7 @@ export async function checkLoanEligibility(memberId: string): Promise<Eligibilit
         const activeLoans = await db.loan.findMany({
             where: {
                 memberId,
-                status: { in: ['ACTIVE', 'OVERDUE', 'DISBURSED'] }
+                status: { in: ['ACTIVE', 'OVERDUE'] }
             },
             include: {
                 repaymentInstallments: {

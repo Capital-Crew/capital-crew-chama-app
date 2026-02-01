@@ -20,6 +20,7 @@ interface LoanAppraisalCardProps {
     onClose: () => void
     currentUserId?: string
     activeTab?: string
+    hideApprovalButtons?: boolean // Hide approve/reject buttons when true (e.g., from Approvals module)
 }
 
 interface LoanData {

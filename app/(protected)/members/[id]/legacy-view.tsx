@@ -23,7 +23,7 @@ export default async function MemberLegacyProfilePage({ params }: PageProps) {
         include: {
             loans: {
                 where: {
-                    status: { in: ['ACTIVE', 'OVERDUE', 'DISBURSED'] }
+                    status: { in: ['ACTIVE', 'OVERDUE'] }
                 },
                 include: {
                     loanProduct: true

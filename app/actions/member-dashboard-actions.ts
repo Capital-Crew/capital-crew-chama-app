@@ -52,8 +52,8 @@ async function getAccountBalance(memberId: string, accountCode: string, normalSi
     })
 
     // Convert BigInt Cents to Main Units
-    const debits = Number(result._sum.debitAmount || 0n) / 100
-    const credits = Number(result._sum.creditAmount || 0n) / 100
+    const debits = Number(result._sum.debitAmount || 0n)
+    const credits = Number(result._sum.creditAmount || 0n)
 
     return normalSide === 'DEBIT' ? debits - credits : credits - debits
 }
@@ -108,8 +108,8 @@ export async function getMemberStats(memberId: string): Promise<MemberStats | nu
                 }
             })
             // Convert BigInt Cents
-            const debits = Number(loanResult._sum.debitAmount || 0n) / 100
-            const credits = Number(loanResult._sum.creditAmount || 0n) / 100
+            const debits = Number(loanResult._sum.debitAmount || 0n)
+            const credits = Number(loanResult._sum.creditAmount || 0n)
             loanBalance = debits - credits
         }
 
@@ -177,7 +177,7 @@ export async function getDetailedMemberStats(memberId: string): Promise<{ stats:
         db.loan.findMany({
             where: {
                 memberId,
-                status: { in: ['ACTIVE', 'OVERDUE', 'DISBURSED'] }
+                status: { in: ['ACTIVE', 'OVERDUE'] }
             },
             include: {
                 loanProduct: true,
@@ -345,6 +345,22 @@ export async function getDetailedMemberStats(memberId: string): Promise<{ stats:
     const totalArrears = finalPrincipalArrears + finalInterestArrears + loanPenalty;
     const totalDue = totalArrears + nextMonthDue;
 
+    // Calculate Cumulative Contributions (Total Credits to 1200)
+    const cumulativeContributionsRaw = await db.ledgerEntry.aggregate({
+        _sum: { creditAmount: true },
+        where: {
+            ledgerAccount: { code: '1200' },
+            ledgerTransaction: {
+                referenceId: memberId,
+                referenceType: { in: ['SHARE_CONTRIBUTION', 'OPENING_BALANCE'] },
+                isReversed: false
+            }
+        }
+    });
+
+    const ledgerCumulative = Number(cumulativeContributionsRaw._sum.creditAmount || 0);
+    const cumulativeContributions = ledgerCumulative > 0 ? ledgerCumulative : legacyShares;
+
     return {
         stats: {
             memberNumber: member.memberNumber.toString(),
@@ -352,7 +368,8 @@ export async function getDetailedMemberStats(memberId: string): Promise<{ stats:
 
             // Core Financials (Real-time)
             memberSavings: savingsBalance,     // Replaces manual aggregation
-            contributions: contributionsBalance, // New Field
+            contributions: contributionsBalance, // Net Balance (for logic)
+            cumulativeContributions, // Total Contributed (for UI)
 
             shareCapital: shareCapital,
             normalShares: normalShares,
@@ -404,7 +421,7 @@ export async function getContributionHistory(memberId: string) {
             date: entry.transactionDate,
             reference: entry.referenceId, // Ref ID or generated ID? entryNumber removed.
             description: entry.description,
-            amount: (Number(creditLine?.creditAmount || entry.totalAmount) / 100) // Convert Cents
+            amount: (Number(creditLine?.creditAmount || entry.totalAmount)) // Convert Cents
         }
     })
 }
@@ -417,7 +434,7 @@ export async function getLoanPortfolio(memberId: string) {
         where: {
             memberId,
             status: {
-                in: ['ACTIVE', 'OVERDUE', 'CLEARED', 'DISBURSED'] // Only disbursed/past loans
+                in: ['ACTIVE', 'OVERDUE', 'CLEARED'] // Active and historical loans
             }
         },
         include: {
@@ -617,12 +634,12 @@ export async function getMemberLedger(memberId: string) {
             reference: entry.referenceId, // entryNumber removed
             description: entry.description,
             type: entry.referenceType,
-            amount: Number(entry.totalAmount) / 100, // Aggregate Cents
+            amount: Number(entry.totalAmount), // Aggregate Cents
             lines: entry.ledgerEntries.map(line => ({
                 accountCode: line.ledgerAccount.code,
                 accountName: line.ledgerAccount.name,
-                debit: Number(line.debitAmount) / 100,
-                credit: Number(line.creditAmount) / 100
+                debit: Number(line.debitAmount),
+                credit: Number(line.creditAmount)
             }))
         }
     })

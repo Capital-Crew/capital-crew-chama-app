@@ -7,9 +7,17 @@ import { revalidatePath } from "next/cache"
 import { serializeApprovalRequest } from "@/lib/serializers"
 import { hasPermission } from "@/lib/data/approval-data"
 
-export { getPendingApprovals, getApprovalCounts } from "@/lib/data/approval-data"
+import { getPendingApprovals as _getPendingApprovals, getApprovalCounts as _getApprovalCounts } from "@/lib/data/approval-data"
 
-// ... imports
+// Wrapper functions to make them compatible with "use server"
+export async function getPendingApprovals() {
+    return await _getPendingApprovals()
+}
+
+export async function getApprovalCounts() {
+    return await _getApprovalCounts()
+}
+
 
 export async function processApproval(requestId: string, decision: 'APPROVED' | 'REJECTED', notes?: string) {
     const session = await auth()

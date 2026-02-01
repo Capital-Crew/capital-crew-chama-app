@@ -78,11 +78,29 @@ export async function updateLoanDraft(loanId: string, data: any) {
     if (!session?.user) throw new Error('Unauthorized')
 
     // Verify ownership (or Admin)
-    const loan = await db.loan.findUnique({ where: { id: loanId } })
+    const loan = await db.loan.findUnique({
+        where: { id: loanId },
+        include: {
+            member: {
+                select: { userId: true }
+            }
+        }
+    })
     if (!loan) throw new Error('Loan not found')
 
-    // Permission check...
-    // TODO: Strict ownership check
+    // Get user role
+    const user = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true }
+    })
+
+    // Strict ownership check: Only the loan owner or admins can update
+    const isOwner = loan.member.userId === session.user.id
+    const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN'
+
+    if (!isOwner && !isAdmin) {
+        throw new Error('You can only update your own loan applications')
+    }
 
     await db.loan.update({
         where: { id: loanId },
@@ -101,6 +119,23 @@ export async function updateLoanDraft(loanId: string, data: any) {
 export async function discardDraft(loanId: string) {
     const session = await auth()
     if (!session?.user) throw new Error('Unauthorized')
+
+    // Get user role - only SUPER_ADMIN can delete loan applications
+    const user = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true }
+    })
+
+    // Strict permission check: Only SUPER_ADMIN (System Admin) can delete
+    if (user?.role !== 'SUPER_ADMIN') {
+        throw new Error('Only System Administrators can delete loan applications')
+    }
+
+    // Verify loan exists before deleting
+    const loan = await db.loan.findUnique({
+        where: { id: loanId }
+    })
+    if (!loan) throw new Error('Loan not found')
 
     await db.loan.delete({
         where: { id: loanId }

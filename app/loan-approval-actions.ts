@@ -59,7 +59,7 @@ export async function submitLoanApproval(loanId: string, decision: 'APPROVED' | 
 
     // @ts-ignore
     if (!session?.user?.memberId) {
-        throw new Error("Unauthorized: You must be a member to approve loans")
+        return { error: "Unauthorized: You must be a member to approve loans" }
     }
 
     // @ts-ignore
@@ -126,12 +126,12 @@ export async function submitLoanApproval(loanId: string, decision: 'APPROVED' | 
         })
 
         if (!hasValidDelegation) {
-            throw new Error("Unauthorized: You do not have permission (direct or delegated) to approve loans")
+            return { error: "Unauthorized: You do not have permission (direct or delegated) to approve loans" }
         }
     }
 
     // 1. Transaction to record vote and check quorum
-    await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
         // MAKER-CHECKER VALIDATION: Prevent self-approval
         const loan = await tx.loan.findUnique({
             where: { id: loanId },
@@ -141,7 +141,7 @@ export async function submitLoanApproval(loanId: string, decision: 'APPROVED' | 
         if (!loan) throw new Error("Loan not found")
 
         if (loan.memberId === approverId) {
-            throw new Error("Compliance Error: You cannot approve your own loan application")
+            return { error: "Compliance Error: You cannot approve your own loan application" }
         }
 
         // Check if user has already voted
@@ -153,7 +153,7 @@ export async function submitLoanApproval(loanId: string, decision: 'APPROVED' | 
         })
 
         if (existingVote) {
-            throw new Error("You have already voted on this loan")
+            return { error: "You have already voted on this loan" }
         }
 
         // Record the vote
@@ -289,12 +289,14 @@ export async function submitLoanApproval(loanId: string, decision: 'APPROVED' | 
         return { status: 'PENDING_QUORUM', message: `Vote recorded. (${approvedCount}/${requiredApprovals})` }
     })
 
+    if (result && 'error' in result) {
+        return result
+    }
+
     revalidatePath(`/loans/${loanId}`)
     revalidatePath('/dashboard')
 
-    // Return result of transaction if we capture it, but simple returns here work since revalidate happens after.
-    // Ideally refactor to capture tx result. 
-    return { success: true }
+    return result || { success: true }
 }
 
 /**

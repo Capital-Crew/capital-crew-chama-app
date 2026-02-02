@@ -40,7 +40,8 @@ export async function processApproval(requestId: string, decision: 'APPROVED' | 
         // We use the robust voting system for loans which handles its own DB transactions and logic.
         if (request.type === 'LOAN') {
             const { submitLoanApproval } = await import("@/app/loan-approval-actions")
-            await submitLoanApproval(request.referenceId, decision, notes || `Quick ${decision} via Dashboard`)
+            const result: any = await submitLoanApproval(request.referenceId, decision, notes || `Quick ${decision} via Dashboard`)
+            if (result?.error) return { error: result.error }
             return { success: true }
         }
 

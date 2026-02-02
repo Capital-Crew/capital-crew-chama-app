@@ -161,7 +161,8 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                 await processWorkflowAction(loan.workflowRequest.id, 'APPROVED', approvalNotes)
             } else {
                 // Legacy Fallback
-                await submitLoanApproval(loan.id, 'APPROVED', approvalNotes)
+                const result: any = await submitLoanApproval(loan.id, 'APPROVED', approvalNotes)
+                if (result?.error) throw new Error(result.error)
             }
 
             await fetchLoanData() // Refresh
@@ -181,7 +182,8 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
         }
         setSubmitting(true)
         try {
-            await submitLoanApproval(loan.id, 'REJECTED', approvalNotes)
+            const result: any = await submitLoanApproval(loan.id, 'REJECTED', approvalNotes)
+            if (result?.error) throw new Error(result.error)
             await fetchLoanData() // Refresh
             setApprovalNotes('')
             toast.success('Loan rejection recorded')

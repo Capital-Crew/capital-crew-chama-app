@@ -69,7 +69,9 @@ export function LoanApplicationForm({
 
     const { register, watch, setValue, reset } = useForm({
         defaultValues: {
-            memberId: draftData?.memberId || initialData?.memberId || currentMemberId || '',
+            // SECURITY: Always use currentMemberId (logged-in user's member)
+            // Never trust memberId from draftData or initialData
+            memberId: currentMemberId || draftData?.memberId || initialData?.memberId || '',
             loanProductId: draftData?.loanProductId || initialData?.loanProductId || '',
             amount: draftData?.amount || (initialData?.amount ? String(initialData.amount) : ''),
             installments: draftData?.installments || initialData?.installments || 12

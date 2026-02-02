@@ -33,6 +33,25 @@ export default async function NewLoanApplicationPage() {
 
     const currentMemberId = user?.memberId || ''
 
+    // DEBUG: Log to help diagnose the issue
+    console.log('=== LOAN APPLICATION DEBUG ===')
+    console.log('Session User ID:', session.user.id)
+    console.log('Session User Email:', session.user.email)
+    console.log('Session User Name:', session.user.name)
+    console.log('Database User:', {
+        id: user?.id,
+        email: user?.email,
+        name: user?.name,
+        memberId: user?.memberId
+    })
+    console.log('Linked Member:', {
+        id: user?.member?.id,
+        name: user?.member?.name,
+        memberNumber: user?.member?.memberNumber
+    })
+    console.log('currentMemberId being passed to form:', currentMemberId)
+    console.log('===========================')
+
     // VALIDATION: Ensure user has a member profile
     if (!currentMemberId) {
         return (

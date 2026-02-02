@@ -33,6 +33,23 @@ export default async function ResumeDraftPage() {
 
     const currentMemberId = user?.memberId || ''
 
+    // SECURITY: Validate draft belongs to current user's member
+    // If draft has a different memberId, delete it and redirect to new application
+    if (loanDraft.data && typeof loanDraft.data === 'object') {
+        const draftMemberId = (loanDraft.data as any).memberId
+        if (draftMemberId && draftMemberId !== currentMemberId) {
+            console.warn(`Draft memberId mismatch: draft has ${draftMemberId}, user has ${currentMemberId}. Deleting invalid draft.`)
+
+            // Delete the invalid draft
+            await db.loanDraft.delete({
+                where: { userId: session.user.id }
+            })
+
+            // Redirect to create new application
+            return redirect('/loans/apply')
+        }
+    }
+
     // Calculate credit snapshot
     let creditSnapshot = null
     if (currentMemberId) {
@@ -71,9 +88,10 @@ export default async function ResumeDraftPage() {
                     currentMemberId={currentMemberId}
                     creditSnapshot={creditSnapshot}
                     draftData={loanDraft.data}
-                    initialData={null}
+                    initialData={undefined}
                 />
             </div>
         </div>
     )
 }
+

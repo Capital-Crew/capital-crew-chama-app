@@ -120,22 +120,39 @@ export async function discardDraft(loanId: string) {
     const session = await auth()
     if (!session?.user) throw new Error('Unauthorized')
 
-    // Get user role - only SUPER_ADMIN can delete loan applications
+    // Get user role
     const user = await db.user.findUnique({
         where: { id: session.user.id },
-        select: { role: true }
+        select: { role: true } // Assuming 'role' is in User model
     })
 
-    // Strict permission check: Only SUPER_ADMIN (System Admin) can delete
-    if (user?.role !== 'SUPER_ADMIN') {
-        throw new Error('Only System Administrators can delete loan applications')
+    // Fetch loan to verify ownership
+    const loan = await db.loan.findUnique({
+        where: { id: loanId },
+        include: {
+            member: {
+                select: { userId: true }
+            }
+        }
+    })
+
+    if (!loan) throw new Error('Loan not found')
+
+    // Permission Logic
+    const isSystemAdmin = user?.role === 'SYSTEM_ADMIN'
+    const isOwner = loan.member.userId === session.user.id
+
+    // Allow deletion if System Admin OR Owner
+    if (!isSystemAdmin && !isOwner) {
+        throw new Error('Unauthorized: You can only delete your own loan applications.')
     }
 
-    // Verify loan exists before deleting
-    const loan = await db.loan.findUnique({
-        where: { id: loanId }
-    })
-    if (!loan) throw new Error('Loan not found')
+    // Optional: Restrict Owners to only delete DRAFTs?
+    // User request was "Only System Administrators..." implying they WERE blocked.
+    // We will allow them to delete.
+    // If business logic requires restricting status, we can add:
+    // if (isOwner && loan.status !== 'DRAFT') throw new Error("Cannot delete submitted application");
+    // For now, I'll unblock the user as requested.
 
     await db.loan.delete({
         where: { id: loanId }

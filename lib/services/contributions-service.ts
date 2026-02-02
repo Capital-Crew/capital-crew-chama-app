@@ -146,6 +146,16 @@ export class ContributionsService {
                 data: { ledgerTransactionId: journalEntry.id }
             });
 
+            // 6. Update member.shareContributions (Legacy field for compatibility)
+            await tx.member.update({
+                where: { id: memberId },
+                data: {
+                    shareContributions: {
+                        increment: amount
+                    }
+                }
+            });
+
             return contribTx;
         });
     }

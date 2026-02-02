@@ -16,6 +16,7 @@ import { WalletService } from '@/lib/services/WalletService'
  * - Increases loan qualification (multiplier applied)
  * - Posts to Account 1200 (Contributions & Loan Portfolio)
  * - Debits member wallet, credits contributions
+ * - Updates MonthlyTracker with waterfall logic (arrears → current → future)
  */
 export async function addContribution(input: {
     memberId: string
@@ -35,25 +36,16 @@ export async function addContribution(input: {
 
     // Get member
     const member = await prisma.member.findUnique({
-        where: { id: input.memberId }
+        where: { id: input.memberId },
+        include: { wallet: true }
     })
 
     if (!member) {
         throw new Error('Member not found')
     }
 
-    // Get user for audit
-    const user = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        include: { member: true }
-    })
-
-    // 0. Get system mappings
-    const mappings = await getSystemMappingsDict()
-
-    // Validate required mapping exists
-    if (!mappings.CONTRIBUTIONS) {
-        throw new Error('System mapping for CONTRIBUTIONS not found. Please run: npx tsx prisma/seed-mappings.ts')
+    if (!member.wallet) {
+        throw new Error('Member wallet not found')
     }
 
     // Check wallet balance
@@ -62,74 +54,49 @@ export async function addContribution(input: {
         throw new Error(`Insufficient wallet balance. Available: KES ${walletBalance.toLocaleString()}`)
     }
 
-    // 0a. Resolve Wallet Account
-    const wallet = await WalletService.createWallet(input.memberId)
-
-    // 1. Post journal entry via AccountingEngine (it handles its own transaction)
-    const journalEntry = await AccountingEngine.postJournalEntry({
-        transactionDate: new Date(),
-        referenceType: 'SHARE_CONTRIBUTION',
-        referenceId: input.memberId,
-        description: `Member contribution - ${member.name}`,
-        notes: input.description,
-        lines: [
-            {
-                accountId: wallet.glAccountId, // Wallet (DR - decrease liability)
-                debitAmount: input.amount,
-                creditAmount: 0,
-                description: 'Contribution from wallet'
-            },
-            {
-                accountCode: mappings.CONTRIBUTIONS, // Contributions & Loans (CR - increase asset)
-                debitAmount: 0,
-                creditAmount: input.amount,
-                description: `${member.name} contribution`
-            }
-        ],
-        createdBy: session.user.id,
-        createdByName: user?.member?.name || session.user.name || 'System'
+    // Get user for audit
+    const user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        include: { member: true }
     })
 
-    // 2. Create ShareTransaction record
-    await prisma.shareTransaction.create({
-        data: {
-            memberId: input.memberId,
-            type: 'CONTRIBUTION',
-            amount: input.amount,
-            description: input.description,
-            createdBy: session.user.id,
-            creatorName: user?.member?.name || session.user.name || 'System',
-            ledgerEntryId: journalEntry.id
-        }
-    })
+    // Use ContributionsService to handle:
+    // - Waterfall logic (arrears → current → future)
+    // - MonthlyTracker updates
+    // - Ledger posting
+    // - ShareTransaction creation
+    const { ContributionsService } = await import('@/lib/services/contributions-service')
 
-    // 3. Update member.shareContributions
-    await prisma.member.update({
-        where: { id: input.memberId },
-        data: {
-            shareContributions: {
-                increment: input.amount
-            }
-        }
-    })
+    await ContributionsService.recordContribution(
+        input.memberId,
+        input.amount,
+        member.wallet.id
+    )
 
-    // 4. Create audit log
+    // Create audit log
     await prisma.auditLog.create({
         data: {
             userId: session.user.id,
             action: 'WALLET_TRANSACTION_CREATED',
-            details: `Member contribution: ${member.name} - KES ${input.amount}`
+            details: `Member contribution: ${member.name} - KES ${input.amount} - ${input.description}`
         }
     })
 
     revalidatePath('/wallet')
     revalidatePath('/dashboard')
     revalidatePath('/accounts')
+    revalidatePath(`/members/${input.memberId}`)
+
+    // Get updated share balance
+    const updatedMember = await prisma.member.findUnique({
+        where: { id: input.memberId },
+        select: { shareContributions: true }
+    })
 
     return {
         success: true,
-        journalEntryId: journalEntry.id,
-        newShareBalance: member.shareContributions + input.amount
+        message: 'Contribution recorded successfully',
+        newShareBalance: Number(updatedMember?.shareContributions || 0)
     }
 }
 

@@ -23,14 +23,26 @@ export function RepaymentModal({ isOpen, onClose, loan, onSuccess }: RepaymentMo
     const [notes, setNotes] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
-    const [currentBalance, setCurrentBalance] = useState(loan.outstandingBalance)
+    const [balanceInfo, setBalanceInfo] = useState({
+        outstandingBalance: loan.outstandingBalance,
+        principalBalance: 0,
+        interestBalance: 0,
+        feesBalance: 0,
+        penaltyBalance: 0
+    })
 
     // Fetch fresh balance on open
     React.useEffect(() => {
         if (isOpen && loan.id) {
             import('@/app/wallet-add-funds-actions').then(({ getLoanFreshBalance }) => {
                 getLoanFreshBalance(loan.id).then((fresh) => {
-                    setCurrentBalance(fresh.outstandingBalance)
+                    setBalanceInfo({
+                        outstandingBalance: fresh.outstandingBalance,
+                        principalBalance: fresh.principalBalance,
+                        interestBalance: fresh.interestBalance,
+                        feesBalance: fresh.feesBalance,
+                        penaltyBalance: fresh.penaltyBalance
+                    })
                 }).catch(err => console.error('Failed to refresh balance:', err))
             })
         }
@@ -68,7 +80,7 @@ export function RepaymentModal({ isOpen, onClose, loan, onSuccess }: RepaymentMo
         }
     }
 
-    const maxAmount = currentBalance
+    const maxAmount = balanceInfo.outstandingBalance
 
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
@@ -100,11 +112,29 @@ export function RepaymentModal({ isOpen, onClose, loan, onSuccess }: RepaymentMo
                     <form onSubmit={handleSubmit} className="space-y-5">
                         <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                             <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">
-                                Outstanding Balance
+                                Total Outstanding Balance
                             </label>
                             <p className="text-2xl font-black text-slate-700">
-                                {formatCurrency(currentBalance)}
+                                {formatCurrency(balanceInfo.outstandingBalance)}
                             </p>
+                            <div className="mt-2 pt-2 border-t border-slate-200 grid grid-cols-4 gap-2 text-center">
+                                <div>
+                                    <div className="text-[10px] font-bold text-slate-400 uppercase">Prin</div>
+                                    <div className="text-xs font-bold text-slate-600">{balanceInfo.principalBalance.toLocaleString()}</div>
+                                </div>
+                                <div>
+                                    <div className="text-[10px] font-bold text-slate-400 uppercase">Int</div>
+                                    <div className="text-xs font-bold text-slate-600">{balanceInfo.interestBalance.toLocaleString()}</div>
+                                </div>
+                                <div>
+                                    <div className="text-[10px] font-bold text-slate-400 uppercase">Fees</div>
+                                    <div className="text-xs font-bold text-slate-600">{balanceInfo.feesBalance.toLocaleString()}</div>
+                                </div>
+                                <div>
+                                    <div className="text-[10px] font-bold text-slate-400 uppercase">Pen</div>
+                                    <div className="text-xs font-bold text-slate-600">{balanceInfo.penaltyBalance.toLocaleString()}</div>
+                                </div>
+                            </div>
                         </div>
 
                         <div>

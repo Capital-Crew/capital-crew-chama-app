@@ -1,12 +1,8 @@
-
+import prisma from "@/lib/prisma"
 import { auth } from "@/auth"
-import { PrismaClient } from "@prisma/client"
 import { redirect, notFound } from "next/navigation"
 import { LoanProductWizard } from "@/components/products/LoanProductWizard"
 import { LoanProductWizardValues } from "@/lib/schemas/loan-product-schema"
-
-// Use local Prisma for raw query
-const prisma = new PrismaClient();
 
 export default async function EditLoanProductPage({ params }: { params: Promise<{ id: string }> }) {
     const session = await auth()
@@ -14,38 +10,32 @@ export default async function EditLoanProductPage({ params }: { params: Promise<
 
     const { id } = await params;
 
-    // 1. Fetch Product via RAW SQL (Bypassing Stale Client)
-    // We selecting * to get all columns including new ones like shortCode
-    const rawProduct = await prisma.$queryRaw<any[]>`
-        SELECT * FROM "LoanProduct" WHERE id = ${id} LIMIT 1
-    `;
+    // 1. Fetch Product
+    const product = await prisma.loanProduct.findUnique({
+        where: { id }
+    });
 
-    if (!rawProduct || rawProduct.length === 0) {
+    if (!product) {
         return notFound();
     }
 
-    const product = rawProduct[0];
-
-    // 2. Fetch Mappings via RAW SQL
-    const rawMappings = await prisma.$queryRaw<any[]>`
-        SELECT * FROM "ProductAccountingMapping" WHERE "productId" = ${id}
-    `;
+    // 2. Fetch Mappings
+    const mappings = await prisma.productAccountingMapping.findMany({
+        where: { productId: id }
+    });
 
     // 3. Fetch Accounts for Dropdowns
-    const accounts = await prisma.$queryRaw<any[]>`
-        SELECT * FROM "Account" WHERE "isActive" = true
-    `;
+    const accounts = await prisma.ledgerAccount.findMany({
+        where: { isActive: true },
+        select: { id: true, name: true, code: true, type: true }
+    });
 
-    // 3. Transform to Wizard Values
-    // Note: Postgres returns columns in case usually preserved if quoted in creation, but here standard behavior applies.
-    // We assume columns match schema names because we created them.
-
-    // Helper to find account ID by type
-    const findAccount = (type: string) => rawMappings.find((m: any) => m.accountType === type)?.accountId || "";
+    // 4. Transform to Wizard Values
+    const findAccount = (type: string) => mappings.find((m) => m.accountType === type)?.accountId || "";
 
     const initialData: Partial<LoanProductWizardValues> = {
         name: product.name,
-        shortCode: product.shortCode, // Valid in DB
+        shortCode: product.shortCode || "",
         description: product.description || "",
         currency: product.currency,
 
@@ -58,9 +48,8 @@ export default async function EditLoanProductPage({ params }: { params: Promise<
         maxRepaymentTerms: product.maxRepaymentTerms,
 
         repaymentEvery: product.repaymentEvery,
-        // Map ENUM back if necessary (DB might return "MONTHS", form expects "MONTHLY"?) 
-        // Form schema expects "MONTHLY". DB has "MONTHS". 
-        // We need REVERSE MAPPING.
+        // Prisma Enum to String mapping is automatic, but "MONTHS" vs "MONTHLY" needs check
+        // If DB has "MONTHS", and Form expects "MONTHLY".
         repaymentFrequencyType: (product.repaymentFrequencyType === 'MONTHS' ? 'MONTHLY' : product.repaymentFrequencyType === 'WEEKS' ? 'WEEKLY' : product.repaymentFrequencyType) as any,
 
         interestRatePerPeriod: Number(product.interestRatePerPeriod),

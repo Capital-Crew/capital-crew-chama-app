@@ -75,11 +75,13 @@ export default async function SystemAdminPage() {
 
     const serializedProducts = products.map((p: any) => ({
         ...p,
-        principal: Number(p.principal),
-        minPrincipal: Number(p.minPrincipal),
-        maxPrincipal: Number(p.maxPrincipal),
-        interestRatePerPeriod: Number(p.interestRatePerPeriod),
-        defaultPenaltyRate: Number(p.defaultPenaltyRate)
+        principal: p.principal ? Number(p.principal) : 0,
+        minPrincipal: p.minPrincipal ? Number(p.minPrincipal) : 0,
+        maxPrincipal: p.maxPrincipal ? Number(p.maxPrincipal) : 0,
+        interestRatePerPeriod: p.interestRatePerPeriod ? Number(p.interestRatePerPeriod) : 0,
+        defaultPenaltyRate: p.defaultPenaltyRate ? Number(p.defaultPenaltyRate) : 0,
+        createdAt: p.createdAt?.toISOString(),
+        updatedAt: p.updatedAt?.toISOString()
     }));
 
     // Serialize Welfare Types

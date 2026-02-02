@@ -562,9 +562,12 @@ export async function applyForLoan(prevState: any, formData: FormData) {
                     loan.id
                 )
 
-                // Save to database
+                // Save to database - map to add loanId
                 await prisma.repaymentInstallment.createMany({
-                    data: scheduleItems
+                    data: scheduleItems.map(item => ({
+                        ...item,
+                        loanId: loan.id
+                    }))
                 })
             }
 

@@ -67,6 +67,51 @@ async function handleLoanTransition(loanId: string, action: 'SEND' | 'CANCEL', a
                 }
             })
 
+            // Ensure ApprovalRequest exists
+            const loanWithDetails = await tx.loan.findUnique({
+                where: { id: loanId },
+                include: {
+                    member: { select: { id: true, name: true, memberNumber: true } },
+                    loanProduct: { select: { name: true } }
+                }
+            })
+
+            if (loanWithDetails) {
+                const existingReq = await tx.approvalRequest.findFirst({
+                    where: { referenceId: loanId, type: 'LOAN' }
+                })
+
+                const description = `${loanWithDetails.loanProduct?.name || 'Loan'} - ${loanWithDetails.member.name} (${loanWithDetails.member.memberNumber})`
+
+                if (existingReq) {
+                    await tx.approvalRequest.update({
+                        where: { id: existingReq.id },
+                        data: {
+                            status: 'PENDING',
+                            description,
+                            amount: loanWithDetails.amount,
+                            requesterName: loanWithDetails.member.name
+                        }
+                    })
+                } else {
+                    await tx.approvalRequest.create({
+                        data: {
+                            type: 'LOAN',
+                            referenceId: loanId,
+                            referenceTable: 'Loan',
+                            requesterId: loanWithDetails.memberId,
+                            requesterName: loanWithDetails.member.name,
+                            description,
+                            amount: loanWithDetails.amount,
+                            status: 'PENDING',
+                            requiredPermission: 'APPROVE_LOANS'
+                        }
+                    })
+                }
+            }
+
+
+
             // Log History
             await tx.approvalHistory.create({
                 data: {
@@ -117,6 +162,14 @@ async function handleLoanTransition(loanId: string, action: 'SEND' | 'CANCEL', a
                     cancellationCount: { increment: 1 }
                 }
             })
+
+            // Remove from approval queue
+            const existingReq = await tx.approvalRequest.findFirst({
+                where: { referenceId: loanId, type: 'LOAN' }
+            })
+            if (existingReq) {
+                await tx.approvalRequest.delete({ where: { id: existingReq.id } })
+            }
 
             // Log History
             await tx.approvalHistory.create({

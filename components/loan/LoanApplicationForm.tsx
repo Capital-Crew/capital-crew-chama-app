@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { toast } from '@/lib/toast';
 import { applyForLoan } from '@/app/actions';
 import { calculateLoanQualification, getMemberActiveLoans } from '@/app/sacco-settings-actions';
@@ -43,6 +45,20 @@ export function LoanApplicationForm({
 }: LoanApplicationFormProps) {
     const router = useRouter() // Ensure next/navigation is imported
 
+    // Validation Schema
+    const loanApplicationSchema = z.object({
+        memberId: z.string().min(1, 'Member is required'),
+        loanProductId: z.string().min(1, 'Loan product is required'),
+        amount: z.string()
+            .min(1, 'Amount is required')
+            .refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
+                message: 'Amount must be greater than 0'
+            }),
+        installments: z.number()
+            .min(1, 'Installments must be at least 1')
+            .max(60, 'Installments cannot exceed 60 months')
+    });
+
     // Default handlers if not provided
     const handleSuccess = onSuccess || (() => router.push('/loans'))
     const handleCancel = onCancel || (() => router.push('/loans'))
@@ -67,7 +83,8 @@ export function LoanApplicationForm({
         initialData.status !== 'APPLICATION' &&
         initialData.status !== 'DRAFT';
 
-    const { register, watch, setValue, reset } = useForm({
+    const { register, watch, setValue, reset, formState: { errors } } = useForm({
+        resolver: zodResolver(loanApplicationSchema),
         defaultValues: {
             // SECURITY: Always use currentMemberId (logged-in user's member)
             // Never trust memberId from draftData or initialData
@@ -318,6 +335,9 @@ export function LoanApplicationForm({
                             🔒 Locked to your account: {members.find(m => m.id === currentMemberId)?.name || 'Your Account'}
                         </p>
                     )}
+                    {errors.memberId && (
+                        <p className="text-red-600 text-xs font-semibold mt-1">{errors.memberId.message}</p>
+                    )}
                 </div>
 
                 {/* Loan Product & Amount */}
@@ -335,6 +355,9 @@ export function LoanApplicationForm({
                                 </option>
                             ))}
                         </select>
+                        {errors.loanProductId && (
+                            <p className="text-red-600 text-xs font-semibold mt-1">{errors.loanProductId.message}</p>
+                        )}
                     </div>
 
                     <div className="space-y-2">
@@ -345,6 +368,9 @@ export function LoanApplicationForm({
                             placeholder="Enter amount"
                             className="w-full bg-white border-2 border-slate-300 rounded-xl px-4 py-3 text-sm font-bold focus:border-cyan-500 outline-none"
                         />
+                        {errors.amount && (
+                            <p className="text-red-600 text-xs font-semibold mt-1">{errors.amount.message}</p>
+                        )}
                     </div>
                 </div>
 
@@ -371,6 +397,9 @@ export function LoanApplicationForm({
                             </option>
                         ))}
                     </select>
+                    {errors.installments && (
+                        <p className="text-red-600 text-xs font-semibold mt-1">{errors.installments.message}</p>
+                    )}
                     <p className="text-xs text-slate-500 font-medium">
                         Repayment: <strong className="text-slate-700">{watchedInstallments} monthly installments</strong> @ {selectedProduct?.interestRatePerPeriod ? (typeof selectedProduct.interestRatePerPeriod === 'object' ? (selectedProduct.interestRatePerPeriod as any).toString() : selectedProduct.interestRatePerPeriod) : 0}% p.m.
                     </p>

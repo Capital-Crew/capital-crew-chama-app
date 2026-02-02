@@ -336,6 +336,29 @@ export async function applyForLoan(prevState: any, formData: FormData) {
     if (loanProductId) {
         product = await prisma.loanProduct.findUnique({ where: { id: loanProductId } })
         if (!product && !isDraftSave) return { error: 'Invalid product' }
+
+        // NEW: Validate product has valid interest rate
+        if (product && !isDraftSave) {
+            const interestRate = Number(product.interestRatePerPeriod)
+            if (isNaN(interestRate) || interestRate < 0) {
+                return { error: 'Invalid loan product: Interest rate not configured properly.' }
+            }
+
+            // Validate installments within product limits
+            if (installments < product.minRepaymentTerms || installments > product.maxRepaymentTerms) {
+                return {
+                    error: `Installments must be between ${product.minRepaymentTerms} and ${product.maxRepaymentTerms} months.`
+                }
+            }
+
+            // Validate amount within product limits
+            const amountNum = Number(amount)
+            if (amountNum < Number(product.minPrincipal) || amountNum > Number(product.maxPrincipal)) {
+                return {
+                    error: `Amount must be between KES ${Number(product.minPrincipal).toLocaleString()} and KES ${Number(product.maxPrincipal).toLocaleString()}.`
+                }
+            }
+        }
     }
 
     // Calculate Financials (Appraisal)
@@ -449,6 +472,7 @@ export async function applyForLoan(prevState: any, formData: FormData) {
 
             installments,
             monthlyInstallment,
+            interestRate: product?.interestRatePerPeriod || 0, // NEW: Copy interest rate from product
             interestRatePerMonth: product?.interestRatePerPeriod,
             penaltyRate: product?.defaultPenaltyRate || 0,
 
@@ -518,6 +542,31 @@ export async function applyForLoan(prevState: any, formData: FormData) {
                     }
                 }
             })
+
+            // NEW: Generate Repayment Schedule using ScheduleGeneratorService
+            if (product && amount > 0) {
+                const { ScheduleGeneratorService } = await import('@/lib/services/ScheduleGeneratorService')
+
+                // Delete any existing installments first
+                await prisma.repaymentInstallment.deleteMany({
+                    where: { loanId: loan.id }
+                })
+
+                // Generate new schedule
+                const scheduleItems = ScheduleGeneratorService.generate(
+                    Number(amount),
+                    Number(product.interestRatePerPeriod),
+                    installments,
+                    product.interestType as 'FLAT' | 'DECLINING_BALANCE',
+                    new Date(),
+                    loan.id
+                )
+
+                // Save to database
+                await prisma.repaymentInstallment.createMany({
+                    data: scheduleItems
+                })
+            }
 
             // Workflow
             const { initiateWorkflow } = await import('@/app/actions/workflow-engine')

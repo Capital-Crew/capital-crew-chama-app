@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import { Printer } from 'lucide-react'
 
 // TypeScript Interface for Top-Up Items
@@ -84,6 +84,9 @@ export function LoanAppraisalReport({
     netDisbursed
 }: LoanAppraisalProps) {
 
+    // Mobile sub-tabs state
+    const [mobileTab, setMobileTab] = useState<'summary' | 'fees' | 'topups'>('summary')
+
     const formatCurrency = (amount: number) => {
         return `Ksh ${amount.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     }
@@ -98,30 +101,84 @@ export function LoanAppraisalReport({
             <div className="flex justify-end mb-4 print:hidden">
                 <button
                     onClick={handlePrint}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold uppercase text-sm transition-colors"
+                    className="flex items-center gap-2 px-4 py-3 min-h-[44px] bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold uppercase text-sm transition-colors"
                 >
                     <Printer className="w-4 h-4" />
                     Print Report
                 </button>
             </div>
 
+            {/* Mobile: Prominent Monthly Repayment Card */}
+            <div className="lg:hidden mb-6 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl p-6 text-white shadow-xl">
+                <p className="text-xs font-bold uppercase tracking-wider opacity-90 mb-2">
+                    Monthly Repayment
+                </p>
+                <p className="text-4xl font-black mb-1">
+                    {formatCurrency(monthlyRepayment)}
+                </p>
+                <div className="flex items-center gap-4 text-sm mt-4 pt-4 border-t border-white/20">
+                    <div>
+                        <p className="opacity-75 text-xs">Installments</p>
+                        <p className="font-bold">{installments} months</p>
+                    </div>
+                    <div>
+                        <p className="opacity-75 text-xs">Interest Rate</p>
+                        <p className="font-bold">{interestRate}% p.m.</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Mobile Sub-Tabs */}
+            <div className="lg:hidden flex gap-2 mb-6 overflow-x-auto pb-2">
+                <button
+                    onClick={() => setMobileTab('summary')}
+                    className={`px-4 py-3 min-h-[44px] rounded-lg font-bold text-sm whitespace-nowrap transition-all ${mobileTab === 'summary'
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                >
+                    Summary
+                </button>
+                <button
+                    onClick={() => setMobileTab('fees')}
+                    className={`px-4 py-3 min-h-[44px] rounded-lg font-bold text-sm whitespace-nowrap transition-all ${mobileTab === 'fees'
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                >
+                    Fees & Deductions
+                </button>
+                {topUpItems.length > 0 && (
+                    <button
+                        onClick={() => setMobileTab('topups')}
+                        className={`px-4 py-3 min-h-[44px] rounded-lg font-bold text-sm whitespace-nowrap transition-all ${mobileTab === 'topups'
+                            ? 'bg-blue-600 text-white shadow-md'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
+                    >
+                        Top-Ups
+                    </button>
+                )}
+            </div>
+
             {/* Main Report Container */}
-            <div className="border-2 border-slate-900 p-8 bg-white">
+            <div className="border-2 border-slate-900 p-4 lg:p-8 bg-white">
 
                 {/* 1. HEADER SECTION */}
                 <div className="text-center mb-8 pb-4 border-b-2 border-slate-900">
-                    <h1 className="text-3xl font-black uppercase tracking-wider mb-3 text-slate-900">
+                    <h1 className="text-2xl lg:text-3xl font-black uppercase tracking-wider mb-3 text-slate-900">
                         {organizationName}
                     </h1>
-                    <div className="inline-block bg-slate-900 text-white px-8 py-3 mt-2">
-                        <h2 className="text-xl font-black uppercase tracking-wide">
+                    <div className="inline-block bg-slate-900 text-white px-6 lg:px-8 py-2 lg:py-3 mt-2">
+                        <h2 className="text-lg lg:text-xl font-black uppercase tracking-wide">
                             LOAN APPRAISAL REPORT
                         </h2>
                     </div>
                 </div>
 
-                {/* 2. KEY INFORMATION GRID (2 Columns) */}
-                <div className="grid grid-cols-2 gap-8 mb-8 pb-8 border-b-2 border-slate-300">
+                {/* 2. KEY INFORMATION GRID (Responsive) */}
+                <div className={`grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 mb-8 pb-8 border-b-2 border-slate-300 ${mobileTab !== 'summary' ? 'hidden lg:grid' : ''
+                    }`}>
 
                     {/* LEFT COLUMN - Loan Details */}
                     <div className="space-y-4">
@@ -212,8 +269,9 @@ export function LoanAppraisalReport({
                 {/* EXEMPTIONS SECTION - Positioned below loan details */}
                 {/* This will be passed from LoanAppraisalCard */}
 
-                {/* 3. LOAN TERMS BAR (4 Columns) */}
-                <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-5 mb-8 rounded-lg shadow-lg">
+                {/* 3. LOAN TERMS BAR (Desktop Only - Mobile has card at top) */}
+                <div className={`hidden lg:block bg-gradient-to-r from-blue-600 to-blue-700 text-white p-5 mb-8 rounded-lg shadow-lg ${mobileTab !== 'summary' ? 'lg:hidden' : ''
+                    }`}>
                     <div className="grid grid-cols-3 gap-8 text-center">
                         <div>
                             <div className="text-xs font-medium opacity-90 mb-1 uppercase tracking-wider">Interest Rate</div>
@@ -232,7 +290,8 @@ export function LoanAppraisalReport({
 
                 {/* 4. TOP-UP INFORMATION TABLE */}
                 {topUpItems.length > 0 && (
-                    <div className="mb-8">
+                    <div className={`mb-8 ${mobileTab !== 'topups' && mobileTab !== 'summary' ? 'hidden lg:block' : ''
+                        } ${mobileTab === 'topups' ? 'block' : 'hidden lg:block'}`}>
                         <h3 className="font-black text-sm uppercase text-slate-700 mb-3 pb-2 border-b-2 border-slate-400">
                             Top-Up Information
                         </h3>
@@ -286,8 +345,9 @@ export function LoanAppraisalReport({
                     </div>
                 )}
 
-                {/* 5. QUALIFICATION & FEES SECTION (Two Panels) */}
-                <div className="grid grid-cols-2 gap-6">
+                {/* 5. QUALIFICATION & FEES SECTION (Responsive) */}
+                <div className={`grid grid-cols-1 lg:grid-cols-2 gap-6 ${mobileTab !== 'fees' && mobileTab !== 'summary' ? 'hidden lg:grid' : ''
+                    } ${mobileTab === 'fees' ? 'grid' : 'hidden lg:grid'}`}>
 
                     {/* PANEL A - Qualification Criteria */}
                     <div className="border-2 border-slate-400 rounded-lg p-5 bg-slate-50">

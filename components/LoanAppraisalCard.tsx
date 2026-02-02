@@ -522,7 +522,7 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
 const TabButton = ({ active, onClick, label }: { active: boolean, onClick: () => void, label: string }) => (
     <button
         onClick={onClick}
-        className={`px-4 py-3 text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap border-b-2 ${active
+        className={`px-4 py-3 min-h-[44px] text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap border-b-2 ${active
             ? 'text-cyan-500 border-cyan-500'
             : 'text-slate-400 border-transparent hover:text-slate-600'
             }`}

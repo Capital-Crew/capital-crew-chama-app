@@ -26,7 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 
 // Types
-type MainTab = 'deposits' | 'withdrawals'
+type MainTab = 'deposits' | 'repayments' | 'withdrawals'
 
 interface ActiveLoan {
     id: string
@@ -35,6 +35,7 @@ interface ActiveLoan {
     disbursedAmount: number
     outstandingBalance: number
     penaltyBalance: number
+    feesBalance: number
     interestBalance: number
     principalBalance: number
     status: string
@@ -61,7 +62,7 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
     const [selectedLoan, setSelectedLoan] = useState<ActiveLoan | null>(null)
     const [repaymentAmount, setRepaymentAmount] = useState('')
     const [repaymentDescription, setRepaymentDescription] = useState('')
-    const [repaymentAllocation, setRepaymentAllocation] = useState({ penalty: 0, interest: 0, principal: 0 })
+    const [repaymentAllocation, setRepaymentAllocation] = useState({ penalty: 0, fees: 0, interest: 0, principal: 0 })
 
     // Withdrawal Form State
     const [withdrawableBalance, setWithdrawableBalance] = useState(0)
@@ -71,8 +72,8 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
 
     // Effects
     useEffect(() => {
-        // Pre-fetch loans when on deposits tab so they are ready if user goes to Loan Repayment
-        if (activeMainTab === 'deposits') {
+        // Load loans when entering Repayments tab
+        if (activeMainTab === 'repayments') {
             loadActiveLoans()
         }
     }, [activeMainTab, memberId])
@@ -122,16 +123,21 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
 
     const calculateAllocation = (loan: ActiveLoan, amount: number) => {
         if (amount <= 0) {
-            setRepaymentAllocation({ penalty: 0, interest: 0, principal: 0 })
+            setRepaymentAllocation({ penalty: 0, fees: 0, interest: 0, principal: 0 })
             return
         }
 
         let remaining = amount
-        const allocation = { penalty: 0, interest: 0, principal: 0 }
+        const allocation = { penalty: 0, fees: 0, interest: 0, principal: 0 }
 
+        // Waterfall: Penalty -> Fees -> Interest -> Principal
         if (remaining > 0 && loan.penaltyBalance > 0) {
             allocation.penalty = Math.min(remaining, loan.penaltyBalance)
             remaining -= allocation.penalty
+        }
+        if (remaining > 0 && loan.feesBalance > 0) {
+            allocation.fees = Math.min(remaining, loan.feesBalance)
+            remaining -= allocation.fees
         }
         if (remaining > 0 && loan.interestBalance > 0) {
             allocation.interest = Math.min(remaining, loan.interestBalance)
@@ -235,7 +241,18 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
                             : 'bg-green-50 text-green-700 hover:bg-green-100 border-b-2 border-green-200'}`}
                 >
                     <ArrowDownIcon className={`w-4 h-4 ${activeMainTab === 'deposits' ? 'animate-bounce' : ''}`} />
-                    Deposits / Payments
+                    Deposits
+                </button>
+                <div className="w-px bg-slate-300" /> {/* Vertical separator */}
+                <button
+                    onClick={() => { setActiveMainTab('repayments'); setMessage(null) }}
+                    className={`flex-1 py-4 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all relative
+                        ${activeMainTab === 'repayments'
+                            ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white border-b-4 border-blue-700 shadow-lg'
+                            : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-b-2 border-blue-200'}`}
+                >
+                    <TrendingUpIcon className={`w-4 h-4 ${activeMainTab === 'repayments' ? 'animate-bounce' : ''}`} />
+                    Repay Loan
                 </button>
                 <div className="w-px bg-slate-300" /> {/* Vertical separator */}
                 <button
@@ -246,7 +263,7 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
                             : 'bg-red-50 text-red-700 hover:bg-red-100 border-b-2 border-red-200'}`}
                 >
                     <ArrowUpIcon className={`w-4 h-4 ${activeMainTab === 'withdrawals' ? 'animate-bounce' : ''}`} />
-                    Withdraw Funds
+                    Withdraw
                 </button>
             </div>
 
@@ -264,15 +281,12 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
                 {activeMainTab === 'deposits' && (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
                         <Tabs defaultValue="mpesa" className="w-full">
-                            <TabsList className="w-full flex overflow-x-auto md:grid md:grid-cols-4 mb-6 gap-2 md:gap-0 p-1 md:p-1 bg-slate-100/50 md:bg-slate-100 rounded-xl md:rounded-lg scrollbar-none">
+                            <TabsList className="w-full flex overflow-x-auto md:grid md:grid-cols-3 mb-6 gap-2 md:gap-0 p-1 md:p-1 bg-slate-100/50 md:bg-slate-100 rounded-xl md:rounded-lg scrollbar-none">
                                 <TabsTrigger value="mpesa" className="flex-1 min-w-[120px] md:min-w-0 data-[state=active]:bg-green-100 data-[state=active]:text-green-800 data-[state=active]:shadow-sm">
                                     <SmartphoneIcon className="w-4 h-4 mr-2" /> M-Pesa
                                 </TabsTrigger>
                                 <TabsTrigger value="share" className="flex-1 min-w-[140px] md:min-w-0 data-[state=active]:bg-cyan-100 data-[state=active]:text-cyan-800 data-[state=active]:shadow-sm">
                                     <CoinsIcon className="w-4 h-4 mr-2" /> Contributions
-                                </TabsTrigger>
-                                <TabsTrigger value="loan" className="flex-1 min-w-[130px] md:min-w-0 data-[state=active]:bg-blue-100 data-[state=active]:text-blue-800 data-[state=active]:shadow-sm">
-                                    <TrendingUpIcon className="w-4 h-4 mr-2" /> Loan Repay
                                 </TabsTrigger>
                                 <TabsTrigger value="penalty" className="flex-1 min-w-[110px] md:min-w-0 data-[state=active]:bg-red-100 data-[state=active]:text-red-800 data-[state=active]:shadow-sm">
                                     <AlertCircleIcon className="w-4 h-4 mr-2" /> Penalties
@@ -349,55 +363,6 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
                                 </div>
                             </TabsContent>
 
-                            {/* Loan Form */}
-                            <TabsContent value="loan">
-                                <div className="space-y-6">
-                                    <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-                                        <div className="bg-blue-100 p-2 rounded-full">
-                                            <TrendingUpIcon className="w-5 h-5 text-blue-600" />
-                                        </div>
-                                        <div>
-                                            <h4 className="text-sm font-bold text-blue-900">Loan Repayment</h4>
-                                            <p className="text-xs text-blue-700">Pay individual or group loan installments.</p>
-                                        </div>
-                                    </div>
-
-                                    <form onSubmit={handleLoanRepayment} className="space-y-4">
-                                        <div>
-                                            <label className="text-xs font-bold uppercase text-slate-500 mb-1 block">Select Loan</label>
-                                            <select required value={selectedLoanId} onChange={e => setSelectedLoanId(e.target.value)}
-                                                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent font-bold text-slate-900">
-                                                <option value="">-- Select --</option>
-                                                {activeLoans.map(l => (
-                                                    <option key={l.id} value={l.id}>{l.loanApplicationNumber} - {l.productName} (Bal: {l.outstandingBalance.toLocaleString()})</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        {selectedLoan && (
-                                            <>
-                                                <div>
-                                                    <label className="text-xs font-bold uppercase text-slate-500 mb-1 block">Repayment Amount (Max: {selectedLoan.outstandingBalance.toLocaleString()})</label>
-                                                    <div className="relative">
-                                                        <input type="number" step="0.01" min="0.01" max={selectedLoan.outstandingBalance} required value={repaymentAmount} onChange={e => setRepaymentAmount(e.target.value)}
-                                                            className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent font-bold text-slate-900" placeholder="0.00" />
-                                                        <button type="button" onClick={() => setRepaymentAmount(selectedLoan.outstandingBalance.toString())}
-                                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded hover:bg-blue-100">MAX</button>
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs font-bold uppercase text-slate-500 mb-1 block">Notes</label>
-                                                    <textarea required value={repaymentDescription} onChange={e => setRepaymentDescription(e.target.value)}
-                                                        className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Repayment details..." rows={2} />
-                                                </div>
-                                            </>
-                                        )}
-                                        <button type="submit" disabled={loading || !isRepaymentValid} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-black uppercase tracking-wide transition-all disabled:opacity-50">
-                                            {loading ? 'Processing...' : 'Submit Repayment'}
-                                        </button>
-                                    </form>
-                                </div>
-                            </TabsContent>
-
                             {/* Penalty Form */}
                             <TabsContent value="penalty">
                                 <div className="space-y-6">
@@ -432,12 +397,115 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
                     </div>
                 )}
 
+                {/* CONTENT: Repayments */}
+                {activeMainTab === 'repayments' && (
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+                        <div className="space-y-6">
+                            <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                                <div className="bg-blue-100 p-2 rounded-full">
+                                    <TrendingUpIcon className="w-5 h-5 text-blue-600" />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-bold text-blue-900">Loan Repayment</h4>
+                                    <p className="text-xs text-blue-700">Make repayments towards your active loans.</p>
+                                </div>
+                            </div>
+
+                            <form onSubmit={handleLoanRepayment} className="space-y-4">
+                                <div>
+                                    <label className="text-xs font-bold uppercase text-slate-500 mb-1 block">Select Loan</label>
+                                    <select
+                                        required
+                                        value={selectedLoanId}
+                                        onChange={e => setSelectedLoanId(e.target.value)}
+                                        className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent font-bold text-slate-900"
+                                    >
+                                        <option value="">-- Select Active Loan --</option>
+                                        {activeLoans.map(l => (
+                                            <option key={l.id} value={l.id}>
+                                                {l.loanApplicationNumber} - {l.productName} (Bal: {l.outstandingBalance.toLocaleString()})
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {activeLoans.length === 0 && (
+                                        <p className="text-xs text-red-500 mt-1 font-bold">No active loans found.</p>
+                                    )}
+                                </div>
+
+                                {selectedLoan && (
+                                    <>
+                                        <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl grid grid-cols-2 gap-4">
+                                            <div>
+                                                <div className="text-xs text-slate-500 uppercase font-bold">Outstanding</div>
+                                                <div className="font-black text-slate-900">KES {selectedLoan.outstandingBalance.toLocaleString()}</div>
+                                            </div>
+                                            <div>
+                                                <div className="text-xs text-slate-500 uppercase font-bold">Allocated To</div>
+                                                <div className="text-xs font-medium text-slate-700">
+                                                    Pen: {repaymentAllocation.penalty} | Fees: {repaymentAllocation.fees} | Int: {repaymentAllocation.interest} | Prin: {repaymentAllocation.principal}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="text-xs font-bold uppercase text-slate-500 mb-1 block">
+                                                Repayment Amount (Max: {selectedLoan.outstandingBalance.toLocaleString()})
+                                            </label>
+                                            <div className="relative">
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0.01"
+                                                    max={selectedLoan.outstandingBalance}
+                                                    required
+                                                    value={repaymentAmount}
+                                                    onChange={e => setRepaymentAmount(e.target.value)}
+                                                    className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent font-bold text-slate-900"
+                                                    placeholder="0.00"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setRepaymentAmount(selectedLoan.outstandingBalance.toString())}
+                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors uppercase tracking-wider"
+                                                >
+                                                    Max
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="text-xs font-bold uppercase text-slate-500 mb-1 block">Notes / Reference</label>
+                                            <textarea
+                                                required
+                                                value={repaymentDescription}
+                                                onChange={e => setRepaymentDescription(e.target.value)}
+                                                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                placeholder="e.g. M-Pesa Ref..."
+                                                rows={2}
+                                            />
+                                        </div>
+                                    </>
+                                )}
+
+                                <button
+                                    type="submit"
+                                    disabled={loading || !selectedLoanId || !isRepaymentValid}
+                                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-black uppercase tracking-wide transition-all disabled:opacity-50 shadow-lg shadow-blue-200 mt-2"
+                                >
+                                    {loading ? 'Processing...' : 'Submit Repayment'}
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
                 {/* CONTENT: Withdrawals */}
                 {activeMainTab === 'withdrawals' && (
                     <div className="max-w-xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-300">
                         <div className="bg-teal-50 border border-teal-100 rounded-2xl p-6 mb-6 flex items-center justify-between">
                             <div>
                                 <h4 className="text-teal-900 font-bold uppercase text-xs tracking-wider mb-1">Withdrawable Balance</h4>
+
                                 {fetchingBalance ? (
                                     <div className="h-8 w-24 bg-teal-200 animate-pulse rounded"></div>
                                 ) : (

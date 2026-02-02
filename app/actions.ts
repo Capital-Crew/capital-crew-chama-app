@@ -385,6 +385,15 @@ export async function applyForLoan(prevState: any, formData: FormData) {
                 feeExemptions
             )
             appraisal = { ...appraisal, ...result }
+
+            // STRICT LIMIT CHECK
+            // Block application if amount exceeds qualifying limit
+            // We allow override if 'allowOverQC' exemption is set (backend backdoor for admins)
+            if (!isDraftSave && !feeExemptions?.allowOverQC && amount > appraisal.grossQualifyingAmount) {
+                return {
+                    error: `Application Denied: The requested amount (KES ${amount.toLocaleString()}) exceeds your maximum borrowing limit of KES ${appraisal.grossQualifyingAmount.toLocaleString()} based on your savings.`
+                }
+            }
         } catch (e) {
             if (!isDraftSave) console.error("Calc failed", e); // Ignore for draft if incomplete
         }

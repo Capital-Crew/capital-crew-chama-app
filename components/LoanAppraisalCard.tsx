@@ -13,6 +13,8 @@ import { toast } from '@/lib/toast';
 
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { VotingRecordsModal } from './loan/VotingRecordsModal';
+import { RepaymentModal } from './loans/RepaymentModal';
 
 interface LoanAppraisalCardProps {
     loanId: string
@@ -117,8 +119,6 @@ interface LoanData {
     }
 }
 
-import { VotingRecordsModal } from './loan/VotingRecordsModal';
-
 export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, activeTab: parentActiveTab }: LoanAppraisalCardProps) {
     const [loan, setLoan] = useState<LoanData | null>(null)
     const [loading, setLoading] = useState(true)
@@ -126,6 +126,8 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
     const [approvalNotes, setApprovalNotes] = useState('')
     const [submitting, setSubmitting] = useState(false)
     const [showVotingRecords, setShowVotingRecords] = useState(false)
+    const [showRepaymentModal, setShowRepaymentModal] = useState(false)
+    const [statementRefreshKey, setStatementRefreshKey] = useState(0)
 
     useEffect(() => {
         if (isOpen && loanId) {
@@ -142,12 +144,17 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
             })
             const data = await response.json()
             setLoan(data.loan)
-            // If API returns history in loan object, we are good.
         } catch (error) {
             console.error('Failed to fetch loan:', error)
         } finally {
             setLoading(false)
         }
+    }
+
+    const onRepaymentSuccess = (newBalance: number) => {
+        // Optimistic or Full Refresh
+        fetchLoanData()
+        setStatementRefreshKey(prev => prev + 1) // Force statement refresh
     }
 
     const handleApprove = async () => {
@@ -157,7 +164,6 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
             if (loan.workflowRequest && loan.workflowRequest.status === 'PENDING') {
                 // Use Workflow Engine
                 const { processWorkflowAction } = await import('@/app/actions/workflow-engine')
-                // Type casting action string as any to match server action signature if strictly typed there
                 await processWorkflowAction(loan.workflowRequest.id, 'APPROVED', approvalNotes)
             } else {
                 // Legacy Fallback
@@ -212,7 +218,6 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
             setSubmitting(false)
         }
     }
-
 
     const handleBack = () => {
         toast.success("Changes saved. Returning to menu...")
@@ -275,6 +280,17 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                                             </div>
                                         )}
                                     </div>
+
+                                    {/* NEW: Repay Button */}
+                                    {['ACTIVE', 'OVERDUE', 'WRITTEN_OFF'].includes(loan.status) && (
+                                        <button
+                                            onClick={() => setShowRepaymentModal(true)}
+                                            className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white font-bold uppercase text-xs rounded-lg backdrop-blur-md transition-all flex items-center gap-2"
+                                        >
+                                            <span className="bg-white text-blue-600 rounded-full w-4 h-4 flex items-center justify-center font-black text-[10px]">$</span>
+                                            Repay Loan
+                                        </button>
+                                    )}
                                 </div>
 
                                 {/* Action Buttons - Only show for PENDING_APPROVAL */}
@@ -498,7 +514,7 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                             ) : activeTab === 'schedule' ? (
                                 <LoanScheduleView loanId={loan.id} />
                             ) : activeTab === 'statement' ? (
-                                <LoanStatementView loanId={loan.id} />
+                                <LoanStatementView loanId={loan.id} refreshKey={statementRefreshKey} />
                             ) : (
                                 <div className="space-y-6">
                                     <div className="flex justify-between items-center">
@@ -534,11 +550,6 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                                 </div>
                             )}
                         </div>
-
-                        {/* Approval Footer - Only show if PENDING_APPROVAL and user hasn't approved */}
-                        {/* Removed as per instruction */}
-
-                        {/* NEW: Admin Controls (Exemption) */}
 
                         {/* Disbursement Footer - Only show if APPROVED */}
                         {loan.status === 'APPROVED' && (
@@ -583,6 +594,20 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                     onOpenChange={setShowVotingRecords}
                     approvals={loan.approvals || []}
                     requiredApprovals={loan.approvalsRequired || 3}
+                />
+            )}
+
+            {loan && (
+                <RepaymentModal
+                    isOpen={showRepaymentModal}
+                    onClose={() => setShowRepaymentModal(false)}
+                    loan={{
+                        id: loan.id,
+                        loanApplicationNumber: loan.loanApplicationNumber,
+                        outstandingBalance: loan.topUps ? loan.amount - loan.existingLoanOffset : (loan as any).outstandingBalance || 0, // Fallback if API structure varies.
+                        memberId: loan.member.id
+                    }}
+                    onSuccess={onRepaymentSuccess}
                 />
             )}
         </div >

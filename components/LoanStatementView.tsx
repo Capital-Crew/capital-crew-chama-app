@@ -1,10 +1,10 @@
-'use client'
-
-import React, { useEffect, useState } from 'react'
 import { getLoanStatement } from '@/app/actions/getLoanStatement'
 import { processTransactions, type StatementRow } from '@/lib/statementProcessor'
 import { formatCurrency } from '@/lib/financialMath'
-import { AlertCircleIcon, FileTextIcon } from 'lucide-react'
+import { AlertCircleIcon, FileTextIcon, RotateCcwIcon } from 'lucide-react'
+import { reverseRepayment } from '@/app/actions/loan-reversal-actions'
+import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
 
 interface LoanStatementData {
     loanApplicationNumber: string
@@ -18,37 +18,60 @@ interface LoanStatementData {
     walletTransactions: any[]
 }
 
-export function LoanStatementView({ loanId }: { loanId: string }) {
+export function LoanStatementView({ loanId, refreshKey }: { loanId: string, refreshKey?: number }) {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [loanData, setLoanData] = useState<LoanStatementData | null>(null)
     const [statementRows, setStatementRows] = useState<StatementRow[]>([])
+    const [reversingId, setReversingId] = useState<string | null>(null)
+    const router = useRouter()
+
+    const fetchStatement = async () => {
+        try {
+            setLoading(true)
+            const loan = await getLoanStatement(loanId)
+
+            setLoanData({
+                loanApplicationNumber: loan.loanApplicationNumber,
+                member: loan.member,
+                loanProduct: loan.loanProduct,
+                walletTransactions: loan.walletTransactions
+            })
+
+            // Process transactions to get statement rows
+            const rows = processTransactions(loan.walletTransactions)
+            setStatementRows(rows)
+        } catch (err: any) {
+            setError(err.message || 'Failed to load statement')
+        } finally {
+            setLoading(false)
+        }
+    }
 
     useEffect(() => {
-        async function fetchStatement() {
-            try {
-                setLoading(true)
-                const loan = await getLoanStatement(loanId)
-
-                setLoanData({
-                    loanApplicationNumber: loan.loanApplicationNumber,
-                    member: loan.member,
-                    loanProduct: loan.loanProduct,
-                    walletTransactions: loan.walletTransactions
-                })
-
-                // Process transactions to get statement rows
-                const rows = processTransactions(loan.walletTransactions)
-                setStatementRows(rows)
-            } catch (err: any) {
-                setError(err.message || 'Failed to load statement')
-            } finally {
-                setLoading(false)
-            }
-        }
-
         fetchStatement()
-    }, [loanId])
+    }, [loanId, refreshKey])
+
+    const handleReverse = async (txId: string, amount: number) => {
+        const reason = prompt("Enter reason for reversing this repayment:")
+        if (!reason) return
+
+        setReversingId(txId)
+        try {
+            const result = await reverseRepayment(txId, reason)
+            if (result.error) {
+                toast.error(result.error)
+            } else {
+                toast.success('Repayment reversed successfully')
+                fetchStatement() // Refresh locally
+                router.refresh() // Refresh server components if any
+            }
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to reverse')
+        } finally {
+            setReversingId(null)
+        }
+    }
 
     if (loading) {
         return (
@@ -122,8 +145,13 @@ export function LoanStatementView({ loanId }: { loanId: string }) {
                             const amountColor = isCredit ? 'text-emerald-600' : 'text-slate-800';
                             const sign = isCredit ? '+' : '-';
 
+                            // Determine if this row is reversible (it's a Credit i.e., Repayment, and description says Repayment)
+                            // Strict check: we need original txId. StatementRow usually has it.
+                            // Assuming 'row.txId' exists and description contains 'Repayment'
+                            const isReversible = isCredit && row.description.toLowerCase().includes('repayment') && !row.description.toLowerCase().includes('reversal');
+
                             return (
-                                <div key={`${row.txId}-${index}`} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                                <div key={`${row.txId}-${index}`} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm relative">
                                     <div className="flex justify-between items-start mb-2">
                                         <div>
                                             <p className="font-bold text-slate-800 text-sm line-clamp-2">{row.description}</p>
@@ -142,6 +170,18 @@ export function LoanStatementView({ loanId }: { loanId: string }) {
                                             {formatCurrency(row.runningBalance)}
                                         </span>
                                     </div>
+                                    {isReversible && (
+                                        <div className="mt-3 flex justify-end">
+                                            <button
+                                                onClick={() => handleReverse(row.txId, row.credit!)}
+                                                disabled={reversingId === row.txId}
+                                                className="text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+                                            >
+                                                {reversingId === row.txId ? <div className="w-3 h-3 border-2 border-red-200 border-t-red-600 rounded-full animate-spin" /> : <RotateCcwIcon className="w-3 h-3" />}
+                                                Reverse
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })}
@@ -179,39 +219,57 @@ export function LoanStatementView({ loanId }: { loanId: string }) {
                                         <th className="px-4 py-3 text-right text-xs font-black text-slate-900 uppercase tracking-wider">
                                             Balance
                                         </th>
+                                        <th className="px-4 py-3 text-center text-xs font-black text-slate-400 uppercase tracking-wider w-10">
+                                            Action
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {statementRows.map((row, index) => (
-                                        <tr
-                                            key={`${row.txId}-${index}`}
-                                            className="hover:bg-slate-50 transition-colors"
-                                        >
-                                            <td className="px-4 py-3 text-sm text-slate-900 font-medium whitespace-nowrap">
-                                                {row.date}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-slate-700">
-                                                {row.description}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-right font-medium text-slate-700">
-                                                {row.debit !== null ? (
-                                                    formatCurrency(row.debit)
-                                                ) : (
-                                                    <span className="text-slate-200">-</span>
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-right font-bold text-emerald-600">
-                                                {row.credit !== null ? (
-                                                    formatCurrency(row.credit)
-                                                ) : (
-                                                    <span className="text-slate-200">-</span>
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-right font-mono font-bold text-slate-900 bg-slate-50/50">
-                                                {formatCurrency(row.runningBalance)}
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {statementRows.map((row, index) => {
+                                        const isReversible = row.credit !== null && row.description.toLowerCase().includes('repayment') && !row.description.toLowerCase().includes('reversal');
+                                        return (
+                                            <tr
+                                                key={`${row.txId}-${index}`}
+                                                className="hover:bg-slate-50 transition-colors group"
+                                            >
+                                                <td className="px-4 py-3 text-sm text-slate-900 font-medium whitespace-nowrap">
+                                                    {row.date}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-slate-700">
+                                                    {row.description}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-right font-medium text-slate-700">
+                                                    {row.debit !== null ? (
+                                                        formatCurrency(row.debit)
+                                                    ) : (
+                                                        <span className="text-slate-200">-</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-right font-bold text-emerald-600">
+                                                    {row.credit !== null ? (
+                                                        formatCurrency(row.credit)
+                                                    ) : (
+                                                        <span className="text-slate-200">-</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-right font-mono font-bold text-slate-900 bg-slate-50/50">
+                                                    {formatCurrency(row.runningBalance)}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                    {isReversible && (
+                                                        <button
+                                                            onClick={() => handleReverse(row.txId, row.credit!)}
+                                                            disabled={reversingId === row.txId}
+                                                            className="opacity-0 group-hover:opacity-100 transition-opacity p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                                                            title="Reverse Transaction"
+                                                        >
+                                                            {reversingId === row.txId ? <div className="w-4 h-4 border-2 border-red-200 border-t-red-600 rounded-full animate-spin" /> : <RotateCcwIcon className="w-4 h-4" />}
+                                                        </button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        )
+                                    })}
                                 </tbody>
                                 {/* Summary Footer */}
                                 <tfoot className="bg-slate-100 border-t-2 border-slate-300">
@@ -227,6 +285,7 @@ export function LoanStatementView({ loanId }: { loanId: string }) {
                                                 ? formatCurrency(statementRows[statementRows.length - 1].runningBalance)
                                                 : formatCurrency(0)}
                                         </td>
+                                        <td></td>
                                     </tr>
                                 </tfoot>
                             </table>

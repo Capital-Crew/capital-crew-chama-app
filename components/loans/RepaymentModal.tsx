@@ -23,6 +23,18 @@ export function RepaymentModal({ isOpen, onClose, loan, onSuccess }: RepaymentMo
     const [notes, setNotes] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [currentBalance, setCurrentBalance] = useState(loan.outstandingBalance)
+
+    // Fetch fresh balance on open
+    React.useEffect(() => {
+        if (isOpen && loan.id) {
+            import('@/app/wallet-add-funds-actions').then(({ getLoanFreshBalance }) => {
+                getLoanFreshBalance(loan.id).then((fresh) => {
+                    setCurrentBalance(fresh.outstandingBalance)
+                }).catch(err => console.error('Failed to refresh balance:', err))
+            })
+        }
+    }, [isOpen, loan.id])
 
     if (!isOpen) return null
 
@@ -56,7 +68,7 @@ export function RepaymentModal({ isOpen, onClose, loan, onSuccess }: RepaymentMo
         }
     }
 
-    const maxAmount = loan.outstandingBalance
+    const maxAmount = currentBalance
 
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
@@ -91,7 +103,7 @@ export function RepaymentModal({ isOpen, onClose, loan, onSuccess }: RepaymentMo
                                 Outstanding Balance
                             </label>
                             <p className="text-2xl font-black text-slate-700">
-                                {formatCurrency(loan.outstandingBalance)}
+                                {formatCurrency(currentBalance)}
                             </p>
                         </div>
 

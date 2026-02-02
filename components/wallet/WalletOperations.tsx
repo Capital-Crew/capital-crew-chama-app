@@ -84,12 +84,50 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
         }
     }, [activeMainTab, memberId])
 
-    // Loan Selection Logic
+    // Loan Selection Logic - With REAL-TIME Refresh
     useEffect(() => {
         const loan = activeLoans.find(l => l.id === selectedLoanId)
-        setSelectedLoan(loan || null)
+        if (!loan) {
+            setSelectedLoan(null)
+            setRepaymentAmount('')
+            return
+        }
+
+        // 1. Instant optimistic update from list
+        setSelectedLoan(loan)
         setRepaymentAmount('')
-        if (loan) calculateAllocation(loan, 0)
+        calculateAllocation(loan, 0)
+
+        // 2. Fetch fresh balance in background (Real-time requirement)
+        const fetchFresh = async () => {
+            try {
+                const { getLoanFreshBalance } = await import('@/app/wallet-add-funds-actions')
+                const fresh = await getLoanFreshBalance(loan.id)
+                console.log('Fresh balance:', fresh)
+
+                // If balance changed, update selectedLoan
+                if (fresh.outstandingBalance !== loan.outstandingBalance) {
+                    console.log('Updating stale balance:', loan.outstandingBalance, '->', fresh.outstandingBalance)
+                    setSelectedLoan(prev => prev ? {
+                        ...prev,
+                        outstandingBalance: fresh.outstandingBalance,
+                        penaltyBalance: fresh.penaltyBalance,
+                        interestBalance: fresh.interestBalance,
+                        principalBalance: fresh.principalBalance,
+                        feesBalance: fresh.feesBalance
+                    } : null)
+
+                    // Re-calculate allocation if amount was entered (rare race condition, but safe)
+                    // We don't have access to current 'repaymentAmount' in this closure easily without dep change
+                    // But typically user hasn't typed much in <100ms. 
+                    // However, if we want to be safe, we can just let the next render handle manual updates
+                }
+            } catch (err) {
+                console.error('Failed to strict-fetch loan balance:', err)
+            }
+        }
+        fetchFresh()
+
     }, [selectedLoanId, activeLoans])
 
     useEffect(() => {

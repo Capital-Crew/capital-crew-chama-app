@@ -480,6 +480,9 @@ export async function getActiveLoansByMember(memberId: string) {
                 select: {
                     name: true
                 }
+            },
+            _count: {
+                select: { loanTransactions: true }
             }
         },
         orderBy: { applicationDate: 'desc' }
@@ -502,32 +505,91 @@ export async function getActiveLoansByMember(memberId: string) {
                 principal = await getLoanPrincipalBalance(loan.id)
                 fees = await getLoanFeeBalance(loan.id)
             } catch (error) {
-                // If accounts aren't seeded, use loan amount as principal
-                principal = loan.amount
+                // If accounts aren't seeded or error, fail safe to 0 to trigger fallback below if needed
+                console.error(`Error fetching balances for loan ${loan.id}:`, error)
             }
 
             let outstanding = penalty + interest + principal + fees
 
-            // Fallback: If ledger returns 0 (e.g. migration/seed issue) but loan is active, use loan amount
-            if (outstanding <= 0) {
-                principal = loan.amount
+            // Fallback Logic:
+            // Only use loan amount if:
+            // 1. Calculated outstanding is <= 0 (ledger empty or cleared)
+            // 2. AND No transactions exist (implies it's a new/legacy loan not yet seeded in ledger)
+            // This prevents "Resurrecting" a paid-off loan that is still marked ACTIVE
+            if (outstanding <= 0 && loan._count.loanTransactions === 0) {
+                principal = Number(loan.amount)
                 outstanding = principal
+            }
+
+            // Ensure we don't return negative small dust
+            if (outstanding < 0.01) outstanding = 0
+
+            // SELF-HEAL: If balance is 0 and status is ACTIVE, update it to CLEARED
+            // Only do this if we are confident (transactions exist)
+            let finalStatus = loan.status
+            if (outstanding === 0 && (loan.status === 'ACTIVE' || loan.status === 'OVERDUE') && loan._count.loanTransactions > 0) {
+                try {
+                    await prisma.loan.update({
+                        where: { id: loan.id },
+                        data: { status: 'CLEARED' }
+                    })
+                    finalStatus = 'CLEARED'
+                } catch (err) {
+                    console.error('Error auto-clearing loan:', err)
+                }
             }
 
             return {
                 id: loan.id,
                 loanApplicationNumber: loan.loanApplicationNumber,
                 productName: loan.loanProduct.name,
-                disbursedAmount: loan.amount, // Ensure this is returned
+                disbursedAmount: Number(loan.amount), // Ensure this is returned
                 outstandingBalance: outstanding,
                 penaltyBalance: penalty,
                 interestBalance: interest,
                 principalBalance: principal,
                 feesBalance: fees,
-                status: loan.status
+                status: finalStatus
             }
         })
     )
 
-    return loansWithBalances
+    // Filter out loans with 0 balance (fully paid)
+    return loansWithBalances.filter(loan => loan.outstandingBalance > 0)
+}
+
+/**
+ * Get fresh loan balance (for real-time verification in modals/tabs)
+ */
+export async function getLoanFreshBalance(loanId: string) {
+    const session = await auth()
+    if (!session?.user?.id) throw new Error('Unauthorized')
+
+    // Get ledger balances
+    const { getLoanPenaltyBalance, getLoanInterestBalance, getLoanPrincipalBalance, getLoanFeeBalance } = await import('@/lib/accounting/AccountingEngine')
+
+    let penalty = 0
+    let interest = 0
+    let principal = 0
+    let fees = 0
+
+    try {
+        penalty = await getLoanPenaltyBalance(loanId)
+        interest = await getLoanInterestBalance(loanId)
+        principal = await getLoanPrincipalBalance(loanId)
+        fees = await getLoanFeeBalance(loanId)
+    } catch (e) {
+        console.error('Error fetching fresh balance:', e)
+    }
+
+    let outstanding = penalty + interest + principal + fees
+    if (outstanding < 0.01) outstanding = 0
+
+    return {
+        outstandingBalance: outstanding,
+        penaltyBalance: penalty,
+        interestBalance: interest,
+        principalBalance: principal,
+        feesBalance: fees
+    }
 }

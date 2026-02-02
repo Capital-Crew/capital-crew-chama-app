@@ -260,7 +260,7 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                                     </button>
                                 </div>
 
-                                <div className="flex flex-wrap items-center justify-between gap-2 md:gap-4">
+                                <div className="flex flex-wrap items-center justify-between gap-2 md:gap-4 mb-3">
                                     <div className="flex items-center gap-2 md:gap-4">
                                         <LoanStatusBadge status={loan.status as any} size="sm" />
                                         <div className="text-xs md:text-sm font-bold text-white/90 bg-white/10 px-2 py-1 rounded-lg">
@@ -273,14 +273,85 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                                             </div>
                                         )}
                                     </div>
+                                </div>
 
-                                    {/* Action Buttons - Only show for PENDING_APPROVAL */}
-                                    {loan.status === 'PENDING_APPROVAL' && (
-                                        <div className="flex items-center gap-2">
+                                {/* Action Buttons - Only show for PENDING_APPROVAL */}
+                                {loan.status === 'PENDING_APPROVAL' && (
+                                    <div className="w-full">
+                                        {/* Mobile: 2x2 Grid Layout */}
+                                        <div className="grid grid-cols-2 gap-2 md:hidden">
+                                            {/* Row 1: Approvals and Approve */}
+                                            <button
+                                                onClick={() => setShowVotingRecords(true)}
+                                                className="px-3 py-3 min-h-[48px] bg-blue-500/20 hover:bg-blue-500/30 border border-blue-200/40 text-white font-bold uppercase text-xs rounded-lg transition-all backdrop-blur-sm flex items-center justify-center gap-2"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                                                <span>Approvals</span>
+                                            </button>
+
+                                            <button
+                                                onClick={handleApprove}
+                                                disabled={submitting}
+                                                className="px-3 py-3 min-h-[48px] bg-green-500 hover:bg-green-600 text-white font-bold uppercase text-xs rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
+                                            >
+                                                {submitting ? (
+                                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                ) : (
+                                                    <>
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
+                                                        <span>Approve</span>
+                                                    </>
+                                                )}
+                                            </button>
+
+                                            {/* Row 2: Reject and Cancel */}
+                                            <button
+                                                onClick={handleReject}
+                                                disabled={submitting}
+                                                className="px-3 py-3 min-h-[48px] bg-red-500/20 hover:bg-red-500/30 border border-red-200/40 text-white font-bold uppercase text-xs rounded-lg transition-all disabled:opacity-50 backdrop-blur-sm flex items-center justify-center gap-2"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                                <span>Reject</span>
+                                            </button>
+
+                                            <button
+                                                onClick={async () => {
+                                                    if (!confirm('Are you sure you want to cancel this approval request? It will be moved back to draft status.')) return;
+                                                    setSubmitting(true);
+                                                    try {
+                                                        const res = await fetch(`/api/loans/${loan.id}/cancel`, { method: 'POST' });
+                                                        const json = await res.json();
+                                                        if (!res.ok) throw new Error(json.error || 'Failed to cancel');
+
+                                                        toast.success('Approval request cancelled successfully');
+                                                        onClose();
+                                                        window.location.reload();
+                                                    } catch (e: any) {
+                                                        toast.error(e.message || 'Failed to cancel');
+                                                    } finally {
+                                                        setSubmitting(false);
+                                                    }
+                                                }}
+                                                disabled={submitting}
+                                                className="px-3 py-3 min-h-[48px] bg-orange-500/20 hover:bg-orange-500/30 border border-orange-200/40 text-white font-bold uppercase text-xs rounded-lg transition-all disabled:opacity-50 backdrop-blur-sm flex items-center justify-center gap-2"
+                                            >
+                                                {submitting ? (
+                                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                ) : (
+                                                    <>
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                        <span>Cancel</span>
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
+
+                                        {/* Desktop: Horizontal Layout */}
+                                        <div className="hidden md:flex items-center gap-2">
                                             {/* Approvals Button */}
                                             <button
                                                 onClick={() => setShowVotingRecords(true)}
-                                                className="px-3 md:px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-200/40 text-white font-bold uppercase text-[10px] md:text-xs rounded-lg transition-all backdrop-blur-sm flex items-center gap-2"
+                                                className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-200/40 text-white font-bold uppercase text-xs rounded-lg transition-all backdrop-blur-sm flex items-center gap-2"
                                             >
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
                                                 Approvals
@@ -290,7 +361,7 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                                             <button
                                                 onClick={handleReject}
                                                 disabled={submitting}
-                                                className="px-3 md:px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-200/40 text-white font-bold uppercase text-[10px] md:text-xs rounded-lg transition-all disabled:opacity-50 backdrop-blur-sm"
+                                                className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-200/40 text-white font-bold uppercase text-xs rounded-lg transition-all disabled:opacity-50 backdrop-blur-sm"
                                             >
                                                 Reject
                                             </button>
@@ -299,18 +370,15 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                                             <button
                                                 onClick={handleApprove}
                                                 disabled={submitting}
-                                                className="px-3 md:px-4 py-2 bg-green-500 hover:bg-green-600 text-white font-bold uppercase text-[10px] md:text-xs rounded-lg transition-all flex items-center gap-1.5 shadow-lg disabled:opacity-50"
+                                                className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white font-bold uppercase text-xs rounded-lg transition-all flex items-center gap-1.5 shadow-lg disabled:opacity-50"
                                             >
                                                 {submitting ? (
-                                                    <div className="w-3 h-3 md:w-4 md:h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                                                 ) : (
-                                                    <svg className="w-3 h-3 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
                                                 )}
-                                                <span className="hidden md:inline">Approve</span>
+                                                <span>Approve</span>
                                             </button>
-
-
-
 
                                             {/* Cancel Approval Request Button */}
                                             <Button
@@ -341,14 +409,14 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <svg className="w-3 h-3 md:w-4 md:h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                                        <span className="hidden md:inline">Cancel Approval Request</span>
+                                                        <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                        <span>Cancel Approval Request</span>
                                                     </>
                                                 )}
                                             </Button>
                                         </div>
-                                    )}
-                                </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 

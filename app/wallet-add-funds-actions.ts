@@ -482,7 +482,7 @@ export async function getActiveLoansByMember(memberId: string) {
                 }
             },
             _count: {
-                select: { loanTransactions: true }
+                select: { transactions: true }
             }
         },
         orderBy: { applicationDate: 'desc' }
@@ -516,7 +516,7 @@ export async function getActiveLoansByMember(memberId: string) {
             // 1. Calculated outstanding is <= 0 (ledger empty or cleared)
             // 2. AND No transactions exist (implies it's a new/legacy loan not yet seeded in ledger)
             // This prevents "Resurrecting" a paid-off loan that is still marked ACTIVE
-            if (outstanding <= 0 && loan._count.loanTransactions === 0) {
+            if (outstanding <= 0 && loan._count.transactions === 0) {
                 principal = Number(loan.amount)
                 outstanding = principal
             }
@@ -527,7 +527,7 @@ export async function getActiveLoansByMember(memberId: string) {
             // SELF-HEAL: If balance is 0 and status is ACTIVE, update it to CLEARED
             // Only do this if we are confident (transactions exist)
             let finalStatus = loan.status
-            if (outstanding === 0 && (loan.status === 'ACTIVE' || loan.status === 'OVERDUE') && loan._count.loanTransactions > 0) {
+            if (outstanding === 0 && (loan.status === 'ACTIVE' || loan.status === 'OVERDUE') && loan._count.transactions > 0) {
                 try {
                     await prisma.loan.update({
                         where: { id: loan.id },

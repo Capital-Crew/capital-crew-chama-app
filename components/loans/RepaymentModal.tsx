@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { CheckCircleIcon, AlertCircleIcon, XIcon, BanknoteIcon, Download, Printer } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { RepaymentReceipt, type ReceiptData } from '@/components/receipts/RepaymentReceipt'
@@ -38,6 +38,11 @@ export function RepaymentModal({ isOpen, onClose, loan, onSuccess }: RepaymentMo
         penaltyBalance: 0
     })
     const [receiptData, setReceiptData] = useState<ReceiptData | null>(null)
+    const [isMounted, setIsMounted] = useState(false)
+
+    useEffect(() => {
+        setIsMounted(true)
+    }, [])
 
     // Fetch fresh balance on open
     React.useEffect(() => {
@@ -120,19 +125,21 @@ export function RepaymentModal({ isOpen, onClose, loan, onSuccess }: RepaymentMo
                             </div>
                         </div>
 
-                        <PDFDownloadLink
-                            document={<RepaymentReceipt data={receiptData} />}
-                            fileName={`Receipt-${receiptData.transactionId}.pdf`}
-                            className="w-full py-4 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold uppercase tracking-widest text-sm transition-all flex items-center justify-center gap-2"
-                        >
-                            {/* @ts-ignore - React-PDF types issue with dynamic import rendering children function */}
-                            {({ loading }: any) => (
-                                <>
-                                    <Download className="w-5 h-5" />
-                                    {loading ? 'Preparing Receipt...' : 'Download Receipt'}
-                                </>
-                            )}
-                        </PDFDownloadLink>
+                        {isMounted && (
+                            <PDFDownloadLink
+                                document={<RepaymentReceipt data={receiptData} />}
+                                fileName={`Receipt-${receiptData.transactionId}.pdf`}
+                                className="w-full py-4 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold uppercase tracking-widest text-sm transition-all flex items-center justify-center gap-2"
+                            >
+                                {/* @ts-ignore - React-PDF types issue with dynamic import rendering children function */}
+                                {({ loading }: any) => (
+                                    <>
+                                        <Download className="w-5 h-5" />
+                                        {loading ? 'Preparing Receipt...' : 'Download Receipt'}
+                                    </>
+                                )}
+                            </PDFDownloadLink>
+                        )}
 
                         <button
                             onClick={() => {

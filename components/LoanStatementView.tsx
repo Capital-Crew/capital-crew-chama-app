@@ -1,3 +1,6 @@
+'use client'
+
+import React, { useState, useEffect } from 'react'
 import { getLoanStatement } from '@/app/actions/getLoanStatement'
 import { processTransactions, type StatementRow } from '@/lib/statementProcessor'
 import { formatCurrency } from '@/lib/financialMath'
@@ -31,7 +34,12 @@ export function LoanStatementView({ loanId, refreshKey }: { loanId: string, refr
     const [loanData, setLoanData] = useState<LoanStatementData | null>(null)
     const [statementRows, setStatementRows] = useState<StatementRow[]>([])
     const [reversingId, setReversingId] = useState<string | null>(null)
+    const [isMounted, setIsMounted] = useState(false)
     const router = useRouter()
+
+    useEffect(() => {
+        setIsMounted(true)
+    }, [])
 
     const fetchStatement = async () => {
         try {
@@ -178,7 +186,7 @@ export function LoanStatementView({ loanId, refreshKey }: { loanId: string, refr
                                         </span>
                                     </div>
                                     <div className="mt-3 flex justify-end gap-2">
-                                        {isCredit && row.allocation && (
+                                        {isMounted && isCredit && row.allocation && (
                                             <PDFDownloadLink
                                                 document={
                                                     <RepaymentReceipt data={{
@@ -284,7 +292,7 @@ export function LoanStatementView({ loanId, refreshKey }: { loanId: string, refr
                                                 </td>
                                                 <td className="px-4 py-3 text-center">
                                                     <div className="flex items-center justify-center gap-2">
-                                                        {row.credit !== null && row.allocation && (
+                                                        {isMounted && row.credit !== null && row.allocation && (
                                                             <PDFDownloadLink
                                                                 document={
                                                                     <RepaymentReceipt data={{

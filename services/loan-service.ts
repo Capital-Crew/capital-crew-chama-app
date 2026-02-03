@@ -37,6 +37,7 @@ export type RepaymentResult = {
     journalEntryId: string
     allocation: {
         penalty: number
+        fees: number
         interest: number
         principal: number
     }
@@ -49,6 +50,7 @@ export type LoanBalanceBreakdown = {
     principal: Decimal
     interest: Decimal
     penalty: Decimal
+    fees: Decimal
     total: Decimal
 }
 
@@ -65,7 +67,7 @@ export class LoanService {
      */
     static async calculateOutstandingBalance(loanId: string): Promise<LoanBalanceBreakdown> {
         // Import ledger helpers
-        const { getLoanPenaltyBalance, getLoanInterestBalance, getLoanPrincipalBalance } =
+        const { getLoanPenaltyBalance, getLoanInterestBalance, getLoanPrincipalBalance, getLoanFeeBalance } =
             await import('@/lib/accounting/AccountingEngine')
 
         const loan = await db.loan.findUnique({
@@ -81,31 +83,36 @@ export class LoanService {
         let penalty = new Decimal(0)
         let interest = new Decimal(0)
         let principal = new Decimal(0)
+        let fees = new Decimal(0)
 
         try {
             const penaltyNum = await getLoanPenaltyBalance(loanId)
             const interestNum = await getLoanInterestBalance(loanId)
             const principalNum = await getLoanPrincipalBalance(loanId)
+            const feeNum = await getLoanFeeBalance(loanId)
 
             penalty = new Decimal(penaltyNum)
             interest = new Decimal(interestNum)
             principal = new Decimal(principalNum)
+            fees = new Decimal(feeNum)
         } catch (error) {
             // Ledger not initialized - use loan amount as fallback
-            principal = new Decimal(loan.amount)
+            principal = new Decimal(loan.amount ?? 0)
         }
 
-        // Fallback: If ledger returns 0 for active loan, use loan amount
-        const total = penalty.plus(interest).plus(principal)
-        if (total.lte(0) && ['ACTIVE', 'OVERDUE', 'DISBURSED'].includes(loan.status)) {
-            principal = new Decimal(loan.amount)
-        }
+
+        // Fallback removed: Ledger is now authoritative.
+        // If total is 0, it means the loan is fully paid.
+        // if (total.lte(0) && ['ACTIVE', 'OVERDUE', 'DISBURSED'].includes(loan.status)) {
+        //    principal = new Decimal(loan.amount)
+        // }
 
         return {
             principal,
             interest,
             penalty,
-            total: penalty.plus(interest).plus(principal)
+            fees,
+            total: penalty.plus(interest).plus(fees).plus(principal)
         }
     }
 
@@ -153,14 +160,22 @@ export class LoanService {
         let remaining = amountDecimal
         const allocation = {
             penalty: new Decimal(0),
+            fees: new Decimal(0),
             interest: new Decimal(0),
             principal: new Decimal(0)
         }
+
 
         // Pay penalties first
         if (remaining.gt(0) && balances.penalty.gt(0)) {
             allocation.penalty = Decimal.min(remaining, balances.penalty)
             remaining = remaining.minus(allocation.penalty)
+        }
+
+        // Pay fees second
+        if (remaining.gt(0) && balances.fees.gt(0)) {
+            allocation.fees = Decimal.min(remaining, balances.fees)
+            remaining = remaining.minus(allocation.fees)
         }
 
         // Pay interest second
@@ -192,6 +207,15 @@ export class LoanService {
                 debitAmount: 0,
                 creditAmount: allocation.penalty.toNumber(),
                 description: 'Penalty paid'
+            })
+        }
+
+        if (allocation.fees.gt(0)) {
+            journalLines.push({
+                accountCode: mappings.RECEIVABLE_LOAN_FEES,
+                debitAmount: 0,
+                creditAmount: allocation.fees.toNumber(),
+                description: 'Fees paid'
             })
         }
 
@@ -250,14 +274,18 @@ export class LoanService {
                     where: { id: input.loanId },
                     data: {
                         status: 'CLEARED',
-                        current_balance: 0
+                        current_balance: 0,
+                        outstandingBalance: new Prisma.Decimal(0)
                     }
                 })
                 finalStatus = 'CLEARED'
             } else {
                 await tx.loan.update({
                     where: { id: input.loanId },
-                    data: { current_balance: newOutstanding }
+                    data: {
+                        current_balance: newOutstanding,
+                        outstandingBalance: newOutstanding
+                    }
                 })
             }
 
@@ -266,13 +294,14 @@ export class LoanService {
                 data: {
                     loanId: input.loanId,
                     eventType: 'REPAYMENT_MADE',
-                    description: `Repayment of KES ${input.amount.toLocaleString()} (Penalty: ${allocation.penalty.toNumber()}, Interest: ${allocation.interest.toNumber()}, Principal: ${allocation.principal.toNumber()})`,
+                    description: `Repayment of KES ${input.amount.toLocaleString()} (Penalty: ${allocation.penalty.toNumber()}, Fees: ${allocation.fees.toNumber()}, Interest: ${allocation.interest.toNumber()}, Principal: ${allocation.principal.toNumber()})`,
                     actorId: input.userId,
                     actorName: input.userName || 'System',
                     metadata: {
                         amount: input.amount,
                         allocation: {
                             penalty: allocation.penalty.toNumber(),
+                            fees: allocation.fees.toNumber(),
                             interest: allocation.interest.toNumber(),
                             principal: allocation.principal.toNumber()
                         },
@@ -308,6 +337,7 @@ export class LoanService {
                     amount: input.amount,
                     allocation: {
                         penalty: allocation.penalty.toNumber(),
+                        fees: allocation.fees.toNumber(),
                         interest: allocation.interest.toNumber(),
                         principal: allocation.principal.toNumber()
                     },
@@ -328,6 +358,7 @@ export class LoanService {
             journalEntryId: result.journalEntryId,
             allocation: {
                 penalty: allocation.penalty.toNumber(),
+                fees: allocation.fees.toNumber(),
                 interest: allocation.interest.toNumber(),
                 principal: allocation.principal.toNumber()
             },
@@ -367,6 +398,7 @@ export class LoanService {
                     disbursedAmount: loan.amount,
                     outstandingBalance: balances.total.toNumber(),
                     penaltyBalance: balances.penalty.toNumber(),
+                    feesBalance: balances.fees.toNumber(),
                     interestBalance: balances.interest.toNumber(),
                     principalBalance: balances.principal.toNumber(),
                     status: loan.status

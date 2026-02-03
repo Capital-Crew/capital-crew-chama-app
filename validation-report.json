@@ -1,0 +1,84 @@
+{
+  "timestamp": "2026-02-03T17:51:18.546Z",
+  "totalLoans": 9,
+  "totalIssues": 9,
+  "issuesBySeverity": {
+    "critical": 0,
+    "high": 7,
+    "medium": 2
+  },
+  "issues": [
+    {
+      "loanId": "cml5fjhk4000bl104pv7jnp5d",
+      "loanNumber": "LN017",
+      "issueType": "BALANCE_MISMATCH",
+      "severity": "HIGH",
+      "details": "Ledger: 22227.72, Stored: 0.86, Diff: 22226.86",
+      "suggestedFix": "Investigate transaction history, may need manual reconciliation"
+    },
+    {
+      "loanId": "cml4t51fn001fkt0427ovx9e8",
+      "loanNumber": "LN015",
+      "issueType": "BALANCE_MISMATCH",
+      "severity": "HIGH",
+      "details": "Ledger: 37828.57, Stored: 20000.00, Diff: 17828.57",
+      "suggestedFix": "Investigate transaction history, may need manual reconciliation"
+    },
+    {
+      "loanId": "cml4n5q5t003bjv04d82eh3w7",
+      "loanNumber": "LN014",
+      "issueType": "BALANCE_MISMATCH",
+      "severity": "MEDIUM",
+      "details": "Ledger: 10371.42, Stored: 10000.00, Diff: 371.42",
+      "suggestedFix": "Investigate transaction history, may need manual reconciliation"
+    },
+    {
+      "loanId": "cml1pvhzd0001tmugtlurzakk",
+      "loanNumber": "LN013",
+      "issueType": "BALANCE_MISMATCH",
+      "severity": "HIGH",
+      "details": "Ledger: 62314.28, Stored: 60000.00, Diff: 2314.28",
+      "suggestedFix": "Investigate transaction history, may need manual reconciliation"
+    },
+    {
+      "loanId": "cml182d1t007htmxgzzfd5v5t",
+      "loanNumber": "LN012",
+      "issueType": "BALANCE_MISMATCH",
+      "severity": "MEDIUM",
+      "details": "Ledger: 50064.52, Stored: 50000.00, Diff: 64.52",
+      "suggestedFix": "Investigate transaction history, may need manual reconciliation"
+    },
+    {
+      "loanId": "cmkzry5xj000itm5cj8hr8ie5",
+      "loanNumber": "LN011",
+      "issueType": "BALANCE_MISMATCH",
+      "severity": "HIGH",
+      "details": "Ledger: 46620.00, Stored: 0.00, Diff: 46620.00",
+      "suggestedFix": "Investigate transaction history, may need manual reconciliation"
+    },
+    {
+      "loanId": "cmkyfzvo90030tm5kf559ghr1",
+      "loanNumber": "LN010",
+      "issueType": "BALANCE_MISMATCH",
+      "severity": "HIGH",
+      "details": "Ledger: 11033.56, Stored: 0.00, Diff: 11033.56",
+      "suggestedFix": "Investigate transaction history, may need manual reconciliation"
+    },
+    {
+      "loanId": "cmkyafasn009htmvs0rn3v6y9",
+      "loanNumber": "LN008",
+      "issueType": "BALANCE_MISMATCH",
+      "severity": "HIGH",
+      "details": "Ledger: 23180.40, Stored: 0.00, Diff: 23180.40",
+      "suggestedFix": "Investigate transaction history, may need manual reconciliation"
+    },
+    {
+      "loanId": "cmku9lb7b003vtmv0jxshrh4o",
+      "loanNumber": "LN005",
+      "issueType": "BALANCE_MISMATCH",
+      "severity": "HIGH",
+      "details": "Ledger: 10038.70, Stored: 0.00, Diff: 10038.70",
+      "suggestedFix": "Investigate transaction history, may need manual reconciliation"
+    }
+  ]
+}

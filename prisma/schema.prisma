@@ -638,12 +638,19 @@ model Loan {
   loanProduct           LoanProduct? @relation(fields: [loanProductId], references: [id])
 
   amount             Decimal?    @db.Decimal(19, 4)
+  
+  /// @deprecated Legacy field. Do not use.
   current_balance    Decimal    @default(0) @db.Decimal(19, 4) // Legacy
+  
+  /// @deprecated Read-only cache. Use AccountingEngine for authoritative balance.
   outstandingBalance Decimal    @default(0) @db.Decimal(19, 4) // NEW: Strict Decimal Balance
+  
   applicationDate    DateTime?
   disbursementDate   DateTime?
   dueDate            DateTime?
   interestRate       Decimal?    @db.Decimal(10, 6)
+  
+  /// @deprecated Read-only cache. Use AccountingEngine.
   penalties          Decimal    @default(0) @db.Decimal(19, 4)
   status             LoanStatus @default(PENDING_APPROVAL)
 

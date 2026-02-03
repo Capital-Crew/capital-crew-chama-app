@@ -45,8 +45,16 @@ export class LoanProjectionHandler {
     /**
      * Handle REPAYMENT_MADE event
      */
+    /**
+     * Handle REPAYMENT_MADE event
+     */
     static async handleRepaymentMade(event: DomainEvent & { id: string; timestamp: Date }) {
         const { amount, newOutstanding, isFullyPaid } = event.metadata
+
+        // Phase 4 Update: Fetch authoritative balance from Ledger
+        // This ensures projection never drifts from ledger
+        const { getLoanOutstandingBalance } = await import('@/lib/accounting/AccountingEngine')
+        const ledgerBalance = await getLoanOutstandingBalance(event.aggregateId)
 
         const projection = await db.loanSummaryProjection.findUnique({
             where: { loanId: event.aggregateId }
@@ -59,9 +67,9 @@ export class LoanProjectionHandler {
                     loanId: event.aggregateId,
                     totalDisbursed: 0,
                     totalRepaid: amount,
-                    outstandingBalance: newOutstanding,
+                    outstandingBalance: ledgerBalance, // Use Ledger Balance
                     lastPaymentDate: event.timestamp,
-                    status: isFullyPaid ? 'CLEARED' : 'ACTIVE',
+                    status: ledgerBalance <= 0.01 ? 'CLEARED' : 'ACTIVE', // Trust Ledger
                     lastEventId: event.id,
                     lastUpdated: event.timestamp
                 }
@@ -72,9 +80,9 @@ export class LoanProjectionHandler {
                 where: { loanId: event.aggregateId },
                 data: {
                     totalRepaid: projection.totalRepaid + amount,
-                    outstandingBalance: newOutstanding,
+                    outstandingBalance: ledgerBalance, // Use Ledger Balance
                     lastPaymentDate: event.timestamp,
-                    status: isFullyPaid ? 'CLEARED' : 'ACTIVE',
+                    status: ledgerBalance <= 0.01 ? 'CLEARED' : 'ACTIVE',
                     lastEventId: event.id,
                     lastUpdated: event.timestamp
                 }

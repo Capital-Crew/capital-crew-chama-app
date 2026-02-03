@@ -1,7 +1,14 @@
 'use client'
 
 import React, { useState } from 'react'
-import { CheckCircleIcon, AlertCircleIcon, XIcon, BanknoteIcon } from 'lucide-react'
+import { CheckCircleIcon, AlertCircleIcon, XIcon, BanknoteIcon, Download, Printer } from 'lucide-react'
+import dynamic from 'next/dynamic'
+import { RepaymentReceipt, type ReceiptData } from '@/components/receipts/RepaymentReceipt'
+
+const PDFDownloadLink = dynamic(
+    () => import('@react-pdf/renderer').then((mod) => mod.PDFDownloadLink),
+    { ssr: false }
+)
 import { formatCurrency } from '@/lib/utils'
 import { addLoanRepayment } from '@/app/wallet-add-funds-actions'
 import { toast } from 'sonner' // Assuming sonner or similar usage, adapting to project style
@@ -30,6 +37,7 @@ export function RepaymentModal({ isOpen, onClose, loan, onSuccess }: RepaymentMo
         feesBalance: 0,
         penaltyBalance: 0
     })
+    const [receiptData, setReceiptData] = useState<ReceiptData | null>(null)
 
     // Fetch fresh balance on open
     React.useEffect(() => {
@@ -69,9 +77,14 @@ export function RepaymentModal({ isOpen, onClose, loan, onSuccess }: RepaymentMo
 
             toast.success('Repayment successful')
             onSuccess(result.newOutstanding)
-            onClose()
-            setAmount('')
-            setNotes('')
+
+            if (result.receiptData) {
+                setReceiptData(result.receiptData as ReceiptData)
+            } else {
+                onClose()
+                setAmount('')
+                setNotes('')
+            }
         } catch (err: any) {
             setError(err.message || 'Repayment failed')
             console.error(err)
@@ -81,6 +94,62 @@ export function RepaymentModal({ isOpen, onClose, loan, onSuccess }: RepaymentMo
     }
 
     const maxAmount = balanceInfo.outstandingBalance
+
+    // Success View with Receipt
+    if (receiptData) {
+        return (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col text-center">
+                    <div className="bg-green-600 p-8 flex flex-col items-center justify-center text-white">
+                        <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mb-4">
+                            <CheckCircleIcon className="w-10 h-10 text-white" />
+                        </div>
+                        <h3 className="text-2xl font-black uppercase tracking-tight">Payment Successful</h3>
+                        <p className="opacity-90 font-medium mt-1">KES {receiptData.amount.toLocaleString()}</p>
+                    </div>
+
+                    <div className="p-8 flex flex-col gap-4">
+                        <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 text-left space-y-2">
+                            <div className="flex justify-between text-sm">
+                                <span className="text-slate-500 font-bold">Transaction ID</span>
+                                <span className="font-mono font-bold text-slate-700">{receiptData.transactionId.slice(-8).toUpperCase()}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-slate-500 font-bold">Date</span>
+                                <span className="font-bold text-slate-700">{new Date(receiptData.date).toLocaleDateString()}</span>
+                            </div>
+                        </div>
+
+                        <PDFDownloadLink
+                            document={<RepaymentReceipt data={receiptData} />}
+                            fileName={`Receipt-${receiptData.transactionId}.pdf`}
+                            className="w-full py-4 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold uppercase tracking-widest text-sm transition-all flex items-center justify-center gap-2"
+                        >
+                            {/* @ts-ignore - React-PDF types issue with dynamic import rendering children function */}
+                            {({ loading }: any) => (
+                                <>
+                                    <Download className="w-5 h-5" />
+                                    {loading ? 'Preparing Receipt...' : 'Download Receipt'}
+                                </>
+                            )}
+                        </PDFDownloadLink>
+
+                        <button
+                            onClick={() => {
+                                setReceiptData(null)
+                                setAmount('')
+                                setNotes('')
+                                onClose()
+                            }}
+                            className="w-full py-4 bg-white border-2 border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl font-bold uppercase tracking-widest text-sm transition-all"
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )
+    }
 
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">

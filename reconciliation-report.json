@@ -1,0 +1,54 @@
+{
+  "timestamp": "2026-02-03T17:53:12.710Z",
+  "summary": {
+    "totalLoans": 5,
+    "matches": 0,
+    "minorDiffs": 1,
+    "majorDiffs": 4,
+    "totalStoredBalance": 140000.8572,
+    "totalLedgerBalance": 171774.25149999998,
+    "totalDifference": 31773.394299999985
+  },
+  "details": [
+    {
+      "loanNumber": "LN012",
+      "storedBalance": 50000,
+      "ledgerBalance": 50032.26,
+      "difference": 32.26000000000204,
+      "percentDiff": 0.06452000000000407,
+      "status": "MINOR_DIFF"
+    },
+    {
+      "loanNumber": "LN013",
+      "storedBalance": 60000,
+      "ledgerBalance": 61157.14,
+      "difference": 1157.1399999999994,
+      "percentDiff": 1.9285666666666657,
+      "status": "MAJOR_DIFF"
+    },
+    {
+      "loanNumber": "LN014",
+      "storedBalance": 10000,
+      "ledgerBalance": 10185.71,
+      "difference": 185.70999999999913,
+      "percentDiff": 1.8570999999999913,
+      "status": "MAJOR_DIFF"
+    },
+    {
+      "loanNumber": "LN017",
+      "storedBalance": 0.8572,
+      "ledgerBalance": 21484.8586,
+      "difference": 21484.0014,
+      "percentDiff": 2506299.7433504434,
+      "status": "MAJOR_DIFF"
+    },
+    {
+      "loanNumber": "LN015",
+      "storedBalance": 20000,
+      "ledgerBalance": 28914.2829,
+      "difference": 8914.282899999998,
+      "percentDiff": 44.57141449999999,
+      "status": "MAJOR_DIFF"
+    }
+  ]
+}

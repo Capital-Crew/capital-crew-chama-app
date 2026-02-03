@@ -70,6 +70,13 @@ export class LoanBalanceService {
             feesPaid += Number(inst.feesPaid)
         }
 
+
+
+        // Fetch authoritative balance from Ledger
+        // This includes all unbilled accruals, penalties, etc.
+        const { getLoanOutstandingBalance } = await import('@/lib/accounting/AccountingEngine')
+        const ledgerBalance = await getLoanOutstandingBalance(loanId)
+
         return {
             principal: {
                 original: principalDue,
@@ -94,10 +101,8 @@ export class LoanBalanceService {
             totals: {
                 totalScheduled: principalDue + interestDue + penaltyDue + feeDue,
                 totalPaid: principalPaid + interestPaid + penaltyPaid + feesPaid,
-                totalOutstanding: (principalDue - principalPaid) +
-                    (interestDue - interestPaid) +
-                    (penaltyDue - penaltyPaid) +
-                    (feeDue - feesPaid)
+                // totalOutstanding: (principalDue - principalPaid) + ... // OLD: Installment based
+                totalOutstanding: ledgerBalance // NEW: Ledger based
             }
         }
     }

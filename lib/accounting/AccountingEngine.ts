@@ -419,7 +419,7 @@ export async function getLoanOutstandingBalance(loanId: string, tx?: DbClient): 
         where: {
             ledgerTransaction: {
                 referenceId: loanId,
-                isReversed: false
+                // isReversed: false
             },
             ledgerAccount: { type: 'ASSET' }
         },
@@ -429,7 +429,7 @@ export async function getLoanOutstandingBalance(loanId: string, tx?: DbClient): 
     // 3. Fetch entries by Keyword (Description Link)
     const keywordEntries = await client.ledgerEntry.findMany({
         where: {
-            ledgerTransaction: { isReversed: false },
+            // ledgerTransaction: { isReversed: false },
             ledgerAccount: { type: 'ASSET' },
             description: { contains: loan.loanApplicationNumber }
         },
@@ -481,7 +481,7 @@ export async function getLoanFinancials(loanId: string, tx?: DbClient) {
         where: {
             ledgerTransaction: {
                 referenceId: loanId,
-                isReversed: false
+                // isReversed: false
             },
             ledgerAccount: {
                 type: 'ASSET'
@@ -546,24 +546,14 @@ export async function getLoanPenaltyBalance(loanId: string, tx?: DbClient): Prom
 export async function getLoanFeeBalance(loanId: string, tx?: DbClient): Promise<number> {
     const client = tx ?? prisma
 
-    // Use RepaymentInstallment as source of truth for fee tracking
-    // This handles standard fees scheduled in installments
-    const installments = await client.repaymentInstallment.findMany({
-        where: {
-            loanId,
-            isFullyPaid: false
-        }
-    })
-
-    let balance = toDecimal(0)
-
-    for (const inst of installments) {
-        const feeDue = new Decimal(inst.feeDue)
-        const feesPaid = new Decimal(inst.feesPaid)
-        balance = balance.plus(feeDue).minus(feesPaid)
+    try {
+        const feeCode = await getSystemCode('RECEIVABLE_LOAN_FEES' as SystemAccountType, tx)
+        // Fees are Assets (Receivables)
+        return await AccountingEngine.getAccountBalance(feeCode, loanId, undefined, tx)
+    } catch (e) {
+        // If no mapping, return 0 (or fallback to legacy behavior if strictly needed, but we want to migrate)
+        return 0
     }
-
-    return toNumber(balance)
 }
 
 // ========================================

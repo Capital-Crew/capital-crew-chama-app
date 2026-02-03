@@ -22,6 +22,9 @@ function processTransactions(transactions: any[]): number {
         const amount = new Decimal(tx.amount)
         const type = tx.type.toUpperCase()
 
+        // Skip reversed transactions
+        if (tx.isReversed) continue
+
         if (['DISBURSEMENT', 'CHARGE', 'PENALTY', 'INTEREST', 'FEE'].includes(type)) {
             // Increases balance
             runningBalance = runningBalance.plus(amount)

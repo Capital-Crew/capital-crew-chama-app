@@ -88,16 +88,16 @@ export async function getDashboardStats(): Promise<Serialized<any>> {
                 ledgerAccount: { type: 'ASSET' },
                 ledgerTransaction: {
                     // Filter for known loan transaction types to reduce noise
-                    referenceType: {
+                    /* referenceType: {
                         in: [
                             'LOAN_DISBURSEMENT',
                             'LOAN_REPAYMENT',
                             'LOAN_INTEREST_ACCRUAL',
                             'LOAN_PENALTY_ACCRUAL',
                             'LOAN_FEE_CHARGE',
-                            'REVERSAL' // Include reversals if they affect assets
+                            'REVERSAL'
                         ]
-                    }
+                    } */
                 }
             },
             select: {

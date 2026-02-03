@@ -232,7 +232,10 @@ export async function addLoanRepayment(input: {
     // Get loan with details
     const loan = await prisma.loan.findUnique({
         where: { id: input.loanId },
-        include: { member: true }
+        include: {
+            member: true,
+            loanProduct: { select: { name: true } }
+        }
     })
 
     if (!loan) {
@@ -328,18 +331,12 @@ export async function addLoanRepayment(input: {
 
     // Fees (Need Mapping)
     if (allocation.paidFees > 0) {
-        // Feature Future: Add Fee Receivable mapping (RECEIVABLE_LOAN_FEES)
-        // Currently fee accounts are likely tied to Disbursement (Capitalized) or separate invoices.
-        // If fees are capitalized, they are paid as part of Principal.
-        // If strictly tracked as separate receivable, uncomment below when mapping exists:
-
         journalLines.push({
             accountCode: mappings.RECEIVABLE_LOAN_FEES,
             debitAmount: 0,
             creditAmount: allocation.paidFees,
             description: 'Fees paid (Waterfall)'
         })
-
     }
 
     if (allocation.paidInterest > 0) {
@@ -456,7 +453,27 @@ export async function addLoanRepayment(input: {
         allocation,
         newOutstanding,
         isFullyPaid,
-        loanStatus: isFullyPaid ? 'CLEARED' : loan.status
+        loanStatus: isFullyPaid ? 'CLEARED' : loan.status,
+        receiptData: {
+            transactionId: journalEntry.id,
+            date: new Date(),
+            amount: input.amount,
+            description: input.description,
+            member: {
+                name: loan.member.name,
+                number: loan.member.memberNumber || 'N/A'
+            },
+            loan: {
+                number: loan.loanApplicationNumber,
+                product: loan.loanProduct?.name || 'Unknown Product'
+            },
+            allocation: {
+                principal: allocation.paidPrincipal,
+                interest: allocation.paidInterest,
+                penalty: allocation.paidPenalty,
+                fees: allocation.paidFees
+            }
+        }
     }
 }
 
@@ -517,8 +534,12 @@ export async function getActiveLoansByMember(memberId: string) {
             // 2. AND No transactions exist (implies it's a new/legacy loan not yet seeded in ledger)
             // This prevents "Resurrecting" a paid-off loan that is still marked ACTIVE
             if (outstanding <= 0 && loan._count.transactions === 0) {
+                console.log(`[DEBUG] Fallback triggered for Loan ${loan.loanApplicationNumber} (ID: ${loan.id})`)
+                console.log(`[DEBUG] Reason: outstanding=${outstanding}, transactions=${loan._count.transactions}`)
                 principal = Number(loan.amount)
                 outstanding = principal
+            } else {
+                console.log(`[DEBUG] Ledger Balance used for ${loan.loanApplicationNumber}: ${outstanding} (Tx Count: ${loan._count.transactions})`)
             }
 
             // Ensure we don't return negative small dust

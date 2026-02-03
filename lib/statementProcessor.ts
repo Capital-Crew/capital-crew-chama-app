@@ -7,11 +7,18 @@ import type Decimal from 'decimal.js'
  */
 export interface StatementRow {
     date: string
+    createdAt: Date
     txId: string
     description: string
     debit: number | null
     credit: number | null
     runningBalance: number
+    allocation?: {
+        principal: number
+        interest: number
+        penalty: number
+        fees: number
+    }
 }
 
 
@@ -95,11 +102,18 @@ export function processTransactions(transactions: WalletTransaction[]): Statemen
 
         rows.push({
             date: format(new Date(tx.createdAt), 'dd-MMM'), // User requested '01-Jan' format style
-            txId: tx.id, // Keep ID but maybe format in View
+            createdAt: new Date(tx.createdAt), // For receipt generation
+            txId: tx.id,
             description: displayDescription,
             debit,
             credit,
-            runningBalance: toNumber(runningBalance)
+            runningBalance: toNumber(runningBalance),
+            allocation: {
+                principal: tx.principalAmount || 0,
+                interest: tx.interestAmount || 0,
+                penalty: tx.penaltyAmount || 0,
+                fees: tx.feeAmount || 0
+            }
         })
     }
 

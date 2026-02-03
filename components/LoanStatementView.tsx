@@ -1,8 +1,15 @@
 import { getLoanStatement } from '@/app/actions/getLoanStatement'
 import { processTransactions, type StatementRow } from '@/lib/statementProcessor'
 import { formatCurrency } from '@/lib/financialMath'
-import { AlertCircleIcon, FileTextIcon, RotateCcwIcon } from 'lucide-react'
+import { AlertCircleIcon, FileTextIcon, RotateCcwIcon, Download, Printer } from 'lucide-react'
 import { reverseRepayment } from '@/app/actions/loan-reversal-actions'
+import dynamic from 'next/dynamic'
+import { RepaymentReceipt } from '@/components/receipts/RepaymentReceipt'
+
+const PDFDownloadLink = dynamic(
+    () => import('@react-pdf/renderer').then((mod) => mod.PDFDownloadLink),
+    { ssr: false }
+)
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 
@@ -170,8 +177,28 @@ export function LoanStatementView({ loanId, refreshKey }: { loanId: string, refr
                                             {formatCurrency(row.runningBalance)}
                                         </span>
                                     </div>
-                                    {isReversible && (
-                                        <div className="mt-3 flex justify-end">
+                                    <div className="mt-3 flex justify-end gap-2">
+                                        {isCredit && row.allocation && (
+                                            <PDFDownloadLink
+                                                document={
+                                                    <RepaymentReceipt data={{
+                                                        transactionId: row.txId,
+                                                        date: row.createdAt,
+                                                        amount: row.credit!,
+                                                        description: row.description,
+                                                        member: { name: loanData!.member.name, number: loanData!.member.memberNumber.toString() },
+                                                        loan: { number: loanData!.loanApplicationNumber, product: loanData!.loanProduct.name },
+                                                        allocation: row.allocation
+                                                    }} />
+                                                }
+                                                fileName={`Receipt-${row.txId}.pdf`}
+                                                className="text-[10px] font-bold text-cyan-600 bg-cyan-50 hover:bg-cyan-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+                                            >
+                                                <Download className="w-3 h-3" />
+                                                Receipt
+                                            </PDFDownloadLink>
+                                        )}
+                                        {isReversible && (
                                             <button
                                                 onClick={() => handleReverse(row.txId, row.credit!)}
                                                 disabled={reversingId === row.txId}
@@ -180,8 +207,8 @@ export function LoanStatementView({ loanId, refreshKey }: { loanId: string, refr
                                                 {reversingId === row.txId ? <div className="w-3 h-3 border-2 border-red-200 border-t-red-600 rounded-full animate-spin" /> : <RotateCcwIcon className="w-3 h-3" />}
                                                 Reverse
                                             </button>
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
                                 </div>
                             );
                         })}
@@ -256,16 +283,38 @@ export function LoanStatementView({ loanId, refreshKey }: { loanId: string, refr
                                                     {formatCurrency(row.runningBalance)}
                                                 </td>
                                                 <td className="px-4 py-3 text-center">
-                                                    {isReversible && (
-                                                        <button
-                                                            onClick={() => handleReverse(row.txId, row.credit!)}
-                                                            disabled={reversingId === row.txId}
-                                                            className="opacity-0 group-hover:opacity-100 transition-opacity p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
-                                                            title="Reverse Transaction"
-                                                        >
-                                                            {reversingId === row.txId ? <div className="w-4 h-4 border-2 border-red-200 border-t-red-600 rounded-full animate-spin" /> : <RotateCcwIcon className="w-4 h-4" />}
-                                                        </button>
-                                                    )}
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        {row.credit !== null && row.allocation && (
+                                                            <PDFDownloadLink
+                                                                document={
+                                                                    <RepaymentReceipt data={{
+                                                                        transactionId: row.txId,
+                                                                        date: row.createdAt,
+                                                                        amount: row.credit!,
+                                                                        description: row.description,
+                                                                        member: { name: loanData!.member.name, number: loanData!.member.memberNumber.toString() },
+                                                                        loan: { number: loanData!.loanApplicationNumber, product: loanData!.loanProduct.name },
+                                                                        allocation: row.allocation
+                                                                    }} />
+                                                                }
+                                                                fileName={`Receipt-${row.txId}.pdf`}
+                                                                className="opacity-0 group-hover:opacity-100 transition-opacity p-2 text-cyan-500 hover:text-cyan-700 hover:bg-cyan-50 rounded-lg"
+                                                                title="Download Receipt"
+                                                            >
+                                                                <Printer className="w-4 h-4" />
+                                                            </PDFDownloadLink>
+                                                        )}
+                                                        {isReversible && (
+                                                            <button
+                                                                onClick={() => handleReverse(row.txId, row.credit!)}
+                                                                disabled={reversingId === row.txId}
+                                                                className="opacity-0 group-hover:opacity-100 transition-opacity p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                                                                title="Reverse Transaction"
+                                                            >
+                                                                {reversingId === row.txId ? <div className="w-4 h-4 border-2 border-red-200 border-t-red-600 rounded-full animate-spin" /> : <RotateCcwIcon className="w-4 h-4" />}
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </td>
                                             </tr>
                                         )

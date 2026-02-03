@@ -46,7 +46,7 @@ async function getAccountBalance(memberId: string, accountCode: string, normalSi
             ledgerAccount: { code: accountCode },
             ledgerTransaction: {
                 referenceId: memberId, // Linked to Member primarily
-                isReversed: false
+                // isReversed: false
             }
         }
     })
@@ -103,7 +103,7 @@ export async function getMemberStats(memberId: string): Promise<MemberStats | nu
                     ledgerAccount: { code: '1200' }, // Portfolio
                     ledgerTransaction: {
                         referenceId: { in: loanIds },
-                        isReversed: false
+                        // isReversed: false
                     }
                 }
             })
@@ -353,7 +353,7 @@ export async function getDetailedMemberStats(memberId: string): Promise<{ stats:
             ledgerTransaction: {
                 referenceId: memberId,
                 referenceType: { in: ['SHARE_CONTRIBUTION', 'OPENING_BALANCE'] },
-                isReversed: false
+                // isReversed: false
             }
         }
     });
@@ -402,7 +402,7 @@ export async function getContributionHistory(memberId: string) {
         where: {
             referenceId: memberId,
             referenceType: 'SHARE_CONTRIBUTION',
-            isReversed: false
+            // isReversed: false
         },
         orderBy: { transactionDate: 'desc' },
         include: {
@@ -613,7 +613,7 @@ export async function getMemberLedger(memberId: string) {
                 { referenceId: memberId },
                 { referenceId: { in: loanIds } }
             ],
-            isReversed: false
+            // isReversed: false
         },
         include: {
             ledgerEntries: {

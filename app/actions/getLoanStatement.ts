@@ -79,5 +79,12 @@ export async function getLoanStatement(loanId: string) {
     }
   })
 
-  return { ...serializeLoan(loan), walletTransactions: statementTransactions }
+  return {
+    ...serializeLoan(loan),
+    loanProduct: loan.loanProduct ? {
+      ...loan.loanProduct,
+      interestRatePerPeriod: Number(loan.loanProduct.interestRatePerPeriod)
+    } : null,
+    walletTransactions: statementTransactions
+  }
 }

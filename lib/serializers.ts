@@ -33,6 +33,8 @@ export function serializeLoan<T extends Partial<Loan>>(loan: T): T {
         ...loan,
         outstandingBalance: loan.outstandingBalance ? Number(loan.outstandingBalance) : 0,
         amount: loan.amount ? Number(loan.amount) : 0,
+        current_balance: loan.current_balance ? Number(loan.current_balance) : 0, // Legacy support
+        penalties: loan.penalties ? Number(loan.penalties) : 0, // Legacy support
         processingFee: loan.processingFee ? Number(loan.processingFee) : 0,
         insuranceFee: loan.insuranceFee ? Number(loan.insuranceFee) : 0,
         shareCapitalDeduction: loan.shareCapitalDeduction ? Number(loan.shareCapitalDeduction) : 0,

@@ -63,8 +63,12 @@ export function SearchableSelect({
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)]" align="start" sideOffset={8}>
-                <Command className="border-none shadow-none">
+            <PopoverContent
+                className="p-0 w-[var(--radix-popover-trigger-width)] overflow-hidden pointer-events-auto"
+                align="start"
+                sideOffset={8}
+            >
+                <Command className="border-none shadow-none h-auto">
                     <CommandInput placeholder={`Search...`} className="border-none" />
                     <CommandList className="max-h-[300px] overflow-y-auto">
                         <CommandEmpty>{emptyMessage}</CommandEmpty>
@@ -80,7 +84,9 @@ export function SearchableSelect({
                                             setOpen(false)
                                         }, 10)
                                     }}
-                                    className="cursor-pointer"
+                                    // CRITICAL: Prevent focus theft from the search input
+                                    onPointerDown={(e) => e.preventDefault()}
+                                    className="cursor-pointer pointer-events-auto"
                                 >
                                     <Check
                                         className={cn(

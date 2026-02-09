@@ -3,6 +3,13 @@
 import * as React from "react"
 import { useTheme } from "next-themes"
 import { Moon, Sun, Laptop, Shield } from "lucide-react"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Button } from "@/components/ui/button"
 
 export function ThemeToggle() {
     const { theme, setTheme } = useTheme()
@@ -14,49 +21,43 @@ export function ThemeToggle() {
     }, [])
 
     if (!mounted) {
-        return <button className="btn btn-ghost btn-circle loading"></button>
+        return <Button variant="ghost" size="icon" className="loading" disabled />
     }
 
     return (
-        <div className="dropdown dropdown-end">
-            <div tabIndex={0} role="button" className="btn btn-ghost m-1">
-                Theme
-                <svg width="12px" height="12px" className="h-2 w-2 fill-current opacity-60 inline-block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2048 2048"><path d="M1799 349l242 241-1017 1017L7 590l242-241 775 775 775-775z"></path></svg>
-            </div>
-            <ul tabIndex={0} className="dropdown-content z-[1] p-2 shadow-2xl bg-base-300 rounded-box w-52">
-                <li>
-                    <button
-                        className={`btn btn-sm btn-block btn-ghost justify-start ${theme === 'light' ? 'bg-base-content/10' : ''}`}
-                        onClick={() => setTheme("light")}
-                    >
-                        <Sun className="h-4 w-4 mr-2" /> Light
-                    </button>
-                </li>
-                <li>
-                    <button
-                        className={`btn btn-sm btn-block btn-ghost justify-start ${theme === 'dark' ? 'bg-base-content/10' : ''}`}
-                        onClick={() => setTheme("dark")}
-                    >
-                        <Moon className="h-4 w-4 mr-2" /> Dark
-                    </button>
-                </li>
-                <li>
-                    <button
-                        className={`btn btn-sm btn-block btn-ghost justify-start ${theme === 'capital-crew' ? 'bg-base-content/10' : ''}`}
-                        onClick={() => setTheme("capital-crew")}
-                    >
-                        <Shield className="h-4 w-4 mr-2" /> Capital Crew
-                    </button>
-                </li>
-                <li>
-                    <button
-                        className={`btn btn-sm btn-block btn-ghost justify-start ${theme === 'system' ? 'bg-base-content/10' : ''}`}
-                        onClick={() => setTheme("system")}
-                    >
-                        <Laptop className="h-4 w-4 mr-2" /> System
-                    </button>
-                </li>
-            </ul>
-        </div>
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="m-1 font-bold">
+                    Theme
+                    <svg width="12px" height="12px" className="ml-2 h-2 w-2 fill-current opacity-60 inline-block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2048 2048"><path d="M1799 349l242 241-1017 1017L7 590l242-241 775 775 775-775z"></path></svg>
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52 p-2 bg-white/95 backdrop-blur-sm border-slate-200 rounded-2xl shadow-2xl z-[1100]">
+                <DropdownMenuItem
+                    className={`cursor-pointer px-3 py-2 rounded-xl font-bold text-sm transition-all duration-200 ${theme === 'light' ? 'bg-cyan-50 text-cyan-700' : 'hover:bg-slate-50'}`}
+                    onClick={() => setTheme("light")}
+                >
+                    <Sun className="h-4 w-4 mr-2" /> Light
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                    className={`cursor-pointer px-3 py-2 rounded-xl font-bold text-sm transition-all duration-200 ${theme === 'dark' ? 'bg-cyan-50 text-cyan-700' : 'hover:bg-slate-50'}`}
+                    onClick={() => setTheme("dark")}
+                >
+                    <Moon className="h-4 w-4 mr-2" /> Dark
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                    className={`cursor-pointer px-3 py-2 rounded-xl font-bold text-sm transition-all duration-200 ${theme === 'capital-crew' ? 'bg-cyan-50 text-cyan-700' : 'hover:bg-slate-50'}`}
+                    onClick={() => setTheme("capital-crew")}
+                >
+                    <Shield className="h-4 w-4 mr-2" /> Capital Crew
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                    className={`cursor-pointer px-3 py-2 rounded-xl font-bold text-sm transition-all duration-200 ${theme === 'system' ? 'bg-cyan-50 text-cyan-700' : 'hover:bg-slate-50'}`}
+                    onClick={() => setTheme("system")}
+                >
+                    <Laptop className="h-4 w-4 mr-2" /> System
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
     )
 }

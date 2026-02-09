@@ -66,17 +66,18 @@ export function SearchableSelect({
             <PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)]" align="start">
                 <Command>
                     <CommandInput placeholder={`Search...`} />
-                    <CommandList className="max-h-[200px] overflow-y-auto">
+                    <CommandList className="max-h-[300px] overflow-y-auto">
                         <CommandEmpty>{emptyMessage}</CommandEmpty>
                         <CommandGroup>
                             {options.map((option) => (
                                 <CommandItem
                                     key={option.value}
-                                    value={option.label} // Filtering by label is more intuitive for users
+                                    value={option.label}
                                     onSelect={() => {
                                         onChange(option.value === value ? "" : option.value)
                                         setOpen(false)
                                     }}
+                                    className="cursor-pointer pointer-events-auto"
                                 >
                                     <Check
                                         className={cn(

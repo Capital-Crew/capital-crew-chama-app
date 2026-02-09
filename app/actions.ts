@@ -15,7 +15,6 @@ import { generateLoanApplicationNumber, generateRepaymentSchedule } from '../lib
 import { calculateMonthlyInstallment } from '@/lib/loan-calculator'
 import { calculateTopUpDetails, validateNetLoan } from '@/lib/topup-calculator'
 import { EmailService } from '@/lib/services/EmailService'
-import { PdfService } from '@/lib/services/PdfService'
 
 export async function createMember(formData: FormData) {
     const name = formData.get('name') as string
@@ -658,6 +657,7 @@ export async function submitVote(loanId: string, decision: ApprovalStatus, notes
                     })
 
                     if (user?.email && member && fullLoan) {
+                        const { PdfService } = await import('@/lib/services/PdfService')
                         const cardPdf = await PdfService.generateAppraisal(fullLoan, member, fullLoan.loanProduct)
 
                         // Parse schedule from JSON if needed, or pass as is if typed correctly

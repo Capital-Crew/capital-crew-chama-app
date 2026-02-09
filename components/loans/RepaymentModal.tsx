@@ -3,7 +3,12 @@
 import React, { useState, useEffect } from 'react'
 import { CheckCircleIcon, AlertCircleIcon, XIcon, BanknoteIcon, Download, Printer } from 'lucide-react'
 import dynamic from 'next/dynamic'
-import { RepaymentReceipt, type ReceiptData } from '@/components/receipts/RepaymentReceipt'
+import type { ReceiptData } from '@/components/receipts/RepaymentReceipt'
+
+const RepaymentReceipt = dynamic(
+    () => import('@/components/receipts/RepaymentReceipt').then((mod) => mod.RepaymentReceipt),
+    { ssr: false }
+)
 
 const PDFDownloadLink = dynamic(
     () => import('@react-pdf/renderer').then((mod) => mod.PDFDownloadLink),

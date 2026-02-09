@@ -5,8 +5,13 @@ import { Loan, Member, LoanProduct } from '@/lib/types';
 import { PlusCircleIcon } from '@/components/icons';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { getSaccoSettings } from '@/app/sacco-settings-actions';
-import { LoanAppraisalCard } from './LoanAppraisalCard';
 import { LoanStatusBadge } from './LoanStatusBadge';
+import dynamic from 'next/dynamic';
+
+const LoanAppraisalCard = dynamic(() => import('./LoanAppraisalCard').then(mod => mod.LoanAppraisalCard), {
+    ssr: false,
+    loading: () => <div className="p-4 text-center animate-pulse text-slate-400 font-bold uppercase tracking-tighter italic">Initializing Appraisal View...</div>
+});
 import { CreditSnapshot } from '@/lib/utils/credit-limit';
 import { toast } from '@/lib/toast';
 import { MobileDrawer } from './ui/MobileDrawer';
@@ -14,6 +19,8 @@ import { LoanApplicationForm } from './loan/LoanApplicationForm';
 import { DraftsList } from './loans/DraftsList';
 import { startLoanApplication } from '@/app/actions/loan-application-actions';
 import { useRouter } from 'next/navigation';
+import { BarChart3Icon } from 'lucide-react';
+import { LoanReportsModal } from './loans/LoanReportsModal';
 
 interface LoanManagementProps {
     loans: (Loan & { member?: Member })[];
@@ -32,6 +39,7 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedLoanId, setSelectedLoanId] = useState<string | null>(null);
     const [isCreating, setIsCreating] = useState(false);
+    const [isReportsModalOpen, setIsReportsModalOpen] = useState(false);
     const [requiredApprovals, setRequiredApprovals] = useState(3);
 
     useEffect(() => {
@@ -153,14 +161,24 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
                     <h2 className="text-xl md:text-2xl font-black text-slate-900 uppercase italic tracking-tighter">Lending Operations</h2>
                     <p className="text-xs md:text-sm text-slate-500">Manage the complete lifecycle of group loans.</p>
                 </div>
-                <button
-                    onClick={handleNewApplication}
-                    className="bg-cyan-500 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl font-bold shadow-lg hover:bg-cyan-600 transition-all flex items-center gap-2 text-xs md:text-sm"
-                >
-                    <PlusCircleIcon className="w-4 h-4 md:w-5 md:h-5" />
-                    <span className="hidden md:inline">{myDraft ? 'Resume Draft' : 'New Application'}</span>
-                    <span className="md:hidden">{myDraft ? 'Resume' : 'New App'}</span>
-                </button>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => setIsReportsModalOpen(true)}
+                        className="bg-white border-2 border-slate-200 text-slate-700 px-4 md:px-6 py-2 md:py-3 rounded-xl font-bold hover:bg-slate-50 transition-all flex items-center gap-2 text-xs md:text-sm shadow-sm"
+                    >
+                        <BarChart3Icon className="w-4 h-4 md:w-5 md:h-5 text-cyan-500" />
+                        <span className="hidden md:inline">Reports</span>
+                        <span className="md:hidden">Reports</span>
+                    </button>
+                    <button
+                        onClick={handleNewApplication}
+                        className="bg-cyan-500 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl font-bold shadow-lg hover:bg-cyan-600 transition-all flex items-center gap-2 text-xs md:text-sm"
+                    >
+                        <PlusCircleIcon className="w-4 h-4 md:w-5 md:h-5" />
+                        <span className="hidden md:inline">{myDraft ? 'Resume Draft' : 'New Application'}</span>
+                        <span className="md:hidden">{myDraft ? 'Resume' : 'New App'}</span>
+                    </button>
+                </div>
             </div>
 
             {/* Scrollable Tabs */}
@@ -288,6 +306,11 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
                     activeTab={activeTab === 'application' ? 'appraisal' : 'journey'}
                 />
             )}
+
+            <LoanReportsModal
+                isOpen={isReportsModalOpen}
+                onClose={() => setIsReportsModalOpen(false)}
+            />
         </div>
     );
 }

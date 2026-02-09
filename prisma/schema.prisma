@@ -1383,11 +1383,12 @@ model LoanTransaction {
 
   isReversed Boolean @default(false)
 
-  // Specific Allocation (For Audit & Replay)
-  principalAmount Decimal @default(0) @db.Decimal(15, 2)
-  interestAmount  Decimal @default(0) @db.Decimal(15, 2)
-  penaltyAmount   Decimal @default(0) @db.Decimal(15, 2)
-  feeAmount       Decimal @default(0) @db.Decimal(15, 2)
+  // Specific Allocation (Bucket-Based Ledger)
+  principalAmount    Decimal @default(0) @db.Decimal(15, 2)
+  interestAmount     Decimal @default(0) @db.Decimal(15, 2)
+  penaltyAmount      Decimal @default(0) @db.Decimal(15, 2)
+  feeAmount          Decimal @default(0) @db.Decimal(15, 2)
+  overpaymentPortion Decimal @default(0) @db.Decimal(15, 2)
 
   postedAt  DateTime @default(now())
   createdAt DateTime @default(now())
@@ -1396,6 +1397,30 @@ model LoanTransaction {
   @@index([loanId, isReversed])
   @@index([createdAt])
   @@index([postedAt])
+}
+
+model DailySummary {
+  id            String   @id @default(cuid())
+  date          DateTime @unique
+  
+  // Portfolio Snapshots
+  totalPrincipalOutstanding Decimal @db.Decimal(19, 4)
+  totalInterestReceivable   Decimal @db.Decimal(19, 4)
+  totalPenaltyReceivable    Decimal @db.Decimal(19, 4)
+  
+  // Performance
+  disbursementVolume Decimal @db.Decimal(19, 4)
+  repaymentVolume    Decimal @db.Decimal(19, 4)
+  
+  createdAt DateTime @default(now())
+}
+
+model ReportingMapping {
+  id          String   @id @default(cuid())
+  reportLine  String   // e.g. "INTEREST_INCOME", "OFFICE_EXPENSE"
+  accountCode String   // Link to LedgerAccount.code
+  
+  @@unique([reportLine, accountCode])
 }
 
 model RepaymentInstallment {

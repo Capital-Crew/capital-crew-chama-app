@@ -3,6 +3,7 @@
 import prisma from '@/lib/prisma'
 import { auth } from '@/auth'
 import { AccountingEngine } from '@/lib/accounting/AccountingEngine'
+import { AccountingService } from '@/lib/services/AccountingService'
 import { revalidatePath } from 'next/cache'
 import { serializeJournalEntry } from '@/lib/serializers'
 
@@ -489,4 +490,17 @@ export async function updateAccountType(accountId: string, newType: string) {
     } catch (error: any) {
         throw new Error(error.message || "Failed to update account type");
     }
+}
+
+/**
+ * Get Balance Sheet Report
+ */
+export async function getBalanceSheetReport(asOfDate?: Date): Promise<Serialized<any>> {
+    const session = await auth()
+    if (!session?.user?.id) {
+        throw new Error('Unauthorized')
+    }
+
+    const report = await AccountingService.getBalanceSheet(asOfDate || new Date())
+    return serializeFinancials(report)
 }

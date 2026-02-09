@@ -18,6 +18,7 @@ import { LoanService } from '@/services/loan-service'
 import { revalidatePath } from 'next/cache'
 import { db } from '@/lib/db'
 import { serializeLoan } from '@/lib/serializers'
+import { AccountingService } from '@/lib/services/AccountingService'
 
 // ========================================
 // REPAYMENT ACTION
@@ -119,3 +120,23 @@ export async function getLoanDetails(loanId: string): Promise<Serialized<any>> {
 }
 
 
+// ========================================
+// OPERATIONAL METRICS ACTION
+// ========================================
+
+export async function getOperationalMetricsReport(startDate: string, endDate: string): Promise<Serialized<any>> {
+    // 1. Authenticate
+    const session = await auth()
+    if (!session?.user?.id) {
+        throw new Error('Unauthorized')
+    }
+
+    // 2. Call service
+    const metrics = await AccountingService.getOperationalMetrics(
+        new Date(startDate),
+        new Date(endDate)
+    )
+
+    // 3. Serialize
+    return serializeFinancials(metrics)
+}

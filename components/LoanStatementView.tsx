@@ -7,7 +7,11 @@ import { formatCurrency } from '@/lib/financialMath'
 import { AlertCircleIcon, FileTextIcon, RotateCcwIcon, Download, Printer } from 'lucide-react'
 import { reverseRepayment } from '@/app/actions/loan-reversal-actions'
 import dynamic from 'next/dynamic'
-import { RepaymentReceipt } from '@/components/receipts/RepaymentReceipt'
+
+const RepaymentReceipt = dynamic(
+    () => import('@/components/receipts/RepaymentReceipt').then((mod) => mod.RepaymentReceipt),
+    { ssr: false }
+)
 
 const PDFDownloadLink = dynamic(
     () => import('@react-pdf/renderer').then((mod) => mod.PDFDownloadLink),

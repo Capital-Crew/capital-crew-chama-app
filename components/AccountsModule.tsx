@@ -10,7 +10,8 @@ import {
     toggleAccountStatus,
     deleteAccount,
     updateAccountType,
-    getJournalEntryDetails
+    getJournalEntryDetails,
+    getBalanceSheetReport
 } from '@/app/accounts-actions'
 import { FileTextIcon, ListIcon, ScaleIcon, XCircleIcon, SearchIcon, FilterIcon, Settings, RefreshCw, Loader2, Save, ArrowLeftRightIcon, PlusIcon, DollarSign, ArrowRightIcon } from 'lucide-react'
 import {
@@ -52,7 +53,7 @@ import { cn } from '@/lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
 import { fadeIn, scaleIn } from '@/lib/animation-variants'
 
-type Tab = 'coa' | 'journal' | 'trial' | 'ledger' | 'config' | 'expenses' | 'transfers' | 'mpesa'
+type Tab = 'coa' | 'journal' | 'trial' | 'balanceSheet' | 'ledger' | 'config' | 'expenses' | 'transfers' | 'mpesa'
 
 type MappingWithAccount = {
     id: string
@@ -114,6 +115,9 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
     // Transfers State
     const [transfers, setTransfers] = useState<{ pending: any[], history: any[] }>({ pending: [], history: [] })
 
+    // Balance Sheet State
+    const [balanceSheet, setBalanceSheet] = useState<any>(null)
+
     const [isPending, startTransition] = useTransition()
 
     // Fetch user permissions on mount
@@ -167,6 +171,9 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
             } else if (activeTab === 'transfers') {
                 const data = await getTransferRequests()
                 setTransfers(data)
+            } else if (activeTab === 'balanceSheet') {
+                const bs = await getBalanceSheetReport()
+                setBalanceSheet(bs)
             }
         } catch (error: any) {
             setMessage({ type: 'error', text: error.message })
@@ -320,6 +327,7 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                         { id: 'mpesa', label: 'M-Pesa', shortLabel: 'M-Pesa', icon: DollarSign },
                         { id: 'expenses', label: 'Expenses', shortLabel: 'Expenses', icon: FileTextIcon },
                         { id: 'trial', label: 'Trial Balance', shortLabel: 'Trial Bal.', icon: ScaleIcon },
+                        { id: 'balanceSheet', label: 'Balance Sheet', shortLabel: 'B/S', icon: ScaleIcon },
                         ...(userAuth?.role !== 'Member' ? [{ id: 'config', label: 'Ledger Config', shortLabel: 'Config', icon: Settings }] : [])
                     ].map(tab => (
                         <button
@@ -772,6 +780,99 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                         )}
                     </div>
                 )
+            }
+
+            {/* Balance Sheet Tab */}
+            {activeTab === 'balanceSheet' && (
+                <div className="space-y-6">
+                    {loading && !balanceSheet ? (
+                        <div className="p-12 text-center text-slate-400">Loading Balance Sheet...</div>
+                    ) : !balanceSheet ? (
+                        <div className="p-12 text-center text-red-500">Failed to load Balance Sheet.</div>
+                    ) : (
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            {/* Assets */}
+                            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                                <div className="p-6 border-b border-slate-100 bg-blue-50/30">
+                                    <h3 className="text-lg font-black text-blue-900 uppercase tracking-tight">Assets</h3>
+                                </div>
+                                <div className="p-6 space-y-4">
+                                    <div className="flex justify-between items-center py-2 border-b border-slate-50">
+                                        <span className="text-slate-600 font-medium">Gross Loan Portfolio</span>
+                                        <span className="font-mono font-bold text-slate-900">KES {Number(balanceSheet.assets.grossLoanPortfolio).toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-2 border-b border-slate-50">
+                                        <span className="text-slate-600 font-medium italic">Less: Loan Loss Provisions</span>
+                                        <span className="font-mono font-bold text-red-600">({Number(balanceSheet.assets.loanLossProvisions).toLocaleString()})</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-2 bg-slate-50 px-3 rounded-lg">
+                                        <span className="text-slate-900 font-bold">Net Loan Portfolio</span>
+                                        <span className="font-mono font-black text-slate-900">KES {Number(balanceSheet.assets.netLoanPortfolio).toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-2 border-b border-slate-50">
+                                        <span className="text-slate-600 font-medium">Cash & Bank</span>
+                                        <span className="font-mono font-bold text-slate-900">KES {Number(balanceSheet.assets.cashAndBank).toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center pt-6">
+                                        <span className="text-lg font-black text-slate-900 uppercase">Total Assets</span>
+                                        <span className="text-lg font-mono font-black text-blue-600 underline decoration-2 underline-offset-4">
+                                            KES {Number(balanceSheet.assets.totalAssets).toLocaleString()}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-8">
+                                {/* Liabilities */}
+                                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                                    <div className="p-6 border-b border-slate-100 bg-red-50/30">
+                                        <h3 className="text-lg font-black text-red-900 uppercase tracking-tight">Liabilities</h3>
+                                    </div>
+                                    <div className="p-6 space-y-4">
+                                        <div className="flex justify-between items-center py-2 border-b border-slate-50">
+                                            <span className="text-slate-600 font-medium">Member Savings / Shares</span>
+                                            <span className="font-mono font-bold text-slate-900">KES {Number(balanceSheet.liabilities.memberSavings).toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center pt-6">
+                                            <span className="font-black text-slate-900 uppercase">Total Liabilities</span>
+                                            <span className="font-mono font-black text-red-600">KES {Number(balanceSheet.liabilities.totalLiabilities).toLocaleString()}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Equity */}
+                                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                                    <div className="p-6 border-b border-slate-100 bg-purple-50/30">
+                                        <h3 className="text-lg font-black text-purple-900 uppercase tracking-tight">Equity</h3>
+                                    </div>
+                                    <div className="p-6 space-y-4">
+                                        <div className="flex justify-between items-center py-2 border-b border-slate-50">
+                                            <span className="text-slate-600 font-medium">Retained Earnings</span>
+                                            <span className="font-mono font-bold text-slate-900">KES {Number(balanceSheet.equity.retainedEarnings).toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center py-2 border-b border-slate-50">
+                                            <span className="text-slate-600 font-medium text-green-700">Current Year Profit (P&L)</span>
+                                            <span className="font-mono font-bold text-green-600">KES {Number(balanceSheet.equity.currentYearProfit).toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center pt-6">
+                                            <span className="font-black text-slate-900 uppercase">Total Equity</span>
+                                            <span className="font-mono font-black text-purple-600">KES {Number(balanceSheet.equity.totalEquity).toLocaleString()}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Equivalence Check */}
+                                <div className="flex justify-between items-center p-4 bg-slate-900 rounded-2xl text-white shadow-xl shadow-slate-200">
+                                    <span className="text-xs font-black uppercase tracking-widest text-slate-400">Total Liab + Equity</span>
+                                    <span className="text-xl font-mono font-black">
+                                        KES {(Number(balanceSheet.liabilities.totalLiabilities) + Number(balanceSheet.equity.totalEquity)).toLocaleString()}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )
             }
 
             {/* Expenses Tab */}

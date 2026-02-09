@@ -63,9 +63,9 @@ export function SearchableSelect({
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)]" align="start">
-                <Command>
-                    <CommandInput placeholder={`Search...`} />
+            <PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)]" align="start" sideOffset={8}>
+                <Command className="border-none shadow-none">
+                    <CommandInput placeholder={`Search...`} className="border-none" />
                     <CommandList className="max-h-[300px] overflow-y-auto">
                         <CommandEmpty>{emptyMessage}</CommandEmpty>
                         <CommandGroup>
@@ -74,10 +74,13 @@ export function SearchableSelect({
                                     key={option.value}
                                     value={option.label}
                                     onSelect={() => {
-                                        onChange(option.value === value ? "" : option.value)
-                                        setOpen(false)
+                                        // Use a small delay to ensure the select event completes before closing
+                                        setTimeout(() => {
+                                            onChange(option.value === value ? "" : option.value)
+                                            setOpen(false)
+                                        }, 10)
                                     }}
-                                    className="cursor-pointer pointer-events-auto"
+                                    className="cursor-pointer"
                                 >
                                     <Check
                                         className={cn(

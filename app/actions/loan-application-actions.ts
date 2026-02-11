@@ -30,6 +30,19 @@ export async function startLoanApplication(memberId?: string) {
         }
     }
 
+    // STRICT: Check for existing drafts first
+    const existingDraft = await db.loan.findFirst({
+        where: {
+            memberId: targetMemberId,
+            status: { in: ['DRAFT', 'APPLICATION'] }
+        },
+        select: { id: true }
+    })
+
+    if (existingDraft) {
+        return { success: true, loanId: existingDraft.id, message: 'Resumed existing draft' }
+    }
+
     try {
         // Optimized: Get last created loan number (regardless of status)
         const lastLoan = await db.loan.findFirst({

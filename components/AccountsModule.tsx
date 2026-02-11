@@ -26,6 +26,7 @@ import { TransferRequestForm } from '@/components/accounting/TransferRequestForm
 import { TransferList } from '@/components/accounting/TransferList'
 import { getCurrentUserPermissions } from '@/app/actions/user-permissions'
 import { getExpenses, getExpenseCategories } from '@/app/actions/expenses'
+import { getMembers } from '@/app/actions/get-members'
 import { ExpensesTab } from '@/components/accounting/ExpensesTab'
 import { AccountActionsMenu } from '@/components/accounting/AccountActionsMenu'
 import { MpesaLedger } from '@/components/accounting/MpesaLedger'
@@ -112,6 +113,7 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
     // Expenses State
     const [expenses, setExpenses] = useState<any[]>([])
     const [expenseCategories, setExpenseCategories] = useState<any[]>([])
+    const [membersList, setMembersList] = useState<any[]>([])
 
     // Transfers State
     const [transfers, setTransfers] = useState<{ pending: any[], history: any[] }>({ pending: [], history: [] })
@@ -163,14 +165,16 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                 setMappings(mappingsData)
                 setAccounts(accountsData)
             } else if (activeTab === 'expenses') {
-                const [expData, accData, catData] = await Promise.all([
+                const [expData, accData, catData, memData] = await Promise.all([
                     getExpenses(),
                     getStrictGLAccounts(),
-                    getExpenseCategories()
+                    getExpenseCategories(),
+                    getMembers()
                 ])
                 setExpenses(expData)
                 setChartOfAccounts(accData)
                 setExpenseCategories(catData)
+                setMembersList(memData)
             } else if (activeTab === 'transfers') {
                 const data = await getTransferRequests()
                 setTransfers(data)
@@ -885,6 +889,7 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                         expenses={expenses}
                         accounts={chartOfAccounts}
                         categories={expenseCategories}
+                        members={membersList}
                         currentUserId={userAuth?.permissions?.userId || ''}
                         isOfficial={userAuth?.role !== 'Member'}
                         onRefresh={loadData}

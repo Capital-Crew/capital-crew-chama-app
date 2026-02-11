@@ -75,6 +75,24 @@ enum ExpenseCategory {
   MISCELLANEOUS
 }
 
+enum ExpenseType {
+  IMPREST       // Advance given, spend, return change
+  CLAIM         // User spends own money, claims reimbursement
+  OPERATIONAL   // Direct SACCO payment (e.g. rent, utilities)
+}
+
+enum BalanceAction {
+  REFUNDED_TO_SACCO  // User returned surplus after imprest
+  PAID_TO_USER       // SACCO topped up shortfall
+}
+
+enum BatchPaymentStatus {
+  DRAFT
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
 enum IncomeCategory {
   MONTHLY_CONTRIBUTION
   LOAN_REPAYMENT
@@ -146,6 +164,10 @@ enum WalletTransactionType {
   REVERSAL // Reversal transaction
   REFUND // Fee refund
   ADJUSTMENT // Admin adjustment
+  EXPENSE_PAYOUT     // Reimbursement / claim payout
+  IMPREST_ADVANCE    // Advance sent to user
+  IMPREST_REFUND     // Surplus returned by user
+  DIVIDEND_PAYOUT    // Bulk dividend/interest payout
 }
 
 enum LedgerTransactionType {
@@ -315,6 +337,8 @@ enum ReferenceType {
   MIGRATION
   REVERSAL
   WELFARE_DISBURSEMENT
+  EXPENSE_PAYOUT
+  BULK_PAYOUT
 }
 
 // Event Sourcing Enums
@@ -395,6 +419,9 @@ model User {
   // Workflow Relations
   workflowRequests WorkflowRequest[]
   workflowActions  WorkflowAction[]
+
+  // Batch Payouts
+  batchPayments BatchPayment[] @relation("BatchCreator")
 
   auditLogs AuditLog[]
   createdAt DateTime   @default(now())
@@ -488,6 +515,10 @@ model Member {
   // Welfare Relations
   welfareRequisitions WelfareRequisition[] @relation("WelfareRequisitionMember")
   welfareApprovals    WelfareApproval[]    @relation("WelfareApprover")
+
+  // Expense & Payout Relations
+  expensePayouts Expense[]    @relation("ExpenseRecipient")
+  batchItems     BatchItem[]
 
   // Audit Trails
   createdAt DateTime @default(now())
@@ -828,8 +859,11 @@ model ChargeTemplate {
 }
 
 enum ExpenseStatus {
-  PENDING
-  APPROVED
+  DRAFT
+  PENDING_APPROVAL
+  DISBURSED        // Imprest: advance sent to user
+  SURRENDERED      // Imprest: user reported actuals
+  CLOSED           // Fully settled
   REJECTED
 }
 
@@ -837,14 +871,26 @@ model Expense {
   id          String   @id @default(cuid())
   date        DateTime
   description String
-  amount      Decimal  @db.Decimal(19, 4)
 
-  // requester
+  // Expense Type
+  type ExpenseType @default(OPERATIONAL)
+
+  // Amounts
+  requestedAmount Decimal  @db.Decimal(19, 4) // What was originally asked for
+  approvedAmount  Decimal? @db.Decimal(19, 4) // What admin actually approved/disbursed
+  actualAmount    Decimal? @db.Decimal(19, 4) // What was actually spent (filled during surrender)
+  amount          Decimal  @db.Decimal(19, 4) // Legacy / display amount
+
+  // Requester
   requesterId String
   requester   User   @relation("ExpenseRequester", fields: [requesterId], references: [id])
 
+  // Recipient — the member who receives the payout (optional)
+  recipientId String?
+  recipient   Member? @relation("ExpenseRecipient", fields: [recipientId], references: [id])
+
   // Status
-  status ExpenseStatus @default(PENDING)
+  status ExpenseStatus @default(PENDING_APPROVAL)
 
   // Approvals
   approvals ExpenseApproval[]
@@ -855,9 +901,13 @@ model Expense {
 
   receiptUrl String?
 
+  // Surrender / Settlement
+  surrenderDate DateTime?
+  balanceAction BalanceAction?
+
   category ExpenseCategory? // Legacy, kept for backward compatibility
 
-  // NEW: Relational category (replaces enum)
+  // Relational category
   subCategoryId String?
   subCategory   ExpenseSubCategory? @relation(fields: [subCategoryId], references: [id])
 
@@ -867,6 +917,7 @@ model Expense {
   @@index([requesterId])
   @@index([expenseAccountId])
   @@index([subCategoryId])
+  @@index([recipientId])
 }
 
 // ========================================
@@ -904,6 +955,50 @@ model ExpenseSubCategory {
   updatedAt DateTime @updatedAt
 
   @@index([groupId])
+}
+
+// ========================================
+// BATCH PAYMENTS (Dividends, Interest)
+// ========================================
+
+model BatchPayment {
+  id          String             @id @default(cuid())
+  title       String             // e.g. "Dec 2025 Dividends"
+  description String?
+  totalAmount Decimal            @db.Decimal(19, 4)
+  status      BatchPaymentStatus @default(DRAFT)
+  type        String             // "DIVIDEND" | "INTEREST" | "BONUS"
+
+  createdById String
+  createdBy   User               @relation("BatchCreator", fields: [createdById], references: [id])
+
+  items       BatchItem[]
+
+  journalEntryId String?         // Link to accounting JE
+
+  processedAt DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+}
+
+model BatchItem {
+  id          String       @id @default(cuid())
+  batchId     String
+  batch       BatchPayment @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  memberId    String
+  member      Member       @relation(fields: [memberId], references: [id])
+
+  amount      Decimal      @db.Decimal(19, 4)
+  status      String       @default("PENDING") // PENDING | PAID | FAILED
+
+  walletTransactionId String?  // Reference to the wallet credit
+
+  error       String?           // Error message if failed
+  createdAt   DateTime          @default(now())
+
+  @@index([batchId])
+  @@index([memberId])
 }
 
 // ========================================

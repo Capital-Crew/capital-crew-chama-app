@@ -222,7 +222,7 @@ export function ExpensesTab({ expenses, accounts, categories, members, currentUs
                             Bulk Payout
                         </Button>
                     )}
-                    <Button onClick={() => setIsCreateOpen(true)} className="gap-2">
+                    <Button onClick={() => setIsCreateOpen(true)} className="gap-2 bg-blue-600 hover:bg-blue-700 text-white">
                         <Plus className="w-4 h-4" />
                         New Request
                     </Button>
@@ -290,7 +290,7 @@ export function ExpensesTab({ expenses, accounts, categories, members, currentUs
                                             </Button>
                                         )}
                                         {expense.status === 'PENDING_APPROVAL' && isOfficial && (
-                                            <Button size="sm" onClick={() => handleApprove(expense)} disabled={isPending}>
+                                            <Button size="sm" onClick={() => handleApprove(expense)} disabled={isPending} className="bg-green-600 hover:bg-green-700 text-white">
                                                 {isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Approve"}
                                             </Button>
                                         )}
@@ -419,7 +419,7 @@ export function ExpensesTab({ expenses, accounts, categories, members, currentUs
                     </div>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
-                        <Button onClick={handleCreate} disabled={isPending}>
+                        <Button onClick={handleCreate} disabled={isPending} className="bg-blue-600 hover:bg-blue-700 text-white">
                             {isPending && <Loader2 className="mr-2 w-4 h-4 animate-spin" />}
                             Create Request
                         </Button>
@@ -466,7 +466,7 @@ export function ExpensesTab({ expenses, accounts, categories, members, currentUs
                     </div>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setSurrenderOpen(false)}>Cancel</Button>
-                        <Button onClick={handleSurrender} disabled={isPending}>
+                        <Button onClick={handleSurrender} disabled={isPending} className="bg-purple-600 hover:bg-purple-700 text-white">
                             {isPending && <Loader2 className="mr-2 w-4 h-4 animate-spin" />}
                             Submit Surrender
                         </Button>
@@ -554,7 +554,7 @@ export function ExpensesTab({ expenses, accounts, categories, members, currentUs
                     </div>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setIsBulkOpen(false)}>Cancel</Button>
-                        <Button onClick={handleBulkPayout} disabled={isPending || !bulkData.amountPerMember}>
+                        <Button onClick={handleBulkPayout} disabled={isPending || !bulkData.amountPerMember} className="bg-indigo-600 hover:bg-indigo-700 text-white">
                             {isPending && <Loader2 className="mr-2 w-4 h-4 animate-spin" />}
                             Process Payout
                         </Button>

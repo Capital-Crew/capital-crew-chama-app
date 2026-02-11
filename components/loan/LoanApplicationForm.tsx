@@ -31,6 +31,8 @@ interface LoanApplicationFormProps {
     draftData?: any; // Auto-saved draft data
     onSuccess?: () => void;
     onCancel?: () => void;
+    canEditDetails?: boolean;
+    canEditExemptions?: boolean;
 }
 
 export function LoanApplicationForm({
@@ -42,6 +44,8 @@ export function LoanApplicationForm({
     draftData, // Auto-saved draft
     onSuccess,
     onCancel,
+    canEditDetails = true, // Default to true if not provided (e.g. new application)
+    canEditExemptions = false,
 }: LoanApplicationFormProps) {
     const router = useRouter() // Ensure next/navigation is imported
 
@@ -277,8 +281,8 @@ export function LoanApplicationForm({
                             type="submit"
                             name="submitAction"
                             value="send"
-                            disabled={isSubmitting}
-                            className="bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200"
+                            disabled={isSubmitting || !canEditDetails} // Disable Send if only allowed to edit exemptions
+                            className="bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isSubmitting ? (
                                 <>
@@ -324,7 +328,7 @@ export function LoanApplicationForm({
                         {...register('memberId')}
                         value={watchedMemberId || currentMemberId || ''}
                         onChange={(e) => setValue('memberId', e.target.value)}
-                        disabled={!!currentMemberId}
+                        disabled={!!currentMemberId || !canEditDetails}
                         className="w-full bg-white border-2 border-slate-300 rounded-xl px-4 py-3 text-sm font-bold focus:border-cyan-500 outline-none disabled:bg-slate-50 disabled:cursor-not-allowed"
                     >
                         <option value="">Select Member...</option>
@@ -346,7 +350,8 @@ export function LoanApplicationForm({
                         <label className="block text-xs font-black text-slate-700 uppercase">Loan Product <span className="text-red-500">*</span></label>
                         <select
                             {...register('loanProductId', { required: false })}
-                            className="w-full bg-white border-2 border-slate-300 rounded-xl px-4 py-3 text-sm font-bold focus:border-cyan-500 outline-none"
+                            disabled={!canEditDetails}
+                            className="w-full bg-white border-2 border-slate-300 rounded-xl px-4 py-3 text-sm font-bold focus:border-cyan-500 outline-none disabled:bg-slate-50 disabled:cursor-not-allowed"
                         >
                             <option value="">Select Product...</option>
                             {products.filter(p => p.isActive).map(p => (
@@ -366,7 +371,8 @@ export function LoanApplicationForm({
                             {...register('amount', { required: false })}
                             type="number"
                             placeholder="Enter amount"
-                            className="w-full bg-white border-2 border-slate-300 rounded-xl px-4 py-3 text-sm font-bold focus:border-cyan-500 outline-none"
+                            readOnly={!canEditDetails}
+                            className="w-full bg-white border-2 border-slate-300 rounded-xl px-4 py-3 text-sm font-bold focus:border-cyan-500 outline-none read-only:bg-slate-50 read-only:cursor-not-allowed"
                         />
                         {errors.amount && (
                             <p className="text-red-600 text-xs font-semibold mt-1">{errors.amount.message}</p>
@@ -389,7 +395,8 @@ export function LoanApplicationForm({
                             min: 1,
                             max: selectedProduct?.numberOfRepayments || 12
                         })}
-                        className="w-full bg-white border-2 border-slate-300 rounded-xl px-4 py-3 text-sm font-bold focus:border-cyan-500 outline-none"
+                        disabled={!canEditDetails}
+                        className="w-full bg-white border-2 border-slate-300 rounded-xl px-4 py-3 text-sm font-bold focus:border-cyan-500 outline-none disabled:bg-slate-50 disabled:cursor-not-allowed"
                     >
                         {Array.from({ length: selectedProduct?.numberOfRepayments || 12 }, (_, i) => i + 1).map(month => (
                             <option key={month} value={month}>
@@ -409,28 +416,33 @@ export function LoanApplicationForm({
                 <LoanOffsetSelector
                     memberId={watchedMemberId}
                     onSelectionChange={setSelectedLoansToOffset}
+                    disabled={!canEditDetails} // Pass disabled prop if supported
                 />
             </div>
 
             {/* Hidden inputs for selected loans to offset */}
-            {selectedLoansToOffset.map(loanId => (
-                <input key={loanId} type="hidden" name="loansToOffset" value={loanId} />
-            ))}
+            {
+                selectedLoansToOffset.map(loanId => (
+                    <input key={loanId} type="hidden" name="loansToOffset" value={loanId} />
+                ))
+            }
 
             {/* SECTION 2: QUALIFICATION DETAILS */}
-            {creditSnapshot && (
-                <div className="space-y-4">
-                    <h3 className="text-sm font-black text-slate-700 uppercase tracking-wider border-b-2 border-cyan-500 pb-2">
-                        2. Qualification Details
-                    </h3>
-                    <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm">
-                        <header className="bg-slate-50 px-4 py-2 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase">
-                            Borrowing Power Baseline
-                        </header>
-                        <MemberCreditSnapshot data={creditSnapshot} />
+            {
+                creditSnapshot && (
+                    <div className="space-y-4">
+                        <h3 className="text-sm font-black text-slate-700 uppercase tracking-wider border-b-2 border-cyan-500 pb-2">
+                            2. Qualification Details
+                        </h3>
+                        <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm">
+                            <header className="bg-slate-50 px-4 py-2 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase">
+                                Borrowing Power Baseline
+                            </header>
+                            <MemberCreditSnapshot data={creditSnapshot} />
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* SECTION 2.5: LOAN EXEMPTIONS */}
             <div className="space-y-4">
@@ -442,14 +454,17 @@ export function LoanApplicationForm({
                     exemptions={feeExemptions}
                     isOwnLoan={currentMemberId === watchedMemberId}
                     loanStatus={initialData?.status}
-                    isEditable={!initialData ? true : initialData.status === 'APPLICATION'}
+                    loanStatus={initialData?.status}
+                    isEditable={canEditExemptions}
                     onChange={setFeeExemptions}
                 />
             </div>
             {/* Hidden inputs for exemptions */}
-            {Object.entries(feeExemptions).map(([key, value]) => (
-                <input key={key} type="hidden" name={`exemptions[${key}]`} value={String(value)} />
-            ))}
+            {
+                Object.entries(feeExemptions).map(([key, value]) => (
+                    <input key={key} type="hidden" name={`exemptions[${key}]`} value={String(value)} />
+                ))
+            }
             <input type="hidden" name="feeExemptions" value={JSON.stringify(feeExemptions)} />
 
             {/* SECTION 3 & 4: DEDUCTIONS & NET DISBURSEMENT */}
@@ -593,6 +608,6 @@ export function LoanApplicationForm({
             </div>
 
             {/* Bottom Buttons Removed - Moved to Top Toolbar */}
-        </form>
+        </form >
     );
 }

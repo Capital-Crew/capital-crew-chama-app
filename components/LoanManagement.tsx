@@ -215,17 +215,62 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
                 </div>
             </div>
 
-            {/* DRAFTS SECTION - Moved below tabs */}
+            {/* DRAFTS SECTION - Separated for Admin/Chairperson */}
             {activeTab === 'application' && (
-                <div className="mb-6">
-                    <DraftsList drafts={drafts.map(d => ({
-                        id: d.id,
-                        loanApplicationNumber: d.loanApplicationNumber,
-                        amount: d.amount ? Number(d.amount) : 0,
-                        createdAt: d.applicationDate || d.createdAt,
-                        member: members.find(m => m.id === d.memberId),
-                        status: d.status
-                    }))} />
+                <div className="mb-6 space-y-8">
+                    {/* MY DRAFTS */}
+                    {(() => {
+                        const myDrafts = drafts.filter(d => d.memberId === currentMemberId);
+                        if (myDrafts.length > 0) {
+                            return (
+                                <div>
+                                    <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest mb-4 border-b border-slate-200 pb-2">
+                                        My Applications (Drafts)
+                                    </h3>
+                                    <DraftsList drafts={myDrafts.map(d => ({
+                                        id: d.id,
+                                        loanApplicationNumber: d.loanApplicationNumber,
+                                        amount: d.amount ? Number(d.amount) : 0,
+                                        createdAt: d.applicationDate || d.createdAt,
+                                        updatedAt: d.updatedAt,
+                                        member: members.find(m => m.id === d.memberId),
+                                        status: d.status
+                                    }))} />
+                                </div>
+                            );
+                        }
+                        return null;
+                    })()}
+
+                    {/* MEMBER DRAFTS (Admin/Chair only) */}
+                    {(() => {
+                        const isAdmin = ['SYSTEM_ADMIN', 'CHAIRPERSON'].includes(userRole);
+                        if (isAdmin) {
+                            const otherDrafts = drafts.filter(d => d.memberId !== currentMemberId);
+                            if (otherDrafts.length > 0) {
+                                return (
+                                    <div>
+                                        <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest mb-4 border-b border-slate-200 pb-2">
+                                            Member Applications (Review Exemptions)
+                                        </h3>
+                                        <DraftsList drafts={otherDrafts.map(d => ({
+                                            id: d.id,
+                                            loanApplicationNumber: d.loanApplicationNumber,
+                                            amount: d.amount ? Number(d.amount) : 0,
+                                            createdAt: d.applicationDate || d.createdAt,
+                                            updatedAt: d.updatedAt,
+                                            member: members.find(m => m.id === d.memberId),
+                                            status: d.status
+                                        }))} />
+                                    </div>
+                                );
+                            }
+                        }
+                        return null;
+                    })()}
+
+                    {/* Fallback for regular members if they have no drafts but filter returned them (should be covered by myDrafts above) */}
+                    {/* The original code just rendered all filtered drafts. Now strictly separated. */}
                 </div>
             )}
 

@@ -96,22 +96,38 @@ export async function updateLoanDraft(loanId: string, data: any) {
 
     // Strict ownership check: Only the loan owner or admins can update
     const isOwner = loan.member.userId === session.user.id
-    const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN'
+    const isAdmin = ['SYSTEM_ADMIN', 'CHAIRPERSON'].includes(user?.role || '')
 
     if (!isOwner && !isAdmin) {
-        throw new Error('You can only update your own loan applications')
+        throw new Error('Unauthorized: You can only update your own loan applications')
     }
 
-    await db.loan.update({
-        where: { id: loanId },
-        data: {
-            ...data,
-            // Prevent status change via this action? 
-            // Or allow if data includes it? 
-            // Safer to strictly update valid draft fields.
-            updatedAt: new Date()
+    // Admin/Chairperson Restriction: Can ONLY edit exemptions if not the owner
+    let updateData = data
+    if (isAdmin && !isOwner) {
+        // Filter data to ONLY allow feeExemptions
+        // We assume 'data' might contain other fields from the form auto-save
+        // We strictly pick only 'feeExemptions'
+        if (!data.feeExemptions) {
+            // If they tried to edit something else, we technically should block it, 
+            // but auto-save might send everything. We just ignore non-exemption fields.
+            // If ONLY non-exemption fields were sent, we do nothing or throw?
+            // Let's safe-guard by only picking feeExemptions.
+            updateData = {}
+        } else {
+            updateData = { feeExemptions: data.feeExemptions }
         }
-    })
+    }
+
+    if (Object.keys(updateData).length > 0) {
+        await db.loan.update({
+            where: { id: loanId },
+            data: {
+                ...updateData,
+                updatedAt: new Date()
+            }
+        })
+    }
 
     return { success: true }
 }

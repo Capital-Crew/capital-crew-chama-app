@@ -36,11 +36,14 @@ export default async function LoanDraftPage({ params }: PageProps) {
     })
 
     const isOwner = loan.memberId === user?.memberId
-    const isAdmin = ['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER', 'SECRETARY'].includes(user?.role || '')
+    const isAdmin = ['SYSTEM_ADMIN', 'CHAIRPERSON'].includes(user?.role || '')
 
     if (!isOwner && !isAdmin) {
         return redirect("/dashboard?error=Unauthorized")
     }
+
+    const canEditDetails = isOwner
+    const canEditExemptions = isOwner || isAdmin
 
     // Check Status - Redirect if not Draft/Application
     // Actually, maybe we want to view it in read-only if pending? 
@@ -117,6 +120,8 @@ export default async function LoanDraftPage({ params }: PageProps) {
                     currentMemberId={loan.memberId}
                     creditSnapshot={creditSnapshot}
                     initialData={serializedLoan as any}
+                    canEditDetails={canEditDetails}
+                    canEditExemptions={canEditExemptions}
                 />
             </div>
         </div>

@@ -24,6 +24,7 @@ export async function createExpenseRequest(data: {
     amount: number
     date: Date
     expenseAccountId: string
+    subCategoryId?: string
     receiptUrl?: string
 }): Promise<Serialized<any>> {
     const session = await auth()
@@ -36,6 +37,7 @@ export async function createExpenseRequest(data: {
                 amount: data.amount,
                 date: data.date,
                 expenseAccountId: data.expenseAccountId,
+                subCategoryId: data.subCategoryId || null,
                 receiptUrl: data.receiptUrl,
                 status: ExpenseStatus.PENDING,
                 requesterId: session.user.id!
@@ -162,6 +164,24 @@ export async function getExpenses(): Promise<Serialized<any>> {
         orderBy: { createdAt: 'desc' }
     })
     return serializeFinancials(expenses)
+}
+
+/**
+ * Get Expense Categories (Groups + SubCategories) for dropdowns
+ */
+export async function getExpenseCategories() {
+    const groups = await prisma.expenseCategoryGroup.findMany({
+        where: { isActive: true },
+        include: {
+            subCategories: {
+                where: { isActive: true },
+                orderBy: { sortOrder: 'asc' },
+                select: { id: true, name: true, slug: true }
+            }
+        },
+        orderBy: { sortOrder: 'asc' }
+    })
+    return groups
 }
 
 // Helper to resolve the credit account

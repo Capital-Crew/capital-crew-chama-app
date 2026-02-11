@@ -25,7 +25,7 @@ import { getTransferRequests } from '@/app/actions/transfer-actions'
 import { TransferRequestForm } from '@/components/accounting/TransferRequestForm'
 import { TransferList } from '@/components/accounting/TransferList'
 import { getCurrentUserPermissions } from '@/app/actions/user-permissions'
-import { getExpenses } from '@/app/actions/expenses'
+import { getExpenses, getExpenseCategories } from '@/app/actions/expenses'
 import { ExpensesTab } from '@/components/accounting/ExpensesTab'
 import { AccountActionsMenu } from '@/components/accounting/AccountActionsMenu'
 import { MpesaLedger } from '@/components/accounting/MpesaLedger'
@@ -111,6 +111,7 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
 
     // Expenses State
     const [expenses, setExpenses] = useState<any[]>([])
+    const [expenseCategories, setExpenseCategories] = useState<any[]>([])
 
     // Transfers State
     const [transfers, setTransfers] = useState<{ pending: any[], history: any[] }>({ pending: [], history: [] })
@@ -162,12 +163,14 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                 setMappings(mappingsData)
                 setAccounts(accountsData)
             } else if (activeTab === 'expenses') {
-                const [expData, accData] = await Promise.all([
+                const [expData, accData, catData] = await Promise.all([
                     getExpenses(),
-                    getStrictGLAccounts() // Also use strict accounts for expenses dropdown
+                    getStrictGLAccounts(),
+                    getExpenseCategories()
                 ])
                 setExpenses(expData)
-                setChartOfAccounts(accData) // Re-use this for the dropdown
+                setChartOfAccounts(accData)
+                setExpenseCategories(catData)
             } else if (activeTab === 'transfers') {
                 const data = await getTransferRequests()
                 setTransfers(data)
@@ -881,7 +884,8 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                     <ExpensesTab
                         expenses={expenses}
                         accounts={chartOfAccounts}
-                        currentUserId={userAuth?.permissions?.userId || ''} // We might need to fetch ID specifically if not in permissions object
+                        categories={expenseCategories}
+                        currentUserId={userAuth?.permissions?.userId || ''}
                         isOfficial={userAuth?.role !== 'Member'}
                         onRefresh={loadData}
                     />

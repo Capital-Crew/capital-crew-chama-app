@@ -29,12 +29,13 @@ import { cn } from '@/lib/utils'
 type ExpenseTabProps = {
     expenses: any[]
     accounts: any[] // Chart of Accounts
+    categories: any[] // ExpenseCategoryGroup[] with nested subCategories
     currentUserId: string
     isOfficial: boolean
     onRefresh: () => void
 }
 
-export function ExpensesTab({ expenses, accounts, currentUserId, isOfficial, onRefresh }: ExpenseTabProps) {
+export function ExpensesTab({ expenses, accounts, categories, currentUserId, isOfficial, onRefresh }: ExpenseTabProps) {
     const [isPending, startTransition] = useTransition()
     const [isCreateOpen, setIsCreateOpen] = useState(false)
     const [activeTab, setActiveTab] = useState<'pending' | 'approved'>('pending')
@@ -45,6 +46,7 @@ export function ExpensesTab({ expenses, accounts, currentUserId, isOfficial, onR
         description: '',
         amount: '',
         expenseAccountId: '',
+        subCategoryId: '',
         date: new Date()
     })
 
@@ -64,13 +66,14 @@ export function ExpensesTab({ expenses, accounts, currentUserId, isOfficial, onR
                 description: formData.description,
                 amount: parseFloat(formData.amount),
                 date: formData.date,
-                expenseAccountId: formData.expenseAccountId
+                expenseAccountId: formData.expenseAccountId,
+                subCategoryId: formData.subCategoryId || undefined
             })
 
             if (result.success) {
                 toast.success("Expense requested successfully")
                 setIsCreateOpen(false)
-                setFormData({ description: '', amount: '', expenseAccountId: '', date: new Date() })
+                setFormData({ description: '', amount: '', expenseAccountId: '', subCategoryId: '', date: new Date() })
                 onRefresh()
             } else {
                 toast.error(result.error || "Failed to create request")
@@ -171,6 +174,23 @@ export function ExpensesTab({ expenses, accounts, currentUserId, isOfficial, onR
                                         ))}
                                     </SelectContent>
                                 </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Expense Category</Label>
+                                <select
+                                    value={formData.subCategoryId}
+                                    onChange={e => setFormData({ ...formData, subCategoryId: e.target.value })}
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                >
+                                    <option value="">Select category (optional)</option>
+                                    {categories.map(group => (
+                                        <optgroup key={group.id} label={group.name}>
+                                            {group.subCategories?.map((sub: any) => (
+                                                <option key={sub.id} value={sub.id}>{sub.name}</option>
+                                            ))}
+                                        </optgroup>
+                                    ))}
+                                </select>
                             </div>
                             <Button className="w-full mt-4" onClick={handleCreate} disabled={isPending}>
                                 {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Submit Request"}

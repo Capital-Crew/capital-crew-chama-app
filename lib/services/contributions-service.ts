@@ -20,6 +20,12 @@ export class ContributionsService {
             const settings = await tx.saccoSettings.findFirst();
             const monthlyRate = Number(settings?.monthlyContributionAmount || 2000);
 
+            // Safety check to prevent infinite loops
+            if (monthlyRate <= 0) {
+                console.warn(`[ContributionsService] monthlyRate is ${monthlyRate}. Defaulting to 1 to prevent infinite loop.`);
+            }
+            const safeMonthlyRate = monthlyRate > 0 ? monthlyRate : 1;
+
             const wallet = await tx.wallet.findUnique({
                 where: { id: walletId },
                 include: { glAccount: true }
@@ -84,24 +90,31 @@ export class ContributionsService {
                     nextMonthDate = startOfMonth(new Date());
                 }
 
+                const trackersToCreate = [];
                 while (remainingAmount > 0) {
-                    const payment = Math.min(remainingAmount, monthlyRate);
+                    const payment = Math.min(remainingAmount, safeMonthlyRate);
 
-                    // Create new tracker
-                    await tx.monthlyTracker.create({
-                        data: {
-                            memberId,
-                            month: nextMonthDate,
-                            year: nextMonthDate.getFullYear(),
-                            required: monthlyRate,
-                            paid: payment,
-                            balance: monthlyRate - payment,
-                            status: payment >= monthlyRate ? 'PAID' : 'PARTIAL'
-                        }
+                    trackersToCreate.push({
+                        memberId,
+                        month: nextMonthDate,
+                        year: nextMonthDate.getFullYear(),
+                        required: safeMonthlyRate,
+                        paid: payment,
+                        balance: safeMonthlyRate - payment,
+                        status: (payment >= safeMonthlyRate ? 'PAID' : 'PARTIAL') as any
                     });
 
                     remainingAmount -= payment;
                     nextMonthDate = addMonths(nextMonthDate, 1);
+
+                    // Circuit breaker: Prevent runaway loops (e.g. 10 years of prepayments is plenty)
+                    if (trackersToCreate.length > 120) break;
+                }
+
+                if (trackersToCreate.length > 0) {
+                    await tx.monthlyTracker.createMany({
+                        data: trackersToCreate
+                    });
                 }
             }
 

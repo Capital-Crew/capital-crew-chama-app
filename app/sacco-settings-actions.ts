@@ -61,8 +61,8 @@ export async function updateSaccoSettings(formData: FormData) {
     const latePaymentPenalty = parseFloat(formData.get('latePaymentPenalty') as string) || 200
 
     // Validate inputs
-    if (loanMultiplier < 0 || processingFeePercent < 0 || insuranceFeePercent < 0 || shareCapitalBoost < 0 || penaltyRate < 0 || rescheduleFeePercent < 0 || refinanceFeePercentage < 0 || welfareMonthlyContribution < 0 || welfareCurrentBalance < 0 || monthlyContributionAmount < 0 || latePaymentPenalty < 0) {
-        throw new Error('All values must be non-negative')
+    if (loanMultiplier < 0 || processingFeePercent < 0 || insuranceFeePercent < 0 || shareCapitalBoost < 0 || penaltyRate < 0 || rescheduleFeePercent < 0 || refinanceFeePercentage < 0 || welfareMonthlyContribution < 0 || welfareCurrentBalance < 0 || monthlyContributionAmount < 1 || latePaymentPenalty < 0) {
+        throw new Error('All values must be non-negative, and monthly contribution must be at least 1')
     }
 
     if (requiredApprovals < 1 || requiredApprovals > 10 || requiredApprovalsReschedule < 1 || requiredApprovalsReschedule > 10 || requiredWelfareApprovals < 1 || requiredWelfareApprovals > 10) {

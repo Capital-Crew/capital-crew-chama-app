@@ -240,16 +240,16 @@ export class PaymentGateway {
                 }
 
                 newDestinationBalance = updatedBalance.toNumber();
+            }
 
-
-                return {
-                    walletTransactionId: walletTransaction.id,
-                    newWalletBalance: newWalletBalance.toNumber(),
-                    allocation,
-                    journalEntryNumber,
-                    newDestinationBalance
-                };
-            });
+            return {
+                walletTransactionId: walletTransaction.id,
+                newWalletBalance: newWalletBalance.toNumber(),
+                allocation,
+                journalEntryNumber,
+                newDestinationBalance
+            };
+        });
 
         // ========================================
         // RETURN RESULT

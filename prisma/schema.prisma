@@ -855,13 +855,55 @@ model Expense {
 
   receiptUrl String?
 
-  category ExpenseCategory? // Legacy, make optional or deprecate
+  category ExpenseCategory? // Legacy, kept for backward compatibility
+
+  // NEW: Relational category (replaces enum)
+  subCategoryId String?
+  subCategory   ExpenseSubCategory? @relation(fields: [subCategoryId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([requesterId])
   @@index([expenseAccountId])
+  @@index([subCategoryId])
+}
+
+// ========================================
+// EXPENSE CATEGORY HIERARCHY
+// ========================================
+
+model ExpenseCategoryGroup {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique  // URL-safe key, e.g. "member-returns"
+  description String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+
+  subCategories ExpenseSubCategory[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ExpenseSubCategory {
+  id       String   @id @default(cuid())
+  name     String
+  slug     String   @unique  // URL-safe key, e.g. "dividend-payments"
+  description String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+
+  groupId  String
+  group    ExpenseCategoryGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  expenses Expense[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([groupId])
 }
 
 // ========================================

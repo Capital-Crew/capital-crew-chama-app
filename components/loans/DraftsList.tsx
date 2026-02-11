@@ -21,7 +21,7 @@ interface Draft {
     } | null
 }
 
-export function DraftsList({ drafts }: { drafts: Draft[] }) {
+export function DraftsList({ drafts, title }: { drafts: Draft[], title?: string }) {
     const router = useRouter()
     const [deletingId, setDeletingId] = useState<string | null>(null)
 
@@ -46,9 +46,11 @@ export function DraftsList({ drafts }: { drafts: Draft[] }) {
 
     return (
         <div className="space-y-4 mb-8">
-            <h3 className="text-sm font-black text-slate-500 uppercase tracking-wider px-1">
-                Active Drafts ({drafts.length})
-            </h3>
+            {title && (
+                <h3 className="text-sm font-black text-slate-500 uppercase tracking-wider px-1">
+                    {title} ({drafts.length})
+                </h3>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {drafts.map((draft) => (

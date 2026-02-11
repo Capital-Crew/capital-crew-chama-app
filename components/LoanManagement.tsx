@@ -223,11 +223,9 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
                         const myDrafts = drafts.filter(d => d.memberId === currentMemberId);
                         if (myDrafts.length > 0) {
                             return (
-                                <div>
-                                    <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest mb-4 border-b border-slate-200 pb-2">
-                                        My Applications (Drafts)
-                                    </h3>
-                                    <DraftsList drafts={myDrafts.map(d => ({
+                                <DraftsList
+                                    title="My Applications (Drafts)"
+                                    drafts={myDrafts.map(d => ({
                                         id: d.id,
                                         loanApplicationNumber: d.loanApplicationNumber,
                                         amount: d.amount ? Number(d.amount) : 0,
@@ -235,8 +233,8 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
                                         updatedAt: d.updatedAt,
                                         member: members.find(m => m.id === d.memberId),
                                         status: d.status
-                                    }))} />
-                                </div>
+                                    }))}
+                                />
                             );
                         }
                         return null;
@@ -249,20 +247,18 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
                             const otherDrafts = drafts.filter(d => d.memberId !== currentMemberId);
                             if (otherDrafts.length > 0) {
                                 return (
-                                    <div>
-                                        <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest mb-4 border-b border-slate-200 pb-2">
-                                            Member Applications (Review Exemptions)
-                                        </h3>
-                                        <DraftsList drafts={otherDrafts.map(d => ({
+                                    <DraftsList
+                                        title="Member Applications (Review Exemptions)"
+                                        drafts={otherDrafts.map(d => ({
                                             id: d.id,
                                             loanApplicationNumber: d.loanApplicationNumber,
                                             amount: d.amount ? Number(d.amount) : 0,
                                             createdAt: d.applicationDate || d.createdAt,
-                                            updatedAt: d.updatedAt,
+                                            updatedAt: d.updatedAt, // Fix missing property here too if needed
                                             member: members.find(m => m.id === d.memberId),
                                             status: d.status
-                                        }))} />
-                                    </div>
+                                        }))}
+                                    />
                                 );
                             }
                         }

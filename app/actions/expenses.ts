@@ -155,9 +155,9 @@ export async function finalizeExpense(expenseId: string, tx: any) {
 export async function getExpenses(): Promise<Serialized<any>> {
     const expenses = await prisma.expense.findMany({
         include: {
-            requester: { select: { name: true, role: true } },
+            requester: { select: { id: true, name: true, role: true } },
             expenseAccount: { select: { name: true, code: true } },
-            // approvals: { include: { user: { select: { name: true } } } } // Legacy
+            approvals: { include: { user: { select: { id: true, name: true } } } },
         },
         orderBy: { createdAt: 'desc' }
     })

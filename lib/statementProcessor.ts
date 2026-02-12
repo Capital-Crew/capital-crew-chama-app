@@ -19,6 +19,7 @@ export interface StatementRow {
         penalty: number
         fees: number
     }
+    isVoided?: boolean
 }
 
 
@@ -35,6 +36,8 @@ interface WalletTransaction {
     interestAmount?: number
     penaltyAmount?: number
     feeAmount?: number
+    isReversed?: boolean
+    reversedAt?: Date
 }
 
 // ... existing helper functions ...
@@ -67,42 +70,52 @@ export function processTransactions(transactions: WalletTransaction[]): Statemen
 
         let displayDescription = tx.description;
 
-        if (['DISBURSEMENT', 'CHARGE', 'PENALTY', 'INTEREST', 'FEE'].includes(type)) {
-            // DEBIT SIDE (Increases Balance)
-            debit = toNumber(txAmount)
-            runningBalance = runningBalance.plus(txAmount)
-        } else if (['REPAYMENT', 'WAIVER', 'PAYMENT'].includes(type)) {
-            // CREDIT SIDE (Decreases Balance)
-            credit = toNumber(txAmount)
-            runningBalance = runningBalance.minus(txAmount)
+        // Type definition from getLoanStatement
+        const isReversed = (tx as any).isReversed;
+        let isVoided = false;
 
-            // Format Description for Repayments (Waterfall Breakdown)
-            if (type === 'REPAYMENT') {
-                const parts = [];
-                if (tx.penaltyAmount && tx.penaltyAmount > 0) parts.push(`Penalty Paid: ${formatCurrency(tx.penaltyAmount)}`);
-                if (tx.feeAmount && tx.feeAmount > 0) parts.push(`Fees Paid: ${formatCurrency(tx.feeAmount)}`);
-                if (tx.interestAmount && tx.interestAmount > 0) parts.push(`Interest Paid: ${formatCurrency(tx.interestAmount)}`);
-                if (tx.principalAmount && tx.principalAmount > 0) parts.push(`Principal Paid: ${formatCurrency(tx.principalAmount)}`);
-
-                if (parts.length > 0) {
-                    displayDescription = parts.join(', ');
-                }
+        if (isReversed) {
+            isVoided = true;
+            // DO NOT UPDATE RUNNING BALANCE
+            // Just determine what the amount WAS for display purposes
+            if (['DISBURSEMENT', 'CHARGE', 'PENALTY', 'INTEREST', 'FEE'].includes(type)) {
+                debit = toNumber(txAmount)
+            } else {
+                credit = toNumber(txAmount)
             }
+            displayDescription = `[VOID] ${displayDescription}`
         } else {
-            // Unknown type - Log but display to ensure balance integrity if validation passed
-            console.warn(`Unknown transaction type encountered: ${type} for tx ${tx.id}`);
-            // Default to neutral or display as is?
-            // If we don't know the sign, we can't update running balance correctly. 
-            // BEST EFFORT: Infer from amount sign if stored signed? No, amount is unsigned in DB usually.
-            // Safe fallback: Show as Info, 0 effect, but flag it
-            displayDescription = `UNKNOWN TYPE: ${type} - ${tx.description}`;
-            // Intentionally do NOT change balance to avoid corrupting it if we guess wrong.
-            // Better to show a gap in math than a wrong balance.
+            // NORMAL PROCESSING
+            if (['DISBURSEMENT', 'CHARGE', 'PENALTY', 'INTEREST', 'FEE'].includes(type)) {
+                // DEBIT SIDE (Increases Balance)
+                debit = toNumber(txAmount)
+                runningBalance = runningBalance.plus(txAmount)
+            } else if (['REPAYMENT', 'WAIVER', 'PAYMENT'].includes(type)) {
+                // CREDIT SIDE (Decreases Balance)
+                credit = toNumber(txAmount)
+                runningBalance = runningBalance.minus(txAmount)
+
+                // Format Description for Repayments (Waterfall Breakdown)
+                if (type === 'REPAYMENT') {
+                    const parts = [];
+                    if (tx.penaltyAmount && tx.penaltyAmount > 0) parts.push(`Penalty Paid: ${formatCurrency(tx.penaltyAmount)}`);
+                    if (tx.feeAmount && tx.feeAmount > 0) parts.push(`Fees Paid: ${formatCurrency(tx.feeAmount)}`);
+                    if (tx.interestAmount && tx.interestAmount > 0) parts.push(`Interest Paid: ${formatCurrency(tx.interestAmount)}`);
+                    if (tx.principalAmount && tx.principalAmount > 0) parts.push(`Principal Paid: ${formatCurrency(tx.principalAmount)}`);
+
+                    if (parts.length > 0) {
+                        displayDescription = parts.join(', ');
+                    }
+                }
+            } else {
+                console.warn(`Unknown transaction type encountered: ${type} for tx ${tx.id}`);
+                displayDescription = `UNKNOWN TYPE: ${type} - ${tx.description}`;
+            }
         }
 
         rows.push({
-            date: format(new Date(tx.createdAt), 'dd-MMM'), // User requested '01-Jan' format style
-            createdAt: new Date(tx.createdAt), // For receipt generation
+            date: format(new Date(tx.createdAt), 'dd-MMM'),
+            createdAt: new Date(tx.createdAt),
             txId: tx.id,
             description: displayDescription,
             debit,
@@ -113,7 +126,8 @@ export function processTransactions(transactions: WalletTransaction[]): Statemen
                 interest: tx.interestAmount || 0,
                 penalty: tx.penaltyAmount || 0,
                 fees: tx.feeAmount || 0
-            }
+            },
+            isVoided
         })
     }
 

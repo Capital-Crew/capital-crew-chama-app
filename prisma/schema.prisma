@@ -1528,12 +1528,16 @@ model LoanTransaction {
   overpaymentPortion Decimal @default(0) @db.Decimal(15, 2)
 
   postedAt  DateTime @default(now())
+  transactionDate DateTime @default(now()) // Added for strict date tracking
+  reversedAt DateTime? // Added for reversal tracking
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([loanId, isReversed])
   @@index([createdAt])
   @@index([postedAt])
+  @@index([transactionDate])
 }
 
 model DailySummary {

@@ -5,7 +5,7 @@ import { getLoanStatement } from '@/app/actions/getLoanStatement'
 import { processTransactions, type StatementRow } from '@/lib/statementProcessor'
 import { formatCurrency } from '@/lib/financialMath'
 import { AlertCircleIcon, FileTextIcon, RotateCcwIcon, Download, Printer } from 'lucide-react'
-import { reverseRepayment } from '@/app/actions/loan-reversal-actions'
+import { reverseLoanTransaction } from '@/app/actions/loan-reversal-actions'
 import dynamic from 'next/dynamic'
 
 const RepaymentReceipt = dynamic(
@@ -77,11 +77,11 @@ export function LoanStatementView({ loanId, refreshKey }: { loanId: string, refr
 
         setReversingId(txId)
         try {
-            const result = await reverseRepayment(txId, reason)
+            const result = await reverseLoanTransaction(txId, reason)
             if (result.error) {
                 toast.error(result.error)
             } else {
-                toast.success('Repayment reversed successfully')
+                toast.success('Transaction reversed successfully')
                 fetchStatement() // Refresh locally
                 router.refresh() // Refresh server components if any
             }
@@ -167,13 +167,13 @@ export function LoanStatementView({ loanId, refreshKey }: { loanId: string, refr
                             // Determine if this row is reversible (it's a Credit i.e., Repayment, and description says Repayment)
                             // Strict check: we need original txId. StatementRow usually has it.
                             // Assuming 'row.txId' exists and description contains 'Repayment'
-                            const isReversible = isCredit && row.description.toLowerCase().includes('repayment') && !row.description.toLowerCase().includes('reversal');
+                            const isReversible = isCredit && row.description.toLowerCase().includes('repayment') && !row.isVoided;
 
                             return (
-                                <div key={`${row.txId}-${index}`} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm relative">
+                                <div key={`${row.txId}-${index}`} className={`bg-white p-4 rounded-xl border border-slate-100 shadow-sm relative ${row.isVoided ? 'opacity-60 bg-slate-50' : ''}`}>
                                     <div className="flex justify-between items-start mb-2">
                                         <div>
-                                            <p className="font-bold text-slate-800 text-sm line-clamp-2">{row.description}</p>
+                                            <p className={`font-bold text-sm line-clamp-2 ${row.isVoided ? 'line-through text-slate-400' : 'text-slate-800'}`}>{row.description}</p>
                                             <p className="text-xs text-slate-500 font-medium mt-1">{row.date}</p>
                                         </div>
                                         <div className="text-right whitespace-nowrap ml-4">
@@ -265,16 +265,16 @@ export function LoanStatementView({ loanId, refreshKey }: { loanId: string, refr
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {statementRows.map((row, index) => {
-                                        const isReversible = row.credit !== null && row.description.toLowerCase().includes('repayment') && !row.description.toLowerCase().includes('reversal');
+                                        const isReversible = row.credit !== null && row.description.toLowerCase().includes('repayment') && !row.isVoided;
                                         return (
                                             <tr
                                                 key={`${row.txId}-${index}`}
-                                                className="hover:bg-slate-50 transition-colors group"
+                                                className={`hover:bg-slate-50 transition-colors group ${row.isVoided ? 'opacity-60 bg-slate-50 italic' : ''}`}
                                             >
                                                 <td className="px-4 py-3 text-sm text-slate-900 font-medium whitespace-nowrap">
                                                     {row.date}
                                                 </td>
-                                                <td className="px-4 py-3 text-sm text-slate-700">
+                                                <td className={`px-4 py-3 text-sm text-slate-700 ${row.isVoided ? 'line-through' : ''}`}>
                                                     {row.description}
                                                 </td>
                                                 <td className="px-4 py-3 text-sm text-right font-medium text-slate-700">

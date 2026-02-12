@@ -75,7 +75,9 @@ export async function getLoanStatement(loanId: string) {
       principalAmount: Number(tx.principalAmount || 0),
       interestAmount: Number(tx.interestAmount || 0),
       penaltyAmount: Number(tx.penaltyAmount || 0),
-      feeAmount: Number(tx.feeAmount || 0)
+      feeAmount: Number(tx.feeAmount || 0),
+      isReversed: tx.isReversed,
+      reversedAt: tx.reversedAt
     }
   })
 

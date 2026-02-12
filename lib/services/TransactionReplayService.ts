@@ -1,5 +1,5 @@
+
 import { db } from '@/lib/db'
-import { RepaymentProcessorService } from './RepaymentProcessorService'
 import { Prisma } from '@prisma/client'
 
 /**
@@ -24,21 +24,25 @@ export class TransactionReplayService {
      * 
      * @param loanId - The loan to replay
      * @param fromDate - Optional: Only replay transactions from this date forward
+     * @param tx - Optional: Existing transaction client to prevent nesting errors
      */
     static async replayTransactions(
         loanId: string,
-        fromDate?: Date
+        fromDate?: Date,
+        tx?: Prisma.TransactionClient
     ): Promise<{ installmentsUpdated: number; transactionsReplayed: number }> {
 
-        return await db.$transaction(async (tx) => {
+        const performReplay = async (prisma: Prisma.TransactionClient) => {
             // 1. Fetch all installments for this loan
-            const installments = await tx.repaymentInstallment.findMany({
+            const installments = await prisma.repaymentInstallment.findMany({
                 where: { loanId },
                 orderBy: { dueDate: 'asc' }
             })
 
+            // If no installments, we can't replay against schedule.
             if (installments.length === 0) {
-                throw new Error('No installments found for this loan')
+                console.warn(`No installments found for loan ${loanId} during replay.`)
+                return { installmentsUpdated: 0, transactionsReplayed: 0 }
             }
 
             // 2. Reset installment state to "unpaid"
@@ -48,7 +52,7 @@ export class TransactionReplayService {
                 : installments
 
             for (const inst of installmentsToReset) {
-                await tx.repaymentInstallment.update({
+                await prisma.repaymentInstallment.update({
                     where: { id: inst.id },
                     data: {
                         principalPaid: new Prisma.Decimal(0),
@@ -61,7 +65,7 @@ export class TransactionReplayService {
             }
 
             // 3. Fetch all REPAYMENT transactions (chronologically)
-            const transactions = await tx.loanTransaction.findMany({
+            const transactions = await prisma.loanTransaction.findMany({
                 where: {
                     loanId,
                     type: 'REPAYMENT',
@@ -78,8 +82,16 @@ export class TransactionReplayService {
                 const amount = Number(txn.amount)
                 let remainingAmount = amount
 
-                // Fetch current state of installments
-                const currentInstallments = await tx.repaymentInstallment.findMany({
+                // Track allocation for this transaction to update the transaction record itself
+                let allocPrincipal = 0
+                let allocInterest = 0
+                let allocPenalty = 0
+                let allocFees = 0
+
+                // Fetch current state of installments (FRESH READ needed?)
+                // Yes, because we updated them in loop.
+                // OPTIMIZATION: operate on in-memory objects if possible, but reading DB is safer for consistency without complex state mgmt.
+                const currentInstallments = await prisma.repaymentInstallment.findMany({
                     where: { loanId, isFullyPaid: false },
                     orderBy: { dueDate: 'asc' }
                 })
@@ -95,15 +107,19 @@ export class TransactionReplayService {
 
                     const penaltyPayment = Math.min(remainingAmount, penaltyOwed)
                     remainingAmount -= penaltyPayment
+                    allocPenalty += penaltyPayment
 
                     const feePayment = Math.min(remainingAmount, feeOwed)
                     remainingAmount -= feePayment
+                    allocFees += feePayment
 
                     const interestPayment = Math.min(remainingAmount, interestOwed)
                     remainingAmount -= interestPayment
+                    allocInterest += interestPayment
 
                     const principalPayment = Math.min(remainingAmount, principalOwed)
                     remainingAmount -= principalPayment
+                    allocPrincipal += principalPayment
 
                     // Update installment
                     const newPenaltyPaid = Number(inst.penaltyPaid) + penaltyPayment
@@ -111,13 +127,16 @@ export class TransactionReplayService {
                     const newInterestPaid = Number(inst.interestPaid) + interestPayment
                     const newPrincipalPaid = Number(inst.principalPaid) + principalPayment
 
-                    const isFullyPaid =
-                        newPenaltyPaid >= Number(inst.penaltyDue) &&
-                        newFeesPaid >= Number(inst.feeDue) &&
-                        newInterestPaid >= Number(inst.interestDue) &&
-                        newPrincipalPaid >= Number(inst.principalDue)
+                    // Tolerance for floating point (though we casted to Number)
+                    const TOLERANCE = 0.01
 
-                    await tx.repaymentInstallment.update({
+                    const isFullyPaid =
+                        newPenaltyPaid >= Number(inst.penaltyDue) - TOLERANCE &&
+                        newFeesPaid >= Number(inst.feeDue) - TOLERANCE &&
+                        newInterestPaid >= Number(inst.interestDue) - TOLERANCE &&
+                        newPrincipalPaid >= Number(inst.principalDue) - TOLERANCE
+
+                    await prisma.repaymentInstallment.update({
                         where: { id: inst.id },
                         data: {
                             penaltyPaid: new Prisma.Decimal(newPenaltyPaid),
@@ -129,6 +148,18 @@ export class TransactionReplayService {
                     })
                 }
 
+                // Update Transaction Allocation Splits in the DB!
+                // This ensures consistency between Schedule and Statement.
+                await prisma.loanTransaction.update({
+                    where: { id: txn.id },
+                    data: {
+                        principalAmount: new Prisma.Decimal(allocPrincipal),
+                        interestAmount: new Prisma.Decimal(allocInterest),
+                        penaltyAmount: new Prisma.Decimal(allocPenalty),
+                        feeAmount: new Prisma.Decimal(allocFees)
+                    }
+                })
+
                 transactionsReplayed++
             }
 
@@ -136,7 +167,16 @@ export class TransactionReplayService {
                 installmentsUpdated: installmentsToReset.length,
                 transactionsReplayed
             }
-        })
+        }
+
+        // Use provided transaction or create a new one
+        if (tx) {
+            return await performReplay(tx)
+        } else {
+            return await db.$transaction(async (prisma) => {
+                return await performReplay(prisma)
+            })
+        }
     }
 
     /**
@@ -173,7 +213,8 @@ export class TransactionReplayService {
 
             // 2. Replay all transactions from this date forward
             // This ensures the back-dated payment is processed in chronological order
-            await this.replayTransactions(loanId, paymentDate)
+            // Pass 'tx' to ensure it sees the newly created transaction!
+            await this.replayTransactions(loanId, paymentDate, tx)
         })
     }
 
@@ -192,7 +233,8 @@ export class TransactionReplayService {
             })
 
             // 2. Replay from the transaction date
-            await this.replayTransactions(transaction.loanId, transaction.postedAt)
+            // Pass 'tx' to ensure it sees the reversed state!
+            await this.replayTransactions(transaction.loanId, transaction.postedAt, tx)
         })
     }
 }

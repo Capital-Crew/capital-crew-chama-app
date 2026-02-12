@@ -140,7 +140,8 @@ export async function reverseLoanTransaction(transactionId: string, reason: stri
 
             // 5. Recalculate Schedule (The "Magic" Step)
             // This rebuilds the installlment state based on the remaining valid transactions
-            await TransactionReplayService.replayTransactions(originalTx.loanId)
+            // Pass 'tx' to ensure atomic transaction and visibility of the reversal
+            await TransactionReplayService.replayTransactions(originalTx.loanId, undefined, tx)
 
             // 6. Audit Log
             await tx.auditLog.create({

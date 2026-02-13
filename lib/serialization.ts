@@ -16,32 +16,38 @@ export function serializePrisma<T>(data: T): T {
         return data;
     }
 
-    if (typeof data === 'object') {
-        // Handle Arrays
-        if (Array.isArray(data)) {
-            return data.map(item => serializePrisma(item)) as unknown as T;
-        }
-
-        // Handle Date (Convert to String for Client Components)
-        if (data instanceof Date) {
-            return data.toISOString() as unknown as T;
-        }
-
-        // Handle Prisma Decimal (Duck Typing)
-        // Prisma Decimals have a .toNumber() method
-        if (typeof (data as any).toNumber === 'function') {
-            return (data as any).toNumber();
-        }
-
-        // Handle Plain Objects
-        const serialized: any = {};
-        for (const key in data) {
-            if (Object.prototype.hasOwnProperty.call(data, key)) {
-                serialized[key] = serializePrisma((data as any)[key]);
+    try {
+        if (typeof data === 'object') {
+            // Handle Arrays
+            if (Array.isArray(data)) {
+                return data.map(item => serializePrisma(item)) as unknown as T;
             }
-        }
-        return serialized;
-    }
 
-    return data;
+            // Handle Date (Convert to String for Client Components)
+            if (data instanceof Date) {
+                return data.toISOString() as unknown as T;
+            }
+
+            // Handle Prisma Decimal (Duck Typing)
+            // Prisma Decimals have a .toNumber() method
+            if (typeof (data as any).toNumber === 'function') {
+                return (data as any).toNumber();
+            }
+
+            // Handle Plain Objects
+            const serialized: any = {};
+            for (const key in data) {
+                if (Object.prototype.hasOwnProperty.call(data, key)) {
+                    serialized[key] = serializePrisma((data as any)[key]);
+                }
+            }
+            return serialized;
+        }
+
+        return data;
+    } catch (error) {
+        console.error('[serializePrisma] Error serializing data:', error);
+        // Fallback: return as is or null to prevent crash loop, but logging is key
+        return null as unknown as T;
+    }
 }

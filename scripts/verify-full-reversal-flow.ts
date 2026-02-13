@@ -1,15 +1,9 @@
 
 import { PrismaClient } from '@prisma/client'
 import { getLoanStatement } from '../app/actions/getLoanStatement'
-import { reverseLoanTransaction } from '../app/actions/loan-reversal-actions' // We need to mock auth for this or use a workaround
+import { processTransactions } from '../lib/statementProcessor'
+import { reverseLoanTransaction } from '../app/actions/loan-reversal-actions'
 import { AccountingEngine } from '../lib/accounting/AccountingEngine'
-
-// Mock Auth for Server Action context (Since we can't easily mock next-auth in script)
-// We will manually execute the logic if we can't leverage the action directly, 
-// BUT verifying the ACTUAL action is best. 
-// We'll try to rely on the fact that existing scripts worked.
-// Actually, let's just use the components directly to simulate the action's effect if auth fails.
-// OR, we can just use the script to verify the STATEMENT logic given a known state.
 
 const prisma = new PrismaClient()
 
@@ -25,7 +19,25 @@ async function main() {
     if (!loan) throw new Error("No active loan found for testing")
     console.log(`Using Loan: ${loan.loanApplicationNumber}`)
 
-    // 2. Create a fresh Repayment Transaction (to avoid messing up existing data too much, ensuring we can reverse it)
+    // 1.5 Ensure Loan has Installments (Required for Replay Service)
+    const installmentCount = await prisma.repaymentInstallment.count({ where: { loanId: loan.id } })
+    if (installmentCount === 0) {
+        console.log("No installments found. Creating dummy installment for testing...")
+        await prisma.repaymentInstallment.create({
+            data: {
+                loanId: loan.id,
+                installmentNumber: 1,
+                dueDate: new Date(new Date().setDate(new Date().getDate() + 30)),
+                principalDue: 10000,
+                interestDue: 1000,
+                principalPaid: 0,
+                interestPaid: 0,
+                penaltyPaid: 0,
+                feesPaid: 0
+            }
+        })
+    }
+
     // 2. Create a fresh Repayment Transaction
     const txAmount = 500
     const tx = await prisma.$transaction(async (prismaTx) => {
@@ -74,6 +86,11 @@ async function main() {
 
     console.log(`Created Repayment TX: ${tx.id}. Verifying Statement BEFORE Reversal...`)
 
+    // UPDATE CACHE (Simulate system behavior)
+    // We import DYNAMICALLY to avoid top-level await issues if any
+    const { TransactionReplayService } = await import('../lib/services/TransactionReplayService')
+    await TransactionReplayService.replayTransactions(loan.id)
+
     // 3. Verify Statement Effect (Running Balance should reflect the payment)
     const stmtBefore = await getLoanStatement(loan.id)
     const rowBefore = stmtBefore.walletTransactions.find((r: any) => r.id === tx.id)
@@ -81,9 +98,12 @@ async function main() {
     if (!rowBefore) throw new Error("Transaction not found in statement!")
     console.log(`[Before] TX Found. reversed: ${rowBefore.isReversed}`)
 
+    // Check Total Outstanding Balance Before
+    const loanBefore = await prisma.loan.findUnique({ where: { id: loan.id } })
+    console.log(`[Before Reversal] Outstanding Balance: ${loanBefore?.outstandingBalance}`)
+
 
     // 4. Perform Reversal (Manually calling logic to bypass Auth checks in script)
-    // We will mimic the Action's core logic
     console.log("Executing Reversal...")
 
     await prisma.$transaction(async (txClient) => {
@@ -101,33 +121,55 @@ async function main() {
         }
     })
 
+    // CRITICAL: Replay Transactions to update Loan Cache
+    await TransactionReplayService.replayTransactions(loan.id)
+
 
     // 5. Verify Statement Effect (AFTER Reversal)
     console.log("Verifying Statement AFTER Reversal...")
     const stmtAfter = await getLoanStatement(loan.id)
 
-    // Check Visibility & Flag
-    // We need to process it through the processor logic to check running balance behavior
-    // But getLoanStatement returns raw-ish data. Let's check the isReversed flag first.
-    const rowAfter = stmtAfter.walletTransactions.find((r: any) => r.id === tx.id)
+    // Check Total Outstanding Balance After
+    const loanAfter = await prisma.loan.findUnique({ where: { id: loan.id } })
+    console.log(`[After Reversal] Outstanding Balance: ${loanAfter?.outstandingBalance}`)
+
+    const delta = Number(loanAfter?.outstandingBalance) - Number(loanBefore?.outstandingBalance)
+    console.log(`[Result] Balance Change: ${delta}`)
+
+    if (Math.abs(delta - txAmount) < 0.01) {
+        console.log("SUCCESS: Outstanding Balance increased by the reversed amount (Liability Restored).")
+    } else {
+        console.error(`FAILURE: Balance did not increase correctly. Expected +${txAmount}, got ${delta}`)
+    }
+
+    // Process transactions to get running balance
+    const processedRows = processTransactions(stmtAfter.walletTransactions)
+    const rowAfter = processedRows.find((r: any) => r.txId === tx.id)
 
     if (!rowAfter) throw new Error("Transaction disappeared from statement! (Filter Bug?)")
 
-    console.log(`[After] TX Found. reversed: ${rowAfter.isReversed}`)
+    console.log(`[After] TX Found. Description: "${rowAfter.description}", isVoided: ${rowAfter.isVoided}`)
+    console.log(`[After] Row Data: Debit: ${rowAfter.debit}, Credit: ${rowAfter.credit}, RunningBalance: ${rowAfter.runningBalance}`)
 
-    if (rowAfter.isReversed !== true) {
-        throw new Error("FAILED: Transaction is NOT marked as reversed in statement data.")
+    if (rowAfter.isVoided !== true) {
+        throw new Error("FAILED: Transaction is NOT marked as voided in statement.")
     }
 
-    // 6. Verify Running Balance Logic (Simulate Processor)
-    // We can import processTransactions from statementProcessor if we want, or just rely on logic check.
-    // Let's create a mini-processor here to assert the logic we requested.
+    // Verify Running Balance Logic
+    const sortedRows = processedRows
+    const rowIndex = sortedRows.findIndex((r: any) => r.txId === tx.id)
 
-    const relevantRows = stmtAfter.walletTransactions.filter((r: any) =>
-        r.createdAt.getTime() === rowAfter.createdAt.getTime() || r.id === tx.id
-    )
+    if (rowIndex > 0) {
+        const prevRow = sortedRows[rowIndex - 1]
+        console.log(`[After] Prev Row Balance: ${prevRow.runningBalance}`)
+        console.log(`[After] This Row Balance: ${rowAfter.runningBalance}`)
 
-    console.log("Statement Data for TX:", JSON.stringify(relevantRows, null, 2))
+        if (Math.abs(rowAfter.runningBalance - prevRow.runningBalance) > 0.01) {
+            throw new Error("FAILED: Running Balance changed! The reversed transaction should have 0 effect.")
+        } else {
+            console.log("SUCCESS: Running Balance is unchanged by this transaction (Effective Amount = 0).")
+        }
+    }
 
     // Check GL Final State
     const glCheck = await prisma.ledgerTransaction.findFirst({ where: { externalReferenceId: tx.id } })
@@ -138,10 +180,6 @@ async function main() {
     } else {
         console.error("FAILURE: GL not reversed.")
     }
-
-    // Cleanup
-    // await prisma.loanTransaction.delete({ where: { id: tx.id } }) 
-    // Leave it for manual inspection if needed, or delete.
 }
 
 main()

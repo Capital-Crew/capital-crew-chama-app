@@ -163,6 +163,35 @@ export class TransactionReplayService {
                 transactionsReplayed++
             }
 
+            // 5. Update Loan Outstanding Balance (Corrects the "proper changes" issue)
+            const finalInstallments = await prisma.repaymentInstallment.findMany({
+                where: { loanId }
+            })
+
+            let totalDue = new Prisma.Decimal(0)
+            let totalPaid = new Prisma.Decimal(0)
+
+            for (const inst of finalInstallments) {
+                // Sum Dues
+                totalDue = totalDue.add(inst.principalDue)
+                    .add(inst.interestDue)
+                    .add(inst.penaltyDue)
+                    .add(inst.feeDue)
+
+                // Sum Paids
+                totalPaid = totalPaid.add(inst.principalPaid)
+                    .add(inst.interestPaid)
+                    .add(inst.penaltyPaid)
+                    .add(inst.feesPaid)
+            }
+
+            const outstandingBalance = totalDue.sub(totalPaid)
+
+            await prisma.loan.update({
+                where: { id: loanId },
+                data: { outstandingBalance }
+            })
+
             return {
                 installmentsUpdated: installmentsToReset.length,
                 transactionsReplayed

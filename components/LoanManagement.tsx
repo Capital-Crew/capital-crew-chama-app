@@ -21,6 +21,7 @@ import { startLoanApplication } from '@/app/actions/loan-application-actions';
 import { useRouter } from 'next/navigation';
 import { BarChart3Icon } from 'lucide-react';
 import { LoanReportsModal } from './loans/LoanReportsModal';
+import { LoansPortfolioSummary } from './loans/LoansPortfolioSummary';
 
 interface LoanManagementProps {
     loans: (Loan & { member?: Member })[];
@@ -181,8 +182,20 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
                 </div>
             </div>
 
+            {/* Portfolio Summary */}
+            <LoansPortfolioSummary
+                loans={loans}
+                onViewBreakdown={() => {
+                    // Placeholder: Could navigate to a detailed view or filter the list below
+                    // For now, we scroll to the "Disbursed" tab and activate it
+                    setActiveTab('disbursed');
+                    const el = document.getElementById('loans-list');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+            />
+
             {/* Scrollable Tabs */}
-            <div className="bg-gradient-to-r from-slate-50 to-slate-100 rounded-2xl p-2 shadow-inner overflow-x-auto scrollbar-none">
+            <div id="loans-list" className="bg-gradient-to-r from-slate-50 to-slate-100 rounded-2xl p-2 shadow-inner overflow-x-auto scrollbar-none">
                 <div className="flex gap-2 min-w-max">
                     <TabButton
                         label="Drafts"
@@ -216,59 +229,61 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
             </div>
 
             {/* DRAFTS SECTION - Separated for Admin/Chairperson */}
-            {activeTab === 'application' && (
-                <div className="mb-6 space-y-8">
-                    {/* MY DRAFTS */}
-                    {(() => {
-                        const myDrafts = drafts.filter(d => d.memberId === currentMemberId);
-                        if (myDrafts.length > 0) {
-                            return (
-                                <DraftsList
-                                    title="My Applications (Drafts)"
-                                    drafts={myDrafts.map(d => ({
-                                        id: d.id,
-                                        loanApplicationNumber: d.loanApplicationNumber,
-                                        amount: d.amount ? Number(d.amount) : 0,
-                                        createdAt: d.applicationDate || d.createdAt,
-                                        updatedAt: d.updatedAt,
-                                        member: members.find(m => m.id === d.memberId),
-                                        status: d.status
-                                    }))}
-                                />
-                            );
-                        }
-                        return null;
-                    })()}
-
-                    {/* MEMBER DRAFTS (Admin/Chair only) */}
-                    {(() => {
-                        const isAdmin = ['SYSTEM_ADMIN', 'CHAIRPERSON'].includes(userRole);
-                        if (isAdmin) {
-                            const otherDrafts = drafts.filter(d => d.memberId !== currentMemberId);
-                            if (otherDrafts.length > 0) {
+            {
+                activeTab === 'application' && (
+                    <div className="mb-6 space-y-8">
+                        {/* MY DRAFTS */}
+                        {(() => {
+                            const myDrafts = drafts.filter(d => d.memberId === currentMemberId);
+                            if (myDrafts.length > 0) {
                                 return (
                                     <DraftsList
-                                        title="Member Applications (Review Exemptions)"
-                                        drafts={otherDrafts.map(d => ({
+                                        title="My Applications (Drafts)"
+                                        drafts={myDrafts.map(d => ({
                                             id: d.id,
                                             loanApplicationNumber: d.loanApplicationNumber,
                                             amount: d.amount ? Number(d.amount) : 0,
                                             createdAt: d.applicationDate || d.createdAt,
-                                            updatedAt: d.updatedAt, // Fix missing property here too if needed
+                                            updatedAt: d.updatedAt,
                                             member: members.find(m => m.id === d.memberId),
                                             status: d.status
                                         }))}
                                     />
                                 );
                             }
-                        }
-                        return null;
-                    })()}
+                            return null;
+                        })()}
 
-                    {/* Fallback for regular members if they have no drafts but filter returned them (should be covered by myDrafts above) */}
-                    {/* The original code just rendered all filtered drafts. Now strictly separated. */}
-                </div>
-            )}
+                        {/* MEMBER DRAFTS (Admin/Chair only) */}
+                        {(() => {
+                            const isAdmin = ['SYSTEM_ADMIN', 'CHAIRPERSON'].includes(userRole);
+                            if (isAdmin) {
+                                const otherDrafts = drafts.filter(d => d.memberId !== currentMemberId);
+                                if (otherDrafts.length > 0) {
+                                    return (
+                                        <DraftsList
+                                            title="Member Applications (Review Exemptions)"
+                                            drafts={otherDrafts.map(d => ({
+                                                id: d.id,
+                                                loanApplicationNumber: d.loanApplicationNumber,
+                                                amount: d.amount ? Number(d.amount) : 0,
+                                                createdAt: d.applicationDate || d.createdAt,
+                                                updatedAt: d.updatedAt, // Fix missing property here too if needed
+                                                member: members.find(m => m.id === d.memberId),
+                                                status: d.status
+                                            }))}
+                                        />
+                                    );
+                                }
+                            }
+                            return null;
+                        })()}
+
+                        {/* Fallback for regular members if they have no drafts but filter returned them (should be covered by myDrafts above) */}
+                        {/* The original code just rendered all filtered drafts. Now strictly separated. */}
+                    </div>
+                )
+            }
 
             {/* Mobile: Card List */}
             <div className="md:hidden space-y-3">
@@ -338,21 +353,23 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
 
             {/* Desktop Modal Removed - Using Page Flow */}
 
-            {selectedLoanId && (
-                <LoanAppraisalCard
-                    loanId={selectedLoanId}
-                    isOpen={!!selectedLoanId}
-                    onClose={() => setSelectedLoanId(null)}
-                    currentUserId={currentUserId}
-                    activeTab={activeTab === 'application' ? 'appraisal' : 'journey'}
-                />
-            )}
+            {
+                selectedLoanId && (
+                    <LoanAppraisalCard
+                        loanId={selectedLoanId}
+                        isOpen={!!selectedLoanId}
+                        onClose={() => setSelectedLoanId(null)}
+                        currentUserId={currentUserId}
+                        activeTab={activeTab === 'application' ? 'appraisal' : 'journey'}
+                    />
+                )
+            }
 
             <LoanReportsModal
                 isOpen={isReportsModalOpen}
                 onClose={() => setIsReportsModalOpen(false)}
             />
-        </div>
+        </div >
     );
 }
 

@@ -109,6 +109,10 @@ export async function getLoanDetails(loanId: string): Promise<Serialized<any>> {
             walletTransactions: {
                 orderBy: { createdAt: 'desc' },
                 take: 10
+            },
+            transactions: {
+                orderBy: { postedAt: 'desc' },
+                take: 50
             }
         }
     })
@@ -139,4 +143,65 @@ export async function getOperationalMetricsReport(startDate: string, endDate: st
 
     // 3. Serialize
     return serializeFinancials(metrics)
+}
+
+// ========================================
+// GET LOAN TRANSACTION DETAILS ACTION
+// ========================================
+
+export async function getLoanTransactionDetails(transactionId: string): Promise<Serialized<any>> {
+    const transaction = await db.loanTransaction.findUnique({
+        where: { id: transactionId },
+        include: {
+            loan: {
+                include: {
+                    member: {
+                        include: {
+                            user: true
+                        }
+                    },
+                    loanProduct: true
+                }
+            }
+        }
+    });
+
+    if (!transaction) return null;
+
+    // 2. Fetch the associated GL Entries (via LedgerTransaction)
+    // The link is usually via externalReferenceId or referenceId
+    const ledgerTx = await db.ledgerTransaction.findFirst({
+        where: { externalReferenceId: transactionId },
+        include: {
+            ledgerEntries: {
+                include: {
+                    ledgerAccount: true
+                }
+            }
+        }
+    });
+
+    // 3. Map GL Entries based on GLEntry interface
+    let glEntries: any[] = [];
+    if (ledgerTx && ledgerTx.ledgerEntries) {
+        glEntries = ledgerTx.ledgerEntries.map(entry => ({
+            id: entry.id,
+            transactionId: transaction.id,
+            glAccountNo: entry.ledgerAccount?.code || entry.ledgerAccountId,
+            glAccountName: entry.ledgerAccount?.name || 'Unknown Account',
+            debitAmount: Number(entry.debitAmount),
+            creditAmount: Number(entry.creditAmount),
+            runningBalance: 0
+        }));
+    }
+
+    // 4. Combine and Return
+    return serializeFinancials({
+        ...transaction,
+        entryType: transaction.type, // Enum match?
+        postingDate: transaction.postedAt,
+        glEntries,
+        user: transaction.loan.member.user, // Hoist user
+        isReversal: transaction.isReversed
+    });
 }

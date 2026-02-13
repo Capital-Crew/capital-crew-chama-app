@@ -493,7 +493,13 @@ export async function getLoanPortfolio(memberId: string) {
         }
 
         return {
-            ...loan,
+            // Explicitly pick fields to avoid circular refs and huge payloads
+            id: loan.id,
+            loanApplicationNumber: loan.loanApplicationNumber,
+            memberId: loan.memberId,
+            loanProductId: loan.loanProductId,
+
+            // Financials
             outstandingBalance: loan.outstandingBalance ? Number(loan.outstandingBalance) : 0,
             amount: Number(loan.amount),
             processingFee: Number(loan.processingFee),
@@ -511,7 +517,6 @@ export async function getLoanPortfolio(memberId: string) {
             interestRatePerMonth: loan.interestRatePerMonth ? Number(loan.interestRatePerMonth) : 0,
 
             // Dashboard Fields
-            id: loan.id,
             loanNumber: loan.loanApplicationNumber,
             productName: loan.loanProduct?.name || 'Unknown',
             balance: statementBalance, // Use Statement Balance
@@ -520,6 +525,7 @@ export async function getLoanPortfolio(memberId: string) {
 
             // Legacy Fields
             approvedAmount: Number(loan.amount),
+
             // Waterfall Repayment Logic
             ...(() => {
                 const sched = waterfallSchedule; // Use our resolved schedule
@@ -686,6 +692,14 @@ export async function getMemberFullDetail(memberId: string) {
         contributions: contributions,
         contributionStatus: contributionStatus,
         loans: portfolio,
-        nextOfKin: member?.nextOfKin || []
+        nextOfKin: member?.nextOfKin?.map((k: any) => ({
+            id: k.id,
+            fullName: k.fullName,
+            relationship: k.relationship,
+            phoneNumber: k.phoneNumber,
+            allocation: Number(k.allocation),
+            nationality: k.nationality,
+            altPhone: k.altPhone
+        })) || []
     });
 }

@@ -46,12 +46,20 @@ export function MemberProfileView({
 
     // Prepare quick stats data
     const quickStatsData = {
-        totalLoans: stats?.totalLoans || 0,
-        activeLoans: stats?.activeLoans || 0,
-        totalContributions: stats?.totalContributions || 0,
-        totalBorrowed: stats?.totalBorrowed || 0,
-        outstandingBalance: stats?.outstandingBalance || 0,
-        borrowingPower: stats?.borrowingPower || 0
+        identity: {
+            firstName: member.name?.split(' ')[0] || '',
+            lastName: member.name?.split(' ').slice(1).join(' ') || '',
+            fullName: member.name || '',
+            memberNumber: parseInt(member.memberNumber) || 0
+        },
+        financials: {
+            memberSavings: stats?.memberSavings || 0,
+            cumulativeContributions: stats?.totalContributions || 0,
+            outstandingLoans: stats?.outstandingBalance || 0,
+            // Legacy fallbacks
+            totalContributions: stats?.totalContributions || 0,
+            cumulativeLoanBalance: stats?.outstandingBalance || 0
+        }
     };
 
     return (

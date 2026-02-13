@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Clock, CheckCircle2, AlertCircle, ChevronDown, ChevronUp, ChevronRight } from 'lucide-react';
 import { MemberQuickStats } from './MemberQuickStats';
 import { NextOfKinManager } from './NextOfKinManager';
-import { LoanAppraisalCard } from './LoanAppraisalCard';
+import { LoanAppraisalCard } from '../LoanAppraisalCard';
 import { formatCurrency } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';

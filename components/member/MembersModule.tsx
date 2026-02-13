@@ -17,7 +17,7 @@ interface MembersModuleProps {
 }
 
 export function MembersModule({ initialMembers, initialDetail, userRole, currentUserId }: MembersModuleProps) {
-    const isAdmin = ['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER', 'SECRETARY'].includes(userRole);
+    const isAdmin = ['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER', 'SECRETARY', 'SYSTEM_ADMINISTRATOR'].includes(userRole);
     const router = useRouter();
 
     // STATE
@@ -58,6 +58,17 @@ export function MembersModule({ initialMembers, initialDetail, userRole, current
 
     // SCENARIO A: MEMBER (Direct Access)
     if (!isAdmin) {
+        if (!initialDetail?.member) {
+            return (
+                <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+                    <div className="text-center">
+                        <Loader2 className="w-10 h-10 text-cyan-500 animate-spin mx-auto mb-4" />
+                        <p className="text-slate-500 font-medium">Loading profile...</p>
+                    </div>
+                </div>
+            );
+        }
+
         return (
             <div className="min-h-screen bg-slate-50 p-4 md:p-8">
                 <div className="max-w-5xl mx-auto bg-white rounded-[2rem] shadow-sm overflow-hidden border border-slate-100">

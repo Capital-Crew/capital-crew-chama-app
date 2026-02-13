@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Clock, CheckCircle2, AlertCircle, ChevronDown, ChevronUp, ChevronRight } from 'lucide-react';
+import { Clock, CheckCircle2, AlertCircle, ChevronDown, ChevronUp, ChevronRight, Receipt, Activity } from 'lucide-react';
 import { MemberQuickStats } from './MemberQuickStats';
 import { NextOfKinManager } from './NextOfKinManager';
 import { LoanAppraisalCard } from '../LoanAppraisalCard';
@@ -64,16 +64,54 @@ export function MemberProfileView({
 
     return (
         <div className="bg-white min-h-full flex flex-col">
-            {/* ... */}
+            {/* Header */}
+            <div className="px-4 md:px-8 pt-6 md:pt-8 border-b border-slate-100">
+                <h1 className="text-2xl md:text-3xl font-black text-slate-900 mb-4">Member Profile</h1>
+            </div>
             <div className="px-4 md:px-8 mt-4 md:mt-8 mb-8 flex flex-col xl:flex-row justify-between items-start gap-4">
                 <MemberQuickStats
                     stats={quickStatsData}
                     onViewLoans={() => setActiveTab('loans')}
                 />
-                {/* ... */}
             </div>
 
-            {/* ... */}
+            {/* Desktop Tab Navigation */}
+            <div className="hidden md:flex px-8 gap-4 border-b border-slate-100">
+                <button
+                    onClick={() => setActiveTab('loans')}
+                    className={cn(
+                        "px-6 py-3 font-bold text-sm transition-all border-b-2",
+                        activeTab === 'loans'
+                            ? "border-cyan-500 text-cyan-600"
+                            : "border-transparent text-slate-400 hover:text-slate-600"
+                    )}
+                >
+                    Loans History
+                </button>
+                <button
+                    onClick={() => setActiveTab('contributions')}
+                    className={cn(
+                        "px-6 py-3 font-bold text-sm transition-all border-b-2",
+                        activeTab === 'contributions'
+                            ? "border-cyan-500 text-cyan-600"
+                            : "border-transparent text-slate-400 hover:text-slate-600"
+                    )}
+                >
+                    Contributions
+                </button>
+                <button
+                    onClick={() => setActiveTab('kin')}
+                    className={cn(
+                        "px-6 py-3 font-bold text-sm transition-all border-b-2",
+                        activeTab === 'kin'
+                            ? "border-cyan-500 text-cyan-600"
+                            : "border-transparent text-slate-400 hover:text-slate-600"
+                    )}
+                >
+                    Next of Kin
+                </button>
+            </div>
+
 
             <div className="flex-1 overflow-y-auto">
                 {/* MOBILE */}
@@ -89,7 +127,42 @@ export function MemberProfileView({
                             onLoanClick={handleLoanClick}
                         />
                     </CollapsibleSection>
-                    {/* ... */}
+
+                    <CollapsibleSection
+                        title="Contributions"
+                        isOpen={activeTab === 'contributions'}
+                        onToggle={() => setActiveTab('contributions')}
+                        icon={Receipt}
+                    >
+                        <div className="p-4 space-y-4">
+                            <div className={`p-4 rounded-xl border-2 ${contributionStatus?.balance! <= 0 ? 'bg-green-50 border-green-100' : 'bg-orange-50 border-orange-100'}`}>
+                                <h4 className={`text-xs font-bold uppercase mb-2 ${contributionStatus?.balance! <= 0 ? 'text-green-600' : 'text-orange-600'}`}>
+                                    Current Month Status
+                                </h4>
+                                <p className="text-2xl font-black text-slate-800">
+                                    {formatCurrency(Math.max(0, contributionStatus?.balance || 0))}
+                                </p>
+                                <p className="text-xs text-slate-500 mt-1">
+                                    Due this month (Target: {formatCurrency(contributionStatus?.monthlyDue || 0)})
+                                </p>
+                            </div>
+                        </div>
+                    </CollapsibleSection>
+
+                    <CollapsibleSection
+                        title="Next of Kin"
+                        isOpen={activeTab === 'kin'}
+                        onToggle={() => setActiveTab('kin')}
+                        icon={Activity}
+                    >
+                        <div className="p-4">
+                            <NextOfKinManager
+                                nextOfKin={nextOfKin}
+                                memberId={member.id}
+                                currentUserId={currentUserId}
+                            />
+                        </div>
+                    </CollapsibleSection>
                 </div>
 
                 {/* DESKTOP */}
@@ -100,7 +173,6 @@ export function MemberProfileView({
                             onLoanClick={handleLoanClick}
                         />
                     )}
-                    {/* ... */}
 
                     {activeTab === 'contributions' && (
                         <div className="space-y-8">

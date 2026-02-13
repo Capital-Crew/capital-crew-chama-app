@@ -1,159 +1,66 @@
 'use client';
 
-import React, { useState } from 'react';
-import { MemberQuickStats } from './MemberQuickStats';
-import { NextOfKinManager } from './NextOfKinManager';
-import { LoanAppraisalCard } from '@/components/LoanAppraisalCard';
-import { ResetPasswordButton } from '@/components/admin/ResetPasswordButton';
-import { formatCurrency } from '@/lib/utils';
-import { format } from 'date-fns';
-import { ChevronLeft, Clock, CheckCircle2, ChevronRight, AlertCircle, Users } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
-interface MemberProfileViewProps {
-    member: {
-        id: string;
-        name: string;
-        memberNumber: string;
-        email?: string;
-        contact?: string;
-    };
-    stats: any;
-    contributions: any[];
-    contributionStatus?: {
-        monthlyDue: number;
-        totalPaid: number;
-        balance: number;
-        status: string;
-    } | null;
-    loans: any[];
-    nextOfKin: any[];
-    currentUserRole?: string;
-    currentUserId?: string;
-    onBack?: () => void; // For Mobile Admin View
-}
+// ... (imports)
 
 export function MemberProfileView({
-    member,
-    stats,
-    contributions,
-    contributionStatus,
-    loans,
-    nextOfKin,
-    currentUserRole,
-    currentUserId,
-    onBack,
+    // ... (props)
 }: MemberProfileViewProps) {
+    const router = useRouter();
     const [activeTab, setActiveTab] = useState<'loans' | 'contributions' | 'kin'>('loans');
     const [selectedLoanId, setSelectedLoanId] = useState<string | null>(null);
 
-    const canResetPassword = ['SYSTEM_ADMIN', 'CHAIRPERSON', 'SECRETARY'].includes(currentUserRole || '');
-
-    // Adapt stats for MemberQuickStats
-    const quickStatsData = {
-        identity: {
-            firstName: member.name.split(' ')[0],
-            lastName: member.name.split(' ').slice(1).join(' ') || '',
-            fullName: member.name,
-            memberNumber: Number(member.memberNumber)
-        },
-        financials: stats
+    const handleLoanClick = (loanId: string) => {
+        const loan = loans.find(l => l.id === loanId);
+        if (loan && ['ACTIVE', 'OVERDUE', 'WRITTEN_OFF', 'DISBURSED', 'CLEARED'].includes(loan.status)) {
+            router.push(`/loans/${loanId}`);
+        } else {
+            setSelectedLoanId(loanId);
+        }
     };
+
+    // ...
 
     return (
         <div className="bg-white min-h-full flex flex-col">
-            {/* Mobile Back Button (Admin Mode) */}
-            {onBack && (
-                <div className="md:hidden px-4 pt-4 pb-2">
-                    <button
-                        onClick={onBack}
-                        className="flex items-center gap-1 text-slate-500 hover:text-cyan-600 transition-colors text-sm font-bold"
-                    >
-                        <ChevronLeft className="w-4 h-4" /> Back to List
-                    </button>
-                </div>
-            )}
-
+            {/* ... */}
             <div className="px-4 md:px-8 mt-4 md:mt-8 mb-8 flex flex-col xl:flex-row justify-between items-start gap-4">
-                <MemberQuickStats stats={quickStatsData} />
-                {canResetPassword && (
-                    <div className="self-end xl:self-start">
-                        <ResetPasswordButton userId={member.id} userName={member.name} />
-                    </div>
-                )}
+                <MemberQuickStats
+                    stats={quickStatsData}
+                    onViewLoans={() => setActiveTab('loans')}
+                />
+                {/* ... */}
             </div>
 
-            {/* Desktop Tabs (Hidden on Mobile) */}
-            <div className="hidden md:block px-8 border-b border-slate-100 mb-6">
-                <div className="flex gap-8">
-                    <TabButton
-                        isActive={activeTab === 'loans'}
-                        onClick={() => setActiveTab('loans')}
-                        label="Loans"
-                    />
-                    <TabButton
-                        isActive={activeTab === 'contributions'}
-                        onClick={() => setActiveTab('contributions')}
-                        label={`Contributions (${formatCurrency(stats?.cumulativeContributions || stats?.contributions || 0)})`}
-                    />
-                    <TabButton
-                        isActive={activeTab === 'kin'}
-                        onClick={() => setActiveTab('kin')}
-                        label="Next of Kin"
-                    />
-                </div>
-            </div>
+            {/* ... */}
 
-            {/* Content Area */}
             <div className="flex-1 overflow-y-auto">
-                {/* MOBILE: Accordion Stack */}
+                {/* MOBILE */}
                 <div className="md:hidden flex flex-col bg-white">
                     <CollapsibleSection
                         title="Loans History"
                         isOpen={activeTab === 'loans'}
-                        onToggle={() => setActiveTab(activeTab === 'loans' ? 'loans' : 'loans')} // Always allow opening. Optional: toggle off if same? Better to keep one open or allow multi? User said "stack vertically... clickable to display".
-                        // Standard accordion behavior: clicking one opens it.
-                        // I will make it so clicking expands it and sets it as activeTab. 
-                        // To allow closing, we need a state that allows NONE.
-                        // But for now, let's stick to "Switching" or allow toggling visibility.
-                        // Ideally, scrolling down the page showing headers is good.
-                        // Let's implement independent open state for mobile if we want true "Stack".
-                        // BUT, re-using `activeTab` state simplifies logic (only one open at a time - Accordion).
-                        // Let's stick to 'Accordion' (one open) using activeTab.
+                        onToggle={() => setActiveTab('loans')}
                         icon={Clock}
                     >
                         <ResponsiveLoansList
                             loans={loans}
-                            onLoanClick={setSelectedLoanId}
+                            onLoanClick={handleLoanClick}
                         />
                     </CollapsibleSection>
-
-                    <CollapsibleSection
-                        title={`Contributions (${formatCurrency(stats?.cumulativeContributions || stats?.contributions || 0)})`}
-                        isOpen={activeTab === 'contributions'}
-                        onToggle={() => setActiveTab('contributions')}
-                        icon={CheckCircle2}
-                    >
-                        <ResponsiveContributionsList contributions={contributions} />
-                    </CollapsibleSection>
-
-                    <CollapsibleSection
-                        title="Next of Kin"
-                        isOpen={activeTab === 'kin'}
-                        onToggle={() => setActiveTab('kin')}
-                        icon={Users}
-                    >
-                        <NextOfKinManager initialData={nextOfKin} memberId={member.id} />
-                    </CollapsibleSection>
+                    {/* ... */}
                 </div>
 
-                {/* DESKTOP: Tab Content (Hidden on Mobile) */}
+                {/* DESKTOP */}
                 <div className="hidden md:block px-8 pb-12">
                     {activeTab === 'loans' && (
                         <ResponsiveLoansList
                             loans={loans}
-                            onLoanClick={setSelectedLoanId}
+                            onLoanClick={handleLoanClick}
                         />
                     )}
+                    {/* ... */}
 
                     {activeTab === 'contributions' && (
                         <div className="space-y-8">

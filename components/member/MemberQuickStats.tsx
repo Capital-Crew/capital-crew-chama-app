@@ -19,9 +19,10 @@ interface MemberQuickStatsProps {
             cumulativeLoanBalance?: number
         }
     }
+    onViewLoans?: () => void
 }
 
-export function MemberQuickStats({ stats }: MemberQuickStatsProps) {
+export function MemberQuickStats({ stats, onViewLoans }: MemberQuickStatsProps) {
     // Correctly prioritize real-time fields
     const memberSavings = stats.financials.memberSavings ?? 0
     // Contributions can be 0 if new member
@@ -99,7 +100,10 @@ export function MemberQuickStats({ stats }: MemberQuickStatsProps) {
                 </div>
 
                 {/* Outstanding Loans */}
-                <div className="group relative overflow-hidden bg-white border-2 border-slate-100 rounded-2xl p-6 transition-all hover:border-orange-200 hover:shadow-lg hover:shadow-orange-100/50 cursor-pointer">
+                <div
+                    onClick={onViewLoans}
+                    className="group relative overflow-hidden bg-white border-2 border-slate-100 rounded-2xl p-6 transition-all hover:border-orange-200 hover:shadow-lg hover:shadow-orange-100/50 cursor-pointer"
+                >
                     <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:opacity-10 transition-opacity">
                         <Receipt className="w-24 h-24 text-orange-500 transform rotate-6" />
                     </div>

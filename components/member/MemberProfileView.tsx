@@ -2,11 +2,34 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Clock, CheckCircle2, AlertCircle, ChevronDown, ChevronUp, ChevronRight } from 'lucide-react';
+import { MemberQuickStats } from './MemberQuickStats';
+import { NextOfKinManager } from './NextOfKinManager';
+import { LoanAppraisalCard } from './LoanAppraisalCard';
+import { formatCurrency } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
 
-// ... (imports)
+interface MemberProfileViewProps {
+    member: any;
+    stats: any;
+    contributions: any[];
+    loans: any[];
+    contributionStatus: any;
+    nextOfKin: any[];
+    currentUserRole: string;
+    currentUserId: string;
+}
 
 export function MemberProfileView({
-    // ... (props)
+    member,
+    stats,
+    contributions,
+    loans,
+    contributionStatus,
+    nextOfKin,
+    currentUserRole,
+    currentUserId
 }: MemberProfileViewProps) {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<'loans' | 'contributions' | 'kin'>('loans');
@@ -21,7 +44,15 @@ export function MemberProfileView({
         }
     };
 
-    // ...
+    // Prepare quick stats data
+    const quickStatsData = {
+        totalLoans: stats?.totalLoans || 0,
+        activeLoans: stats?.activeLoans || 0,
+        totalContributions: stats?.totalContributions || 0,
+        totalBorrowed: stats?.totalBorrowed || 0,
+        outstandingBalance: stats?.outstandingBalance || 0,
+        borrowingPower: stats?.borrowingPower || 0
+    };
 
     return (
         <div className="bg-white min-h-full flex flex-col">

@@ -28,7 +28,7 @@ interface LoanStatementData {
     }
     loanProduct: {
         name: string
-    }
+    } | null
     walletTransactions: any[]
 }
 
@@ -139,7 +139,7 @@ export function LoanStatementView({ loanId, refreshKey }: { loanId: string, refr
                     </div>
                     <div>
                         <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Product</div>
-                        <div className="text-sm font-black text-slate-900">{loanData.loanProduct.name}</div>
+                        <div className="text-sm font-black text-slate-900">{loanData.loanProduct?.name || 'N/A'}</div>
                     </div>
                 </div>
             </div>

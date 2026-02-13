@@ -157,9 +157,8 @@ export function MemberProfileView({
                     >
                         <div className="p-4">
                             <NextOfKinManager
-                                nextOfKin={nextOfKin}
+                                initialData={nextOfKin}
                                 memberId={member.id}
-                                currentUserId={currentUserId}
                             />
                         </div>
                     </CollapsibleSection>

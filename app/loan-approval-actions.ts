@@ -26,7 +26,7 @@ export async function toggleConcurrentExemption(loanId: string, allowed: boolean
 
     // Check admin permissions
     const userRole = session.user.role
-    const isAdmin = ['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER', 'SECRETARY'].includes(userRole)
+    const isAdmin = ['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER', 'SECRETARY', 'SYSTEM_ADMINISTRATOR'].includes(userRole)
 
     // Also check granular permissions if needed, but for now strict admin
     if (!isAdmin) throw new Error("Only admins can toggle exemptions")
@@ -71,7 +71,7 @@ export async function submitLoanApproval(loanId: string, decision: 'APPROVED' | 
     // @ts-ignore
     const userPermissions = session.user.permissions
 
-    const roleHasPermission = ['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER'].includes(userRole) // Quick check aligned with approval-actions
+    const roleHasPermission = ['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER', 'SYSTEM_ADMINISTRATOR'].includes(userRole) // Quick check aligned with approval-actions
 
     let hasGranularPermission = false
     if (userPermissions) {
@@ -121,7 +121,7 @@ export async function submitLoanApproval(loanId: string, decision: 'APPROVED' | 
         const hasValidDelegation = activeDelegations.some(d => {
             const delegatorRole = d.fromUser.role
             // Check if delegator is an authorized approver
-            return ['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER'].includes(delegatorRole)
+            return ['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER', 'SYSTEM_ADMINISTRATOR'].includes(delegatorRole)
             // Note: We could also check granular permissions of delegator here if needed
         })
 
@@ -230,7 +230,7 @@ export async function submitLoanApproval(loanId: string, decision: 'APPROVED' | 
         const approvedCount = approvedVotes.length
 
         // Governance Check: Quality (Executive Role)
-        const EXECUTIVE_ROLES: UserRole[] = [UserRole.CHAIRPERSON, UserRole.SECRETARY, UserRole.TREASURER, UserRole.SYSTEM_ADMIN]
+        const EXECUTIVE_ROLES: any[] = [UserRole.CHAIRPERSON, UserRole.SECRETARY, UserRole.TREASURER, UserRole.SYSTEM_ADMIN, 'SYSTEM_ADMINISTRATOR']
 
         const hasExecutiveApproval = approvedVotes.some((vote: any) => {
             const userRole = vote.approver?.user?.role
@@ -326,7 +326,7 @@ export async function disburseLoanToWallet(loanId: string) {
 
     // Check authorization: Role-based OR Permission-based
     const userRole = session.user.role
-    const hasRolePermission = ['TREASURER', 'CHAIRPERSON', 'SYSTEM_ADMIN'].includes(userRole)
+    const hasRolePermission = ['TREASURER', 'CHAIRPERSON', 'SYSTEM_ADMIN', 'SYSTEM_ADMINISTRATOR'].includes(userRole)
 
     // @ts-ignore - Check granular permissions
     const userPermissions = session.user.permissions
@@ -725,7 +725,7 @@ export async function toggleMemberApprovalRight(memberId: string) {
     }
 
     // Check permissions (Only Admin/Chair/Secretary/Treasurer)
-    const allowedRoles = ['SYSTEM_ADMIN', 'CHAIRPERSON', 'SECRETARY', 'TREASURER']
+    const allowedRoles = ['SYSTEM_ADMIN', 'CHAIRPERSON', 'SECRETARY', 'TREASURER', 'SYSTEM_ADMINISTRATOR']
     if (!session.user.role || !allowedRoles.includes(session.user.role)) {
         throw new Error("Insufficient permissions to manage approval rights")
     }

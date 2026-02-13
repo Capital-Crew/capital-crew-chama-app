@@ -23,7 +23,8 @@ export async function getMembers() {
         UserRole.SYSTEM_ADMIN,
         UserRole.CHAIRPERSON,
         UserRole.TREASURER,
-        UserRole.SECRETARY
+        UserRole.SECRETARY,
+        'SYSTEM_ADMINISTRATOR' as any // Handle legacy/alternate role check
     ];
 
     const isPrivileged = privilegedRoles.includes(role as any);

@@ -21,7 +21,7 @@ import { startLoanApplication } from '@/app/actions/loan-application-actions';
 import { useRouter } from 'next/navigation';
 import { BarChart3Icon } from 'lucide-react';
 import { LoanReportsModal } from './loans/LoanReportsModal';
-import { LoansPortfolioSummary } from './loans/LoansPortfolioSummary';
+// import { LoansPortfolioSummary } from './loans/LoansPortfolioSummary';
 
 interface LoanManagementProps {
     loans: (Loan & { member?: Member })[];
@@ -182,17 +182,7 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
                 </div>
             </div>
 
-            {/* Portfolio Summary */}
-            <LoansPortfolioSummary
-                loans={loans}
-                onViewBreakdown={() => {
-                    // Placeholder: Could navigate to a detailed view or filter the list below
-                    // For now, we scroll to the "Disbursed" tab and activate it
-                    setActiveTab('disbursed');
-                    const el = document.getElementById('loans-list');
-                    if (el) el.scrollIntoView({ behavior: 'smooth' });
-                }}
-            />
+            {/* Portfolio Summary Removed */}
 
             {/* Scrollable Tabs */}
             <div id="loans-list" className="bg-gradient-to-r from-slate-50 to-slate-100 rounded-2xl p-2 shadow-inner overflow-x-auto scrollbar-none">

@@ -230,7 +230,7 @@ function ResponsiveLoansList({ loans, onLoanClick }: { loans: any[], onLoanClick
                             <div
                                 key={loan.id}
                                 onClick={() => onLoanClick(loan.id)}
-                                className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm active:scale-[0.98] transition-transform"
+                                className="bg-white border border-slate-100 rounded-2xl p-4 shadow-sm active:scale-[0.98] transition-transform cursor-pointer"
                             >
                                 <div className="flex justify-between items-start mb-2">
                                     <div className="font-bold text-slate-800 text-lg">#{loan.loanNumber}</div>
@@ -273,7 +273,11 @@ function ResponsiveLoansList({ loans, onLoanClick }: { loans: any[], onLoanClick
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {activeLoans.map(loan => (
-                                        <tr key={loan.id} className="hover:bg-slate-50 transition-colors group">
+                                        <tr
+                                            key={loan.id}
+                                            onClick={() => onLoanClick(loan.id)}
+                                            className="hover:bg-slate-50 transition-colors group cursor-pointer"
+                                        >
                                             <td className="py-4 px-6 font-bold text-slate-700">{loan.loanNumber}</td>
                                             <td className="py-4 px-6 font-medium text-slate-600">{loan.productName}</td>
                                             <td className="py-4 px-6 text-right text-slate-500">{formatCurrency(loan.approvedAmount)}</td>
@@ -281,7 +285,10 @@ function ResponsiveLoansList({ loans, onLoanClick }: { loans: any[], onLoanClick
                                             <td className="py-4 px-6 text-right text-slate-600">{loan.nextExpectedDate ? format(new Date(loan.nextExpectedDate), 'dd-MMM-yyyy') : '-'}</td>
                                             <td className="py-4 px-6 text-center">
                                                 <button
-                                                    onClick={() => onLoanClick(loan.id)}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation(); // Prevent double click event
+                                                        onLoanClick(loan.id);
+                                                    }}
                                                     className="text-cyan-600 hover:text-cyan-800 font-bold text-xs uppercase"
                                                 >
                                                     View
@@ -306,7 +313,11 @@ function ResponsiveLoansList({ loans, onLoanClick }: { loans: any[], onLoanClick
                     {/* Mobile Stack */}
                     <div className="space-y-3 md:hidden">
                         {historyLoans.map(loan => (
-                            <div key={loan.id} className="bg-slate-50 border border-slate-100 rounded-xl p-4">
+                            <div
+                                key={loan.id}
+                                onClick={() => onLoanClick(loan.id)}
+                                className="bg-slate-50 border border-slate-100 rounded-xl p-4 cursor-pointer active:scale-[0.98] transition-transform"
+                            >
                                 <div className="flex justify-between mb-1">
                                     <span className="font-bold text-slate-500">#{loan.loanNumber}</span>
                                     <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded">CLEARED</span>
@@ -333,7 +344,11 @@ function ResponsiveLoansList({ loans, onLoanClick }: { loans: any[], onLoanClick
                             </thead>
                             <tbody>
                                 {historyLoans.map(loan => (
-                                    <tr key={loan.id}>
+                                    <tr
+                                        key={loan.id}
+                                        onClick={() => onLoanClick(loan.id)}
+                                        className="cursor-pointer hover:bg-slate-100 transition-colors"
+                                    >
                                         <td className="py-3 px-6 text-slate-500">{loan.loanNumber}</td>
                                         <td className="py-3 px-6 text-slate-500">{loan.productName}</td>
                                         <td className="py-3 px-6 text-right font-bold text-slate-600">{formatCurrency(loan.approvedAmount)}</td>

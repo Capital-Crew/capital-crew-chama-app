@@ -39,7 +39,7 @@ export async function reverseLoanTransaction(transactionId: string, reason: stri
     }
 
     try {
-        return await prisma.$transaction(async (tx) => {
+        return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
             // 1. Fetch Original Transaction
             const originalTx = await tx.loanTransaction.findUnique({
                 where: { id: transactionId },
@@ -77,65 +77,85 @@ export async function reverseLoanTransaction(transactionId: string, reason: stri
             })
 
             // 4. Hard Reversal (GL - Contra Entries)
-            // Determine mappings based on transaction type
-            const mappings = await getSystemMappingsDict()
-            const journalLines: any[] = []
+            // Strategy: Try to find the original GL entry and reverse it. 
+            // If not found (legacy data), reconstruct the reversal manually.
 
-            // Reconstruct amounts
-            const amount = Number(originalTx.amount)
-            const principal = Number(originalTx.principalAmount)
-            const interest = Number(originalTx.interestAmount)
-            const penalty = Number(originalTx.penaltyAmount)
-            const fees = Number(originalTx.feeAmount)
+            const linkedGlEntry = await tx.ledgerTransaction.findFirst({
+                where: { externalReferenceId: transactionId }
+            })
 
-            // Logic depends on type. 
-            // REPAYMENT: Was DR Wallet / CR Receivables. 
-            // REVERSAL: DR Receivables / CR Wallet.
+            if (linkedGlEntry) {
+                // Smart Reversal: Reverse the actual original entry
+                await AccountingEngine.reverseJournalEntry(
+                    linkedGlEntry.id,
+                    reason,
+                    session.user.id!,
+                    user.member?.name || 'Admin',
+                    tx
+                )
+            } else {
+                // Fallback: Manual Reconstruction
+                // Determine mappings based on transaction type
+                const mappings = await getSystemMappingsDict()
+                const journalLines: any[] = []
 
-            if (originalTx.type === 'REPAYMENT') {
-                // DR Receivables (Restore Asset)
-                if (principal > 0) journalLines.push({ accountCode: mappings.EVENT_LOAN_REPAYMENT_PRINCIPAL, debitAmount: principal, creditAmount: 0, description: `Reversal: Principal` })
-                if (interest > 0) journalLines.push({ accountCode: mappings.RECEIVABLE_LOAN_INTEREST, debitAmount: interest, creditAmount: 0, description: `Reversal: Interest` })
-                if (penalty > 0) journalLines.push({ accountCode: mappings.RECEIVABLE_LOAN_PENALTY, debitAmount: penalty, creditAmount: 0, description: `Reversal: Penalty` })
-                if (fees > 0 && mappings.RECEIVABLE_LOAN_FEES) journalLines.push({ accountCode: mappings.RECEIVABLE_LOAN_FEES, debitAmount: fees, creditAmount: 0, description: `Reversal: Fees` })
+                // Reconstruct amounts
+                const amount = Number(originalTx.amount)
+                const principal = Number(originalTx.principalAmount)
+                const interest = Number(originalTx.interestAmount)
+                const penalty = Number(originalTx.penaltyAmount)
+                const fees = Number(originalTx.feeAmount)
 
-                // CR Wallet (Return money to member)
-                if (originalTx.loan.member.wallet) {
-                    journalLines.push({
-                        accountId: originalTx.loan.member.wallet.glAccountId,
-                        debitAmount: 0,
-                        creditAmount: amount,
-                        description: `Reversal: Refund to Wallet`
-                    })
+                // Logic depends on type. 
+                // REPAYMENT: Was DR Wallet / CR Receivables. 
+                // REVERSAL: DR Receivables / CR Wallet.
+
+                if (originalTx.type === 'REPAYMENT') {
+                    // DR Receivables (Restore Asset)
+                    if (principal > 0) journalLines.push({ accountCode: mappings.EVENT_LOAN_REPAYMENT_PRINCIPAL, debitAmount: principal, creditAmount: 0, description: `Reversal: Principal` })
+                    if (interest > 0) journalLines.push({ accountCode: mappings.RECEIVABLE_LOAN_INTEREST, debitAmount: interest, creditAmount: 0, description: `Reversal: Interest` })
+                    if (penalty > 0) journalLines.push({ accountCode: mappings.RECEIVABLE_LOAN_PENALTY, debitAmount: penalty, creditAmount: 0, description: `Reversal: Penalty` })
+                    if (fees > 0 && mappings.RECEIVABLE_LOAN_FEES) journalLines.push({ accountCode: mappings.RECEIVABLE_LOAN_FEES, debitAmount: fees, creditAmount: 0, description: `Reversal: Fees` })
+
+                    // CR Wallet (Return money to member)
+                    if (originalTx.loan.member.wallet) {
+                        journalLines.push({
+                            accountId: originalTx.loan.member.wallet.glAccountId,
+                            debitAmount: 0,
+                            creditAmount: amount,
+                            description: `Reversal: Refund to Wallet`
+                        })
+                    }
+                } else if (originalTx.type === 'DISBURSEMENT') {
+                    // Disbursement: Was DR Portfolio / CR Wallet
+                    // Reversal: DR Wallet / CR Portfolio
+                    if (originalTx.loan.member.wallet) {
+                        journalLines.push({
+                            accountId: originalTx.loan.member.wallet.glAccountId,
+                            debitAmount: amount,
+                            creditAmount: 0,
+                            description: `Reversal: Return Disbursement`
+                        })
+                    }
+                    // CR Portfolio
+                    journalLines.push({ accountCode: mappings.EVENT_LOAN_REPAYMENT_PRINCIPAL, debitAmount: 0, creditAmount: amount, description: `Reversal: Cancel Disbursement` })
                 }
-            } else if (originalTx.type === 'DISBURSEMENT') {
-                // Disbursement: Was DR Portfolio / CR Wallet
-                // Reversal: DR Wallet / CR Portfolio
-                if (originalTx.loan.member.wallet) {
-                    journalLines.push({
-                        accountId: originalTx.loan.member.wallet.glAccountId,
-                        debitAmount: amount,
-                        creditAmount: 0,
-                        description: `Reversal: Return Disbursement`
-                    })
-                }
-                // CR Portfolio
-                journalLines.push({ accountCode: mappings.EVENT_LOAN_REPAYMENT_PRINCIPAL, debitAmount: 0, creditAmount: amount, description: `Reversal: Cancel Disbursement` })
-            }
-            // Add other types as needed (PENALTY, WAIVER etc.)
 
-            // Post GL Reversal
-            if (journalLines.length > 0) {
-                await AccountingEngine.postJournalEntry({
-                    transactionDate: new Date(),
-                    referenceType: 'REVERSAL',
-                    referenceId: originalTx.id,
-                    description: `Reversal of ${originalTx.type} ${originalTx.id.substring(0, 8)}`,
-                    notes: reason,
-                    lines: journalLines,
-                    createdBy: session.user.id!,
-                    createdByName: user.member?.name || 'Admin',
-                }, tx)
+                // Add other types as needed (PENALTY, WAIVER etc.)
+
+                // Post GL Reversal
+                if (journalLines.length > 0) {
+                    await AccountingEngine.postJournalEntry({
+                        transactionDate: new Date(),
+                        referenceType: 'REVERSAL',
+                        referenceId: originalTx.id,
+                        description: `Reversal of ${originalTx.type} ${originalTx.id.substring(0, 8)}`,
+                        notes: reason,
+                        lines: journalLines,
+                        createdBy: session.user.id!,
+                        createdByName: user.member?.name || 'Admin',
+                    }, tx)
+                }
             }
 
             // 5. Recalculate Schedule (The "Magic" Step)

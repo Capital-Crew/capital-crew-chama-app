@@ -173,7 +173,7 @@ export function LoanStatementView({ loanId, refreshKey }: { loanId: string, refr
                                 <div key={`${row.txId}-${index}`} className={`bg-white p-4 rounded-xl border border-slate-100 shadow-sm relative ${row.isVoided ? 'opacity-60 bg-slate-50' : ''}`}>
                                     <div className="flex justify-between items-start mb-2">
                                         <div>
-                                            <p className={`font-bold text-sm line-clamp-2 ${row.isVoided ? 'line-through text-slate-400' : 'text-slate-800'}`}>{row.description}</p>
+                                            <p className={`font-bold text-sm line-clamp-2 ${row.isVoided ? 'line-through text-red-500' : 'text-slate-800'}`}>{row.description}</p>
                                             <p className="text-xs text-slate-500 font-medium mt-1">{row.date}</p>
                                         </div>
                                         <div className="text-right whitespace-nowrap ml-4">
@@ -274,7 +274,7 @@ export function LoanStatementView({ loanId, refreshKey }: { loanId: string, refr
                                                 <td className="px-4 py-3 text-sm text-slate-900 font-medium whitespace-nowrap">
                                                     {row.date}
                                                 </td>
-                                                <td className={`px-4 py-3 text-sm text-slate-700 ${row.isVoided ? 'line-through' : ''}`}>
+                                                <td className={`px-4 py-3 text-sm text-slate-700 ${row.isVoided ? 'line-through text-red-500' : ''}`}>
                                                     {row.description}
                                                 </td>
                                                 <td className="px-4 py-3 text-sm text-right font-medium text-slate-700">

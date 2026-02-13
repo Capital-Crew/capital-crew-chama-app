@@ -64,54 +64,58 @@ export function processTransactions(transactions: WalletTransaction[]): Statemen
         let debit: number | null = null
         let credit: number | null = null
 
-        // STRICT Split Logic
-        // Normalize type to upstream logic (types coming from getLoanStatement)
         const type = tx.type.toUpperCase()
-
         let displayDescription = tx.description;
 
-        // Type definition from getLoanStatement
+        // Check isReversed from mapped property (from getLoanStatement)
         const isReversed = (tx as any).isReversed;
-        let isVoided = false;
+        let isVoided = !!isReversed;
 
-        if (isReversed) {
-            isVoided = true;
-            // DO NOT UPDATE RUNNING BALANCE
-            // Just determine what the amount WAS for display purposes
-            if (['DISBURSEMENT', 'CHARGE', 'PENALTY', 'INTEREST', 'FEE'].includes(type)) {
-                debit = toNumber(txAmount)
-            } else {
-                credit = toNumber(txAmount)
-            }
+        if (isVoided) {
             displayDescription = `[VOID] ${displayDescription}`
+        }
+
+        // Determine Direction (Debit vs Credit)
+        let isDebit = false;
+        if (['DISBURSEMENT', 'CHARGE', 'PENALTY', 'INTEREST', 'FEE'].includes(type)) {
+            isDebit = true;
+            debit = toNumber(txAmount)
+        } else if (['REPAYMENT', 'WAIVER', 'PAYMENT'].includes(type)) {
+            isDebit = false;
+            credit = toNumber(txAmount)
+
+            // Format Description for Repayments
+            if (type === 'REPAYMENT' && !isVoided) {
+                const parts = [];
+                if (tx.penaltyAmount && tx.penaltyAmount > 0) parts.push(`Penalty Paid: ${formatCurrency(tx.penaltyAmount)}`);
+                if (tx.feeAmount && tx.feeAmount > 0) parts.push(`Fees Paid: ${formatCurrency(tx.feeAmount)}`);
+                if (tx.interestAmount && tx.interestAmount > 0) parts.push(`Interest Paid: ${formatCurrency(tx.interestAmount)}`);
+                if (tx.principalAmount && tx.principalAmount > 0) parts.push(`Principal Paid: ${formatCurrency(tx.principalAmount)}`);
+
+                if (parts.length > 0) displayDescription = parts.join(', ');
+            }
         } else {
-            // NORMAL PROCESSING
-            if (['DISBURSEMENT', 'CHARGE', 'PENALTY', 'INTEREST', 'FEE'].includes(type)) {
-                // DEBIT SIDE (Increases Balance)
-                debit = toNumber(txAmount)
-                runningBalance = runningBalance.plus(txAmount)
-            } else if (['REPAYMENT', 'WAIVER', 'PAYMENT'].includes(type)) {
-                // CREDIT SIDE (Decreases Balance)
-                credit = toNumber(txAmount)
-                runningBalance = runningBalance.minus(txAmount)
+            // Unknown type fallback
+            // Assume Debit or just log warning? 
+            // Logic in existing code:
+            console.warn(`Unknown transaction type: ${type}`);
+            displayDescription = `UNKNOWN: ${type} - ${tx.description}`;
+        }
 
-                // Format Description for Repayments (Waterfall Breakdown)
-                if (type === 'REPAYMENT') {
-                    const parts = [];
-                    if (tx.penaltyAmount && tx.penaltyAmount > 0) parts.push(`Penalty Paid: ${formatCurrency(tx.penaltyAmount)}`);
-                    if (tx.feeAmount && tx.feeAmount > 0) parts.push(`Fees Paid: ${formatCurrency(tx.feeAmount)}`);
-                    if (tx.interestAmount && tx.interestAmount > 0) parts.push(`Interest Paid: ${formatCurrency(tx.interestAmount)}`);
-                    if (tx.principalAmount && tx.principalAmount > 0) parts.push(`Principal Paid: ${formatCurrency(tx.principalAmount)}`);
+        // --- USER REQUESTED LOGIC ---
+        // "CRITICAL: If a transaction is reversed, IGNORE its amount for the balance"
+        let effectiveAmount = toDecimal(0);
 
-                    if (parts.length > 0) {
-                        displayDescription = parts.join(', ');
-                    }
-                }
+        if (!isVoided) {
+            if (isDebit) {
+                effectiveAmount = txAmount; // Increases balance (Positive)
             } else {
-                console.warn(`Unknown transaction type encountered: ${type} for tx ${tx.id}`);
-                displayDescription = `UNKNOWN TYPE: ${type} - ${tx.description}`;
+                effectiveAmount = txAmount.negated(); // Decreases balance (Negative)
             }
         }
+
+        runningBalance = runningBalance.plus(effectiveAmount);
+
 
         rows.push({
             date: format(new Date(tx.createdAt), 'dd-MMM'),

@@ -22,9 +22,9 @@ export function serializePrisma<T>(data: T): T {
             return data.map(item => serializePrisma(item)) as unknown as T;
         }
 
-        // Handle Date (Pass through)
+        // Handle Date (Convert to String for Client Components)
         if (data instanceof Date) {
-            return data;
+            return data.toISOString() as unknown as T;
         }
 
         // Handle Prisma Decimal (Duck Typing)

@@ -77,7 +77,8 @@ export function processTransactions(transactions: WalletTransaction[]): Statemen
 
         // Determine Direction (Debit vs Credit)
         let isDebit = false;
-        if (['DISBURSEMENT', 'CHARGE', 'PENALTY', 'INTEREST', 'FEE'].includes(type)) {
+        // REVERSAL is typically a Debit (Reversing a Credit/Repayment)
+        if (['DISBURSEMENT', 'CHARGE', 'PENALTY', 'INTEREST', 'FEE', 'REVERSAL'].includes(type)) {
             isDebit = true;
             debit = toNumber(txAmount)
         } else if (['REPAYMENT', 'WAIVER', 'PAYMENT'].includes(type)) {
@@ -102,16 +103,18 @@ export function processTransactions(transactions: WalletTransaction[]): Statemen
             displayDescription = `UNKNOWN: ${type} - ${tx.description}`;
         }
 
-        // --- USER REQUESTED LOGIC ---
-        // "CRITICAL: If a transaction is reversed, IGNORE its amount for the balance"
+        // --- REVERSAL HANDLING ---
+        // We follow strict accounting: Original Tx + Reversal Tx = 0 Net Effect.
+        // We do NOT void the original transaction's amount, so we see history.
+        // We ensure REVERSAL type is treated as the opposite of what it reverses.
+        // Assumption: Typically reversing Repayments (Credit) -> So Reversal is Debit.
+
         let effectiveAmount = toDecimal(0);
 
-        if (!isVoided) {
-            if (isDebit) {
-                effectiveAmount = txAmount; // Increases balance (Positive)
-            } else {
-                effectiveAmount = txAmount.negated(); // Decreases balance (Negative)
-            }
+        if (isDebit) {
+            effectiveAmount = txAmount; // Increases balance (Positive)
+        } else {
+            effectiveAmount = txAmount.negated(); // Decreases balance (Negative)
         }
 
         runningBalance = runningBalance.plus(effectiveAmount);

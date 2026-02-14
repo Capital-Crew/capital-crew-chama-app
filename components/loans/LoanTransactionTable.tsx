@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import { LoanTransaction } from '@/lib/types/loan-transaction';
 import { formatCurrency } from '@/lib/utils';
 import { ArrowUpDown, Search, Filter, AlertCircle } from 'lucide-react';
+import { TransactionActionMenu } from './TransactionActionMenu';
 
 interface LoanTransactionTableProps {
     transactions: LoanTransaction[];
@@ -107,6 +108,7 @@ export function LoanTransactionTable({ transactions, isLoading }: LoanTransactio
                                         <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-500 border border-slate-200">
                                             {tx.user?.name ? tx.user.name.substring(0, 2).toUpperCase() : 'SYS'}
                                         </div>
+                                        <TransactionActionMenu transactionId={tx.id} isReversed={tx.isReversed} />
                                     </div>
                                 </td>
                             </tr>

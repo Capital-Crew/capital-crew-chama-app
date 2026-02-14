@@ -20,16 +20,13 @@ export function LoanDetailsView({ loan, transactions }: LoanDetailsViewProps) {
     // In a real app, these might come from the DB, but we can aggregate here for now
     const summary = useMemo(() => {
         const principalPaid = transactions
-            .filter(t => t.entryType === 'PRINCIPAL' && t.amount > 0) // Assuming positive for repayment? Or negative? usually Repayment is Credit (+).
-            // Actually, based on standard accounting:
-            // Debit = Loan Issue (+)
-            // Credit = Repayment (-)
-            // But let's look at existing data. Usually Amount < 0 is Credit (Repayment).
-            // Let's assume absolute values for the summary cards for now.
+            .filter(t => !t.isReversed && !t.isReversal) // Exclude reversed
+            .filter(t => t.entryType === 'PRINCIPAL' && t.amount > 0)
             .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
         const interestPaid = transactions
-            .filter(t => t.entryType === 'INTEREST' && t.amount < 0) // Repayment of interest
+            .filter(t => !t.isReversed && !t.isReversal) // Exclude reversed
+            .filter(t => t.entryType === 'INTEREST' && t.amount < 0)
             .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
         return {
@@ -99,8 +96,8 @@ export function LoanDetailsView({ loan, transactions }: LoanDetailsViewProps) {
                             key={type}
                             onClick={() => setFilterType(type as any)}
                             className={`px-4 py-2 text-xs font-bold rounded-md transition-all ${filterType === type
-                                    ? 'bg-white text-slate-900 shadow-sm'
-                                    : 'text-slate-500 hover:text-slate-700'
+                                ? 'bg-white text-slate-900 shadow-sm'
+                                : 'text-slate-500 hover:text-slate-700'
                                 }`}
                         >
                             {type === 'ALL' ? 'All Entries' : type}

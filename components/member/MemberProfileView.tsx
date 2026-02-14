@@ -36,12 +36,7 @@ export function MemberProfileView({
     const [selectedLoanId, setSelectedLoanId] = useState<string | null>(null);
 
     const handleLoanClick = (loanId: string) => {
-        const loan = loans.find(l => l.id === loanId);
-        if (loan && ['ACTIVE', 'OVERDUE', 'WRITTEN_OFF', 'DISBURSED', 'CLEARED'].includes(loan.status)) {
-            router.push(`/loans/${loanId}`);
-        } else {
-            setSelectedLoanId(loanId);
-        }
+        setSelectedLoanId(loanId);
     };
 
     // Prepare quick stats data
@@ -54,11 +49,11 @@ export function MemberProfileView({
         },
         financials: {
             memberSavings: stats?.memberSavings || 0,
-            cumulativeContributions: stats?.totalContributions || 0,
-            outstandingLoans: stats?.outstandingBalance || 0,
+            cumulativeContributions: stats?.cumulativeContributions || 0,
+            outstandingLoans: stats?.outstandingLoans || stats?.totalOutstandingBalance || 0,
             // Legacy fallbacks
-            totalContributions: stats?.totalContributions || 0,
-            cumulativeLoanBalance: stats?.outstandingBalance || 0
+            totalContributions: stats?.cumulativeContributions || 0,
+            cumulativeLoanBalance: stats?.outstandingLoans || 0
         }
     };
 

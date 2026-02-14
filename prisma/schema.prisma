@@ -383,6 +383,18 @@ enum DomainEventType {
 
 // Models
 
+// Idempotency tracking for preventing duplicate transactions
+model IdempotencyRecord {
+  key       String   @id // UUID from frontend
+  path      String   // Action name (e.g., "createLoan", "submitExpense")
+  createdAt DateTime @default(now())
+  response  Json?    // Cached response from successful execution
+  locked    Boolean  @default(true) // Race condition handling
+
+  @@index([path, createdAt]) // For querying by action and cleanup
+  @@map("idempotency_records")
+}
+
 model User {
   id                 String   @id @default(cuid())
   name               String?
@@ -1505,6 +1517,7 @@ enum LoanTransactionType {
   INTEREST
   PENALTY
   WAIVER
+  REVERSAL
 }
 
 model LoanTransaction {

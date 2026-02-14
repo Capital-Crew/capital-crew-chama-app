@@ -1,10 +1,10 @@
-
 'use client';
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { reverseLoanTransaction } from '@/app/actions/loan-reversal-actions';
 import { AlertTriangle, RotateCcw, X, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface TransactionActionMenuProps {
     transactionId: string;
@@ -31,13 +31,15 @@ export function TransactionActionMenu({ transactionId, isReversed }: Transaction
             const result = await reverseLoanTransaction(transactionId, reason);
             if (result.error) {
                 setError(result.error);
+                toast.error(result.error);
             } else {
                 setShowModal(false);
-                // Ideally show a toast here
+                toast.success('Transaction reversed successfully. Dashboard updated.');
                 router.refresh();
             }
         } catch (e) {
             setError('An unexpected error occurred.');
+            toast.error('An unexpected error occurred.');
         } finally {
             setIsThinking(false);
         }

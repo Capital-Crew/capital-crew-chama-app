@@ -37,6 +37,7 @@ export interface LoanTransaction {
 
     // UI Helpers
     isReversal?: boolean;
+    isReversed?: boolean;
 }
 
 export interface LoansSummary {

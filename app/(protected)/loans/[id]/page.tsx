@@ -40,10 +40,9 @@ export default async function LoanDetailsPage({ params }: PageProps) {
             penaltyAmount: Number(tx.penaltyAmount || 0),
             feeAmount: Number(tx.feeAmount || 0),
             glCode: '1000-00', // Placeholder until strictly mapped
-            userId: tx.userId, // Does LoanTransaction have userId? 
-            // If not, we might need to fetch it or leave it blank. 
-            // WalletTransaction has it via Wallet.
-            user: { name: 'System' }
+            userId: tx.userId,
+            user: { name: 'System' },
+            isReversed: tx.isReversed
         }))
         : loan.walletTransactions?.map((tx: any) => ({
             id: tx.id,

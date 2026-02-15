@@ -71,6 +71,12 @@ export async function getPendingApprovals() {
                             installments: true,
                             interestRate: true,
                             status: true,
+                            approvals: {
+                                select: {
+                                    approverId: true,
+                                    decision: true
+                                }
+                            },
                             member: {
                                 select: {
                                     id: true,
@@ -88,6 +94,12 @@ export async function getPendingApprovals() {
                             }
                         }
                     })
+
+                    // Filter out if user has already voted
+                    if (entityDetails) {
+                        const hasVoted = entityDetails.approvals.some((a: any) => a.approverId === session.user.memberId)
+                        if (hasVoted) return null // Skip this request
+                    }
                 } else if (req.type === 'MEMBER') {
                     entityDetails = await db.member.findUnique({
                         where: { id: req.referenceId },
@@ -133,8 +145,10 @@ export async function getPendingApprovals() {
         })
     )
 
-    return enrichedRequests
+    // Filter out nulls (requests where user has already voted)
+    return enrichedRequests.filter(req => req !== null)
 }
+
 
 export async function getApprovalCounts() {
     try {
@@ -170,7 +184,15 @@ export async function getApprovalCounts() {
 
         if (canApproveLoans) {
             const loanCount = await db.loan.count({
-                where: { status: 'PENDING_APPROVAL' }
+                where: {
+                    status: 'PENDING_APPROVAL',
+                    // Exclude loans where I have already voted
+                    approvals: {
+                        none: {
+                            approverId: session.user.memberId
+                        }
+                    }
+                }
             })
             totalCount += loanCount
         }

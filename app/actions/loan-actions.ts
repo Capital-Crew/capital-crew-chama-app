@@ -20,7 +20,13 @@ export async function getPendingLoanCount() {
     try {
         const count = await db.loan.count({
             where: {
-                status: 'PENDING_APPROVAL'
+                status: 'PENDING_APPROVAL',
+                // Exclude loans where I have already voted
+                approvals: {
+                    none: {
+                        approverId: session.user.memberId
+                    }
+                }
             }
         })
         return count

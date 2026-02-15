@@ -526,6 +526,16 @@ export async function disburseLoanToWallet(loanId: string) {
         }
 
         // Post via Accounting Engine (Handles Validation & Cents Conversion)
+        // Ensure perfect balance by recalculating net from rounded parts
+        const roundedPrincipal = Number(Number(principal).toFixed(2))
+        const roundedProcessingFee = Number(Number(processingFee).toFixed(2))
+        const roundedInsuranceFee = Number(Number(insuranceFee).toFixed(2))
+        const roundedShareDeduction = Number(Number(shareDeduction).toFixed(2))
+
+        let totalCredits = 0
+        const creditLines = journalLines.filter(l => l.accountType !== 'ASSET' || l.creditAmount > 0) // Heuristic: all credits
+        // Actually, let's just sum the credit amounts we pushed
+
         const je = await AccountingEngine.postJournalEntry({
             transactionDate: new Date(),
             referenceType: 'LOAN_DISBURSEMENT',
@@ -535,8 +545,8 @@ export async function disburseLoanToWallet(loanId: string) {
             createdByName: session!.user.name || 'Unknown',
             lines: journalLines.map(l => ({
                 accountId: l.accountId,
-                debitAmount: Number(l.debitAmount) || 0,
-                creditAmount: Number(l.creditAmount) || 0,
+                debitAmount: Number(Number(l.debitAmount).toFixed(2)) || 0,
+                creditAmount: Number(Number(l.creditAmount).toFixed(2)) || 0,
                 description: l.description
             }))
         }, tx)

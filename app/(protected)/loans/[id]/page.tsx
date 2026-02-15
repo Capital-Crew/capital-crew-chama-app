@@ -4,6 +4,7 @@ import { getLoanDetails } from '@/app/actions/loan'
 import { notFound } from 'next/navigation'
 import { LoanDetailsView } from '@/components/loans/LoanDetailsView'
 import Link from 'next/link'
+import { BackButton } from '@/components/shared/BackButton'
 
 interface PageProps {
     params: Promise<{ id: string }>
@@ -67,9 +68,10 @@ export default async function LoanDetailsPage({ params }: PageProps) {
             {/* Header / Breadcrumb */}
             <div className="flex items-center justify-between">
                 <div>
-                    <Link href="/loans" className="text-sm text-slate-500 hover:text-teal-600 mb-1 inline-block">
-                        &larr; Back to Portfolio
-                    </Link>
+                    <BackButton
+                        label="Back"
+                        fallbackRoute={`/loans?status=${loan.status || 'ACTIVE'}`}
+                    />
                     <h1 className="text-2xl font-bold text-slate-800">
                         Loan #{loan.loanApplicationNumber}
                     </h1>

@@ -1125,9 +1125,16 @@ model AuditLog {
   action    AuditLogAction
   details   String
 
+  // Smart Summary Fields
+  summary     String?  // Human-readable summary
+  steps       Json?    // Detailed technical steps
+  metadata    Json?    // Context snapshot
+  durationMs  Int?     // Execution time
+
   @@index([timestamp])
   @@index([userId])
 }
+
 
 model ReversalLog {
   id          String   @id @default(cuid())

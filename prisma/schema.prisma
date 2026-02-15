@@ -877,6 +877,7 @@ enum ExpenseStatus {
   SURRENDERED      // Imprest: user reported actuals
   CLOSED           // Fully settled
   REJECTED
+  REVERSED         // Reversal of an approved/disbursed expense
 }
 
 model Expense {
@@ -1125,8 +1126,16 @@ model AuditLog {
   details   String
 
   @@index([timestamp])
-  @@index([action])
   @@index([userId])
+}
+
+model ReversalLog {
+  id          String   @id @default(cuid())
+  targetType  String   // LOAN, SAVINGS, SHARE, EXPENSE
+  targetId    String   // ID of the reversed transaction
+  reason      String
+  adminId     String
+  timestamp   DateTime @default(now())
 }
 
 // ShareTransaction - Immutable record of share capital contributions
@@ -1203,6 +1212,8 @@ model WalletTransaction {
 
   balanceAfter Decimal @db.Decimal(19, 4)
   immutable    Boolean @default(true)
+  
+  isReversed   Boolean @default(false)
 
   reversedBy String? // ID of reversal transaction
   reverses   String? // ID of transaction being reversed

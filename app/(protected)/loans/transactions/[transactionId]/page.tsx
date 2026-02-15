@@ -37,7 +37,7 @@ export default async function TransactionDetailsPage({ params }: PageProps) {
                 <div>
                     <div className="flex items-center gap-3 mb-1">
                         <h1 className="text-2xl font-bold text-slate-900">
-                            Transaction #{transaction.id.substring(0, 8)}
+                            Transaction #{transaction.id}
                         </h1>
                         {transaction.isReversed && (
                             <span className="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded font-bold uppercase tracking-wide">
@@ -72,7 +72,7 @@ export default async function TransactionDetailsPage({ params }: PageProps) {
                 </div>
                 <div>
                     <p className="text-xs font-bold text-slate-500 uppercase mb-1">Reference</p>
-                    <p className="font-mono text-sm text-slate-900">{transaction.documentRef || transaction.externalReferenceId || '-'}</p>
+                    <p className="font-mono text-sm text-slate-900">{transaction.reference || transaction.referenceId || transaction.externalReferenceId || '-'}</p>
                 </div>
                 <div>
                     <p className="text-xs font-bold text-slate-500 uppercase mb-1">Initiated By</p>

@@ -169,9 +169,16 @@ export async function getLoanTransactionDetails(transactionId: string): Promise<
     if (!transaction) return null;
 
     // 2. Fetch the associated GL Entries (via LedgerTransaction)
-    // The link is usually via externalReferenceId or referenceId
+    // The link is usually via referenceId (strict) or externalReferenceId (legacy)
     const ledgerTx = await db.ledgerTransaction.findFirst({
-        where: { externalReferenceId: transactionId },
+        where: {
+            OR: [
+                // Primary Link: Ledger Transaction ID is stored in LoanTransaction.referenceId
+                { id: transaction.referenceId || undefined },
+                // Secondary Link: Loan Transaction ID is stored in LedgerTransaction.externalReferenceId
+                { externalReferenceId: transactionId }
+            ]
+        },
         include: {
             ledgerEntries: {
                 include: {
@@ -202,6 +209,8 @@ export async function getLoanTransactionDetails(transactionId: string): Promise<
         postingDate: transaction.postedAt,
         glEntries,
         user: transaction.loan.member.user, // Hoist user
-        isReversal: transaction.isReversed
+        isReversal: transaction.isReversed,
+        // Ensure reference is passed correctly for UI
+        reference: transaction.referenceId || transaction.externalReferenceId
     });
 }

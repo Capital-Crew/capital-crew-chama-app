@@ -14,21 +14,15 @@ interface TransactionActionMenuProps {
 export function TransactionActionMenu({ transactionId, isReversed }: TransactionActionMenuProps) {
     const [isThinking, setIsThinking] = useState(false);
     const [showModal, setShowModal] = useState(false);
-    const [reason, setReason] = useState('');
     const [error, setError] = useState('');
     const router = useRouter();
 
     const handleReverse = async () => {
-        if (!reason || reason.length < 5) {
-            setError('Please provide a valid reason (min 5 chars).');
-            return;
-        }
-
         setIsThinking(true);
         setError('');
 
         try {
-            const result = await reverseLoanTransaction(transactionId, reason);
+            const result = await reverseLoanTransaction(transactionId, 'Manual Reversal');
             if (result.error) {
                 setError(result.error);
                 toast.error(result.error);
@@ -77,20 +71,7 @@ export function TransactionActionMenu({ transactionId, isReversed }: Transaction
                             </button>
                         </div>
                         <div className="p-6 space-y-4">
-                            <p className="text-slate-600 text-sm">
-                                Are you sure you want to reverse this transaction? This action will create contra-entries in the General Ledger and cannot be undone easily.
-                            </p>
-
-                            <div>
-                                <label className="block text-xs font-bold text-slate-700 mb-1">Reason for Reversal <span className="text-red-500">*</span></label>
-                                <textarea
-                                    value={reason}
-                                    onChange={(e) => setReason(e.target.value)}
-                                    placeholder="e.g. Posted to wrong account"
-                                    className="w-full border border-slate-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none min-h-[80px]"
-                                />
-                                {error && <p className="text-red-600 text-xs mt-1 font-medium">{error}</p>}
-                            </div>
+                            {error && <p className="text-red-600 text-xs mt-1 font-medium">{error}</p>}
 
                             <div className="flex justify-end gap-3 pt-2">
                                 <button

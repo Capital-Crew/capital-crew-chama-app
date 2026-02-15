@@ -4,8 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { getLoanStatement } from '@/app/actions/getLoanStatement'
 import { processTransactions, type StatementRow } from '@/lib/statementProcessor'
 import { formatCurrency } from '@/lib/financialMath'
-import { AlertCircleIcon, FileTextIcon, RotateCcwIcon, Download, Printer, ArrowUpRight } from 'lucide-react'
-import { reverseLoanTransaction } from '@/app/actions/loan-reversal-actions'
+import { AlertCircleIcon, FileTextIcon, Download, Printer, ArrowUpRight } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 
@@ -18,7 +17,6 @@ const PDFDownloadLink = dynamic(
     () => import('@react-pdf/renderer').then((mod) => mod.PDFDownloadLink),
     { ssr: false }
 )
-import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 
 interface LoanStatementData {
@@ -38,7 +36,6 @@ export function LoanStatementView({ loanId, refreshKey }: { loanId: string, refr
     const [error, setError] = useState<string | null>(null)
     const [loanData, setLoanData] = useState<LoanStatementData | null>(null)
     const [statementRows, setStatementRows] = useState<StatementRow[]>([])
-    const [reversingId, setReversingId] = useState<string | null>(null)
     const [isMounted, setIsMounted] = useState(false)
     const router = useRouter()
 
@@ -71,27 +68,6 @@ export function LoanStatementView({ loanId, refreshKey }: { loanId: string, refr
     useEffect(() => {
         fetchStatement()
     }, [loanId, refreshKey])
-
-    const handleReverse = async (txId: string, amount: number) => {
-        const reason = prompt("Enter reason for reversing this repayment:")
-        if (!reason) return
-
-        setReversingId(txId)
-        try {
-            const result = await reverseLoanTransaction(txId, reason)
-            if (result.error) {
-                toast.error(result.error)
-            } else {
-                toast.success('Transaction reversed successfully')
-                fetchStatement() // Refresh locally
-                router.refresh() // Refresh server components if any
-            }
-        } catch (error: any) {
-            toast.error(error.message || 'Failed to reverse')
-        } finally {
-            setReversingId(null)
-        }
-    }
 
     if (loading) {
         return (
@@ -211,16 +187,6 @@ export function LoanStatementView({ loanId, refreshKey }: { loanId: string, refr
                                                 Receipt
                                             </PDFDownloadLink>
                                         )}
-                                        {isReversible && (
-                                            <button
-                                                onClick={() => handleReverse(row.txId, row.credit!)}
-                                                disabled={reversingId === row.txId}
-                                                className="text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
-                                            >
-                                                {reversingId === row.txId ? <div className="w-3 h-3 border-2 border-red-200 border-t-red-600 rounded-full animate-spin" /> : <RotateCcwIcon className="w-3 h-3" />}
-                                                Reverse
-                                            </button>
-                                        )}
                                     </div>
                                 </div>
                             );
@@ -324,16 +290,6 @@ export function LoanStatementView({ loanId, refreshKey }: { loanId: string, refr
                                                                 <Printer className="w-4 h-4" />
                                                             </PDFDownloadLink>
                                                         )}
-                                                        {isReversible && (
-                                                            <button
-                                                                onClick={() => handleReverse(row.txId, row.credit!)}
-                                                                disabled={reversingId === row.txId}
-                                                                className="opacity-0 group-hover:opacity-100 transition-opacity p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
-                                                                title="Reverse Transaction"
-                                                            >
-                                                                {reversingId === row.txId ? <div className="w-4 h-4 border-2 border-red-200 border-t-red-600 rounded-full animate-spin" /> : <RotateCcwIcon className="w-4 h-4" />}
-                                                            </button>
-                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>
@@ -361,7 +317,8 @@ export function LoanStatementView({ loanId, refreshKey }: { loanId: string, refr
                         </div>
                     </div>
                 </>
-            )}
+            )
+            }
 
             {/* Information Notice */}
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
@@ -370,6 +327,6 @@ export function LoanStatementView({ loanId, refreshKey }: { loanId: string, refr
                     Debit entries (red) increase the outstanding balance, while credit entries (green) reduce it.
                 </p>
             </div>
-        </div>
+        </div >
     )
 }

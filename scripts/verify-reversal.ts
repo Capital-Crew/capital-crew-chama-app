@@ -75,9 +75,27 @@ async function verifyReversal() {
                     tx as any // Cast flexibility
                 )
                 console.log('STEP B: GL Entry reversed.')
-            } else {
                 console.log('STEP B: No linked GL entry found. Skipping GL reversal.')
             }
+
+            // A2. Creation of Explicit Reversal Transaction (Matching the new Action logic)
+            await tx.loanTransaction.create({
+                data: {
+                    loanId: transaction.loanId,
+                    type: 'REVERSAL',
+                    amount: transaction.amount,
+                    principalAmount: transaction.principalAmount,
+                    interestAmount: transaction.interestAmount,
+                    penaltyAmount: transaction.penaltyAmount,
+                    feeAmount: transaction.feeAmount,
+                    description: `Reversal: ${transaction.type} (${reason})`,
+                    referenceId: transaction.id,
+                    postedAt: new Date(),
+                    transactionDate: new Date(),
+                    isReversed: false
+                }
+            })
+            console.log('STEP A2: Created Explicit REVERSAL Transaction.')
 
             // C. Replay Tranasctions (Update Balance/Installments)
             const result = await TransactionReplayService.replayTransactions(transaction.loanId, undefined, tx)
@@ -104,8 +122,24 @@ async function verifyReversal() {
 
         if (Math.abs(change - Number(transaction.amount)) < 1) {
             console.log('SUCCESS: Balance updated correctly.')
-        } else {
             console.log('WARNING: Balance change does not match transaction amount exactly. Check for penalties/interest accrual differences or multiple updates.')
+        }
+
+        // 4. Verify Explicit REVERSAL Transaction Creation
+        // This was the fix for the user's issue (Statement not updating)
+        const reversalTx = await prisma.loanTransaction.findFirst({
+            where: {
+                loanId: transaction.loanId,
+                type: 'REVERSAL',
+                amount: transaction.amount,
+                createdAt: { gt: new Date(Date.now() - 1000 * 60) } // Created in last minute
+            }
+        })
+
+        if (reversalTx) {
+            console.log(`SUCCESS: REVERSAL transaction created: ${reversalTx.id} | Amount: ${reversalTx.amount}`)
+        } else {
+            console.error('FAILURE: No REVERSAL transaction found! Statement update will fail.')
         }
 
     } catch (e) {

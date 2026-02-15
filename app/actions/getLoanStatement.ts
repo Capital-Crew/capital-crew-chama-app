@@ -63,6 +63,9 @@ export async function getLoanStatement(loanId: string) {
       case 'WAIVER':
         type = 'WAIVER'
         break
+      case 'REVERSAL':
+        type = 'REVERSAL'
+        break
       default:
         type = 'CHARGE'
     }

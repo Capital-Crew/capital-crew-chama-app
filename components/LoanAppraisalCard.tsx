@@ -7,7 +7,7 @@ import { LoanScheduleView } from './LoanScheduleView'
 import { LoanStatementView } from './LoanStatementView'
 import { LoanAppraisalReport } from './LoanAppraisalReport'
 import { ArrowLeft } from 'lucide-react'
-import { submitLoanApproval, getLoanJourney } from '@/app/loan-approval-actions'
+import { submitLoanApproval, getLoanJourney, disburseLoanToWallet } from '@/app/loan-approval-actions'
 import { PostLoanButton } from './loans/PostLoanButton';
 import { toast } from '@/lib/toast';
 
@@ -205,7 +205,7 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
         if (!confirm(`Are you sure you want to disburse KES ${loan.netDisbursementAmount.toLocaleString()} to ${loan.member.name}?`)) return
 
         setSubmitting(true)
-        const { disburseLoanToWallet } = await import('@/app/loan-approval-actions')
+        setSubmitting(true)
         try {
             await disburseLoanToWallet(loan.id)
             await fetchLoanData() // Refresh status to DISBURSED

@@ -28,8 +28,15 @@ export async function getAuditLogs({
 
     // 1. Strict RBAC
     const allowedRoles = ['CHAIRPERSON', 'SYSTEM_ADMINISTRATOR', 'SYSTEM_ADMIN'];
-    if (!session?.user || !allowedRoles.includes(session.user.role)) {
-        throw new Error('Unauthorized: Access denied');
+
+    if (!session?.user) {
+        console.error('[getAuditLogs] No session found');
+        throw new Error('Unauthorized: No session');
+    }
+
+    if (!allowedRoles.includes(session.user.role)) {
+        console.error(`[getAuditLogs] Access Denied. User: ${session.user.email}, Role: ${session.user.role}`);
+        throw new Error(`Unauthorized: Role ${session.user.role} not allowed`);
     }
 
     // 2. Build Query

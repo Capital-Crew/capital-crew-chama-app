@@ -1,59 +1,56 @@
+import { PrismaClient } from '@prisma/client'
 
-import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient()
 
-const prisma = new PrismaClient();
+async function main() {
+    console.log('Verifying AuditLog Schema...')
 
-async function verify() {
-    console.log("Verifying AuditLog schema...");
     try {
-        // 1. Check if we can select the new fields
-        // If these fields don't exist in the DB, Prisma Client (generated with the new schema) 
-        // might throw an error when trying to select them, or the DB will throw "column does not exist".
-        const log = await prisma.auditLog.findFirst({
-            select: {
-                id: true,
-                summary: true,
-                steps: true,
-                metadata: true,
-                durationMs: true
-            }
-        });
+        const user = await prisma.user.findFirst()
 
-        console.log("✓ Connection successful.");
-        console.log("✓ Query for new columns did not crash.");
-
-        // 2. Try to insert a record with the new fields
-        const user = await prisma.user.findFirst();
         if (!user) {
-            console.log("⚠ No user found to test insertion.");
-            return;
+            console.warn('⚠️ No users found. Skipping.')
+            return
         }
 
-        const newLog = await prisma.auditLog.create({
+        console.log(`Found User: ${user.id}`)
+
+        // Use SETTINGS_UPDATED which is definitely valid
+        const log = await prisma.auditLog.create({
             data: {
                 userId: user.id,
-                action: 'DASHBOARD_VIEWED', // Using a generic enum
-                details: 'Schema Verification Test',
-                summary: 'Verification Summary',
-                steps: { success: true },
-                metadata: { type: 'test' },
+                action: 'SETTINGS_UPDATED',
+                details: 'Schema Verification',
+
+                // New Fields
+                summary: 'Schema Verification Log',
+                context: 'TEST_VERIFY',
+                severity: 'INFO',
+                ipAddress: '127.0.0.1',
+                snapshot: { test: true },
+                steps: [
+                    { action: 'Step 1', timestamp: new Date(), type: 'INFO' }
+                ],
+                metadata: { version: '2.0' },
                 durationMs: 100
             }
-        });
+        })
 
-        console.log("✓ Successfully INSERTED record with new columns with ID:", newLog.id);
+        console.log('✅ Success: Created AuditLog with new fields!')
+        console.log('Log ID:', log.id)
 
-        // Clean up
-        await prisma.auditLog.delete({ where: { id: newLog.id } });
-        console.log("✓ Cleaned up test record.");
-        console.log("CONCLUSION: The schema changes ARE implemented.");
-
-    } catch (e: any) {
-        console.error("❌ VERIFICATION FAILED:", e.message);
-        console.log("CONCLUSION: The schema changes are NOT correctly applied to the database.");
-    } finally {
-        await prisma.$disconnect();
+    } catch (e) {
+        console.error('❌ Failed to create AuditLog.')
+        console.error(e)
+        process.exit(1)
     }
 }
 
-verify();
+main()
+    .catch((e) => {
+        console.error(e)
+        process.exit(1)
+    })
+    .finally(async () => {
+        await prisma.$disconnect()
+    })

@@ -150,6 +150,10 @@ enum AuditLogAction {
   WELFARE_TYPE_CREATED
   WELFARE_TYPE_UPDATED
   WELFARE_TYPE_DELETED
+  
+  // Auth Events
+  USER_LOGIN
+  USER_LOGOUT
 }
 
 enum WalletTransactionType {

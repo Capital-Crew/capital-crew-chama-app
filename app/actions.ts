@@ -606,6 +606,22 @@ export async function applyForLoan(prevState: any, formData: FormData) {
                 }
             })
 
+            // Fix: Create ApprovalRequest for the new loan application
+            // This ensures the approval card appears in the dashboard
+            await prisma.approvalRequest.create({
+                data: {
+                    type: 'LOAN',
+                    referenceId: loan.id,
+                    referenceTable: 'Loan',
+                    requesterId: memberId,
+                    requesterName: commonData.memberId ? (await prisma.member.findUnique({ where: { id: memberId }, select: { name: true } }))?.name || 'Member' : 'Member',
+                    description: `${product?.name || 'Loan'} Application - KES ${amount.toLocaleString()}`,
+                    amount: amount,
+                    status: 'PENDING',
+                    requiredPermission: 'APPROVE_LOANS'
+                }
+            })
+
             // NEW: Generate Repayment Schedule using ScheduleGeneratorService
             if (product && amount > 0) {
                 const { ScheduleGeneratorService } = await import('@/lib/services/ScheduleGeneratorService')

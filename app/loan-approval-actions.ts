@@ -709,8 +709,7 @@ export async function disburseLoanToWallet(loanId: string) {
                 timeout: 30000
             })
 
-            return je
-        })(loanId); // Call the wrapped function immediately
+        })(loanId);
 }
 
 /**

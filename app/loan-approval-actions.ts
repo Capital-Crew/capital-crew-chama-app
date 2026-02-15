@@ -526,15 +526,121 @@ export async function disburseLoanToWallet(loanId: string) {
         }
 
         // Post via Accounting Engine (Handles Validation & Cents Conversion)
-        // Ensure perfect balance by recalculating net from rounded parts
+
+        // 1. Round ALL components first
         const roundedPrincipal = Number(Number(principal).toFixed(2))
         const roundedProcessingFee = Number(Number(processingFee).toFixed(2))
         const roundedInsuranceFee = Number(Number(insuranceFee).toFixed(2))
         const roundedShareDeduction = Number(Number(shareDeduction).toFixed(2))
 
-        let totalCredits = 0
-        const creditLines = journalLines.filter(l => l.accountType !== 'ASSET' || l.creditAmount > 0) // Heuristic: all credits
-        // Actually, let's just sum the credit amounts we pushed
+        // 2. Round Offsets
+        let roundedTotalOffsets = 0
+        const roundedOffsetLines: any[] = []
+
+        for (const topUp of loan.topUps) {
+            const clearanceAmount = Number(topUp.totalOffset) - Number(topUp.refinanceFee || 0);
+            const roundedClearance = Number(Number(clearanceAmount).toFixed(2))
+            const roundedRefinanceFee = Number(Number(topUp.refinanceFee || 0).toFixed(2))
+
+            roundedTotalOffsets += roundedClearance + roundedRefinanceFee
+
+            // Reconstruct lines for Offset
+            if (roundedClearance > 0) {
+                roundedOffsetLines.push({
+                    accountId: (await getAccountId(tx, getCode('RECEIVABLES'))),
+                    accountType: 'ASSET',
+                    description: `Offset Clearance - ${topUp.oldLoanNumber}`,
+                    debitAmount: 0,
+                    creditAmount: roundedClearance,
+                    index: lineIndex++
+                })
+            }
+            if (roundedRefinanceFee > 0) {
+                roundedOffsetLines.push({
+                    accountId: (await getAccountId(tx, getCode('INCOME_REFINANCE_FEE'))),
+                    accountType: 'INCOME',
+                    description: `Refinance Fee - ${topUp.oldLoanNumber}`,
+                    debitAmount: 0,
+                    creditAmount: roundedRefinanceFee,
+                    index: lineIndex++
+                })
+            }
+        }
+
+        // 3. Calculate Deductions Sum
+        const totalDeductions = roundedProcessingFee + roundedInsuranceFee + roundedShareDeduction + roundedTotalOffsets
+
+        // 4. DERIVE Net Disbursement to ensure Balance
+        // Principal (Debit) = Net (Credit) + Deductions (Credit)
+        // Therefore: Net = Principal - Deductions
+        const derivedNetDisbursement = Number((roundedPrincipal - totalDeductions).toFixed(2))
+
+        if (derivedNetDisbursement < 0) {
+            throw new Error(`Rounding Error: Net disbursement calculated as negative (KES ${derivedNetDisbursement}). Please check deductions.`)
+        }
+
+        // 5. Rebuild Journal Lines with ROUNDED values
+        const finalJournalLines: any[] = []
+        let idx = 0
+
+        // DEBIT: Principal
+        finalJournalLines.push({
+            accountId: (await getAccountId(tx, fundingAccountCode)),
+            accountType: 'ASSET',
+            description: `Principal Disbursement - ${loan.loanApplicationNumber}`,
+            debitAmount: roundedPrincipal,
+            creditAmount: 0,
+            index: idx++
+        })
+
+        // CREDIT: Net Disbursement
+        if (derivedNetDisbursement > 0) {
+            finalJournalLines.push({
+                accountId: memberWalletAccountId,
+                accountType: 'LIABILITY',
+                description: `Net Disbursement to Wallet`,
+                debitAmount: 0,
+                creditAmount: derivedNetDisbursement,
+                index: idx++
+            })
+        }
+
+        // CREDIT: Fees & Deductions
+        if (roundedProcessingFee > 0) {
+            finalJournalLines.push({
+                accountId: (await getAccountId(tx, getCode('INCOME_LOAN_PROCESSING_FEE'))),
+                accountType: 'INCOME',
+                description: 'Processing Fee',
+                debitAmount: 0,
+                creditAmount: roundedProcessingFee,
+                index: idx++
+            })
+        }
+        if (roundedInsuranceFee > 0) {
+            finalJournalLines.push({
+                accountId: (await getAccountId(tx, getCode('INCOME_GENERAL_FEE'))),
+                accountType: 'INCOME',
+                description: 'Insurance Fee',
+                debitAmount: 0,
+                creditAmount: roundedInsuranceFee,
+                index: idx++
+            })
+        }
+        if (roundedShareDeduction > 0) {
+            finalJournalLines.push({
+                accountId: (await getAccountId(tx, getCode('CONTRIBUTIONS'))),
+                accountType: 'ASSET',
+                description: 'Contribution Deduction',
+                debitAmount: 0,
+                creditAmount: roundedShareDeduction,
+                index: idx++
+            })
+        }
+
+        // CREDIT: Offsets
+        roundedOffsetLines.forEach(l => {
+            finalJournalLines.push({ ...l, index: idx++ })
+        })
 
         const je = await AccountingEngine.postJournalEntry({
             transactionDate: new Date(),
@@ -543,12 +649,7 @@ export async function disburseLoanToWallet(loanId: string) {
             description: `Disbursement for Loan ${loan.loanApplicationNumber}`,
             createdBy: session!.user.id!,
             createdByName: session!.user.name || 'Unknown',
-            lines: journalLines.map(l => ({
-                accountId: l.accountId,
-                debitAmount: Number(Number(l.debitAmount).toFixed(2)) || 0,
-                creditAmount: Number(Number(l.creditAmount).toFixed(2)) || 0,
-                description: l.description
-            }))
+            lines: finalJournalLines
         }, tx)
 
         // 2b. Strict Loan Ledger Transaction (New Loan - DEBIT)

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation"
 
 import { SiteHeader } from "@/components/SiteHeader"
 import { InactivityHandler } from "@/components/providers/InactivityHandler"
+import { RBACProvider } from "@/components/providers/RBACProvider"
 
 import { getApprovalCounts } from '@/lib/data/approval-data';
 
@@ -21,24 +22,33 @@ export default async function ProtectedLayout({ children }: { children: React.Re
     }
 
     // Parallel Fetching for performance
-    const [approvalCount, pendingLoanCountResult] = await Promise.all([
+    const [approvalCount, pendingLoanCountResult, permissionsList] = await Promise.all([
         getApprovalCounts(),
-        import('@/app/actions/loan-actions').then(mod => mod.getPendingLoanCount())
+        import('@/app/actions/loan-actions').then(mod => mod.getPendingLoanCount()),
+        import('@/lib/rbac-service').then(mod => mod.getPermissionsForRole((session.user as any).role))
     ]);
 
     // Ensure we handle the potential 0 or error returns safely
     const pendingLoanCount = typeof pendingLoanCountResult === 'number' ? pendingLoanCountResult : 0;
 
+    // Transform permissions to map for provider
+    const permissionsMap = permissionsList.reduce((acc: Record<string, boolean>, p: { key: string, canAccess: boolean }) => {
+        acc[p.key] = p.canAccess;
+        return acc;
+    }, {} as Record<string, boolean>);
+
     return (
         <InactivityHandler>
-            <div className="min-h-screen bg-slate-50 lemon:bg-yellow-50 flex text-slate-800 lemon:text-yellow-900 font-sans">
-                <AppSidebar user={session.user as any} approvalCount={approvalCount} pendingLoanCount={pendingLoanCount} />
+            <RBACProvider initialPermissions={permissionsMap}>
+                <div className="min-h-screen bg-slate-50 lemon:bg-yellow-50 flex text-slate-800 lemon:text-yellow-900 font-sans">
+                    <AppSidebar user={session.user as any} approvalCount={approvalCount} pendingLoanCount={pendingLoanCount} />
 
-                <main className="flex-1 w-full md:ml-80 px-4 md:px-8 py-8 transition-all duration-300 overflow-x-hidden">
-                    <SiteHeader user={session.user as any} approvalCount={approvalCount} />
-                    {children}
-                </main>
-            </div>
+                    <main className="flex-1 w-full md:ml-80 px-4 md:px-8 py-8 transition-all duration-300 overflow-x-hidden">
+                        <SiteHeader user={session.user as any} approvalCount={approvalCount} />
+                        {children}
+                    </main>
+                </div>
+            </RBACProvider>
         </InactivityHandler>
     )
 }

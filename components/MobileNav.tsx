@@ -10,7 +10,7 @@ import {
     AuditLogIcon, SettingsIcon, UserRightsIcon, IncomeIcon as WalletIcon, FileTextIcon
 } from '@/components/icons';
 
-import { hasAdminAccess } from '@/lib/rbac';
+import { useModuleAccess } from '@/hooks/useModuleAccess';
 
 interface NavItemProps {
     icon: React.ReactNode;
@@ -62,6 +62,7 @@ const NavItem: React.FC<NavItemProps> = ({ icon, label, href, active, hidden, ba
 export function MobileNav({ user, approvalCount = 0 }: { user: { name: string, role: string }, approvalCount?: number }) {
     const pathname = usePathname();
     const [open, setOpen] = useState(false);
+    const { canAccess } = useModuleAccess();
 
     return (
         <Sheet open={open} onOpenChange={setOpen}>
@@ -81,21 +82,22 @@ export function MobileNav({ user, approvalCount = 0 }: { user: { name: string, r
                 </SheetHeader>
 
                 <nav className="flex-1 overflow-y-auto py-4 space-y-1 scrollbar-hide">
-                    <NavItem icon={<DashboardIcon />} label="Dashboard" href="/dashboard" active={pathname === '/dashboard'} onClick={() => setOpen(false)} />
-                    <NavItem icon={<UserRightsIcon />} label="Approvals" href="/admin/approvals" active={pathname === '/admin/approvals'} badge={approvalCount > 0 ? approvalCount : undefined} onClick={() => setOpen(false)} />
-                    <NavItem icon={<MembersIcon />} label="Members" href="/members" active={pathname.startsWith('/members')} onClick={() => setOpen(false)} />
-                    <NavItem icon={<LoansIcon />} label="Loans" href="/loans" active={pathname === '/loans'} onClick={() => setOpen(false)} />
-                    <NavItem icon={<WalletIcon />} label="Wallet" href="/wallet" active={pathname === '/wallet'} onClick={() => setOpen(false)} />
-                    <NavItem icon={<HeartHandshake />} label="Welfare" href="/welfare" active={pathname.startsWith('/welfare')} onClick={() => setOpen(false)} />
+                    {canAccess('DASHBOARD') && <NavItem icon={<DashboardIcon />} label="Dashboard" href="/dashboard" active={pathname === '/dashboard'} onClick={() => setOpen(false)} />}
+                    {canAccess('APPROVALS') && <NavItem icon={<UserRightsIcon />} label="Approvals" href="/admin/approvals" active={pathname === '/admin/approvals'} badge={approvalCount > 0 ? approvalCount : undefined} onClick={() => setOpen(false)} />}
+                    {canAccess('MEMBERS') && <NavItem icon={<MembersIcon />} label="Members" href="/members" active={pathname.startsWith('/members')} onClick={() => setOpen(false)} />}
+                    {canAccess('LOANS') && <NavItem icon={<LoansIcon />} label="Loans" href="/loans" active={pathname === '/loans'} onClick={() => setOpen(false)} />}
+                    {canAccess('WALLET') && <NavItem icon={<WalletIcon />} label="Wallet" href="/wallet" active={pathname === '/wallet'} onClick={() => setOpen(false)} />}
+                    {canAccess('WELFARE') && <NavItem icon={<HeartHandshake />} label="Welfare" href="/welfare" active={pathname.startsWith('/welfare')} onClick={() => setOpen(false)} />}
 
-                    {hasAdminAccess(user.role) && (
+                    {(canAccess('ACCOUNTS') || canAccess('ADMIN') || canAccess('AUDIT')) && (
                         <>
                             <div className="mt-6 mb-3 px-8 pt-6 border-t border-white/10">
                                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-2">Administration</p>
                             </div>
-                            <NavItem icon={<FileTextIcon />} label="Chart of Accounts" href="/accounts" active={pathname === '/accounts'} onClick={() => setOpen(false)} />
-                            <NavItem icon={<SettingsIcon />} label="System Admin" href="/admin/system" active={pathname === '/admin/system'} onClick={() => setOpen(false)} />
-                            <NavItem icon={<AuditLogIcon />} label="Audit Trail" href="/audit" active={pathname === '/audit'} onClick={() => setOpen(false)} />
+                            {canAccess('ACCOUNTS') && <NavItem icon={<FileTextIcon />} label="Chart of Accounts" href="/accounts" active={pathname === '/accounts'} onClick={() => setOpen(false)} />}
+                            {canAccess('ADMIN') && <NavItem icon={<SettingsIcon />} label="System Admin" href="/admin/system" active={pathname === '/admin/system'} onClick={() => setOpen(false)} />}
+
+                            {canAccess('AUDIT') && <NavItem icon={<AuditLogIcon />} label="Audit Trail" href="/audit" active={pathname === '/audit'} onClick={() => setOpen(false)} />}
                         </>
                     )}
                     {/* Spacer to Ensure Scrolling clears footer if needed, though flex should handle it */}
@@ -108,8 +110,8 @@ export function MobileNav({ user, approvalCount = 0 }: { user: { name: string, r
                             {user.name?.charAt(0) || 'U'}
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-white truncate">{user.name || 'User'}</p>
-                            <p className="text-[10px] font-semibold text-slate-400 uppercase">{user.role}</p>
+                            <p className="text-sm font-bold text-white truncate">{user.name}</p>
+                            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">{user.role}</p>
                         </div>
                     </div>
                 </div>

@@ -9,7 +9,7 @@ import {
     DashboardIcon, MembersIcon, LoansIcon,
     AuditLogIcon, SettingsIcon, UserRightsIcon, IncomeIcon as WalletIcon, FileTextIcon
 } from './icons';
-import { hasAdminAccess } from '@/lib/rbac';
+import { useModuleAccess } from '@/hooks/useModuleAccess';
 
 interface NavItemProps {
     icon: React.ReactNode;
@@ -71,7 +71,7 @@ const NavItem: React.FC<NavItemProps> = ({ icon, label, href, active, hidden, ba
 
 export function AppSidebar({ user, approvalCount = 0, pendingLoanCount = 0 }: { user: { name: string, role: string }, approvalCount?: number, pendingLoanCount?: number }) {
     const pathname = usePathname();
-    const isAdmin = user.role !== 'Member';
+    const { canAccess } = useModuleAccess();
 
     return (
         <aside className="hidden md:flex w-80 h-screen fixed inset-y-0 left-0 z-40 bg-[#0A192F] border-r border-white/10 shadow-2xl flex-col font-sans selection:bg-[#00c2e0] selection:text-white">
@@ -94,38 +94,60 @@ export function AppSidebar({ user, approvalCount = 0, pendingLoanCount = 0 }: { 
                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-2">Main Menu</p>
                 </div>
 
-                <NavItem icon={<DashboardIcon className="w-5 h-5" />} label="Dashboard" href="/dashboard" active={pathname === '/dashboard'} />
+                {canAccess('DASHBOARD') && (
+                    <NavItem icon={<DashboardIcon className="w-5 h-5" />} label="Dashboard" href="/dashboard" active={pathname === '/dashboard'} />
+                )}
 
-                <NavItem
-                    icon={<UserRightsIcon className="w-5 h-5" />}
-                    label="Approvals"
-                    href="/admin/approvals"
-                    active={pathname === '/admin/approvals'}
-                    badge={approvalCount > 0 ? approvalCount : undefined}
-                />
+                {canAccess('APPROVALS') && (
+                    <NavItem
+                        icon={<UserRightsIcon className="w-5 h-5" />}
+                        label="Approvals"
+                        href="/admin/approvals"
+                        active={pathname === '/admin/approvals'}
+                        badge={approvalCount > 0 ? approvalCount : undefined}
+                    />
+                )}
 
-                <NavItem icon={<MembersIcon className="w-5 h-5" />} label="Members" href="/members" active={pathname.startsWith('/members')} />
-                <NavItem
-                    icon={<LoansIcon className="w-5 h-5" />}
-                    label="Loans"
-                    href="/loans"
-                    active={pathname === '/loans'}
-                    badge={pendingLoanCount > 0 ? pendingLoanCount : undefined}
-                />
-                <NavItem icon={<WalletIcon className="w-5 h-5" />} label="Wallet" href="/wallet" active={pathname === '/wallet'} />
-                <NavItem icon={<HeartHandshake className="w-5 h-5" />} label="Welfare" href="/welfare" active={pathname.startsWith('/welfare')} />
+                {canAccess('MEMBERS') && (
+                    <NavItem icon={<MembersIcon className="w-5 h-5" />} label="Members" href="/members" active={pathname.startsWith('/members')} />
+                )}
 
-                {/* Admin Section - Strict Conditional Rendering */}
-                {hasAdminAccess(user.role) && (
+                {canAccess('LOANS') && (
+                    <NavItem
+                        icon={<LoansIcon className="w-5 h-5" />}
+                        label="Loans"
+                        href="/loans"
+                        active={pathname === '/loans'}
+                        badge={pendingLoanCount > 0 ? pendingLoanCount : undefined}
+                    />
+                )}
+
+                {canAccess('WALLET') && (
+                    <NavItem icon={<WalletIcon className="w-5 h-5" />} label="Wallet" href="/wallet" active={pathname === '/wallet'} />
+                )}
+
+                {canAccess('WELFARE') && (
+                    <NavItem icon={<HeartHandshake className="w-5 h-5" />} label="Welfare" href="/welfare" active={pathname.startsWith('/welfare')} />
+                )}
+
+                {/* Admin Section - Dynamic Rendering */}
+                {(canAccess('ACCOUNTS') || canAccess('ADMIN') || canAccess('AUDIT')) && (
                     <>
                         <div className="mt-8 mb-3 px-8 pt-6 border-t border-white/10">
                             <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-2">Administration</p>
                         </div>
 
-                        <NavItem icon={<FileTextIcon className="w-5 h-5" />} label="Chart of Accounts" href="/accounts" active={pathname === '/accounts'} />
+                        {canAccess('ACCOUNTS') && (
+                            <NavItem icon={<FileTextIcon className="w-5 h-5" />} label="Chart of Accounts" href="/accounts" active={pathname === '/accounts'} />
+                        )}
 
-                        <NavItem icon={<SettingsIcon className="w-5 h-5" />} label="System Admin" href="/admin/system" active={pathname === '/admin/system'} />
-                        <NavItem icon={<AuditLogIcon className="w-5 h-5" />} label="Audit Trail" href="/audit" active={pathname === '/audit'} />
+                        {canAccess('ADMIN') && (
+                            <NavItem icon={<SettingsIcon className="w-5 h-5" />} label="System Admin" href="/admin/system" active={pathname === '/admin/system'} />
+                        )}
+
+                        {canAccess('AUDIT') && (
+                            <NavItem icon={<AuditLogIcon className="w-5 h-5" />} label="Audit Trail" href="/audit" active={pathname === '/audit'} />
+                        )}
                     </>
                 )}
             </nav>

@@ -299,6 +299,9 @@ export async function reverseJournalEntry(entryId: string, reason: string): Prom
         }
 
         return reversalEntry
+    }, {
+        maxWait: 5000,
+        timeout: 20000
     })
 
     const reversalEntry = result

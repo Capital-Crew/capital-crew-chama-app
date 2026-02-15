@@ -164,6 +164,9 @@ export class AccountingEngine {
         } else {
             return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
                 return await runInTransaction(tx)
+            }, {
+                maxWait: 5000,
+                timeout: 20000
             })
         }
     }
@@ -245,6 +248,9 @@ export class AccountingEngine {
         } else {
             return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
                 return await runInTransaction(tx)
+            }, {
+                maxWait: 5000,
+                timeout: 20000
             })
         }
     }

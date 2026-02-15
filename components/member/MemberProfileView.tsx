@@ -35,8 +35,11 @@ export function MemberProfileView({
     const [activeTab, setActiveTab] = useState<'loans' | 'contributions' | 'kin'>('loans');
     const [selectedLoanId, setSelectedLoanId] = useState<string | null>(null);
 
-    const handleLoanClick = (loanId: string) => {
+    const [modalTab, setModalTab] = useState<'appraisal' | 'statement'>('appraisal');
+
+    const handleLoanClick = (loanId: string, tab: 'appraisal' | 'statement' = 'appraisal') => {
         setSelectedLoanId(loanId);
+        setModalTab(tab);
     };
 
     // Prepare quick stats data
@@ -251,7 +254,7 @@ export function MemberProfileView({
                 isOpen={!!selectedLoanId}
                 onClose={() => setSelectedLoanId(null)}
                 currentUserId={currentUserId!}
-                activeTab="appraisal"
+                activeTab={modalTab}
             />
         </div>
     );
@@ -313,7 +316,7 @@ function TabButton({ isActive, onClick, label }: { isActive: boolean; onClick: (
     );
 }
 
-function ResponsiveLoansList({ loans, onLoanClick }: { loans: any[], onLoanClick: (id: string) => void }) {
+function ResponsiveLoansList({ loans, onLoanClick }: { loans: any[], onLoanClick: (id: string, tab?: 'appraisal' | 'statement') => void }) {
     const activeLoans = loans.filter(l => ['ACTIVE', 'OVERDUE', 'WRITTEN_OFF', 'DISBURSED'].includes(l.status || 'ACTIVE'));
     const historyLoans = loans.filter(l => l.status === 'CLEARED');
 
@@ -350,7 +353,7 @@ function ResponsiveLoansList({ loans, onLoanClick }: { loans: any[], onLoanClick
                                     <div>
                                         <p className="text-[10px] uppercase font-bold text-slate-400">Balance</p>
                                         <button
-                                            onClick={() => onLoanClick(loan.id)}
+                                            onClick={() => onLoanClick(loan.id, 'statement')}
                                             className="font-black text-cyan-600 hover:text-cyan-800 transition-colors cursor-pointer text-left"
                                         >
                                             {formatCurrency(loan.totalLoanBalance)}
@@ -392,7 +395,7 @@ function ResponsiveLoansList({ loans, onLoanClick }: { loans: any[], onLoanClick
                                             <td className="py-4 px-6 text-right text-slate-500">{formatCurrency(loan.approvedAmount)}</td>
                                             <td className="py-4 px-6 text-right">
                                                 <button
-                                                    onClick={() => onLoanClick(loan.id)}
+                                                    onClick={() => onLoanClick(loan.id, 'statement')}
                                                     className="font-black text-cyan-600 hover:text-cyan-800 transition-colors cursor-pointer"
                                                 >
                                                     {formatCurrency(loan.totalLoanBalance)}

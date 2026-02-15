@@ -204,6 +204,9 @@ export class TransactionReplayService {
         } else {
             return await db.$transaction(async (prisma) => {
                 return await performReplay(prisma)
+            }, {
+                maxWait: 5000,
+                timeout: 20000
             })
         }
     }

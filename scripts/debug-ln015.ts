@@ -1,36 +1,38 @@
 
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { db } from '@/lib/db'
 
 async function main() {
-    console.log('--- Fetching Transactions for LN015 ---')
-    // Find loan first to get internal ID if needed, though schema uses String ID.
-    // Assuming LN015 is the loanApplicationNumber or similar, let's search.
-    const loan = await prisma.loan.findFirst({
-        where: { loanApplicationNumber: 'LN015' }
+    const loanAppNum = 'LN015'
+    console.log(`--- Investigating Loan ${loanAppNum} ---`)
+
+    const loan = await db.loan.findUnique({
+        where: { loanApplicationNumber: loanAppNum },
+        include: {
+            transactions: {
+                orderBy: { postedAt: 'asc' }
+            }
+        }
     })
 
     if (!loan) {
-        console.error('Loan LN015 not found')
+        console.log('Loan not found')
         return
     }
 
-    console.log(`Loan Found: ${loan.id} (Ref: ${loan.loanApplicationNumber})`)
+    console.log(`Loan ID: ${loan.id}`)
+    console.log(`Status: ${loan.status}`)
+    console.log(`Cached Outstanding Balance: ${loan.outstandingBalance}`)
+    console.log(`Legacy Current Balance: ${loan.current_balance}`)
 
-    const txs = await prisma.loanTransaction.findMany({
-        where: { loanId: loan.id },
-        orderBy: { postedAt: 'asc' }
-    })
-
-    console.table(txs.map(t => ({
+    console.log('\n--- Transactions ---')
+    console.table(loan.transactions.map(t => ({
         id: t.id,
         type: t.type,
-        amount: t.amount.toString(),
+        amount: t.amount,
         isReversed: t.isReversed,
-        desc: t.description,
-        penaltyAmt: t.penaltyAmount.toString(),
-        created: t.createdAt.toISOString()
+        ref: t.referenceId,
+        postedAt: t.postedAt.toISOString(),
+        description: t.description
     })))
 }
 

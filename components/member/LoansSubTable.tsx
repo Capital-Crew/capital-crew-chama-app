@@ -47,7 +47,11 @@ export function LoansSubTable({ loans }: LoansSubTableProps) {
                                 <td className="px-4 py-3 text-right">{formatCurrency(loan.approvedAmount)}</td>
                                 <td className="px-4 py-3">{loan.category}</td>
                                 <td className="px-4 py-3 text-right text-red-500 font-medium">{loan.periodInArrears.toFixed(2)}</td>
-                                <td className="px-4 py-3 text-right text-teal-600 font-medium">{formatCurrency(loan.totalLoanBalance)}</td>
+                                <td className="px-4 py-3 text-right text-teal-600 font-medium">
+                                    <Link href={`/loans/${loan.id}`} className="hover:underline underline-offset-2">
+                                        {formatCurrency(loan.totalLoanBalance)}
+                                    </Link>
+                                </td>
                                 <td className="px-4 py-3 text-right text-red-500">{formatCurrency(loan.principalInArrears)}</td>
                                 <td className="px-4 py-3 text-right text-red-500">{formatCurrency(0)}</td> {/* Interest Arrears breakdown not in basic item yet, strictly 0 per screenshot mostly, or mapped */}
                                 <td className="px-4 py-3 text-right text-teal-500">{formatCurrency(0)}</td>

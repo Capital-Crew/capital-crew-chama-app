@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { Prisma, ExpenseStatus } from '@prisma/client'
-import { AccountingEngine } from '@/lib/accounting/AccountingEngine'
+import { AccountingEngine, getMemberWalletBalance } from '@/lib/accounting/AccountingEngine'
 import { differenceInDays } from 'date-fns'
 import { TransactionReplayService } from './TransactionReplayService'
 import { revalidatePath } from 'next/cache'
@@ -105,7 +105,7 @@ export class TransactionReversalService {
                         // Validation: Min Balance Check (If reversing a DEPOSIT, we are taking money OUT)
                         if (walletTx.type === 'DEPOSIT' || walletTx.type === 'CONTRIBUTION') {
                             // Check if wallet has enough funds to cover the reversal
-                            const currentBalance = await AccountingEngine.getMemberWalletBalance(memberId, tx)
+                            const currentBalance = await getMemberWalletBalance(memberId, tx)
                             if (currentBalance < Number(walletTx.amount)) {
                                 throw new Error('Insufficient wallet balance to reverse this deposit.')
                             }

@@ -195,6 +195,9 @@ export async function reverseLoanTransaction(transactionId: string, reason: stri
             revalidatePath(`/members/${originalTx.loan.memberId}`)
 
             return { success: true }
+        }, {
+            maxWait: 5000,
+            timeout: 20000
         })
     } catch (e: any) {
         console.error('Reversal Error', e)

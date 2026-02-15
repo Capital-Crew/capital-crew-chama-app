@@ -34,8 +34,8 @@ export async function getLoanStatement(loanId: string) {
   }
 
   // Fetch LoanTransaction entries (Source of Truth for Loan Activity)
-  // Fetch LoanTransaction entries (Source of Truth for Loan Activity)
   // CRITICAL: Fetch ALL transactions, including reversed ones. Do NOT filter by isReversed.
+  // We include the reversed transaction itself AND the reversal transaction.
   const loanTransactions = await prisma.loanTransaction.findMany({
     where: {
       loanId: loanId
@@ -43,37 +43,71 @@ export async function getLoanStatement(loanId: string) {
     orderBy: { postedAt: 'asc' }
   })
 
-  // Transform to Statement Transactions
+  // Pre-fetch original transactions for Reversals to know what they reversed
+  // Creating a map for O(1) lookup
+  const txMap = new Map(loanTransactions.map(t => [t.id, t]))
+
+  let runningBalance = 0
+
+  // Transform to Statement Transactions with Running Balance
   const statementTransactions = loanTransactions.map(tx => {
     let type = 'CHARGE'
+    const amount = Number(tx.amount)
+    let balanceChange = 0
 
     switch (tx.type) {
       case 'DISBURSEMENT':
         type = 'DISBURSEMENT'
+        balanceChange = amount
         break
       case 'REPAYMENT':
         type = 'REPAYMENT'
+        balanceChange = -amount
         break
       case 'INTEREST':
         type = 'INTEREST'
+        balanceChange = amount
         break
       case 'PENALTY':
         type = 'PENALTY'
+        balanceChange = amount
         break
       case 'WAIVER':
         type = 'WAIVER'
+        balanceChange = -amount
         break
       case 'REVERSAL':
         type = 'REVERSAL'
+        // Logic: The Opposite of the transaction it is reversing.
+        // We look up the original transaction by referenceId
+        const originalTx = tx.referenceId ? txMap.get(tx.referenceId) : null
+
+        if (originalTx) {
+          if (originalTx.type === 'REPAYMENT' || originalTx.type === 'WAIVER') {
+            // Reversing a credit -> Debit (Increase Balance)
+            balanceChange = amount
+          } else if (originalTx.type === 'DISBURSEMENT' || originalTx.type === 'INTEREST' || originalTx.type === 'PENALTY') {
+            // Reversing a debit -> Credit (Decrease Balance)
+            balanceChange = -amount
+          }
+        } else {
+          // Fallback if reference missing (shouldn't happen with new service)
+          // Assume it reverses a Repayment (most common) -> Increase Balance
+          balanceChange = amount
+        }
         break
       default:
         type = 'CHARGE'
+        balanceChange = amount
     }
+
+    // Apply change to running balance
+    runningBalance += balanceChange
 
     return {
       id: tx.id,
       type,
-      amount: Number(tx.amount),
+      amount: amount,
       description: tx.description || `${tx.type} Transaction`,
       createdAt: tx.postedAt,
       // Pass breakdown fields for statement formatting
@@ -82,7 +116,8 @@ export async function getLoanStatement(loanId: string) {
       penaltyAmount: Number(tx.penaltyAmount || 0),
       feeAmount: Number(tx.feeAmount || 0),
       isReversed: tx.isReversed,
-      reversedAt: tx.reversedAt
+      reversedAt: tx.reversedAt,
+      runningBalance: Number(runningBalance.toFixed(2)) // New Field
     }
   })
 

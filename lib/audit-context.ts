@@ -3,44 +3,91 @@ import { cache } from 'react';
 // Define the shape of a single audit step
 export interface AuditStep {
     action: string;
-    metadata?: Record<string, any>;
+    details?: any; // Flexible data
     timestamp: Date;
+    type: 'INFO' | 'ERROR';
 }
 
-// Define the shape of the Audit Context
-class AuditContextStore {
-    private steps: AuditStep[] = [];
-    private startTime: number = Date.now();
+export interface AuditContextState {
+    steps: AuditStep[];
+    context?: string;
+    startTime: number;
+}
 
-    track(action: string, metadata?: Record<string, any>) {
-        this.steps.push({
+// Define the shape of the Audit Context Store
+class AuditContextStore {
+    private state: AuditContextState;
+
+    constructor() {
+        this.state = {
+            steps: [],
+            startTime: Date.now()
+        };
+    }
+
+    // Set the high-level context (e.g., "LOAN", "AUTH")
+    setContext(context: string) {
+        this.state.context = context;
+    }
+
+    // Log a normal step
+    log(action: string, details?: any) {
+        this.state.steps.push({
             action,
-            metadata,
-            timestamp: new Date()
+            details,
+            timestamp: new Date(),
+            type: 'INFO'
         });
     }
 
+    // Log an error step
+    error(action: string, error: any) {
+        this.state.steps.push({
+            action,
+            details: {
+                message: error.message || String(error),
+                stack: error.stack,
+                ...error // Capture other props if object
+            },
+            timestamp: new Date(),
+            type: 'ERROR'
+        });
+    }
+
+    // Legacy support for 'track' -> maps to 'log'
+    track(action: string, metadata?: any) {
+        this.log(action, metadata);
+    }
+
     getSummary(): AuditStep[] {
-        return this.steps;
+        return this.state.steps;
     }
 
     getDuration(): number {
-        return Date.now() - this.startTime;
+        return Date.now() - this.state.startTime;
+    }
+
+    getContext(): string | undefined {
+        return this.state.context;
     }
 
     flush() {
-        this.steps = [];
+        this.state.steps = [];
+        this.state.startTime = Date.now();
     }
 }
 
 // Singleton instance scoped to the request using React cache
-// This ensures that multiple calls within the same request share the same context
 export const getAuditContext = cache(() => new AuditContextStore());
 
 // Static accessor for ease of use
 export const AuditContext = {
-    track: (action: string, metadata?: Record<string, any>) => getAuditContext().track(action, metadata),
+    setContext: (context: string) => getAuditContext().setContext(context),
+    log: (action: string, details?: any) => getAuditContext().log(action, details),
+    error: (action: string, error: any) => getAuditContext().error(action, error),
+    track: (action: string, metadata?: any) => getAuditContext().track(action, metadata), // Legacy alias
     getSummary: () => getAuditContext().getSummary(),
     getDuration: () => getAuditContext().getDuration(),
+    getContext: () => getAuditContext().getContext(),
     flush: () => getAuditContext().flush(),
 };

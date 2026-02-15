@@ -13,7 +13,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         maxAge: 300, // 5 minutes
         updateAge: 60, // Extend session every minute if active
     },
+    events: {
+        async signIn({ user }) {
+            if (user?.id) {
+                await prisma.auditLog.create({
+                    data: {
+                        userId: user.id,
+                        action: 'USER_LOGIN', // Using string to avoid import issues or use AuditLogAction.USER_LOGIN if available
+                        details: 'User logged in',
+                        summary: 'User Login',
+                        timestamp: new Date(),
+                    }
+                })
+            }
+        },
+        async signOut(message) {
+            // Note: In NextAuth v5, signOut event might be limited in context, 
+            // but we can try to log if we have user info or just log generic logout
+            // Often session is already gone, so we might not have user ID easily here without extra work
+            // For now, we'll log what we can.
+        }
+    },
     providers: [
+
         Credentials({
             credentials: {
                 email: { label: "Email", type: "email" },

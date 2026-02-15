@@ -1123,17 +1123,24 @@ model AuditLog {
   userId    String
   user      User           @relation(fields: [userId], references: [id])
   action    AuditLogAction
-  details   String
+  details   String?   // Made optional for legacy compatibility
 
   // Smart Summary Fields
   summary     String?  // Human-readable summary
+  context     String?  // Business domain (e.g., "LOAN", "AUTH")
+  severity    String?  // "INFO", "WARNING", "CRITICAL"
+  ipAddress   String?  // User IP
   steps       Json?    // Detailed technical steps
+  snapshot    Json?    // Entity final state
   metadata    Json?    // Context snapshot
   durationMs  Int?     // Execution time
 
   @@index([timestamp])
   @@index([userId])
+  @@index([context])
+  @@index([severity])
 }
+
 
 
 model ReversalLog {

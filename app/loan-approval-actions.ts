@@ -318,442 +318,397 @@ export async function approveLoan(loanId: string, notes: string = 'Approved via 
  * Disburse Loan (Wallet Integration)
  * Using the AccountingEngine for strict double-entry
  */
-export async function disburseLoanToWallet(loanId: string) {
-    const session = await auth()
-    if (!session?.user) {
-        throw new Error('Unauthorized: Authentication required')
-    }
+import { withAudit } from '@/lib/with-audit';
+import { AuditContext } from '@/lib/audit-context';
 
-    // Check authorization: Role-based OR Permission-based
-    const userRole = session.user.role
-    const hasRolePermission = ['TREASURER', 'CHAIRPERSON', 'SYSTEM_ADMIN', 'SYSTEM_ADMINISTRATOR'].includes(userRole)
-
-    // @ts-ignore - Check granular permissions
-    const userPermissions = session.user.permissions
-    let hasGranularPermission = false
-
-    if (userPermissions) {
-        if (Array.isArray(userPermissions)) {
-            hasGranularPermission = userPermissions.includes('DISBURSE_LOANS') || userPermissions.includes('ALL')
-        } else if (typeof userPermissions === 'object') {
-            // @ts-ignore
-            hasGranularPermission =
-                userPermissions['DISBURSE_LOANS'] === true ||
-                userPermissions['canDisburse'] === true ||
-                userPermissions['ALL'] === true
+export const disburseLoanToWallet = withAudit(
+    AuditLogAction.LOAN_DISBURSED,
+    async (loanId: string) => {
+        const session = await auth()
+        if (!session?.user) {
+            throw new Error('Unauthorized: Authentication required')
         }
-    }
 
-    if (!hasRolePermission && !hasGranularPermission) {
-        throw new Error('Unauthorized: You do not have permission to disburse loans. Required permission: DISBURSE_LOANS')
-    }
+        // Check authorization: Role-based OR Permission-based
+        const userRole = session.user.role
+        const hasRolePermission = ['TREASURER', 'CHAIRPERSON', 'SYSTEM_ADMIN', 'SYSTEM_ADMINISTRATOR'].includes(userRole)
 
-    await prisma.$transaction(async (tx) => {
-        const loan = await tx.loan.findUnique({
-            where: { id: loanId },
-            include: {
-                member: {
-                    include: { wallet: true }
-                },
-                loanProduct: {
-                    include: { accountingMappings: true }
-                },
-                topUps: true // Include offsets
+        // @ts-ignore - Check granular permissions
+        const userPermissions = session.user.permissions
+        let hasGranularPermission = false
+
+        if (userPermissions) {
+            if (Array.isArray(userPermissions)) {
+                hasGranularPermission = userPermissions.includes('DISBURSE_LOANS') || userPermissions.includes('ALL')
+            } else if (typeof userPermissions === 'object') {
+                // @ts-ignore
+                hasGranularPermission =
+                    userPermissions['DISBURSE_LOANS'] === true ||
+                    userPermissions['canDisburse'] === true ||
+                    userPermissions['ALL'] === true
             }
-        })
-
-        if (!loan) throw new Error("Loan not found")
-        if (loan.status !== 'APPROVED') {
-            throw new Error(`Loan cannot be disbursed. Current status: ${loan.status}. Only APPROVED loans can be disbursed.`)
         }
 
-        // Check if loan has already been disbursed
-        const existingBalance = Number(loan.outstandingBalance)
-        if (existingBalance > 0) {
-            throw new Error(
-                `Loan has already been disbursed. Outstanding balance: KES ${existingBalance.toLocaleString()}. ` +
-                `Disbursement date: ${loan.disbursementDate?.toLocaleDateString() || 'Unknown'}`
-            )
+        if (!hasRolePermission && !hasGranularPermission) {
+            throw new Error('Unauthorized: You do not have permission to disburse loans. Required permission: DISBURSE_LOANS')
         }
 
-        // 1. Calculate Amounts
-        const principal = Number(loan.amount)
+        AuditContext.track('Permission Checked', { userId: session.user.id, role: userRole });
 
-        // Deductions
-        const processingFee = Number(loan.processingFee)
-        const insuranceFee = Number(loan.insuranceFee)
-        const shareDeduction = Number(loan.shareCapitalDeduction)
-
-        // Offsets (Top-ups) - Includes Principal + Interest + Penalties + Refinance Fee
-        const totalOffset = loan.topUps.reduce((sum, t) => sum + Number(t.totalOffset), 0)
-
-        // Net
-        const netDisbursement = principal - processingFee - insuranceFee - shareDeduction - totalOffset
-
-        if (netDisbursement <= 0) {
-            throw new Error(
-                `Cannot disburse loan: Net disbursement is ${netDisbursement < 0 ? 'negative' : 'zero'} (KES ${netDisbursement.toFixed(2)}). ` +
-                `Principal: ${principal}, Fees: ${processingFee + insuranceFee}, Share Deduction: ${shareDeduction}, Offsets: ${totalOffset}. ` +
-                `Please adjust the loan amount or deductions.`
-            )
-        }
-
-        // 2. Resolve Member Wallet (Unique Liability Account)
-        // This ensures every member has a distinct Ledger Account for their wallet
-        // If wallet doesn't exist, it creates one (Code: WAL-XXXXXX)
-        const memberWallet = await WalletService.createWallet(loan.memberId, tx)
-        const memberWalletAccountId = memberWallet.glAccountId
-
-        // 3. Perform Accounting (General Ledger) via AccountingEngine
-        // Fetch dynamic mappings
-        const mappings = await getSystemMappingsDict()
-        const { DEFAULT_MAPPINGS } = await import('@/lib/accounting/constants') // Allow fallback
-
-        const fundingAccountCode = mappings['EVENT_LOAN_DISBURSEMENT'] || DEFAULT_MAPPINGS['EVENT_LOAN_DISBURSEMENT']
-
-        if (!fundingAccountCode) {
-            throw new Error("System Mapping for 'EVENT_LOAN_DISBURSEMENT' is missing.")
-        }
-
-        const getCode = (type: SystemAccountType) => mappings[type] || DEFAULT_MAPPINGS[type]
-
-        // OVERDRAFT PROTECTION: Check if Funding Source (Loan Disbursement Account) has sufficient balance
-        const { BalanceChecker } = await import('@/lib/accounting/BalanceChecker')
-        // const disbursementAccountBalance = await BalanceChecker.getAccountBalance(fundingAccountCode, tx)
-
-        // REMOVED: The Loan Portfolio (1100/1200) receives the DEBIT (Asset Increase). 
-        // Checking if it has "sufficient funds" implies it's a Source (Credit), which is incorrect.
-        // Since we are crediting Member Wallet (Liability), we are effectively expanding the balance sheet.
-        // Cash checks should happen at Withdrawal, not Disbursement to Wallet.
-
-        /*
-        if (disbursementAccountBalance < netDisbursement) {
-            throw new Error(
-                `Insufficient funds in ${fundingAccountCode} (Disbursement Account). ` +
-                `Required: KES ${netDisbursement.toLocaleString()}, ` +
-                `Available: KES ${disbursementAccountBalance.toLocaleString()}. ` +
-                `Please credit the Loan Portfolio with opening capital.`
-            )
-        }
-        */
-
-        // Build Journal Lines
-        const journalLines: any[] = []
-        let lineIndex = 0
-
-        // Debit: Loan Portfolio / Disbursement Account (Asset)
-        journalLines.push({
-            accountId: (await getAccountId(tx, fundingAccountCode)), // Use the mapped account
-            accountType: 'ASSET',
-            description: `Principal Disbursement - ${loan.loanApplicationNumber}`,
-            debitAmount: principal,
-            creditAmount: 0,
-            index: lineIndex++
-        })
-
-        // Credit: Member Wallet (Net Amount)
-        if (netDisbursement > 0) {
-            journalLines.push({
-                accountId: memberWalletAccountId, // USES UNIQUE MEMBER ACCOUNT
-                accountType: 'LIABILITY',
-                description: `Net Disbursement to Wallet`,
-                debitAmount: 0,
-                creditAmount: netDisbursement,
-                index: lineIndex++
+        return await prisma.$transaction(async (tx) => {
+            const loan = await tx.loan.findUnique({
+                where: { id: loanId },
+                include: {
+                    member: {
+                        include: { wallet: true }
+                    },
+                    loanProduct: {
+                        include: { accountingMappings: true }
+                    },
+                    topUps: true // Include offsets
+                }
             })
-        }
 
-        // Credit: Fees
-        if (processingFee > 0) {
-            journalLines.push({
-                accountId: (await getAccountId(tx, getCode('INCOME_LOAN_PROCESSING_FEE'))),
-                accountType: 'INCOME',
-                description: 'Processing Fee',
-                debitAmount: 0,
-                creditAmount: processingFee,
-                index: lineIndex++
-            })
-        }
-        if (insuranceFee > 0) {
-            journalLines.push({
-                accountId: (await getAccountId(tx, getCode('INCOME_GENERAL_FEE'))),
-                accountType: 'INCOME',
-                description: 'Insurance Fee',
-                debitAmount: 0,
-                creditAmount: insuranceFee,
-                index: lineIndex++
-            })
-        }
-        if (shareDeduction > 0) {
-            journalLines.push({
-                accountId: (await getAccountId(tx, getCode('CONTRIBUTIONS'))),
+            if (!loan) throw new Error("Loan not found")
+            if (loan.status !== 'APPROVED') {
+                throw new Error(`Loan cannot be disbursed. Current status: ${loan.status}. Only APPROVED loans can be disbursed.`)
+            }
+
+            // Check if loan has already been disbursed
+            const existingBalance = Number(loan.outstandingBalance)
+            if (existingBalance > 0) {
+                throw new Error(
+                    `Loan has already been disbursed. Outstanding balance: KES ${existingBalance.toLocaleString()}. ` +
+                    `Disbursement date: ${loan.disbursementDate?.toLocaleDateString() || 'Unknown'}`
+                )
+            }
+
+            AuditContext.track('Loan Validated', { loanId, amount: loan.amount });
+
+            // 1. Calculate Amounts
+            const principal = Number(loan.amount)
+
+            // Deductions
+            const processingFee = Number(loan.processingFee)
+            const insuranceFee = Number(loan.insuranceFee)
+            const shareDeduction = Number(loan.shareCapitalDeduction)
+
+            // Offsets (Top-ups) - Includes Principal + Interest + Penalties + Refinance Fee
+            const totalOffset = loan.topUps.reduce((sum, t) => sum + Number(t.totalOffset), 0)
+
+            // Net
+            const netDisbursement = principal - processingFee - insuranceFee - shareDeduction - totalOffset
+
+            if (netDisbursement <= 0) {
+                throw new Error(
+                    `Cannot disburse loan: Net disbursement is ${netDisbursement < 0 ? 'negative' : 'zero'} (KES ${netDisbursement.toFixed(2)}). ` +
+                    `Principal: ${principal}, Fees: ${processingFee + insuranceFee}, Share Deduction: ${shareDeduction}, Offsets: ${totalOffset}. ` +
+                    `Please adjust the loan amount or deductions.`
+                )
+            }
+
+            AuditContext.track('Amounts Calculated', {
+                principal,
+                processingFee,
+                insuranceFee,
+                shareDeduction,
+                totalOffset,
+                netDisbursement
+            });
+
+            // 2. Resolve Member Wallet (Unique Liability Account)
+            // This ensures every member has a distinct Ledger Account for their wallet
+            // If wallet doesn't exist, it creates one (Code: WAL-XXXXXX)
+            const memberWallet = await WalletService.createWallet(loan.memberId, tx)
+            const memberWalletAccountId = memberWallet.glAccountId
+
+            // 3. Perform Accounting (General Ledger) via AccountingEngine
+            // Fetch dynamic mappings
+            const mappings = await getSystemMappingsDict()
+            const { DEFAULT_MAPPINGS } = await import('@/lib/accounting/constants') // Allow fallback
+
+            const fundingAccountCode = mappings['EVENT_LOAN_DISBURSEMENT'] || DEFAULT_MAPPINGS['EVENT_LOAN_DISBURSEMENT']
+
+            if (!fundingAccountCode) {
+                throw new Error("System Mapping for 'EVENT_LOAN_DISBURSEMENT' is missing.")
+            }
+
+            const getCode = (type: SystemAccountType) => mappings[type] || DEFAULT_MAPPINGS[type]
+
+            // OVERDRAFT PROTECTION: Check if Funding Source (Loan Disbursement Account) has sufficient balance
+            const { BalanceChecker } = await import('@/lib/accounting/BalanceChecker')
+            // const disbursementAccountBalance = await BalanceChecker.getAccountBalance(fundingAccountCode, tx)
+
+            // REMOVED: The Loan Portfolio (1100/1200) receives the DEBIT (Asset Increase).
+            // Checking if it has "sufficient funds" implies it's a Source (Credit), which is incorrect.
+            // Since we are crediting Member Wallet (Liability), we are effectively expanding the balance sheet.
+            // Cash checks should happen at Withdrawal, not Disbursement to Wallet.
+
+            /*
+            if (disbursementAccountBalance < netDisbursement) {
+                throw new Error(
+                    `Insufficient funds in ${fundingAccountCode} (Disbursement Account). ` +
+                    `Required: KES ${netDisbursement.toLocaleString()}, ` +
+                    `Available: KES ${disbursementAccountBalance.toLocaleString()}. ` +
+                    `Please credit the Loan Portfolio with opening capital.`
+                )
+            }
+            */
+
+            // Build Journal Lines
+            let lineIndex = 0
+
+            // 1. Round ALL components first
+            const roundedPrincipal = Number(Number(principal).toFixed(2))
+            const roundedProcessingFee = Number(Number(processingFee).toFixed(2))
+            const roundedInsuranceFee = Number(Number(insuranceFee).toFixed(2))
+            const roundedShareDeduction = Number(Number(shareDeduction).toFixed(2))
+
+            // 2. Round Offsets
+            let roundedTotalOffsets = 0
+            const roundedOffsetLines: any[] = []
+
+            for (const topUp of loan.topUps) {
+                const clearanceAmount = Number(topUp.totalOffset) - Number(topUp.refinanceFee || 0);
+                const roundedClearance = Number(Number(clearanceAmount).toFixed(2))
+                const roundedRefinanceFee = Number(Number(topUp.refinanceFee || 0).toFixed(2))
+
+                roundedTotalOffsets += roundedClearance + roundedRefinanceFee
+
+                // Reconstruct lines for Offset
+                if (roundedClearance > 0) {
+                    roundedOffsetLines.push({
+                        accountId: (await getAccountId(tx, getCode('RECEIVABLES'))),
+                        accountType: 'ASSET',
+                        description: `Offset Clearance - ${topUp.oldLoanNumber}`,
+                        debitAmount: 0,
+                        creditAmount: roundedClearance,
+                        index: lineIndex++
+                    })
+                }
+                if (roundedRefinanceFee > 0) {
+                    roundedOffsetLines.push({
+                        accountId: (await getAccountId(tx, getCode('INCOME_REFINANCE_FEE'))),
+                        accountType: 'INCOME',
+                        description: `Refinance Fee - ${topUp.oldLoanNumber}`,
+                        debitAmount: 0,
+                        creditAmount: roundedRefinanceFee,
+                        index: lineIndex++
+                    })
+                }
+            }
+
+            // 3. Calculate Deductions Sum
+            const totalDeductions = roundedProcessingFee + roundedInsuranceFee + roundedShareDeduction + roundedTotalOffsets
+
+            // 4. DERIVE Net Disbursement to ensure Balance
+            // Principal (Debit) = Net (Credit) + Deductions (Credit)
+            // Therefore: Net = Principal - Deductions
+            const derivedNetDisbursement = Number((roundedPrincipal - totalDeductions).toFixed(2))
+
+            if (derivedNetDisbursement < 0) {
+                throw new Error(`Rounding Error: Net disbursement calculated as negative (KES ${derivedNetDisbursement}). Please check deductions.`)
+            }
+
+            // 5. Rebuild Journal Lines with ROUNDED values
+            const finalJournalLines: any[] = []
+            let idx = 0
+
+            // DEBIT: Principal
+            finalJournalLines.push({
+                accountId: (await getAccountId(tx, fundingAccountCode)),
                 accountType: 'ASSET',
-                description: 'Contribution Deduction',
-                debitAmount: 0,
-                creditAmount: shareDeduction,
-                index: lineIndex++
+                description: `Principal Disbursement - ${loan.loanApplicationNumber}`,
+                debitAmount: roundedPrincipal,
+                creditAmount: 0,
+                index: idx++
             })
-        }
 
-        // Credit: Loan Offsets (Clearing old loans)
-        for (const topUp of loan.topUps) {
-            // Calculate actual debt clearance (Total Offset - Refinance Fee)
-            const clearanceAmount = Number(topUp.totalOffset) - Number(topUp.refinanceFee || 0);
-
-            // 1. Principal & Debt Clearance (Asset reduction)
-            if (clearanceAmount > 0) {
-                journalLines.push({
-                    accountId: (await getAccountId(tx, getCode('RECEIVABLES'))), // Reduce Loan Asset
-                    accountType: 'ASSET',
-                    description: `Offset Clearance - ${topUp.oldLoanNumber}`,
+            // CREDIT: Net Disbursement
+            if (derivedNetDisbursement > 0) {
+                finalJournalLines.push({
+                    accountId: memberWalletAccountId,
+                    accountType: 'LIABILITY',
+                    description: `Net Disbursement to Wallet`,
                     debitAmount: 0,
-                    creditAmount: clearanceAmount,
-                    index: lineIndex++
+                    creditAmount: derivedNetDisbursement,
+                    index: idx++
                 })
             }
 
-            // 2. Refinance Fee Income (If any)
-            if (Number(topUp.refinanceFee) > 0) {
-                journalLines.push({
-                    accountId: (await getAccountId(tx, getCode('INCOME_REFINANCE_FEE'))),
+            // CREDIT: Fees & Deductions
+            if (roundedProcessingFee > 0) {
+                finalJournalLines.push({
+                    accountId: (await getAccountId(tx, getCode('INCOME_LOAN_PROCESSING_FEE'))),
                     accountType: 'INCOME',
-                    description: `Refinance Fee - ${topUp.oldLoanNumber}`,
+                    description: 'Processing Fee',
                     debitAmount: 0,
-                    creditAmount: Number(topUp.refinanceFee),
-                    index: lineIndex++
+                    creditAmount: roundedProcessingFee,
+                    index: idx++
                 })
             }
-        }
-
-        // Post via Accounting Engine (Handles Validation & Cents Conversion)
-
-        // 1. Round ALL components first
-        const roundedPrincipal = Number(Number(principal).toFixed(2))
-        const roundedProcessingFee = Number(Number(processingFee).toFixed(2))
-        const roundedInsuranceFee = Number(Number(insuranceFee).toFixed(2))
-        const roundedShareDeduction = Number(Number(shareDeduction).toFixed(2))
-
-        // 2. Round Offsets
-        let roundedTotalOffsets = 0
-        const roundedOffsetLines: any[] = []
-
-        for (const topUp of loan.topUps) {
-            const clearanceAmount = Number(topUp.totalOffset) - Number(topUp.refinanceFee || 0);
-            const roundedClearance = Number(Number(clearanceAmount).toFixed(2))
-            const roundedRefinanceFee = Number(Number(topUp.refinanceFee || 0).toFixed(2))
-
-            roundedTotalOffsets += roundedClearance + roundedRefinanceFee
-
-            // Reconstruct lines for Offset
-            if (roundedClearance > 0) {
-                roundedOffsetLines.push({
-                    accountId: (await getAccountId(tx, getCode('RECEIVABLES'))),
-                    accountType: 'ASSET',
-                    description: `Offset Clearance - ${topUp.oldLoanNumber}`,
-                    debitAmount: 0,
-                    creditAmount: roundedClearance,
-                    index: lineIndex++
-                })
-            }
-            if (roundedRefinanceFee > 0) {
-                roundedOffsetLines.push({
-                    accountId: (await getAccountId(tx, getCode('INCOME_REFINANCE_FEE'))),
+            if (roundedInsuranceFee > 0) {
+                finalJournalLines.push({
+                    accountId: (await getAccountId(tx, getCode('INCOME_GENERAL_FEE'))),
                     accountType: 'INCOME',
-                    description: `Refinance Fee - ${topUp.oldLoanNumber}`,
+                    description: 'Insurance Fee',
                     debitAmount: 0,
-                    creditAmount: roundedRefinanceFee,
-                    index: lineIndex++
+                    creditAmount: roundedInsuranceFee,
+                    index: idx++
                 })
             }
-        }
-
-        // 3. Calculate Deductions Sum
-        const totalDeductions = roundedProcessingFee + roundedInsuranceFee + roundedShareDeduction + roundedTotalOffsets
-
-        // 4. DERIVE Net Disbursement to ensure Balance
-        // Principal (Debit) = Net (Credit) + Deductions (Credit)
-        // Therefore: Net = Principal - Deductions
-        const derivedNetDisbursement = Number((roundedPrincipal - totalDeductions).toFixed(2))
-
-        if (derivedNetDisbursement < 0) {
-            throw new Error(`Rounding Error: Net disbursement calculated as negative (KES ${derivedNetDisbursement}). Please check deductions.`)
-        }
-
-        // 5. Rebuild Journal Lines with ROUNDED values
-        const finalJournalLines: any[] = []
-        let idx = 0
-
-        // DEBIT: Principal
-        finalJournalLines.push({
-            accountId: (await getAccountId(tx, fundingAccountCode)),
-            accountType: 'ASSET',
-            description: `Principal Disbursement - ${loan.loanApplicationNumber}`,
-            debitAmount: roundedPrincipal,
-            creditAmount: 0,
-            index: idx++
-        })
-
-        // CREDIT: Net Disbursement
-        if (derivedNetDisbursement > 0) {
-            finalJournalLines.push({
-                accountId: memberWalletAccountId,
-                accountType: 'LIABILITY',
-                description: `Net Disbursement to Wallet`,
-                debitAmount: 0,
-                creditAmount: derivedNetDisbursement,
-                index: idx++
-            })
-        }
-
-        // CREDIT: Fees & Deductions
-        if (roundedProcessingFee > 0) {
-            finalJournalLines.push({
-                accountId: (await getAccountId(tx, getCode('INCOME_LOAN_PROCESSING_FEE'))),
-                accountType: 'INCOME',
-                description: 'Processing Fee',
-                debitAmount: 0,
-                creditAmount: roundedProcessingFee,
-                index: idx++
-            })
-        }
-        if (roundedInsuranceFee > 0) {
-            finalJournalLines.push({
-                accountId: (await getAccountId(tx, getCode('INCOME_GENERAL_FEE'))),
-                accountType: 'INCOME',
-                description: 'Insurance Fee',
-                debitAmount: 0,
-                creditAmount: roundedInsuranceFee,
-                index: idx++
-            })
-        }
-        if (roundedShareDeduction > 0) {
-            finalJournalLines.push({
-                accountId: (await getAccountId(tx, getCode('CONTRIBUTIONS'))),
-                accountType: 'ASSET',
-                description: 'Contribution Deduction',
-                debitAmount: 0,
-                creditAmount: roundedShareDeduction,
-                index: idx++
-            })
-        }
-
-        // CREDIT: Offsets
-        roundedOffsetLines.forEach(l => {
-            finalJournalLines.push({ ...l, index: idx++ })
-        })
-
-        const je = await AccountingEngine.postJournalEntry({
-            transactionDate: new Date(),
-            referenceType: 'LOAN_DISBURSEMENT',
-            referenceId: loan.id,
-            description: `Disbursement for Loan ${loan.loanApplicationNumber}`,
-            createdBy: session!.user.id!,
-            createdByName: session!.user.name || 'Unknown',
-            lines: finalJournalLines
-        }, tx)
-
-        // 2b. Strict Loan Ledger Transaction (New Loan - DEBIT)
-        await tx.loanTransaction.create({
-            data: {
-                loanId: loan.id,
-                type: 'DISBURSEMENT',
-                amount: new Prisma.Decimal(principal),
-                description: `Disbursement (Ref: ${je.entryNumber})`,
-                referenceId: je.id,
-                postedAt: new Date()
+            if (roundedShareDeduction > 0) {
+                finalJournalLines.push({
+                    accountId: (await getAccountId(tx, getCode('CONTRIBUTIONS'))),
+                    accountType: 'ASSET',
+                    description: 'Contribution Deduction',
+                    debitAmount: 0,
+                    creditAmount: roundedShareDeduction,
+                    index: idx++
+                })
             }
-        });
 
-        // 2c. Force Balance Update (New Loan)
-        const strictBalance = await LoanBalanceService.updateLoanBalance(loanId, tx);
+            // CREDIT: Offsets
+            roundedOffsetLines.forEach(l => {
+                finalJournalLines.push({ ...l, index: idx++ })
+            })
 
-        // 2d. Process Offsets (Old Loans - REPAYMENT)
-        for (const topUp of loan.topUps) {
-            // Calculate actual debt clearance (Total Offset - Refinance Fee)
-            const clearanceAmount = new Prisma.Decimal(topUp.totalOffset).sub(new Prisma.Decimal(topUp.refinanceFee || 0));
+            const je = await AccountingEngine.postJournalEntry({
+                transactionDate: new Date(),
+                referenceType: 'LOAN_DISBURSEMENT',
+                referenceId: loan.id,
+                description: `Disbursement for Loan ${loan.loanApplicationNumber}`,
+                createdBy: session!.user.id!,
+                createdByName: session!.user.name || 'Unknown',
+                lines: finalJournalLines
+            }, tx)
 
-            // Create Repayment Transaction for old loan (ONLY for the debt amount)
+            AuditContext.track('Journal Entry Posted', { jeId: je.id, totalAmount: roundedPrincipal });
+
+            // 2b. Strict Loan Ledger Transaction (New Loan - DEBIT)
             await tx.loanTransaction.create({
                 data: {
-                    loanId: topUp.oldLoanId,
-                    type: 'REPAYMENT',
-                    amount: clearanceAmount,
-                    description: `Offset by New Loan ${loan.loanApplicationNumber}`,
+                    loanId: loan.id,
+                    type: 'DISBURSEMENT',
+                    amount: new Prisma.Decimal(principal),
+                    description: `Disbursement (Ref: ${je.entryNumber})`,
                     referenceId: je.id,
-                    postedAt: new Date()
+                    postedAt: new Date(),
+                    transactionDate: new Date()
                 }
-            })
+            });
 
-            // Update Old Loan Balance
-            const oldLoanBalance = await LoanBalanceService.updateLoanBalance(topUp.oldLoanId, tx)
+            AuditContext.track('Loan Ledger Updated');
 
-            // Check if cleared
-            if (oldLoanBalance.lte(0)) {
-                await tx.loan.update({
-                    where: { id: topUp.oldLoanId },
-                    data: {
-                        status: 'CLEARED',
-                        // Mark cleared journey event
-                    }
-                })
-                await tx.loanJourneyEvent.create({
+            // 2c. Force Balance Update (New Loan)
+            const strictBalance = await LoanBalanceService.updateLoanBalance(loanId, tx);
+
+            // 2d. Process Offsets (Old Loans - REPAYMENT)
+            for (const topUp of loan.topUps) {
+                // Calculate actual debt clearance (Total Offset - Refinance Fee)
+                const clearanceAmount = new Prisma.Decimal(topUp.totalOffset).sub(new Prisma.Decimal(topUp.refinanceFee || 0));
+
+                // Create Repayment Transaction for old loan (ONLY for the debt amount)
+                await tx.loanTransaction.create({
                     data: {
                         loanId: topUp.oldLoanId,
-                        eventType: 'LOAN_CLEARED',
-                        description: `Loan cleared via offset by Refinance ${loan.loanApplicationNumber}`,
-                        actorId: 'SYSTEM'
+                        type: 'REPAYMENT',
+                        amount: clearanceAmount,
+                        description: `Offset by New Loan ${loan.loanApplicationNumber}`,
+                        referenceId: je.id,
+                        postedAt: new Date(),
+                        transactionDate: new Date()
+                    }
+                })
+
+                // Update Old Loan Balance
+                const oldLoanBalance = await LoanBalanceService.updateLoanBalance(topUp.oldLoanId, tx)
+
+                // Check if cleared
+                if (oldLoanBalance.lte(0)) {
+                    await tx.loan.update({
+                        where: { id: topUp.oldLoanId },
+                        data: {
+                            status: 'CLEARED',
+                            // Mark cleared journey event
+                        }
+                    })
+                    await tx.loanJourneyEvent.create({
+                        data: {
+                            loanId: topUp.oldLoanId,
+                            eventType: 'LOAN_CLEARED',
+                            description: `Loan cleared via offset from ${loan.loanApplicationNumber}`,
+                            actorId: session!.user.id
+                        }
+                    })
+                }
+            }
+
+            // 3. Update New Loan State
+            await tx.loan.update({
+                where: { id: loanId },
+                data: {
+                    status: 'ACTIVE',
+                    current_balance: strictBalance.toNumber(),
+                    outstandingBalance: strictBalance,
+                    disbursementDate: new Date(),
+                    dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+                    nextInterestRunDate: new Date(new Date().setMonth(new Date().getMonth() + 1))
+                }
+            })
+
+            // 4. Update Member Wallet (Legacy/Projection)
+            if (netDisbursement > 0) {
+                // Wallet was ensured at step 2 (memberWallet)
+
+                // 5. Create Wallet Transaction Record
+                await tx.walletTransaction.create({
+                    data: {
+                        walletId: memberWallet.id,
+                        type: 'LOAN_DISBURSEMENT',
+                        amount: netDisbursement,
+                        description: `Loan Disbursement ${loan.loanApplicationNumber}`,
+                        balanceAfter: 0,
+                        relatedLoanId: loan.id
                     }
                 })
             }
-        }
 
-        // 3. Update New Loan State
-        await tx.loan.update({
-            where: { id: loanId },
-            data: {
-                status: 'ACTIVE',
-                current_balance: strictBalance.toNumber(),
-                outstandingBalance: strictBalance,
-                disbursementDate: new Date(),
-                dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-            }
-        })
-
-        // 4. Update Member Wallet (Legacy/Projection)
-        if (netDisbursement > 0) {
-            // Wallet was ensured at step 2 (memberWallet)
-
-            // 5. Create Wallet Transaction Record
-            await tx.walletTransaction.create({
+            // 4. Create Notification
+            await tx.notification.create({
                 data: {
-                    walletId: memberWallet.id,
-                    type: 'LOAN_DISBURSEMENT',
-                    amount: netDisbursement,
-                    description: `Loan Disbursement ${loan.loanApplicationNumber}`,
-                    balanceAfter: 0,
-                    relatedLoanId: loan.id
+                    memberId: loan.memberId,
+                    type: NotificationType.LOAN_DISBURSED,
+                    message: `Your loan ${loan.loanApplicationNumber} of KES ${parsedAmount(principal)} has been disbursed to your wallet.`,
+                    loanId: loan.id
                 }
             })
-        }
 
-        // 6. Journey Event
-        await tx.loanJourneyEvent.create({
-            data: {
-                loanId,
-                eventType: LoanEventType.LOAN_DISBURSED,
-                description: `Disbursed ${netDisbursement.toLocaleString()} to wallet${totalOffset > 0 ? ` (after ${totalOffset.toLocaleString()} offsets)` : ''}`,
-                actorId: session!.user.id!
-            }
+            // 5. Journey Event
+            await tx.loanJourneyEvent.create({
+                data: {
+                    loanId: loanId,
+                    eventType: LoanEventType.LOAN_DISBURSED,
+                    description: `Loan disbursed (Ref: ${je.entryNumber})`,
+                    actorId: session!.user.id,
+                    metadata: {
+                        netDisbursement: derivedNetDisbursement,
+                        jeId: je.id
+                    }
+                }
+            })
+
+            // 7. Initialize Interest Accrual engine
+            const { InterestService } = await import('@/services/interest-engine')
+            await InterestService.processDisbursementAccrual(loan.id, tx)
+
+            return { success: true, message: "Loan Disbursed Successfully", reference: je.id }
+        }, {
+            maxWait: 10000,
+            timeout: 30000
         })
-
-        // 7. Initialize Interest Accrual engine
-        const { InterestService } = await import('@/services/interest-engine')
-        await InterestService.processDisbursementAccrual(loan.id, tx)
-    }, {
-        maxWait: 10000,
-        timeout: 30000
     })
-}
+);
 
 /**
  * Get loan journey (timeline of events)

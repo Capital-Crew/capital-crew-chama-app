@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Clock, CheckCircle2, AlertCircle, ChevronDown, ChevronUp, ChevronRight, Receipt, Activity } from 'lucide-react';
 import { MemberQuickStats } from './MemberQuickStats';
 import { NextOfKinManager } from './NextOfKinManager';
@@ -352,12 +353,12 @@ function ResponsiveLoansList({ loans, onLoanClick }: { loans: any[], onLoanClick
                                 <div className="grid grid-cols-2 gap-4 text-sm">
                                     <div>
                                         <p className="text-[10px] uppercase font-bold text-slate-400">Balance</p>
-                                        <button
-                                            onClick={() => onLoanClick(loan.id, 'statement')}
-                                            className="font-black text-cyan-600 hover:text-cyan-800 transition-colors cursor-pointer text-left"
+                                        <Link
+                                            href={`/loans/${loan.id}`}
+                                            className="font-black text-cyan-600 hover:text-cyan-800 transition-colors cursor-pointer text-left hover:underline decoration-cyan-500 underline-offset-2"
                                         >
                                             {formatCurrency(loan.totalLoanBalance)}
-                                        </button>
+                                        </Link>
                                     </div>
                                     <div className="text-right">
                                         <p className="text-[10px] uppercase font-bold text-slate-400">Next Payment</p>
@@ -394,12 +395,12 @@ function ResponsiveLoansList({ loans, onLoanClick }: { loans: any[], onLoanClick
                                             <td className="py-4 px-6 font-medium text-slate-600">{loan.productName}</td>
                                             <td className="py-4 px-6 text-right text-slate-500">{formatCurrency(loan.approvedAmount)}</td>
                                             <td className="py-4 px-6 text-right">
-                                                <button
-                                                    onClick={() => onLoanClick(loan.id, 'statement')}
-                                                    className="font-black text-cyan-600 hover:text-cyan-800 transition-colors cursor-pointer"
+                                                <Link
+                                                    href={`/loans/${loan.id}`}
+                                                    className="font-black text-cyan-600 hover:text-cyan-800 transition-colors cursor-pointer hover:underline decoration-cyan-500 underline-offset-2"
                                                 >
                                                     {formatCurrency(loan.totalLoanBalance)}
-                                                </button>
+                                                </Link>
                                             </td>
                                             <td className="py-4 px-6 text-right text-slate-600">{loan.nextExpectedDate ? format(new Date(loan.nextExpectedDate), 'dd-MMM-yyyy') : '-'}</td>
                                             <td className="py-4 px-6 text-center">

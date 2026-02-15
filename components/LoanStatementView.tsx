@@ -4,9 +4,10 @@ import React, { useState, useEffect } from 'react'
 import { getLoanStatement } from '@/app/actions/getLoanStatement'
 import { processTransactions, type StatementRow } from '@/lib/statementProcessor'
 import { formatCurrency } from '@/lib/financialMath'
-import { AlertCircleIcon, FileTextIcon, RotateCcwIcon, Download, Printer } from 'lucide-react'
+import { AlertCircleIcon, FileTextIcon, RotateCcwIcon, Download, Printer, ArrowUpRight } from 'lucide-react'
 import { reverseLoanTransaction } from '@/app/actions/loan-reversal-actions'
 import dynamic from 'next/dynamic'
+import Link from 'next/link'
 
 const RepaymentReceipt = dynamic(
     () => import('@/components/receipts/RepaymentReceipt').then((mod) => mod.RepaymentReceipt),
@@ -275,7 +276,14 @@ export function LoanStatementView({ loanId, refreshKey }: { loanId: string, refr
                                                     {row.date}
                                                 </td>
                                                 <td className={`px-4 py-3 text-sm text-slate-700 ${row.isVoided ? 'line-through text-red-500' : ''}`}>
-                                                    {row.description}
+                                                    <Link
+                                                        href={`/loans/transactions/${row.txId}`}
+                                                        className="hover:text-cyan-600 hover:underline decoration-cyan-500 underline-offset-2 flex items-center gap-2 group/link"
+                                                        title="View Ledger Entries"
+                                                    >
+                                                        {row.description}
+                                                        <ArrowUpRight className="w-3 h-3 opacity-0 group-hover/link:opacity-100 transition-opacity text-cyan-500" />
+                                                    </Link>
                                                 </td>
                                                 <td className="px-4 py-3 text-sm text-right font-medium text-slate-700">
                                                     {row.debit !== null ? (

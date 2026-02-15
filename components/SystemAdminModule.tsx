@@ -19,6 +19,7 @@ import { WelfareTypeManager } from '@/components/welfare/WelfareTypeManager'
 import { AdminRequisitionList } from '@/components/welfare/AdminRequisitionList'
 import { NotificationSettings } from '@/components/admin/NotificationSettings'
 import { UserRightsTable } from '@/components/admin/UserRightsTable'
+import { PermissionsMatrix } from '@/components/admin/PermissionsMatrix'
 import { MobileDrawer } from '@/components/ui/MobileDrawer';
 
 
@@ -36,9 +37,11 @@ interface SettingsProps {
     welfareRequisitions?: any[];
     expenseAccounts?: any[];
     users?: any[]; // Passed from page
+    modules?: any[];
+    permissions?: any[];
 }
 
-export function SystemAdminModule({ products, members = [], welfareTypes = [], welfareRequisitions = [], expenseAccounts = [], users = [] }: SettingsProps) {
+export function SystemAdminModule({ products, members = [], welfareTypes = [], welfareRequisitions = [], expenseAccounts = [], users = [], modules = [], permissions = [] }: SettingsProps) {
     const [activeTab, setActiveTab] = useState('products');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [saccoSettings, setSaccoSettings] = useState<any>(null);
@@ -116,7 +119,8 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
         { id: 'sacco', label: 'SACCO Settings', icon: Settings },
         { id: 'welfare', label: 'Welfare', icon: HeartHandshake },
         { id: 'notifications', label: 'Notifications', icon: Mail },
-        { id: 'rights', label: 'User Rights', icon: Shield }
+        { id: 'rights', label: 'User Rights', icon: Shield },
+        { id: 'access', label: 'Access Control', icon: Shield }
     ];
 
     return (
@@ -538,6 +542,17 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
                         </p>
                     </div>
                     <UserRightsTable users={users} />
+                </div>
+            )}
+
+            {/* Access Control Tab */}
+            {activeTab === 'access' && (
+                <div className="space-y-6">
+                    <div>
+                        <h2 className="text-2xl font-bold text-slate-900">Access Control</h2>
+                        <p className="text-slate-600 mt-1">Configure module access permissions for each role.</p>
+                    </div>
+                    <PermissionsMatrix modules={modules} initialPermissions={permissions} />
                 </div>
             )}
 

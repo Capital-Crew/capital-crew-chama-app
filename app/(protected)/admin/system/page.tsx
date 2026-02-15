@@ -12,7 +12,7 @@ export default async function SystemAdminPage() {
         select: { role: true }
     });
 
-    const allowedRoles = ["CHAIRPERSON", "SYSTEM_ADMIN", "TREASURER", "SECRETARY"];
+    const allowedRoles = ["CHAIRPERSON", "SYSTEM_ADMIN", "TREASURER", "SECRETARY", "SYSTEM_ADMINISTRATOR"];
     if (!user?.role || !allowedRoles.includes(user.role)) {
         return (
             <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
@@ -22,7 +22,7 @@ export default async function SystemAdminPage() {
         );
     }
 
-    const [products, members, welfareTypesRes, welfareReqsRes, expenseAccounts, users] = await Promise.all([
+    const [products, members, welfareTypesRes, welfareReqsRes, expenseAccounts, users, modules, permissions] = await Promise.all([
         prisma.loanProduct.findMany({
             // Fetch ALL products so we can toggle active state, not just active ones
             orderBy: { name: 'asc' }
@@ -67,7 +67,9 @@ export default async function SystemAdminPage() {
             },
             orderBy: { name: 'asc' },
             where: { email: { not: 'admin@capitalcrew.co.ke' } }
-        })
+        }),
+        prisma.systemModule.findMany({ orderBy: { key: 'asc' } }),
+        prisma.rolePermission.findMany()
     ])
 
     const welfareTypes = welfareTypesRes.success ? welfareTypesRes.data : []
@@ -117,6 +119,8 @@ export default async function SystemAdminPage() {
                 welfareRequisitions={serializedRequisitions}
                 expenseAccounts={serializedExpenseAccounts}
                 users={users}
+                modules={modules}
+                permissions={permissions}
             />
         </div>
     )

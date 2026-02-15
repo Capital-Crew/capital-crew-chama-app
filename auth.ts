@@ -16,15 +16,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     events: {
         async signIn({ user }) {
             if (user?.id) {
-                await prisma.auditLog.create({
-                    data: {
-                        userId: user.id,
-                        action: 'USER_LOGIN', // Using string to avoid import issues or use AuditLogAction.USER_LOGIN if available
-                        details: 'User logged in',
-                        summary: 'User Login',
-                        timestamp: new Date(),
-                    }
-                })
+                try {
+                    await prisma.auditLog.create({
+                        data: {
+                            userId: user.id,
+                            action: 'USER_LOGIN', // Using string literal as fallback until server restart
+                            details: 'User logged in',
+                            summary: 'User Login',
+                            severity: 'INFO',
+                            context: 'AUTH',
+                            ipAddress: 'Unknown',
+                            timestamp: new Date(),
+                        }
+                    })
+                } catch (error) {
+                    console.error("Failed to log sign-in:", error)
+                }
             }
         },
         async signOut(message) {

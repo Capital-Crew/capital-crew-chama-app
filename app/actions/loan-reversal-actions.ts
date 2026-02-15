@@ -158,27 +158,23 @@ export async function reverseLoanTransaction(transactionId: string, reason: stri
                 }
             }
 
-        }
-
             // 4b. Create Explicit Reversal Transaction (Contra-Entry)
-            // This ensures the Loan Statement (which is transaction-based) reflects the reversal
-            // independently of the "isReversed" flag, allowing for strict audit history.
             await tx.loanTransaction.create({
-            data: {
-                loanId: originalTx.loanId,
-                type: 'REVERSAL',
-                amount: originalTx.amount, // Positive amount
-                principalAmount: originalTx.principalAmount,
-                interestAmount: originalTx.interestAmount,
-                penaltyAmount: originalTx.penaltyAmount,
-                feeAmount: originalTx.feeAmount,
-                description: `Reversal: ${originalTx.type} (${reason})`,
-                referenceId: originalTx.id, // Link to original
-                postedAt: new Date(),
-                transactionDate: new Date(),
-                isReversed: false // The reversal itself is valid
-            }
-        })
+                data: {
+                    loanId: originalTx.loanId,
+                    type: 'REVERSAL',
+                    amount: originalTx.amount, // Positive amount
+                    principalAmount: originalTx.principalAmount,
+                    interestAmount: originalTx.interestAmount,
+                    penaltyAmount: originalTx.penaltyAmount,
+                    feeAmount: originalTx.feeAmount,
+                    description: `Reversal: ${originalTx.type} (${reason})`,
+                    referenceId: originalTx.id, // Link to original
+                    postedAt: new Date(),
+                    transactionDate: new Date(),
+                    isReversed: false // The reversal itself is valid
+                }
+            })
 
             // 5. Recalculate Schedule (The "Magic" Step)
             // This rebuilds the installlment state based on the remaining valid transactions
@@ -187,17 +183,17 @@ export async function reverseLoanTransaction(transactionId: string, reason: stri
 
             // 6. Audit Log
             await tx.auditLog.create({
-            data: {
-                userId: session.user.id!,
-                action: 'WALLET_TRANSACTION_REVERSED',
-                details: `Reversed transaction ${originalTx.id} (Type: ${originalTx.type}) - ${reason}`
-            }
-        })
+                data: {
+                    userId: session.user.id!,
+                    action: 'WALLET_TRANSACTION_REVERSED',
+                    details: `Reversed transaction ${originalTx.id} (Type: ${originalTx.type}) - ${reason}`
+                }
+            })
 
             return { success: true }
-    })
-} catch (e: any) {
-    console.error('Reversal Error', e)
-    return { error: e.message || 'Failed to reverse transaction' }
-}
+        })
+    } catch (e: any) {
+        console.error('Reversal Error', e)
+        return { error: e.message || 'Failed to reverse transaction' }
+    }
 }

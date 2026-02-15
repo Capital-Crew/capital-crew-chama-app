@@ -190,6 +190,10 @@ export async function reverseLoanTransaction(transactionId: string, reason: stri
                 }
             })
 
+            revalidatePath(`/loans/${originalTx.loanId}`)
+            revalidatePath('/loans')
+            revalidatePath(`/members/${originalTx.loan.memberId}`)
+
             return { success: true }
         })
     } catch (e: any) {

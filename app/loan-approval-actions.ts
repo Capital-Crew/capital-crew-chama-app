@@ -707,8 +707,10 @@ export const disburseLoanToWallet = withAudit(
             maxWait: 10000,
             timeout: 30000
         })
-    })
-);
+
+        return je
+    })(loanId); // Call the wrapped function immediately
+}
 
 /**
  * Get loan journey (timeline of events)

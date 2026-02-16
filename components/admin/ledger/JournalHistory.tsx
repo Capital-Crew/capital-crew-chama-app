@@ -18,7 +18,6 @@ import {
 } from 'lucide-react';
 import { getJournalTransactions } from '@/app/actions/ledger-actions';
 import { toast } from 'sonner';
-import { TransactionStatus } from '@prisma/client';
 
 interface JournalEntryLine {
     id: string;
@@ -31,14 +30,14 @@ interface JournalEntryLine {
     description: string | null;
 }
 
-import { TransactionStatus } from '@prisma/client';
+import { TransactionStatus } from '@/lib/types/ledger';
 
 interface JournalTransaction {
     id: string;
     transactionDate: Date;
     description: string;
     totalAmount: number;
-    status: TransactionStatus;
+    status: TransactionStatus | string;
     referenceType: string;
     referenceId: string;
     createdByName: string | null;

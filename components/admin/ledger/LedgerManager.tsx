@@ -17,21 +17,29 @@ import {
 import { toast } from 'sonner';
 import { getAllLedgers, approveLedgerAction, closeLedgerAction } from '@/app/actions/ledger-actions';
 import { getAccountingPeriods, closeAccountingPeriodAction, openAccountingPeriodAction } from '@/app/actions/accounting-period-actions';
-import { LedgerStatus, AccountType, NormalBalance, AccountingPeriodStatus } from '@prisma/client';
 import { LedgerForm } from './LedgerForm';
 import { PeriodForm } from './PeriodForm';
 import { JournalHistory } from './JournalHistory';
+import { LedgerStatus, AccountType, NormalBalance, AccountingPeriodStatus, LedgerAccount } from '@/lib/types/ledger';
+// ... (skip down to render)
+{/* Modals */ }
+{
+    isLedgerModalOpen && (
+        <LedgerForm
+            onClose={() => setIsLedgerModalOpen(false)}
+            onSuccess={loadData}
+            existingLedgers={ledgers}
+        />
+    )
+}
 
-interface LedgerAccount {
-    id: string;
-    code: string;
-    name: string;
-    type: AccountType;
-    balance: number | string;
-    status: LedgerStatus;
-    parentId: string | null;
-    children?: LedgerAccount[];
-    normalBalance: NormalBalance;
+{
+    isPeriodModalOpen && (
+        <PeriodForm
+            onClose={() => setIsPeriodModalOpen(false)}
+            onSuccess={loadData}
+        />
+    )
 }
 
 export function LedgerManager() {
@@ -271,6 +279,7 @@ export function LedgerManager() {
             )}
 
             {/* Modals */}
+            {/* 
             {isLedgerModalOpen && (
                 <LedgerForm
                     onClose={() => setIsLedgerModalOpen(false)}
@@ -285,6 +294,7 @@ export function LedgerManager() {
                     onSuccess={loadData}
                 />
             )}
+            */}
 
             {!isLoading && activeView === 'coa' && ledgers.length === 0 && (
                 <div className="text-center py-20 bg-white rounded-2xl border border-slate-200">

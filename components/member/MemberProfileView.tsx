@@ -43,6 +43,10 @@ export function MemberProfileView({
 }: MemberProfileViewProps) {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<'loans' | 'contributions' | 'kin'>('loans');
+
+    // Normalize role for comparison — handles 'SYSTEM ADMIN', 'SYSTEM_ADMIN', 'system_admin' etc.
+    const normalizedRole = currentUserRole?.toUpperCase().replace(/\s+/g, '_') || '';
+    const isSystemAdmin = normalizedRole === 'SYSTEM_ADMIN' || normalizedRole === 'SYSTEM_ADMINISTRATOR';
     const [selectedLoanId, setSelectedLoanId] = useState<string | null>(null);
 
     const [modalTab, setModalTab] = useState<'appraisal' | 'statement'>('appraisal');
@@ -77,15 +81,8 @@ export function MemberProfileView({
                 <h1 className="text-2xl md:text-3xl font-black text-slate-900 mb-4">Member Profile</h1>
             </div>
 
-            {/* TEMPORARY DEBUG — remove after fixing */}
-            <div className="px-4 md:px-8 mt-2">
-                <div className="bg-yellow-100 border border-yellow-300 rounded-xl p-3 text-xs font-mono text-yellow-800">
-                    DEBUG: role=&quot;{currentUserRole}&quot; | status=&quot;{member.status}&quot; | match={String(member.status === 'ACTIVE' && (currentUserRole === 'SYSTEM_ADMIN' || currentUserRole === 'SYSTEM_ADMINISTRATOR'))}
-                </div>
-            </div>
-
             {/* Deactivate Control for ACTIVE members — standalone section */}
-            {member.status === 'ACTIVE' && (currentUserRole === 'SYSTEM_ADMIN' || currentUserRole === 'SYSTEM_ADMINISTRATOR') && (
+            {member.status === 'ACTIVE' && isSystemAdmin && (
                 <div className="px-4 md:px-8 mt-4">
                     <div className="bg-red-950 rounded-3xl p-6 md:p-8 text-white shadow-xl shadow-red-200 border border-red-900/50">
                         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
@@ -127,8 +124,7 @@ export function MemberProfileView({
                 />
 
                 {/* Administrative Onboarding Controls */}
-                {(currentUserRole === 'SYSTEM_ADMIN' ||
-                    currentUserRole === 'SYSTEM_ADMINISTRATOR' ||
+                {(isSystemAdmin ||
                     (member.status === 'PENDING' && currentUserPermissions?.canApproveMember) ||
                     (member.status === 'APPROVED' && currentUserPermissions?.canActivateMember)) &&
                     ['PENDING', 'APPROVED'].includes(member.status) && (
@@ -147,7 +143,7 @@ export function MemberProfileView({
                                         </div>
                                     </div>
 
-                                    {member.status === 'PENDING' && (currentUserRole === 'SYSTEM_ADMIN' || currentUserRole === 'SYSTEM_ADMINISTRATOR' || currentUserPermissions?.canApproveMember) && (
+                                    {member.status === 'PENDING' && (isSystemAdmin || currentUserPermissions?.canApproveMember) && (
                                         <button
                                             onClick={async () => {
                                                 if (!window.confirm(`Approve ${member.name} as a member?`)) return;
@@ -165,7 +161,7 @@ export function MemberProfileView({
                                         </button>
                                     )}
 
-                                    {member.status === 'APPROVED' && (currentUserRole === 'SYSTEM_ADMIN' || currentUserRole === 'SYSTEM_ADMINISTRATOR' || currentUserPermissions?.canActivateMember) && (
+                                    {member.status === 'APPROVED' && (isSystemAdmin || currentUserPermissions?.canActivateMember) && (
                                         <button
                                             onClick={async () => {
                                                 if (!window.confirm(`Activate ${member.name}? This will grant full system access.`)) return;

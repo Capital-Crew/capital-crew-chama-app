@@ -27,9 +27,7 @@ export async function getPermissionsMatrix() {
     return { modules, permissions };
 }
 
-import { withModuleProtection } from "@/lib/with-module-protection";
 
-// ... existing imports
 
 /**
  * Toggle a specific permission - Protected by ADMIN module access

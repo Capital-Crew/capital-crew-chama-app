@@ -1,12 +1,12 @@
 'use client';
 import { toast } from 'sonner';
 import { payPenalty } from '@/app/actions/meeting-actions';
-import { approveMemberAction, activateMemberAction } from '@/app/actions/member-actions';
+import { approveMemberAction, activateMemberAction, deactivateMemberAction } from '@/app/actions/member-actions';
 import { useState } from 'react';
 import { UserPermissions } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Clock, CheckCircle2, AlertCircle, ChevronDown, ChevronUp, ChevronRight, Receipt, Activity } from 'lucide-react';
+import { Clock, CheckCircle2, AlertCircle, ChevronDown, ChevronUp, ChevronRight, Receipt, Activity, XCircle } from 'lucide-react';
 import { MemberQuickStats } from './MemberQuickStats';
 import { NextOfKinManager } from './NextOfKinManager';
 import { LoanAppraisalCard } from '../LoanAppraisalCard';
@@ -142,6 +142,42 @@ export function MemberProfileView({
                             </div>
                         </div>
                     )}
+
+                {/* Deactivate Control for ACTIVE members */}
+                {member.status === 'ACTIVE' && (currentUserRole === 'SYSTEM_ADMIN' || currentUserRole === 'SYSTEM_ADMINISTRATOR') && (
+                    <div className="flex-1 w-full xl:w-auto">
+                        <div className="bg-red-950 rounded-3xl p-6 md:p-8 text-white shadow-xl shadow-red-200 border border-red-900/50">
+                            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-2xl bg-red-500/20 flex items-center justify-center backdrop-blur-sm">
+                                        <XCircle className="w-6 h-6 text-red-400" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-black uppercase tracking-tight">Member Deactivation</h3>
+                                        <p className="text-red-300 text-xs font-bold mt-1">
+                                            This will close the member&apos;s account and restrict system access.
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={async () => {
+                                        if (!window.confirm(`Deactivate ${member.name}? This will close their account and restrict access.`)) return;
+                                        const res = await deactivateMemberAction(member.id);
+                                        if (res.success) {
+                                            toast.success('Member deactivated successfully');
+                                            router.refresh();
+                                        } else {
+                                            toast.error(res.error || 'Failed to deactivate');
+                                        }
+                                    }}
+                                    className="w-full md:w-auto bg-red-500 text-white px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-400 transition-all active:scale-95 shadow-lg shadow-red-900/30 flex items-center justify-center gap-2"
+                                >
+                                    <XCircle className="w-4 h-4" /> Deactivate Member
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Penalty Alert Section (The "Red Card") */}

@@ -108,3 +108,20 @@ export async function activateMemberAction(memberId: string): Promise<ActionResu
         return { success: false, error: e.message }
     }
 }
+
+/**
+ * Deactivate (Close) Member Action
+ */
+export async function deactivateMemberAction(memberId: string): Promise<ActionResult> {
+    const session = await auth()
+    if (!session?.user?.id) return { success: false, error: "Unauthorized" }
+
+    try {
+        const member = await MemberWriteService.deactivateMember(memberId, session.user.id)
+        revalidatePath(`/dashboard/members`)
+        revalidatePath(`/dashboard/members/${memberId}`)
+        return { success: true, data: member }
+    } catch (e: any) {
+        return { success: false, error: e.message }
+    }
+}

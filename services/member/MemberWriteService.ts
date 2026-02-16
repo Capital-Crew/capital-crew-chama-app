@@ -154,6 +154,37 @@ export class MemberWriteService {
     }
 
     /**
+     * Deactivate (Close) a Member
+     * Transitions ACTIVE → CLOSED
+     */
+    static async deactivateMember(memberId: string, actorId: string) {
+        return db.$transaction(async (tx) => {
+            const member = await tx.member.findUniqueOrThrow({ where: { id: memberId } })
+
+            MemberStateMachine.validateTransition(member.status, MemberStatus.CLOSED)
+
+            const updated = await tx.member.update({
+                where: { id: memberId },
+                data: {
+                    status: MemberStatus.CLOSED,
+                    closedAt: new Date(),
+                }
+            })
+
+            await this.logCommand(tx, {
+                resourceId: memberId,
+                resourceType: 'MEMBER',
+                action: 'DEACTIVATE_MEMBER',
+                actorId,
+                payloadBefore: member,
+                payloadAfter: updated
+            })
+
+            return updated
+        })
+    }
+
+    /**
      * Internal Command Logger
      */
     private static async logCommand(

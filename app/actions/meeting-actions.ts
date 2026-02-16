@@ -66,15 +66,23 @@ export async function submitMeetingReport(input: {
                 }
 
                 if (penaltyAmount > 0) {
-                    // Always create UNPAID Bill - as per user request (Manual Payment only)
+                    // Resolve User ID from Member ID
+                    const user = await tx.user.findUnique({
+                        where: { memberId: attendee.memberId }
+                    });
+
+                    if (!user) {
+                        throw new Error(`No user account linked to member ${attendee.memberId}`);
+                    }
+
+                    // Always create PENDING Bill - as per user request (Manual Payment only)
                     await tx.penaltyBill.create({
                         data: {
-                            memberId: attendee.memberId,
+                            userId: user.id,
                             meetingId: meeting.id,
                             amount: new Prisma.Decimal(penaltyAmount),
-                            type: penaltyType!,
-                            status: 'UNPAID',
-                            description: `Pending penalty for ${penaltyType!.toLowerCase()} at ${input.title}`
+                            reason: `${penaltyType} PENALTY: ${input.title}`,
+                            status: 'PENDING',
                         }
                     });
                 }
@@ -118,15 +126,21 @@ export async function payPenalty(penaltyId: string) {
             // 1. Fetch Penalty Bill
             const penalty = await tx.penaltyBill.findUnique({
                 where: { id: penaltyId },
-                include: { meeting: true }
+                include: {
+                    meeting: true,
+                    user: { include: { member: true } }
+                }
             });
 
             if (!penalty) throw new Error('Penalty record not found');
             if (penalty.status === 'PAID') throw new Error('Penalty already paid');
 
+            const member = penalty.user.member;
+            if (!member) throw new Error('Member profile not found for this user');
+
             // 2. Fetch Member Wallet
             const wallet = await tx.wallet.findUnique({
-                where: { memberId: penalty.memberId },
+                where: { memberId: member.id },
                 include: { glAccount: true }
             });
 
@@ -143,8 +157,8 @@ export async function payPenalty(penaltyId: string) {
             await AccountingEngine.postJournalEntry({
                 transactionDate: new Date(),
                 referenceType: 'PENALTY',
-                referenceId: penalty.meetingId,
-                description: `Manual Penalty Payment (${penalty.type}) - ${penalty.meeting.title}`,
+                referenceId: penalty.meetingId || 'MANUAL',
+                description: `Manual Penalty Payment - ${penalty.reason}`,
                 createdBy: session.user.id!,
                 createdByName: session.user.name || 'Member',
                 lines: [

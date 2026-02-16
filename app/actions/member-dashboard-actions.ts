@@ -664,8 +664,11 @@ export async function getMemberFullDetail(memberId: string) {
     const { calculateCurrentMonthStatus } = await import('./contribution-engine');
     const { LoanScheduleCache } = await import('@/lib/services/LoanScheduleCache');
 
+    // Resolve User for penalties
+    const user = await db.user.findUnique({ where: { memberId } });
+
     // Parallelize all major dashboard fetches
-    const [stats, contributions, portfolio, member, contributionStatus] = await Promise.all([
+    const [stats, contributions, portfolio, member, contributionStatus, unpaidPenalties] = await Promise.all([
         getDetailedMemberStats(memberId),
         getContributionHistory(memberId),
         getLoanPortfolio(memberId),
@@ -677,11 +680,11 @@ export async function getMemberFullDetail(memberId: string) {
             }
         }),
         calculateCurrentMonthStatus(memberId),
-        db.penaltyBill.findMany({
-            where: { memberId, status: 'UNPAID' },
+        user ? db.penaltyBill.findMany({
+            where: { userId: user.id, status: 'PENDING' },
             include: { meeting: true },
             orderBy: { createdAt: 'desc' }
-        })
+        }) : Promise.resolve([])
     ]);
 
     if (!stats || !member) return null;
@@ -713,10 +716,10 @@ export async function getMemberFullDetail(memberId: string) {
         unpaidPenalties: (unpaidPenalties as any[]).map(p => ({
             id: p.id,
             amount: Number(p.amount),
-            type: p.type,
-            meetingTitle: p.meeting.title,
-            date: p.meeting.date,
-            description: p.description
+            type: p.reason ? p.reason.split(':')[0] : 'PENALTY', // Fallback
+            meetingTitle: p.meeting?.title || 'Unknown Meeting',
+            date: p.meeting?.date || p.createdAt,
+            description: p.reason
         }))
     });
 }

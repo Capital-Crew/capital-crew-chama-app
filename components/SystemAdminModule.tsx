@@ -113,14 +113,14 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
     };
 
     const tabs = [
+        { id: 'access', label: 'Access Control', icon: Shield },
         { id: 'engines', label: 'Engine Health', icon: TrendingUp },
         { id: 'products', label: 'Loan Products', icon: Package },
         { id: 'adjustments', label: 'Loan Adjustments', icon: Scale },
         { id: 'sacco', label: 'SACCO Settings', icon: Settings },
         { id: 'welfare', label: 'Welfare', icon: HeartHandshake },
         { id: 'notifications', label: 'Notifications', icon: Mail },
-        { id: 'rights', label: 'User Rights', icon: Shield },
-        { id: 'access', label: 'Access Control', icon: Shield }
+        { id: 'rights', label: 'User Rights', icon: Shield }
     ];
 
     return (
@@ -144,7 +144,7 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
 
             {/* Modern Tab Navigation - Scrollable on Mobile */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-2 mb-8 sticky top-4 z-40 backdrop-blur-md bg-white/90">
-                <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
+                <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0">
                     {tabs.map((tab) => {
                         const Icon = tab.icon;
                         return (

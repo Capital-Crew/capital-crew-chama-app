@@ -698,6 +698,7 @@ export async function getMemberFullDetail(memberId: string) {
             memberNumber: member.memberNumber.toString(),
             email: member.contactInfo?.email,
             contact: member.contactInfo?.mobile || member.contact,
+            status: member.status,
             contributionArrears: Number(member.contributionArrears || 0),
             penaltyArrears: Number(member.penaltyArrears || 0)
         },

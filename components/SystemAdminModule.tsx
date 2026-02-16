@@ -42,7 +42,7 @@ interface SettingsProps {
 }
 
 export function SystemAdminModule({ products, members = [], welfareTypes = [], welfareRequisitions = [], expenseAccounts = [], users = [], modules = [], permissions = [] }: SettingsProps) {
-    const [activeTab, setActiveTab] = useState('access');
+    const [activeTab, setActiveTab] = useState('products');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [saccoSettings, setSaccoSettings] = useState<any>(null);
     const [settingsForm, setSettingsForm] = useState({
@@ -136,7 +136,7 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
                         <Settings className="w-8 h-8 text-white" />
                     </div>
                     <div>
-                        <h1 className="text-sm md:text-3xl font-black tracking-tight text-white drop-shadow-sm">System Administration (DEBUG)</h1>
+                        <h1 className="text-sm md:text-3xl font-black tracking-tight text-white drop-shadow-sm">System Administration</h1>
                         <p className="text-cyan-50 mt-1 font-medium text-xs md:text-lg opacity-90">Manage loan products, SACCO parameters, and user rights</p>
                     </div>
                 </div>

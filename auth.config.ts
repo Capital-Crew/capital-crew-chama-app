@@ -41,7 +41,7 @@ export const authConfig = {
                 // Strict RBAC Check
                 // Note: auth.user is typed generically
                 const userRole = (auth?.user as any)?.role;
-                const allowedRoles = ['SYSTEM_ADMIN', 'CHAIRPERSON', 'SECRETARY', 'TREASURER', 'SYSTEM_ADMINISTRATOR'];
+                const allowedRoles = ['SYSTEM_ADMIN', 'CHAIRPERSON', 'SECRETARY', 'TREASURER', 'SYSTEM_ADMINISTRATOR', 'MEMBER'];
 
                 if (!allowedRoles.includes(userRole)) {
                     // Redirect unauthorized users to dashboard

@@ -206,34 +206,34 @@ export function MeetingReportForm({ members, settings }: MeetingReportFormProps)
                 />
             </div>
 
-            {/* Section C: Summary Footer */}
-            <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-slate-200 p-4 md:p-6 z-40 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
-                <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-                    <div className="flex items-center gap-6">
+            {/* Section C: Summary Footer (Ultra Compact) */}
+            <div className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[95%] max-w-2xl bg-slate-900/90 backdrop-blur-md rounded-2xl p-3 z-40 shadow-2xl border border-white/10">
+                <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 text-white">
                         <div className="flex flex-col">
-                            <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Attendance Overall</span>
-                            <div className="flex items-center gap-3 mt-0.5">
-                                <span className="text-sm font-bold text-slate-800">Present: <span className="text-green-600">{stats.PRESENT}</span></span>
-                                <span className="text-sm font-bold text-slate-800">Late: <span className="text-yellow-600">{stats.LATE}</span></span>
-                                <span className="text-sm font-bold text-slate-800">Absent: <span className="text-red-600">{stats.ABSENT}</span></span>
+                            <span className="text-[8px] font-black uppercase text-slate-400">Attendance</span>
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold"><span className="text-green-400">P:{stats.PRESENT}</span></span>
+                                <span className="text-[10px] font-bold"><span className="text-yellow-400">L:{stats.LATE}</span></span>
+                                <span className="text-[10px] font-bold"><span className="text-red-400">A:{stats.ABSENT}</span></span>
                             </div>
                         </div>
-                        <div className="w-px h-8 bg-slate-200 hidden md:block" />
+                        <div className="w-px h-6 bg-white/10" />
                         <div className="flex flex-col">
-                            <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Estimated Penalties</span>
-                            <span className="text-lg font-black text-slate-900">KES {stats.estimatedPenalties.toLocaleString()}</span>
+                            <span className="text-[8px] font-black uppercase text-slate-400">Total Penalty</span>
+                            <span className="text-xs font-black">KES {stats.estimatedPenalties.toLocaleString()}</span>
                         </div>
                     </div>
 
                     <button
                         type="submit"
                         disabled={isSubmitting}
-                        className={`w-full md:w-auto flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-black text-lg shadow-xl transition-all duration-300 ${isSubmitting ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-cyan-600 to-indigo-600 text-white shadow-cyan-500/20 hover:scale-[1.02] active:scale-[0.98]'}`}
+                        className={`flex items-center gap-3 px-8 py-3 rounded-xl font-black text-sm shadow-2xl transition-all ${isSubmitting ? 'bg-slate-800 text-slate-500' : 'bg-cyan-500 text-slate-900 hover:bg-cyan-400 active:scale-95 hover:shadow-cyan-500/20'}`}
                     >
                         {isSubmitting ? (
-                            <><Loader2 className="w-6 h-6 animate-spin" /> Posting...</>
+                            <><Loader2 className="w-5 h-5 animate-spin" /> POSTING...</>
                         ) : (
-                            <><CheckCircle2 className="w-6 h-6" /> Post Report</>
+                            <><CheckCircle2 className="w-5 h-5" /> POST REPORT</>
                         )}
                     </button>
                 </div>

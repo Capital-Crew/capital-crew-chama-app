@@ -91,6 +91,8 @@ export interface UserPermissions {
     canExemptFees: boolean;
     canReverse: boolean;
     canEnrollMembers: boolean;
+    canApproveMember: boolean;
+    canActivateMember: boolean;
 }
 
 // Extended Models

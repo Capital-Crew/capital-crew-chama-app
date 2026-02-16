@@ -4,6 +4,7 @@ import { getMemberFullDetail } from "@/app/actions/member-dashboard-actions"
 import { getMembers } from "@/app/actions/get-members"
 import { redirect } from "next/navigation"
 import { UserRole } from "@prisma/client"
+import { getCurrentUserPermissions } from "@/app/actions/user-permissions"
 
 export default async function MembersPage() {
     const session = await auth();
@@ -35,8 +36,11 @@ export default async function MembersPage() {
         }
     }
 
-    // Fetch members using the secure Server Action/Function
-    const members = await getMembers();
+    // Fetch members and permissions in parallel
+    const [members, permRes] = await Promise.all([
+        getMembers(),
+        getCurrentUserPermissions()
+    ]);
 
     let initialDetail = null;
     if (members.length > 0) {
@@ -57,6 +61,7 @@ export default async function MembersPage() {
             initialDetail={initialDetail}
             userRole={role}
             currentUserId={session.user.id!}
+            currentUserPermissions={permRes?.permissions}
         />
     )
 }

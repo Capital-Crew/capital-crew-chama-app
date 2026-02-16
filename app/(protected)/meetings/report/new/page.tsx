@@ -16,7 +16,7 @@ export default async function NewMeetingReportPage() {
 
     // 1. Fetch Active Members
     const members = await prisma.member.findMany({
-        where: { status: 'ACTIVE' },
+        where: { status: { in: ['ACTIVE', 'PENDING', 'APPROVED'] } },
         select: {
             id: true,
             name: true,

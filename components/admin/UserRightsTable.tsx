@@ -21,6 +21,8 @@ interface UserPermissions {
     canExemptFees: boolean
     canReverse: boolean
     canEnrollMembers: boolean
+    canApproveMember: boolean
+    canActivateMember: boolean
 }
 
 // Default permissions object
@@ -34,7 +36,9 @@ const defaultPermissions: UserPermissions = {
     canManageUserRights: false,
     canExemptFees: false,
     canReverse: false,
-    canEnrollMembers: false
+    canEnrollMembers: false,
+    canApproveMember: false,
+    canActivateMember: false
 };
 
 interface User {
@@ -94,7 +98,9 @@ export function UserRightsTable({ users: initialUsers }: UserRightsTableProps) {
         { key: 'canManageUserRights', label: 'Manage User Rights', description: 'Grant or revoke permissions for other users' },
         { key: 'canExemptFees', label: 'Exempt Fees', description: 'Waive or reduce fees on loan applications' },
         { key: 'canReverse', label: 'Reverse Journal Entries', description: 'Void and correct financial journal entries' },
-        { key: 'canEnrollMembers', label: 'Enroll Members', description: 'Register new members and create their wallets' }
+        { key: 'canEnrollMembers', label: 'Enroll Members', description: 'Register new members and create their wallets' },
+        { key: 'canApproveMember', label: 'Approve Members', description: 'Approve pending members after enrollment' },
+        { key: 'canActivateMember', label: 'Activate Members', description: 'Activate approved members to start using the system' }
     ];
 
     // Filter Logic

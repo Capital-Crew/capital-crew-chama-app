@@ -2,6 +2,7 @@ import { auth } from '@/auth'
 import { notFound } from 'next/navigation'
 import { getMemberFullDetail } from "@/app/actions/member-dashboard-actions"
 import { MemberProfileView } from "@/components/member/MemberProfileView"
+import { getCurrentUserPermissions } from "@/app/actions/user-permissions"
 
 // Force dynamic rendering and disable caching
 export const dynamic = 'force-dynamic'
@@ -20,7 +21,10 @@ export default async function MemberProfilePage({ params }: PageProps) {
         return notFound()
     }
 
-    const detail = await getMemberFullDetail(id)
+    const [detail, permRes] = await Promise.all([
+        getMemberFullDetail(id),
+        getCurrentUserPermissions()
+    ])
 
     if (!detail) {
         return notFound()
@@ -40,6 +44,7 @@ export default async function MemberProfilePage({ params }: PageProps) {
                     nextOfKin={detail.nextOfKin}
                     currentUserId={session.user.id}
                     currentUserRole={session.user.role}
+                    currentUserPermissions={permRes?.permissions}
                 />
             </div>
         </div>

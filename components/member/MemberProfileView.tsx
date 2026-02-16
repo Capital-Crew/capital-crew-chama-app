@@ -1,8 +1,9 @@
 'use client';
 import { toast } from 'sonner';
 import { payPenalty } from '@/app/actions/meeting-actions';
-
+import { approveMemberAction, activateMemberAction } from '@/app/actions/member-actions';
 import { useState } from 'react';
+import { UserPermissions } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Clock, CheckCircle2, AlertCircle, ChevronDown, ChevronUp, ChevronRight, Receipt, Activity } from 'lucide-react';
@@ -23,6 +24,8 @@ interface MemberProfileViewProps {
     unpaidPenalties?: any[];
     currentUserRole: string;
     currentUserId: string;
+    currentUserPermissions?: UserPermissions;
+    onBack?: () => void;
 }
 
 export function MemberProfileView({
@@ -34,7 +37,9 @@ export function MemberProfileView({
     nextOfKin,
     unpaidPenalties = [],
     currentUserRole,
-    currentUserId
+    currentUserId,
+    currentUserPermissions,
+    onBack
 }: MemberProfileViewProps) {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<'loans' | 'contributions' | 'kin'>('loans');
@@ -76,6 +81,67 @@ export function MemberProfileView({
                     stats={quickStatsData}
                     onViewLoans={() => setActiveTab('loans')}
                 />
+
+                {/* Administrative Onboarding Controls */}
+                {(currentUserRole === 'SYSTEM_ADMIN' ||
+                    currentUserRole === 'SYSTEM_ADMINISTRATOR' ||
+                    (member.status === 'PENDING' && currentUserPermissions?.canApproveMember) ||
+                    (member.status === 'APPROVED' && currentUserPermissions?.canActivateMember)) &&
+                    ['PENDING', 'APPROVED'].includes(member.status) && (
+                        <div className="flex-1 w-full xl:w-auto">
+                            <div className="bg-slate-900 rounded-3xl p-6 md:p-8 text-white shadow-xl shadow-slate-200 border border-white/10">
+                                <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-sm">
+                                            <Activity className="w-6 h-6 text-cyan-400" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-black uppercase tracking-tight">Onboarding Action</h3>
+                                            <p className="text-slate-400 text-xs font-bold mt-1">
+                                                Current Status: <span className="text-cyan-400">{member.status}</span>
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {member.status === 'PENDING' && (currentUserRole === 'SYSTEM_ADMIN' || currentUserRole === 'SYSTEM_ADMINISTRATOR' || currentUserPermissions?.canApproveMember) && (
+                                        <button
+                                            onClick={async () => {
+                                                if (!window.confirm(`Approve ${member.name} as a member?`)) return;
+                                                const res = await approveMemberAction(member.id);
+                                                if (res.success) {
+                                                    toast.success('Member approved successfully');
+                                                    router.refresh();
+                                                } else {
+                                                    toast.error(res.error || 'Failed to approve');
+                                                }
+                                            }}
+                                            className="w-full md:w-auto bg-cyan-500 text-slate-900 px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-cyan-400 transition-all active:scale-95 shadow-lg shadow-cyan-900/20 flex items-center justify-center gap-2"
+                                        >
+                                            <CheckCircle2 className="w-4 h-4" /> Approve Member
+                                        </button>
+                                    )}
+
+                                    {member.status === 'APPROVED' && (currentUserRole === 'SYSTEM_ADMIN' || currentUserRole === 'SYSTEM_ADMINISTRATOR' || currentUserPermissions?.canActivateMember) && (
+                                        <button
+                                            onClick={async () => {
+                                                if (!window.confirm(`Activate ${member.name}? This will grant full system access.`)) return;
+                                                const res = await activateMemberAction(member.id);
+                                                if (res.success) {
+                                                    toast.success('Member activated successfully');
+                                                    router.refresh();
+                                                } else {
+                                                    toast.error(res.error || 'Failed to activate');
+                                                }
+                                            }}
+                                            className="w-full md:w-auto bg-green-500 text-white px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-green-400 transition-all active:scale-95 shadow-lg shadow-green-900/20 flex items-center justify-center gap-2"
+                                        >
+                                            <Activity className="w-4 h-4" /> Activate Member
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
             </div>
 
             {/* Penalty Alert Section (The "Red Card") */}

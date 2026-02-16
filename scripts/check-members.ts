@@ -1,23 +1,30 @@
+import { PrismaClient } from '@prisma/client'
 
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = new PrismaClient()
 
 async function main() {
-    const count = await prisma.member.count();
-    const userCount = await prisma.user.count();
-    console.log(`Total Members: ${count}`);
-    console.log(`Total Users: ${userCount}`);
-    if (count > 0) {
-        const firstFew = await prisma.member.findMany({ take: 3 });
-        console.log('First 3 members:', firstFew);
-    }
+    const activeMembers = await prisma.member.count({
+        where: { status: 'ACTIVE' }
+    })
+
+    const allMembers = await prisma.member.findMany({
+        select: {
+            id: true,
+            name: true,
+            memberNumber: true,
+            status: true
+        }
+    })
+
+    console.log(`Active Members Count: ${activeMembers}`)
+    console.log('Sample Members:', allMembers.slice(0, 10))
 }
 
 main()
-    .catch(e => {
-        console.error(e);
-        process.exit(1);
+    .catch((e) => {
+        console.error(e)
+        process.exit(1)
     })
     .finally(async () => {
-        await prisma.$disconnect();
-    });
+        await prisma.$disconnect()
+    })

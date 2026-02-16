@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { MembersList } from './MembersList';
 import { MemberProfileView } from './MemberProfileView';
 import { getMemberFullDetail } from '@/app/actions/member-dashboard-actions';
+import { UserPermissions } from '@/lib/types';
 import { createUserAccount } from '@/app/actions'; // For Enroll Modal
 import { UserPlus, Users, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -14,9 +15,10 @@ interface MembersModuleProps {
     initialDetail: any;
     userRole: string; // 'MEMBER' | 'ADMIN' etc
     currentUserId: string;
+    currentUserPermissions?: UserPermissions;
 }
 
-export function MembersModule({ initialMembers, initialDetail, userRole, currentUserId }: MembersModuleProps) {
+export function MembersModule({ initialMembers, initialDetail, userRole, currentUserId, currentUserPermissions }: MembersModuleProps) {
     const isAdmin = ['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER', 'SECRETARY', 'SYSTEM_ADMINISTRATOR'].includes(userRole);
     const router = useRouter();
 
@@ -141,6 +143,7 @@ export function MembersModule({ initialMembers, initialDetail, userRole, current
                             nextOfKin={selectedDetail.nextOfKin}
                             currentUserRole={userRole}
                             currentUserId={currentUserId}
+                            currentUserPermissions={currentUserPermissions}
                             onBack={handleBackToList} // Passing Back Handler for Mobile
                         />
                     </div>

@@ -231,9 +231,9 @@ export function MeetingReportForm({ members, settings }: MeetingReportFormProps)
                         className={`w-full md:w-auto flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-black text-lg shadow-xl transition-all duration-300 ${isSubmitting ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-cyan-600 to-indigo-600 text-white shadow-cyan-500/20 hover:scale-[1.02] active:scale-[0.98]'}`}
                     >
                         {isSubmitting ? (
-                            <><Loader2 className="w-6 h-6 animate-spin" /> Finalizing...</>
+                            <><Loader2 className="w-6 h-6 animate-spin" /> Posting...</>
                         ) : (
-                            <><CheckCircle2 className="w-6 h-6" /> Finalize Report & Process</>
+                            <><CheckCircle2 className="w-6 h-6" /> Post Report</>
                         )}
                     </button>
                 </div>

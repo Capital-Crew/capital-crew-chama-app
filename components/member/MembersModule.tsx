@@ -19,7 +19,8 @@ interface MembersModuleProps {
 }
 
 export function MembersModule({ initialMembers, initialDetail, userRole, currentUserId, currentUserPermissions }: MembersModuleProps) {
-    const isAdmin = ['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER', 'SECRETARY', 'SYSTEM_ADMINISTRATOR'].includes(userRole);
+    const normalizedRole = userRole?.toUpperCase().replace(/\s+/g, '_') || '';
+    const isAdmin = ['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER', 'SECRETARY', 'SYSTEM_ADMINISTRATOR'].includes(normalizedRole);
     const router = useRouter();
 
     // STATE

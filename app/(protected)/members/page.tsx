@@ -15,15 +15,14 @@ export default async function MembersPage() {
 
     const { role, memberId } = session.user as { role: UserRole, memberId?: string };
 
-    const privilegedRoles = [
-        UserRole.SYSTEM_ADMIN,
-        UserRole.CHAIRPERSON,
-        UserRole.TREASURER,
-        UserRole.SECRETARY,
-        'SYSTEM_ADMINISTRATOR' as any // Handle legacy/alternate role check
-    ];
-
-    const isPrivileged = privilegedRoles.includes(role as any);
+    const normalizedRole = (role as string)?.toUpperCase().replace(/\s+/g, '_') || '';
+    const isPrivileged = [
+        'SYSTEM_ADMIN',
+        'CHAIRPERSON',
+        'TREASURER',
+        'SECRETARY',
+        'SYSTEM_ADMINISTRATOR'
+    ].includes(normalizedRole);
 
     // REDIRECT LOGIC: Restricted users go to their own profile
     if (!isPrivileged) {

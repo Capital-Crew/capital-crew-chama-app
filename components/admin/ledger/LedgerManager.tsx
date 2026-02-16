@@ -164,31 +164,40 @@ export function LedgerManager() {
                         </div>
                     </td>
                     <td className="text-right pr-4">
-                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex justify-end gap-2">
                             {ledger.status === 'PENDING' && (
                                 <button
                                     onClick={() => handleApprove(ledger.id)}
-                                    className="btn btn-xs btn-success text-white border-none"
+                                    className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors shadow-sm"
                                 >
-                                    <CheckCircle className="w-3 h-3" />
+                                    <CheckCircle className="w-3.5 h-3.5" />
                                     Approve
+                                </button>
+                            )}
+                            {ledger.status === 'PENDING' && (
+                                <button
+                                    onClick={() => handleReject(ledger.id)}
+                                    className="flex items-center gap-1.5 border border-red-300 text-red-600 hover:bg-red-50 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+                                >
+                                    <XCircle className="w-3.5 h-3.5" />
+                                    Reject
                                 </button>
                             )}
                             {ledger.status === 'ACTIVE' && (
                                 <button
                                     onClick={() => handleClose(ledger.id)}
-                                    className="btn btn-xs btn-outline btn-error font-bold"
+                                    className="flex items-center gap-1.5 border border-red-300 text-red-600 hover:bg-red-50 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
                                 >
-                                    <Power className="w-3 h-3" />
-                                    Close
+                                    <Power className="w-3.5 h-3.5" />
+                                    Close Ledger
                                 </button>
                             )}
                             {ledger.status === 'CLOSED' && (
                                 <button
                                     onClick={() => handleReactivate(ledger.id)}
-                                    className="btn btn-xs btn-outline btn-info font-bold"
+                                    className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors shadow-sm"
                                 >
-                                    <RotateCcw className="w-3 h-3" />
+                                    <RotateCcw className="w-3.5 h-3.5" />
                                     Reactivate
                                 </button>
                             )}

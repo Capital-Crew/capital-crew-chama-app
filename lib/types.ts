@@ -25,7 +25,8 @@ export {
     LoanStatus, ApprovalStatus, RepaymentFrequencyType, InterestType,
     InterestCalculationPeriodType, AmortizationType, ChargeType,
     ChargeCalculationType, UserRole, IncomeCategory, ExpenseCategory,
-    NotificationType, AuditLogAction
+    NotificationType, AuditLogAction, LedgerStatus, NormalBalance,
+    AccountingPeriodStatus, TransactionStatus
 } from '@prisma/client';
 
 export enum AdjustmentCategory {
@@ -93,6 +94,7 @@ export interface UserPermissions {
     canEnrollMembers: boolean;
     canApproveMember: boolean;
     canActivateMember: boolean;
+    canManageLedger: boolean; // Added for Ledger Management
 }
 
 // Extended Models

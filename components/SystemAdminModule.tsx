@@ -21,6 +21,8 @@ import { NotificationSettings } from '@/components/admin/NotificationSettings'
 import { UserRightsTable } from '@/components/admin/UserRightsTable'
 import { PermissionsMatrix } from '@/components/admin/PermissionsMatrix'
 import { MobileDrawer } from '@/components/ui/MobileDrawer';
+import { LedgerManager } from '@/components/admin/ledger/LedgerManager';
+import { BookOpen } from 'lucide-react';
 
 
 interface Member {
@@ -125,6 +127,7 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
         { id: 'adjustments', label: 'Loan Adjustments', icon: Scale },
         { id: 'sacco', label: 'SACCO Settings', icon: Settings },
         { id: 'welfare', label: 'Welfare', icon: HeartHandshake },
+        { id: 'ledger', label: 'Ledger Management', icon: BookOpen },
         { id: 'notifications', label: 'Notifications', icon: Mail },
         { id: 'rights', label: 'User Rights', icon: Shield }
     ];
@@ -577,7 +580,18 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
                 </div>
             )}
 
-
+            {/* Ledger Management Tab */}
+            {activeTab === 'ledger' && (
+                <div className="space-y-6">
+                    <div>
+                        <h2 className="text-2xl font-bold text-slate-900">General Ledger & COA</h2>
+                        <p className="text-slate-600 mt-1">Manage hierarchical accounts and accounting periods</p>
+                    </div>
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <LedgerManager />
+                    </div>
+                </div>
+            )}
 
             {/* Notification Settings Tab */}
             {activeTab === 'notifications' && (

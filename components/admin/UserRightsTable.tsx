@@ -23,6 +23,7 @@ interface UserPermissions {
     canEnrollMembers: boolean
     canApproveMember: boolean
     canActivateMember: boolean
+    canManageLedger: boolean
 }
 
 // Default permissions object
@@ -38,7 +39,8 @@ const defaultPermissions: UserPermissions = {
     canReverse: false,
     canEnrollMembers: false,
     canApproveMember: false,
-    canActivateMember: false
+    canActivateMember: false,
+    canManageLedger: false
 };
 
 interface User {
@@ -100,7 +102,8 @@ export function UserRightsTable({ users: initialUsers }: UserRightsTableProps) {
         { key: 'canReverse', label: 'Reverse Journal Entries', description: 'Void and correct financial journal entries' },
         { key: 'canEnrollMembers', label: 'Enroll Members', description: 'Register new members and create their wallets' },
         { key: 'canApproveMember', label: 'Approve Members', description: 'Approve pending members after enrollment' },
-        { key: 'canActivateMember', label: 'Activate Members', description: 'Activate approved members to start using the system' }
+        { key: 'canActivateMember', label: 'Activate Members', description: 'Activate approved members to start using the system' },
+        { key: 'canManageLedger', label: 'Manage General Ledger', description: 'Configure hierarchical COA, approve ledgers, and open/close accounting periods' }
     ];
 
     // Filter Logic

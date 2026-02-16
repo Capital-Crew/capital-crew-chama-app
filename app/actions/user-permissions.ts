@@ -29,7 +29,8 @@ const defaultPermissions: UserPermissions = {
     canReverse: false,
     canEnrollMembers: false,
     canApproveMember: false,
-    canActivateMember: false
+    canActivateMember: false,
+    canManageLedger: false
 };
 
 const UpdatePermissionsSchema = z.object({
@@ -46,7 +47,8 @@ const UpdatePermissionsSchema = z.object({
         canReverse: z.boolean().optional().default(false),
         canEnrollMembers: z.boolean().optional().default(false),
         canApproveMember: z.boolean().optional().default(false),
-        canActivateMember: z.boolean().optional().default(false)
+        canActivateMember: z.boolean().optional().default(false),
+        canManageLedger: z.boolean().optional().default(false)
     })
 });
 
@@ -275,7 +277,8 @@ export async function getCurrentUserPermissions() {
                 canReverse: false,
                 canEnrollMembers: false,
                 canApproveMember: false,
-                canActivateMember: false
+                canActivateMember: false,
+                canManageLedger: false
             }
         };
     } catch (error) {

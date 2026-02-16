@@ -142,6 +142,15 @@ enum AuditLogAction {
   EXPENSE_APPROVED
   EXPENSE_REJECTED
   EXPENSE_PAID
+
+  // Ledger Management actions
+  LEDGER_CREATED
+  LEDGER_APPROVED
+  LEDGER_ACTIVATED
+  LEDGER_DEACTIVATED
+  LEDGER_CLOSED
+  PERIOD_CLOSED
+  PERIOD_REOPENED
   
   // Welfare Events
   WELFARE_REQUISITION_CREATED
@@ -222,6 +231,20 @@ model LedgerAccount {
   children         LedgerAccount[]   @relation("AccountHierarchy")
   
   isActive         Boolean     @default(true)
+  status           LedgerStatus @default(ACTIVE) // Default to ACTIVE for existing accounts
+  normalBalance    NormalBalance @default(DEBIT) // Default to DEBIT, corrected during migration
+  currency         String       @default("KES")
+  
+  isSystemAccount  Boolean     @default(false)
+  isManualPostingAllowed Boolean   @default(true)
+  
+  createdBy        String?
+  approvedBy       String?
+  activatedBy      String?
+  activatedAt      DateTime?
+  closedAt         DateTime?
+  version          Int         @default(1)
+
   allowManualEntry Boolean     @default(false)
   description      String?
 
@@ -251,6 +274,24 @@ model LedgerAccount {
   @@index([parentId])
 }
 
+model AccountingPeriod {
+  id        String                 @id @default(cuid())
+  startDate DateTime
+  endDate   DateTime
+  status    AccountingPeriodStatus @default(OPEN)
+  closedAt  DateTime?
+  closedBy  String?
+  
+  memo      String?
+  
+  transactions LedgerTransaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([startDate, endDate])
+}
+
 // Replaces "JournalEntry" - The Atomic Transaction Header
 model LedgerTransaction {
   id              String   @id @default(cuid())
@@ -277,7 +318,15 @@ model LedgerTransaction {
   // Auditing
   createdBy     String
   createdByName String?  @default("")
+  postedBy      String?
   createdAt     DateTime @default(now())
+
+  // Status
+  status        TransactionStatus @default(POSTED)
+  
+  // Accounting Period
+  accountingPeriodId String?
+  accountingPeriod   AccountingPeriod? @relation(fields: [accountingPeriodId], references: [id])
   
   // Idempotency / External Links
   externalReferenceId String? @unique // e.g. M-Pesa TransID
@@ -326,6 +375,29 @@ enum AccountType {
   REVENUE  // Replaces INCOME
   EXPENSE
   INCOME   // Deprecated, aliased to REVENUE
+}
+
+enum LedgerStatus {
+  PENDING
+  ACTIVE
+  CLOSED
+  INACTIVE
+}
+
+enum NormalBalance {
+  DEBIT
+  CREDIT
+}
+
+enum AccountingPeriodStatus {
+  OPEN
+  CLOSED
+}
+
+enum TransactionStatus {
+  PENDING
+  POSTED
+  REVERSED
 }
 
 enum ReferenceType {

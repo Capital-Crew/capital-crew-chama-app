@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { HeartHandshake } from 'lucide-react';
+import { HeartHandshake, Activity } from 'lucide-react';
 
 import {
     DashboardIcon, MembersIcon, LoansIcon,

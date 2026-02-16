@@ -4,7 +4,7 @@ import { db } from '@/lib/db'
 import { auth } from '@/auth'
 import { revalidatePath } from 'next/cache'
 import { AccountingEngine } from '@/lib/accounting/AccountingEngine'
-import { getSaccoSettings } from './sacco-settings-actions'
+import { getSaccoSettings } from '../sacco-settings-actions'
 import { Prisma } from '@prisma/client'
 
 export async function submitMeetingReport(input: {

@@ -2,7 +2,7 @@ import prisma from "@/lib/prisma"
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { MeetingReportForm } from "@/components/meetings/MeetingReportForm"
-import { getSaccoSettings } from "@/app/actions/sacco-settings-actions"
+import { getSaccoSettings } from "@/app/sacco-settings-actions"
 import { ChevronLeft } from "lucide-react"
 import Link from "next/link"
 

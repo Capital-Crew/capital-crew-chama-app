@@ -81,18 +81,7 @@ export function MemberProfileView({
             <div className="px-4 md:px-8 pt-6 md:pt-8 border-b border-slate-100">
                 <h1 className="text-2xl md:text-3xl font-black text-slate-900 mb-4">Member Profile</h1>
             </div>
-            <div className="px-4 md:px-8 mt-2 space-y-2">
-                <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 text-xs font-mono text-cyan-400 shadow-2xl">
-                    <div className="font-black uppercase mb-2 border-b border-slate-700 pb-1">System Debug</div>
-                    <div className="grid grid-cols-2 gap-2">
-                        <div>RAW ROLE: <span className="text-white">&quot;{currentUserRole}&quot;</span></div>
-                        <div>STATUS: <span className="text-white">&quot;{member?.status}&quot;</span></div>
-                        <div>NORMALIZED: <span className="text-white">&quot;{normalizedRole}&quot;</span></div>
-                        <div>IS_ADMIN: <span className="text-white">{String(isSystemAdmin)}</span></div>
-                        <div>CAN_DEACTIVATE: <span className="text-white">{String(member?.status === 'ACTIVE' && isSystemAdmin)}</span></div>
-                    </div>
-                </div>
-            </div>
+
 
             {/* Deactivate Control for ACTIVE members — standalone section */}
             {member.status === 'ACTIVE' && isSystemAdmin && (

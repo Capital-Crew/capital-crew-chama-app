@@ -7,6 +7,7 @@ import { withAudit } from "@/lib/with-audit";
 import { LedgerStatus, AccountType, NormalBalance, AuditLogAction } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { serializeFinancials } from "@/lib/safe-serialization";
+import { AccountingEngine } from "@/lib/accounting/AccountingEngine";
 
 export async function getTransactionLedger(transactionId: string) {
     try {
@@ -253,3 +254,21 @@ export async function getJournalTransactions(limit = 50, offset = 0) {
     });
     return serializeFinancials(transactions);
 }
+
+/**
+ * Reverse a journal entry via AccountingEngine
+ */
+export const reverseJournalEntryAction = withAudit({ action: AuditLogAction.JOURNAL_REVERSAL, context: 'FINANCE' }, async (journalEntryId: string, reason: string) => {
+    const session = await auth();
+    if (!session?.user) throw new Error("Unauthorized");
+
+    const result = await AccountingEngine.reverseJournalEntry(
+        journalEntryId,
+        reason,
+        session.user.id,
+        session.user.name || 'Admin'
+    );
+
+    revalidatePath('/admin');
+    return serializeFinancials(result);
+});

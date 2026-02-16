@@ -16,7 +16,7 @@ import {
     RotateCcw,
     AlertCircle
 } from 'lucide-react';
-import { getJournalTransactions } from '@/app/actions/ledger-actions';
+import { getJournalTransactions, reverseJournalEntryAction } from '@/app/actions/ledger-actions';
 import { toast } from 'sonner';
 
 interface JournalEntryLine {
@@ -41,6 +41,7 @@ interface JournalTransaction {
     referenceType: string;
     referenceId: string;
     createdByName: string | null;
+    isReversed?: boolean;
     ledgerEntries: JournalEntryLine[];
 }
 
@@ -49,6 +50,7 @@ export function JournalHistory() {
     const [isLoading, setIsLoading] = useState(true);
     const [expandedTxId, setExpandedTxId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [reversingId, setReversingId] = useState<string | null>(null);
 
     useEffect(() => {
         loadData();
@@ -63,6 +65,22 @@ export function JournalHistory() {
             toast.error("Failed to load journal history");
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleReverse = async (txId: string) => {
+        const reason = prompt('Enter reason for reversal:');
+        if (!reason || reason.trim() === '') return;
+
+        setReversingId(txId);
+        try {
+            await reverseJournalEntryAction(txId, reason.trim());
+            toast.success('Journal entry reversed successfully');
+            loadData();
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to reverse journal entry');
+        } finally {
+            setReversingId(null);
         }
     };
 
@@ -190,6 +208,26 @@ export function JournalHistory() {
                                                             ))}
                                                         </tbody>
                                                     </table>
+                                                    <div className="flex justify-end mt-4 pt-3 border-t border-indigo-100">
+                                                        {!tx.isReversed && tx.status !== 'REVERSED' && tx.referenceType !== 'REVERSAL' ? (
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleReverse(tx.id);
+                                                                }}
+                                                                disabled={reversingId === tx.id}
+                                                                className="flex items-center gap-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors shadow-sm disabled:opacity-50"
+                                                            >
+                                                                <RotateCcw className={`w-3.5 h-3.5 ${reversingId === tx.id ? 'animate-spin' : ''}`} />
+                                                                {reversingId === tx.id ? 'Reversing...' : 'Reverse Entry'}
+                                                            </button>
+                                                        ) : (
+                                                            <span className="flex items-center gap-1.5 text-xs font-bold text-slate-400">
+                                                                <AlertCircle className="w-3.5 h-3.5" />
+                                                                {tx.referenceType === 'REVERSAL' ? 'This is a reversal entry' : 'Already reversed'}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </td>
                                         </tr>

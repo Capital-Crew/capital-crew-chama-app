@@ -56,7 +56,10 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
         welfareMonthlyContribution: 0,
         welfareCurrentBalance: 0,
         monthlyContributionAmount: 2000,
-        latePaymentPenalty: 200
+        latePaymentPenalty: 200,
+        penaltyAbsentAmount: 500,
+        penaltyLateAmount: 200,
+        meetingFeesGlId: ''
     });
 
     const [isAdjustmentModalOpen, setIsAdjustmentModalOpen] = useState(false);
@@ -77,7 +80,10 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
                     welfareMonthlyContribution: Number(settings.welfareMonthlyContribution) || 0,
                     welfareCurrentBalance: Number(settings.welfareCurrentBalance) || 0,
                     monthlyContributionAmount: Number(settings.monthlyContributionAmount) || 2000,
-                    latePaymentPenalty: Number(settings.latePaymentPenalty) || 200
+                    latePaymentPenalty: Number(settings.latePaymentPenalty) || 200,
+                    penaltyAbsentAmount: Number(settings.penaltyAbsentAmount) || 500,
+                    penaltyLateAmount: Number(settings.penaltyLateAmount) || 200,
+                    meetingFeesGlId: settings.meetingFeesGlId || ''
                 });
             });
         }
@@ -479,6 +485,61 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
                                                 className="w-full bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 rounded-xl px-4 py-3 text-sm font-medium transition-all outline-none"
                                             />
                                             <p className="text-xs text-slate-500">Penalty applied when contribution is missed</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Meeting & Penalty Settings Card */}
+                            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                                <div className="bg-gradient-to-r from-teal-50 to-emerald-50 px-6 py-4 border-b border-slate-200">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-white rounded-lg shadow-sm">
+                                            <Scale className="w-5 h-5 text-teal-600" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-bold text-slate-900">Meeting & Penalty Configuration</h3>
+                                            <p className="text-sm text-slate-600">Set penalty rates and income account allocation</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="p-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-semibold text-slate-700">Absent Penalty (KES)</label>
+                                            <input
+                                                name="penaltyAbsentAmount"
+                                                type="number"
+                                                step="0.01"
+                                                defaultValue={settingsForm.penaltyAbsentAmount}
+                                                className="w-full bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 rounded-xl px-4 py-3 text-sm font-medium transition-all outline-none"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-semibold text-slate-700">Late Penalty (KES)</label>
+                                            <input
+                                                name="penaltyLateAmount"
+                                                type="number"
+                                                step="0.01"
+                                                defaultValue={settingsForm.penaltyLateAmount}
+                                                className="w-full bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 rounded-xl px-4 py-3 text-sm font-medium transition-all outline-none"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-semibold text-slate-700">Income Ledger for Fees</label>
+                                            <select
+                                                name="meetingFeesGlId"
+                                                defaultValue={settingsForm.meetingFeesGlId}
+                                                className="w-full bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 rounded-xl px-4 py-3 text-sm font-medium transition-all outline-none"
+                                            >
+                                                <option value="">Select an Account</option>
+                                                {expenseAccounts?.filter((acc: any) => acc.type === 'REVENUE' || acc.type === 'INCOME').map((acc: any) => (
+                                                    <option key={acc.id} value={acc.id}>
+                                                        {acc.code} - {acc.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <p className="text-xs text-slate-500">GL account where meeting penalties will be credited</p>
                                         </div>
                                     </div>
                                 </div>

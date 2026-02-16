@@ -60,8 +60,13 @@ export async function updateSaccoSettings(formData: FormData) {
     const monthlyContributionAmount = parseFloat(formData.get('monthlyContributionAmount') as string) || 2000
     const latePaymentPenalty = parseFloat(formData.get('latePaymentPenalty') as string) || 200
 
+    // Meeting Settings
+    const penaltyAbsentAmount = parseFloat(formData.get('penaltyAbsentAmount') as string) || 500
+    const penaltyLateAmount = parseFloat(formData.get('penaltyLateAmount') as string) || 200
+    const meetingFeesGlId = formData.get('meetingFeesGlId') as string || null
+
     // Validate inputs
-    if (loanMultiplier < 0 || processingFeePercent < 0 || insuranceFeePercent < 0 || shareCapitalBoost < 0 || penaltyRate < 0 || rescheduleFeePercent < 0 || refinanceFeePercentage < 0 || welfareMonthlyContribution < 0 || welfareCurrentBalance < 0 || monthlyContributionAmount < 1 || latePaymentPenalty < 0) {
+    if (loanMultiplier < 0 || processingFeePercent < 0 || insuranceFeePercent < 0 || shareCapitalBoost < 0 || penaltyRate < 0 || rescheduleFeePercent < 0 || refinanceFeePercentage < 0 || welfareMonthlyContribution < 0 || welfareCurrentBalance < 0 || monthlyContributionAmount < 1 || latePaymentPenalty < 0 || penaltyAbsentAmount < 0 || penaltyLateAmount < 0) {
         throw new Error('All values must be non-negative, and monthly contribution must be at least 1')
     }
 
@@ -90,7 +95,10 @@ export async function updateSaccoSettings(formData: FormData) {
                 welfareMonthlyContribution,
                 welfareCurrentBalance,
                 monthlyContributionAmount,
-                latePaymentPenalty
+                latePaymentPenalty,
+                penaltyAbsentAmount,
+                penaltyLateAmount,
+                meetingFeesGlId
             }
         })
     } else {
@@ -110,7 +118,10 @@ export async function updateSaccoSettings(formData: FormData) {
                 welfareMonthlyContribution,
                 welfareCurrentBalance,
                 monthlyContributionAmount,
-                latePaymentPenalty
+                latePaymentPenalty,
+                penaltyAbsentAmount,
+                penaltyLateAmount,
+                meetingFeesGlId
             }
         })
     }
@@ -120,7 +131,7 @@ export async function updateSaccoSettings(formData: FormData) {
         data: {
             userId: session.user.id!,
             action: 'SETTINGS_UPDATED',
-            details: `Updated settings: Mult=${loanMultiplier}, Proc=${processingFeePercent}%, Ins=${insuranceFeePercent}%, Pen=${penaltyRate}%, Welfare=${welfareMonthlyContribution}/mo, WelfareBal=${welfareCurrentBalance}, Contribution=${monthlyContributionAmount}/mo, LatePenalty=${latePaymentPenalty}`
+            details: `Updated settings: Mult=${loanMultiplier}, Proc=${processingFeePercent}%, Ins=${insuranceFeePercent}%, Pen=${penaltyRate}%, Welfare=${welfareMonthlyContribution}/mo, WelfareBal=${welfareCurrentBalance}, Contribution=${monthlyContributionAmount}/mo, LatePenalty=${latePaymentPenalty}, MeetingAbsent=${penaltyAbsentAmount}, MeetingLate=${penaltyLateAmount}`
         }
     })
 
@@ -137,7 +148,10 @@ export async function updateSaccoSettings(formData: FormData) {
         welfareMonthlyContribution: Number(s.welfareMonthlyContribution),
         welfareCurrentBalance: Number(s.welfareCurrentBalance),
         monthlyContributionAmount: Number(s.monthlyContributionAmount || 2000),
-        latePaymentPenalty: Number(s.latePaymentPenalty || 200)
+        latePaymentPenalty: Number(s.latePaymentPenalty || 200),
+        penaltyAbsentAmount: Number(s.penaltyAbsentAmount || 500),
+        penaltyLateAmount: Number(s.penaltyLateAmount || 200),
+        meetingFeesGlId: s.meetingFeesGlId
     })
 
     const serialized = serializeSettings(settings)
@@ -161,7 +175,10 @@ function serializeSettings(s: any) {
         welfareMonthlyContribution: Number(s.welfareMonthlyContribution),
         welfareCurrentBalance: Number(s.welfareCurrentBalance),
         monthlyContributionAmount: Number(s.monthlyContributionAmount || 2000),
-        latePaymentPenalty: Number(s.latePaymentPenalty || 200)
+        latePaymentPenalty: Number(s.latePaymentPenalty || 200),
+        penaltyAbsentAmount: Number(s.penaltyAbsentAmount || 500),
+        penaltyLateAmount: Number(s.penaltyLateAmount || 200),
+        meetingFeesGlId: s.meetingFeesGlId
     }
 }
 

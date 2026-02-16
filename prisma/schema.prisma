@@ -154,6 +154,7 @@ enum AuditLogAction {
   // Auth Events
   USER_LOGIN
   USER_LOGOUT
+  MEETING_REPORT_SUBMITTED
 }
 
 enum WalletTransactionType {
@@ -232,6 +233,7 @@ model LedgerAccount {
   systemMappings  SystemAccountingMapping[]
   expenses        Expense[]                  @relation("ExpenseAccount")
   welfareTypes    WelfareType[]              @relation("WelfareTypeGLAccount")
+  meetingSettings SaccoSettings[]            @relation("MeetingFeesIncome")
   
   // Transfers
   debitTransfers  TransferRequest[] @relation("TransferDebit")
@@ -343,6 +345,7 @@ enum ReferenceType {
   WELFARE_DISBURSEMENT
   EXPENSE_PAYOUT
   BULK_PAYOUT
+  PENALTY
 }
 
 // Event Sourcing Enums
@@ -440,6 +443,7 @@ model User {
   batchPayments BatchPayment[] @relation("BatchCreator")
 
   auditLogs AuditLog[]
+  penaltyBills PenaltyBill[]
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 }
@@ -537,6 +541,7 @@ model Member {
   batchItems     BatchItem[]
 
   // Audit Trails
+  attendance     Attendance[]
   createdAt DateTime @default(now())
   createdBy String?
   updatedAt DateTime @updatedAt
@@ -1313,6 +1318,95 @@ model SaccoSettings {
   // NEW: Contribution Settings
   monthlyContributionAmount Decimal @default(2000) @db.Decimal(19, 4)
   latePaymentPenalty        Decimal @default(200) @db.Decimal(19, 4)
+
+  // NEW: Meeting & Penalty Configuration
+  penaltyAbsentAmount Decimal @default(500) @db.Decimal(19, 4)
+  penaltyLateAmount   Decimal @default(200) @db.Decimal(19, 4)
+  
+  meetingFeesGlId     String?
+  meetingFeesGl       LedgerAccount? @relation("MeetingFeesIncome", fields: [meetingFeesGlId], references: [id])
+}
+
+// ========================================
+// MEETING MANAGEMENT MODULE
+// ========================================
+
+enum MeetingStatus {
+    SCHEDULED
+    COMPLETED
+    CANCELLED
+}
+
+enum AttendanceStatus {
+    PRESENT
+    ABSENT
+    LATE
+    APOLOGY
+}
+
+model Meeting {
+    id        String   @id @default(cuid())
+    title     String
+    date      DateTime
+    minutesUrl String? // Path to uploaded PDF
+    
+    status    MeetingStatus @default(SCHEDULED)
+    
+    isPenaltiesProcessed Boolean @default(false)
+    processedAt          DateTime?
+
+    attendance Attendance[]
+    penaltyBills PenaltyBill[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model Attendance {
+    id        String @id @default(cuid())
+    
+    meetingId String
+    meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+    
+    memberId  String
+    member    Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+    
+    status      AttendanceStatus @default(PRESENT)
+    minutesLate Int?            @default(0) // Only relevant if LATE
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@unique([meetingId, memberId])
+    @@index([memberId])
+    @@index([meetingId])
+}
+
+enum PenaltyBillStatus {
+    PENDING
+    PAID
+    WAIVED
+}
+
+model PenaltyBill {
+    id        String   @id @default(cuid())
+    
+    userId    String
+    user      User     @relation(fields: [userId], references: [id])
+    
+    meetingId String?
+    meeting   Meeting? @relation(fields: [meetingId], references: [id])
+    
+    amount    Decimal  @db.Decimal(19, 4)
+    reason    String   // e.g. "Absent from AGM"
+    
+    status    PenaltyBillStatus @default(PENDING)
+    
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@index([userId])
+    @@index([status])
 }
 
 model LoanApproval {

@@ -27,7 +27,9 @@ export function MemberDashboard({ detail }: MemberDashboardProps) {
                     contributionStatus={detail.contributionStatus}
                     loans={detail.loans}
                     nextOfKin={detail.nextOfKin}
-                // showHeader={false} - MemberProfileView doesn't support this prop, but handles UI differently.
+                    unpaidPenalties={detail.unpaidPenalties}
+                    currentUserId={detail.member.id} // Or session user id? The profile view expects member id for Next of Kin but currentUserId for appraisal.
+                    currentUserRole="MEMBER" // Default to member for the personal dashboard
                 />
             </div>
         </div>

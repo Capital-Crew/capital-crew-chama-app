@@ -676,7 +676,12 @@ export async function getMemberFullDetail(memberId: string) {
                 nextOfKin: true
             }
         }),
-        calculateCurrentMonthStatus(memberId)
+        calculateCurrentMonthStatus(memberId),
+        db.penaltyBill.findMany({
+            where: { memberId, status: 'UNPAID' },
+            include: { meeting: true },
+            orderBy: { createdAt: 'desc' }
+        })
     ]);
 
     if (!stats || !member) return null;
@@ -702,9 +707,16 @@ export async function getMemberFullDetail(memberId: string) {
             fullName: k.fullName,
             relationship: k.relationship,
             phoneNumber: k.phoneNumber,
-            allocation: Number(k.allocation),
             nationality: k.nationality,
             altPhone: k.altPhone
-        })) || []
+        })) || [],
+        unpaidPenalties: (unpaidPenalties as any[]).map(p => ({
+            id: p.id,
+            amount: Number(p.amount),
+            type: p.type,
+            meetingTitle: p.meeting.title,
+            date: p.meeting.date,
+            description: p.description
+        }))
     });
 }

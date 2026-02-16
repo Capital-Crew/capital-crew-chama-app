@@ -44,7 +44,7 @@ export function AttendanceGrid({ entries, onStatusChange, onMinutesLateChange }:
                                     <StatusBadge status={entry.status} minutesLate={entry.minutesLate} />
                                 </td>
                                 <td className="px-6 py-4">
-                                    <div className="flex items-center justify-center gap-2">
+                                    <div className="flex flex-wrap items-center gap-2">
                                         <ActionButton
                                             active={entry.status === 'PRESENT'}
                                             color="green"
@@ -75,12 +75,12 @@ export function AttendanceGrid({ entries, onStatusChange, onMinutesLateChange }:
                                         />
 
                                         {entry.status === 'LATE' && (
-                                            <div className="ml-4 flex items-center gap-2">
-                                                <span className="text-xs font-bold text-slate-500">Mins:</span>
+                                            <div className="flex items-center gap-2 ml-2 bg-yellow-50 px-3 py-1.5 rounded-xl border border-yellow-100">
+                                                <span className="text-[10px] font-black uppercase text-yellow-600">Mins Late:</span>
                                                 <input
                                                     type="number"
                                                     min="1"
-                                                    className="w-16 px-2 py-1 text-sm border-2 border-slate-200 rounded-lg outline-none focus:border-yellow-500"
+                                                    className="w-16 bg-white px-2 py-0.5 text-sm font-bold border-2 border-yellow-200 rounded-lg outline-none focus:border-yellow-500"
                                                     value={entry.minutesLate || ''}
                                                     onChange={(e) => onMinutesLateChange(entry.memberId, parseInt(e.target.value) || 0)}
                                                     placeholder="0"
@@ -108,7 +108,7 @@ function StatusBadge({ status, minutesLate }: { status: AttendanceStatus, minute
 
     const config = configs[status];
     return (
-        <span className={`px-3 py-1 rounded-full text-xs font-black border ${config.color}`}>
+        <span className={`px-3 py-1 rounded-full text-[10px] font-black border uppercase tracking-wider ${config.color}`}>
             {config.text}
         </span>
     );
@@ -116,19 +116,32 @@ function StatusBadge({ status, minutesLate }: { status: AttendanceStatus, minute
 
 function ActionButton({ active, color, icon: Icon, label, onClick }: any) {
     const colorClasses: any = {
-        green: active ? 'bg-green-500 text-white border-green-500 shadow-green-200' : 'bg-white text-green-600 border-green-200 hover:bg-green-50',
-        yellow: active ? 'bg-yellow-500 text-white border-yellow-500 shadow-yellow-200' : 'bg-white text-yellow-600 border-yellow-200 hover:bg-yellow-50',
-        red: active ? 'bg-red-500 text-white border-red-500 shadow-red-200' : 'bg-white text-red-600 border-red-200 hover:bg-red-50',
-        slate: active ? 'bg-slate-500 text-white border-slate-500 shadow-slate-200' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50',
+        green: active
+            ? 'bg-green-600 text-white border-green-600 shadow-[0_4px_12px_rgba(22,163,74,0.3)]'
+            : 'bg-white text-slate-600 border-slate-200 hover:border-green-300 hover:bg-green-50 hover:text-green-700',
+        yellow: active
+            ? 'bg-yellow-500 text-white border-yellow-500 shadow-[0_4px_12px_rgba(234,179,8,0.3)]'
+            : 'bg-white text-slate-600 border-slate-200 hover:border-yellow-300 hover:bg-yellow-50 hover:text-yellow-700',
+        red: active
+            ? 'bg-red-600 text-white border-red-600 shadow-[0_4px_12px_rgba(220,38,38,0.3)]'
+            : 'bg-white text-slate-600 border-slate-200 hover:border-red-300 hover:bg-red-50 hover:text-red-700',
+        slate: active
+            ? 'bg-slate-600 text-white border-slate-600 shadow-[0_4px_12px_rgba(71,85,105,0.3)]'
+            : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800',
     };
 
     return (
         <button
+            type="button"
             onClick={onClick}
-            title={label}
-            className={`p-2 rounded-lg border-2 transition-all duration-200 shadow-sm ${colorClasses[color]} ${active ? 'shadow-md scale-105' : 'hover:scale-105'}`}
+            className={`
+                flex items-center gap-2 px-4 py-2 rounded-xl border-2 font-bold text-xs transition-all duration-200
+                ${colorClasses[color]}
+                ${active ? 'scale-105 z-10' : 'opacity-70 hover:opacity-100'}
+            `}
         >
             <Icon className="w-4 h-4" />
+            <span>{label}</span>
         </button>
     );
 }

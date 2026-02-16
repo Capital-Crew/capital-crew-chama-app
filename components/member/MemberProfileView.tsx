@@ -77,6 +77,13 @@ export function MemberProfileView({
                 <h1 className="text-2xl md:text-3xl font-black text-slate-900 mb-4">Member Profile</h1>
             </div>
 
+            {/* TEMPORARY DEBUG — remove after fixing */}
+            <div className="px-4 md:px-8 mt-2">
+                <div className="bg-yellow-100 border border-yellow-300 rounded-xl p-3 text-xs font-mono text-yellow-800">
+                    DEBUG: role=&quot;{currentUserRole}&quot; | status=&quot;{member.status}&quot; | match={String(member.status === 'ACTIVE' && (currentUserRole === 'SYSTEM_ADMIN' || currentUserRole === 'SYSTEM_ADMINISTRATOR'))}
+                </div>
+            </div>
+
             {/* Deactivate Control for ACTIVE members — standalone section */}
             {member.status === 'ACTIVE' && (currentUserRole === 'SYSTEM_ADMIN' || currentUserRole === 'SYSTEM_ADMINISTRATOR') && (
                 <div className="px-4 md:px-8 mt-4">

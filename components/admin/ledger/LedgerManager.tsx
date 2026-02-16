@@ -12,35 +12,18 @@ import {
     Layers,
     ArrowRightLeft,
     Calendar,
-    AlertCircle
+    AlertCircle,
+    History,
+    RotateCcw,
+    Power
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getAllLedgers, approveLedgerAction, closeLedgerAction } from '@/app/actions/ledger-actions';
+import { getAllLedgers, approveLedgerAction, closeLedgerAction, reactivateLedgerAction, rejectLedgerAction } from '@/app/actions/ledger-actions';
 import { getAccountingPeriods, closeAccountingPeriodAction, openAccountingPeriodAction } from '@/app/actions/accounting-period-actions';
 import { LedgerForm } from './LedgerForm';
 import { PeriodForm } from './PeriodForm';
 import { JournalHistory } from './JournalHistory';
 import { LedgerStatus, AccountType, NormalBalance, AccountingPeriodStatus, LedgerAccount } from '@/lib/types/ledger';
-// ... (skip down to render)
-{/* Modals */ }
-{
-    isLedgerModalOpen && (
-        <LedgerForm
-            onClose={() => setIsLedgerModalOpen(false)}
-            onSuccess={loadData}
-            existingLedgers={ledgers}
-        />
-    )
-}
-
-{
-    isPeriodModalOpen && (
-        <PeriodForm
-            onClose={() => setIsPeriodModalOpen(false)}
-            onSuccess={loadData}
-        />
-    )
-}
 
 export function LedgerManager() {
     const [ledgers, setLedgers] = useState<LedgerAccount[]>([]);
@@ -90,6 +73,40 @@ export function LedgerManager() {
         }
     };
 
+    const handleClose = async (id: string) => {
+        if (!confirm("Are you sure you want to close this ledger? This will prevent any further postings.")) return;
+        try {
+            await closeLedgerAction(id);
+            toast.success("Ledger closed successfully");
+            loadData();
+        } catch (error: any) {
+            toast.error(error.message || "Failed to close ledger");
+        }
+    };
+
+    const handleReactivate = async (id: string) => {
+        if (!confirm("Are you sure you want to reactivate this ledger?")) return;
+        try {
+            await reactivateLedgerAction(id);
+            toast.success("Ledger reactivated successfully");
+            loadData();
+        } catch (error: any) {
+            toast.error(error.message || "Failed to reactivate ledger");
+        }
+    };
+
+    const handleReject = async (id: string) => {
+        if (!confirm("Are you sure you want to reject this ledger? It will be permanently deleted.")) return;
+        try {
+            await rejectLedgerAction(id);
+            toast.success("Ledger rejected and removed");
+            loadData();
+        } catch (error: any) {
+            toast.error(error.message || "Failed to reject ledger");
+        }
+    };
+
+    const pendingLedgers = ledgers.filter(l => l.status === 'PENDING');
     const handleClosePeriod = async (id: string) => {
         if (!confirm("Are you sure you want to close this accounting period? This will prevent any further postings to this date range.")) return;
         try {
@@ -153,10 +170,28 @@ export function LedgerManager() {
                                     onClick={() => handleApprove(ledger.id)}
                                     className="btn btn-xs btn-success text-white border-none"
                                 >
+                                    <CheckCircle className="w-3 h-3" />
                                     Approve
                                 </button>
                             )}
-                            <button className="btn btn-ghost btn-xs text-slate-400">View History</button>
+                            {ledger.status === 'ACTIVE' && (
+                                <button
+                                    onClick={() => handleClose(ledger.id)}
+                                    className="btn btn-xs btn-outline btn-error font-bold"
+                                >
+                                    <Power className="w-3 h-3" />
+                                    Close
+                                </button>
+                            )}
+                            {ledger.status === 'CLOSED' && (
+                                <button
+                                    onClick={() => handleReactivate(ledger.id)}
+                                    className="btn btn-xs btn-outline btn-info font-bold"
+                                >
+                                    <RotateCcw className="w-3 h-3" />
+                                    Reactivate
+                                </button>
+                            )}
                         </div>
                     </td>
                 </tr>
@@ -213,98 +248,167 @@ export function LedgerManager() {
                 <div className="flex justify-center py-20">
                     <span className="loading loading-spinner loading-lg text-indigo-500"></span>
                 </div>
-            ) : activeView === 'coa' ? (
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                    <table className="table w-full">
-                        <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[10px] tracking-widest font-black">
-                            <tr>
-                                <th className="py-4 pl-6">Ledger Account (Hierarchy)</th>
-                                <th>Account Type</th>
-                                <th className="text-right pr-8">Current Balance</th>
-                                <th>Status</th>
-                                <th className="text-right pr-6">Management</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {ledgers.filter(l => !l.parentId).map(ledger => renderLedgerRow(ledger))}
-                        </tbody>
-                    </table>
-                </div>
-            ) : activeView === 'periods' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {periods.map(period => (
-                        <div key={period.id} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow">
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="p-3 bg-slate-50 rounded-xl">
-                                    <Calendar className="w-6 h-6 text-indigo-500" />
-                                </div>
-                                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${period.status === 'OPEN' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
-                                    }`}>
-                                    {period.status}
-                                </span>
+            ) : (
+                <>
+                    {/* Pending Approvals Banner */}
+                    {pendingLedgers.length > 0 && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 shadow-sm">
+                            <div className="flex items-center gap-2 mb-4">
+                                <Shield className="w-5 h-5 text-amber-600" />
+                                <h3 className="font-bold text-amber-800 text-sm">Pending Approvals ({pendingLedgers.length})</h3>
+                                <span className="text-[10px] uppercase tracking-widest font-black text-amber-500 bg-amber-100 px-2 py-0.5 rounded-full">Maker-Checker</span>
                             </div>
-                            <h3 className="font-bold text-slate-800">
-                                {new Date(period.startDate).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })} -
-                                {new Date(period.endDate).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
-                            </h3>
-                            <p className="text-xs text-slate-500 mt-1">{period.memo || 'Regular accounting period'}</p>
-
-                            <div className="mt-6 pt-6 border-t border-slate-50 flex justify-between items-center">
-                                <div className="text-[10px] text-slate-400 italic">
-                                    {period.status === 'CLOSED' ? `Closed by Admin at ${new Date(period.closedAt).toLocaleDateString()}` : 'Period remains open for postings'}
-                                </div>
-                                {period.status === 'OPEN' && (
-                                    <button
-                                        onClick={() => handleClosePeriod(period.id)}
-                                        className="btn btn-xs btn-outline btn-error font-bold"
-                                    >
-                                        Close Period
-                                    </button>
-                                )}
+                            <div className="space-y-3">
+                                {pendingLedgers.map(ledger => (
+                                    <div key={`pending-${ledger.id}`} className="flex items-center justify-between bg-white rounded-xl p-4 border border-amber-100">
+                                        <div className="flex items-center gap-4">
+                                            <div className="p-2 bg-amber-100 rounded-lg">
+                                                <Clock className="w-5 h-5 text-amber-600" />
+                                            </div>
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">{ledger.code}</span>
+                                                    <span className="font-bold text-slate-800">{ledger.name}</span>
+                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${ledger.type === 'ASSET' ? 'bg-blue-100 text-blue-700' :
+                                                        ledger.type === 'LIABILITY' ? 'bg-amber-100 text-amber-700' :
+                                                            ledger.type === 'EQUITY' ? 'bg-purple-100 text-purple-700' :
+                                                                ledger.type === 'REVENUE' || ledger.type === 'INCOME' ? 'bg-emerald-100 text-emerald-700' :
+                                                                    'bg-rose-100 text-rose-700'
+                                                        }`}>{ledger.type}</span>
+                                                </div>
+                                                <p className="text-xs text-slate-500 mt-1">
+                                                    Requested by <span className="font-semibold text-slate-700">{ledger.createdByName || 'Unknown'}</span>
+                                                    {ledger.createdAt && <> on {new Date(ledger.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</>}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => handleApprove(ledger.id)}
+                                                className="btn btn-sm btn-success text-white border-none gap-1"
+                                            >
+                                                <CheckCircle className="w-3.5 h-3.5" />
+                                                Approve
+                                            </button>
+                                            <button
+                                                onClick={() => handleReject(ledger.id)}
+                                                className="btn btn-sm btn-outline btn-error gap-1"
+                                            >
+                                                <XCircle className="w-3.5 h-3.5" />
+                                                Reject
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
-                    ))}
-                    <button
-                        onClick={() => setIsPeriodModalOpen(true)}
-                        className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-slate-200 rounded-2xl hover:border-indigo-300 hover:bg-indigo-50 transition-all group"
-                    >
-                        <PlusCircle className="w-10 h-10 text-slate-300 group-hover:text-indigo-400 mb-2 transition-colors" />
-                        <span className="font-bold text-slate-400 group-hover:text-indigo-700">Open New Period</span>
-                    </button>
-                </div>
-            ) : (
-                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <JournalHistory />
-                </div>
-            )}
+                    )}
 
-            {/* Modals */}
-            {/* 
-            {isLedgerModalOpen && (
-                <LedgerForm
-                    onClose={() => setIsLedgerModalOpen(false)}
-                    onSuccess={loadData}
-                    existingLedgers={ledgers}
-                />
-            )}
+                    {activeView === 'coa' ? (
+                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                            <table className="table w-full">
+                                <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[10px] tracking-widest font-black">
+                                    <tr>
+                                        <th className="py-4 pl-6">Ledger Account (Hierarchy)</th>
+                                        <th>Account Type</th>
+                                        <th className="text-right pr-8">Current Balance</th>
+                                        <th>Status</th>
+                                        <th className="text-right pr-6">Management</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {ledgers
+                                        .filter(l => !l.parentId)
+                                        .sort((a, b) => {
+                                            const order: Record<string, number> = { PENDING: 0, ACTIVE: 1, CLOSED: 2, ARCHIVED: 3 };
+                                            return (order[a.status as string] ?? 1) - (order[b.status as string] ?? 1);
+                                        })
+                                        .map(ledger => renderLedgerRow(ledger))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : activeView === 'periods' ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {periods.map(period => (
+                                <div key={period.id} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="p-3 bg-slate-50 rounded-xl">
+                                            <Calendar className="w-6 h-6 text-indigo-500" />
+                                        </div>
+                                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${period.status === 'OPEN' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                                            }`}>
+                                            {period.status}
+                                        </span>
+                                    </div>
+                                    <h3 className="font-bold text-slate-800">
+                                        {new Date(period.startDate).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })} -
+                                        {new Date(period.endDate).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
+                                    </h3>
+                                    <p className="text-xs text-slate-500 mt-1">{period.memo || 'Regular accounting period'}</p>
 
-            {isPeriodModalOpen && (
-                <PeriodForm
-                    onClose={() => setIsPeriodModalOpen(false)}
-                    onSuccess={loadData}
-                />
-            )}
-            */}
+                                    <div className="mt-6 pt-6 border-t border-slate-50 flex justify-between items-center">
+                                        <div className="text-[10px] text-slate-400 italic">
+                                            {period.status === 'CLOSED' ? `Closed by Admin at ${new Date(period.closedAt).toLocaleDateString()}` : 'Period remains open for postings'}
+                                        </div>
+                                        {period.status === 'OPEN' && (
+                                            <button
+                                                onClick={() => handleClosePeriod(period.id)}
+                                                className="btn btn-xs btn-outline btn-error font-bold"
+                                            >
+                                                Close Period
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                            <button
+                                onClick={() => setIsPeriodModalOpen(true)}
+                                className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-slate-200 rounded-2xl hover:border-indigo-300 hover:bg-indigo-50 transition-all group"
+                            >
+                                <PlusCircle className="w-10 h-10 text-slate-300 group-hover:text-indigo-400 mb-2 transition-colors" />
+                                <span className="font-bold text-slate-400 group-hover:text-indigo-700">Open New Period</span>
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <JournalHistory />
+                        </div>
+                    )
+                    }
 
-            {!isLoading && activeView === 'coa' && ledgers.length === 0 && (
-                <div className="text-center py-20 bg-white rounded-2xl border border-slate-200">
-                    <AlertCircle className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                    <h3 className="font-bold text-slate-800">No Ledgers Initialized</h3>
-                    <p className="text-sm text-slate-500 max-w-sm mx-auto mt-2">
-                        Get started by defining your primary Chart of Accounts using the "New Ledger" button.
-                    </p>
-                </div>
+                    {/* Modals */}
+                    {
+                        isLedgerModalOpen && (
+                            <LedgerForm
+                                onClose={() => setIsLedgerModalOpen(false)}
+                                onSuccess={loadData}
+                                existingLedgers={ledgers}
+                            />
+                        )
+                    }
+
+                    {
+                        isPeriodModalOpen && (
+                            <PeriodForm
+                                onClose={() => setIsPeriodModalOpen(false)}
+                                onSuccess={loadData}
+                            />
+                        )
+                    }
+
+                    {
+                        !isLoading && activeView === 'coa' && ledgers.length === 0 && (
+                            <div className="text-center py-20 bg-white rounded-2xl border border-slate-200">
+                                <AlertCircle className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                                <h3 className="font-bold text-slate-800">No Ledgers Initialized</h3>
+                                <p className="text-sm text-slate-500 max-w-sm mx-auto mt-2">
+                                    Get started by defining your primary Chart of Accounts using the "New Ledger" button.
+                                </p>
+                            </div>
+                        )
+                    }
+                </>
             )}
-        </div>
+        </div >
     );
 }

@@ -149,6 +149,54 @@ export const closeLedgerAction = withAudit({ action: AuditLogAction.LEDGER_CLOSE
 });
 
 /**
+ * Reactivates a closed ledger
+ */
+export const reactivateLedgerAction = withAudit({ action: AuditLogAction.LEDGER_APPROVED, context: 'FINANCE' }, async (ledgerId: string) => {
+    const session = await auth();
+    if (!session?.user) throw new Error("Unauthorized");
+
+    const ledger = await db.ledgerAccount.findUnique({ where: { id: ledgerId } });
+    if (!ledger) throw new Error("Ledger not found");
+    if (ledger.status !== LedgerStatus.CLOSED) throw new Error("Only closed ledgers can be reactivated");
+
+    const updated = await db.ledgerAccount.update({
+        where: { id: ledgerId },
+        data: {
+            status: LedgerStatus.ACTIVE,
+            closedAt: null,
+            activatedAt: new Date(),
+            activatedBy: session.user.id,
+            version: { increment: 1 }
+        }
+    });
+
+    revalidatePath('/admin');
+    return serializeFinancials(updated);
+});
+
+/**
+ * Rejects (deletes) a pending ledger
+ */
+export const rejectLedgerAction = withAudit({ action: AuditLogAction.LEDGER_CLOSED, context: 'FINANCE' }, async (ledgerId: string) => {
+    const session = await auth();
+    if (!session?.user) throw new Error("Unauthorized");
+
+    const ledger = await db.ledgerAccount.findUnique({ where: { id: ledgerId } });
+    if (!ledger) throw new Error("Ledger not found");
+    if (ledger.status !== LedgerStatus.PENDING) throw new Error("Only pending ledgers can be rejected");
+
+    // Maker-Checker: Rejector must be different from Creator
+    if (ledger.createdBy === session.user.id) {
+        throw new Error("You cannot reject your own ledger request. Please ask another administrator.");
+    }
+
+    await db.ledgerAccount.delete({ where: { id: ledgerId } });
+
+    revalidatePath('/admin');
+    return { success: true };
+});
+
+/**
  * Fetch all ledgers with full hierarchy
  */
 export async function getAllLedgers() {
@@ -158,7 +206,31 @@ export async function getAllLedgers() {
             children: true
         }
     });
-    return serializeFinancials(ledgers);
+
+    // Enrich with creator names for pending approvals
+    const enriched = await Promise.all(
+        ledgers.map(async (ledger) => {
+            let createdByName = null;
+            let approvedByName = null;
+            if (ledger.createdBy) {
+                const creator = await db.user.findUnique({
+                    where: { id: ledger.createdBy },
+                    select: { name: true }
+                });
+                createdByName = creator?.name || 'Unknown';
+            }
+            if (ledger.approvedBy) {
+                const approver = await db.user.findUnique({
+                    where: { id: ledger.approvedBy },
+                    select: { name: true }
+                });
+                approvedByName = approver?.name || 'Unknown';
+            }
+            return { ...ledger, createdByName, approvedByName };
+        })
+    );
+
+    return serializeFinancials(enriched);
 }
 
 /**

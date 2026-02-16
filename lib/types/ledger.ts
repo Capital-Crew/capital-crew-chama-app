@@ -42,4 +42,9 @@ export interface LedgerAccount {
     children?: LedgerAccount[];
     normalBalance: NormalBalance | string;
     updatedAt?: Date | string;
+    createdAt?: Date | string;
+    createdBy?: string | null;
+    createdByName?: string | null;
+    approvedBy?: string | null;
+    approvedByName?: string | null;
 }

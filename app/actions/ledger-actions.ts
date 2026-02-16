@@ -131,7 +131,7 @@ export const closeLedgerAction = withAudit({ action: AuditLogAction.LEDGER_CLOSE
     if (!ledger) throw new Error("Ledger not found");
 
     // Check if balance is zero before closing (optional but recommended)
-    if (!new Decimal(ledger.balance.toString()).isZero()) {
+    if (Number(ledger.balance) !== 0) {
         throw new Error("Ledger must have zero balance before it can be closed.");
     }
 

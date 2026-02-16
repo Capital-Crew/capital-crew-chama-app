@@ -1,4 +1,4 @@
-import { formatCurrency } from '@/lib/utils'
+import { cn, formatCurrency } from '@/lib/utils'
 import { Wallet, PiggyBank, Receipt, Activity } from 'lucide-react'
 
 interface MemberQuickStatsProps {

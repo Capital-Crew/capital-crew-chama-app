@@ -130,6 +130,8 @@ export function AppSidebar({ user, approvalCount = 0, pendingLoanCount = 0 }: { 
                     <NavItem icon={<HeartHandshake className="w-5 h-5" />} label="Welfare" href="/welfare" active={pathname.startsWith('/welfare')} />
                 )}
 
+                <NavItem icon={<Activity className="w-5 h-5" />} label="Meetings" href="/meetings/report/new" active={pathname.startsWith('/meetings')} />
+
                 {/* Admin Section - Dynamic Rendering */}
                 {(canAccess('ACCOUNTS') || canAccess('ADMIN') || canAccess('AUDIT')) && (
                     <>

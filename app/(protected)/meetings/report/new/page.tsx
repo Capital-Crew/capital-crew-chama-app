@@ -12,15 +12,7 @@ export default async function NewMeetingReportPage() {
         redirect("/login");
     }
 
-    // Role Check: Only Secretary, Chairperson, or Admin
-    const user = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        select: { role: true }
-    });
-
-    if (!user || !['SECRETARY', 'CHAIRPERSON', 'SYSTEM_ADMIN'].includes(user.role)) {
-        redirect("/dashboard");
-    }
+    // Role Check removed: Everyone can access as per user request
 
     // 1. Fetch Active Members
     const members = await prisma.member.findMany({
@@ -57,7 +49,7 @@ export default async function NewMeetingReportPage() {
 
                         <div className="flex items-center gap-2 bg-indigo-50 px-4 py-2 rounded-xl border border-indigo-100">
                             <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                            <span className="text-xs font-bold text-indigo-700 uppercase tracking-wider">Secretary Mode</span>
+                            <span className="text-xs font-bold text-indigo-700 uppercase tracking-wider">Meeting Mode</span>
                         </div>
                     </div>
                 </div>

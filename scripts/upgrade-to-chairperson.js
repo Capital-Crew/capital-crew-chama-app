@@ -1,4 +1,5 @@
-const { PrismaClient } = require('@prisma/client')
+
+import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
@@ -26,23 +27,12 @@ async function upgradeToChairperson() {
         const updatedUser = await prisma.user.update({
             where: { email: userEmail },
             data: {
-                role: 'CHAIRPERSON',
-                permissions: {
-                    canViewAll: true,
-                    canAddData: true,
-                    canApprove: true,
-                    canManageSettings: true,
-                    canViewReports: true,
-                    canViewAudit: true,
-                    canManageUserRights: true,
-                    canExemptFees: true
-                }
+                role: 'CHAIRPERSON'
             }
         })
 
         console.log('\n✅ User upgraded successfully!')
         console.log('   New Role:', updatedUser.role)
-        console.log('   Full Permissions: Granted')
         console.log('\n💡 This user now has full administrative access')
 
     } catch (error) {

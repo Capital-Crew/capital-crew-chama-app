@@ -34,7 +34,76 @@ async function main() {
         console.log(`✅ Module synced: ${mod.name} (${mod.key})`)
     }
 
-    console.log('✨ System Modules seeding completed.')
+    // Seed Permissions
+    const officerRoles = ['CHAIRPERSON', 'TREASURER', 'SECRETARY']
+    // Granting ADMIN access to officers as well for "All Access" request
+    const officerModules = ['DASHBOARD', 'APPROVALS', 'MEMBERS', 'LOANS', 'WALLET', 'WELFARE', 'ACCOUNTS', 'AUDIT', 'ADMIN']
+
+    for (const role of officerRoles) {
+        console.log(`\n👮 Seeding permissions for ${role}...`)
+        for (const moduleKey of officerModules) {
+            await prisma.rolePermission.upsert({
+                where: {
+                    role_moduleKey: {
+                        role: role as any,
+                        moduleKey: moduleKey
+                    }
+                },
+                update: { canAccess: true },
+                create: {
+                    role: role as any,
+                    moduleKey: moduleKey,
+                    canAccess: true
+                }
+            })
+            console.log(`   - Granted ${moduleKey}`)
+        }
+    }
+
+    // Seed MEMBER Permissions (Temporary Full Access)
+    console.log(`\n👤 Seeding permissions for MEMBER (FULL ACCESS)...`)
+    // Granting all modules to MEMBER as requested
+    const memberModules = ['DASHBOARD', 'APPROVALS', 'MEMBERS', 'LOANS', 'WALLET', 'WELFARE', 'ACCOUNTS', 'ADMIN', 'AUDIT']
+    for (const moduleKey of memberModules) {
+        await prisma.rolePermission.upsert({
+            where: {
+                role_moduleKey: {
+                    role: 'MEMBER',
+                    moduleKey: moduleKey
+                }
+            },
+            update: { canAccess: true },
+            create: {
+                role: 'MEMBER',
+                moduleKey: moduleKey,
+                canAccess: true
+            }
+        })
+        console.log(`   - Granted ${moduleKey}`)
+    }
+
+    // System Admin gets everything
+    console.log('\n👑 Seeding permissions for SYSTEM_ADMIN...')
+    const allModules = [...officerModules, 'ADMIN']
+    for (const moduleKey of allModules) {
+        await prisma.rolePermission.upsert({
+            where: {
+                role_moduleKey: {
+                    role: 'SYSTEM_ADMIN',
+                    moduleKey: moduleKey
+                }
+            },
+            update: { canAccess: true },
+            create: {
+                role: 'SYSTEM_ADMIN',
+                moduleKey: moduleKey,
+                canAccess: true
+            }
+        })
+    }
+    console.log(`   - Granted ALL modules`)
+
+    console.log('✨ System Modules & Permissions seeding completed.')
 }
 
 main()

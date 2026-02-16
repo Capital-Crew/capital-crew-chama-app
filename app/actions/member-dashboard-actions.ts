@@ -1,13 +1,12 @@
 'use server'
 
 import { db } from '@/lib/db'
-import { calculateLoanSchedule } from '@/lib/services/loanCalculator'; // Keep for type fallback if needed but LoanScheduleCache replaces it
+
 import { Prisma } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 import { MemberStats as DetailedMemberStats, LoanPortfolioItem } from '@/types/member-dashboard';
 import { serializePrisma } from '@/lib/serialization';
-import { LoanScheduleCache } from '@/lib/services/LoanScheduleCache';
-import { calculateCurrentMonthStatus } from './contribution-engine';
+
 
 // --- Types ---
 
@@ -147,6 +146,7 @@ export async function getMemberStats(memberId: string): Promise<MemberStats | nu
  * Fetch Exact Member Stats for the Pixel-Perfect Dashboard
  */
 export async function getDetailedMemberStats(memberId: string): Promise<{ stats: DetailedMemberStats, loans: LoanPortfolioItem[] } | null> {
+    const { LoanScheduleCache } = await import('@/lib/services/LoanScheduleCache');
     const member = await db.member.findUnique({
         where: { id: memberId },
         include: {
@@ -430,6 +430,7 @@ export async function getContributionHistory(memberId: string) {
  * Fetch Loan Portfolio
  */
 export async function getLoanPortfolio(memberId: string) {
+    const { LoanScheduleCache } = await import('@/lib/services/LoanScheduleCache');
     const loans = await db.loan.findMany({
         where: {
             memberId,
@@ -659,6 +660,10 @@ export async function refreshMemberStats(memberId: string) {
  * Comprehensive Fetch for Member Detailed Modal
  */
 export async function getMemberFullDetail(memberId: string) {
+    // Dynamic imports to prevent circular dependencies
+    const { calculateCurrentMonthStatus } = await import('./contribution-engine');
+    const { LoanScheduleCache } = await import('@/lib/services/LoanScheduleCache');
+
     // Parallelize all major dashboard fetches
     const [stats, contributions, portfolio, member, contributionStatus] = await Promise.all([
         getDetailedMemberStats(memberId),

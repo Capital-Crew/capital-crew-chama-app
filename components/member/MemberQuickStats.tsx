@@ -8,6 +8,7 @@ interface MemberQuickStatsProps {
             lastName: string
             fullName: string
             memberNumber: number
+            status: string
         }
         financials: {
             memberSavings?: number
@@ -47,12 +48,20 @@ export function MemberQuickStats({ stats, onViewLoans }: MemberQuickStatsProps) 
                             <span className="px-3 py-1 bg-slate-100 rounded-full text-xs font-bold text-slate-600 uppercase tracking-wider">
                                 Member #{stats.identity.memberNumber}
                             </span>
-                            <span className="flex items-center gap-1.5 px-3 py-1 bg-green-50 rounded-full text-xs font-bold text-green-700 uppercase tracking-wider">
-                                <span className="relative flex h-2 w-2">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                                </span>
-                                Active
+                            <span className={cn(
+                                "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider",
+                                stats.identity.status === 'ACTIVE' ? "bg-green-50 text-green-700" :
+                                    stats.identity.status === 'PENDING' ? "bg-orange-50 text-orange-700" :
+                                        stats.identity.status === 'APPROVED' ? "bg-blue-50 text-blue-700" :
+                                            "bg-slate-100 text-slate-600"
+                            )}>
+                                {stats.identity.status === 'ACTIVE' && (
+                                    <span className="relative flex h-2 w-2">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                                    </span>
+                                )}
+                                {stats.identity.status}
                             </span>
                         </div>
                     </div>

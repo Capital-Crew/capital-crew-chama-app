@@ -62,7 +62,8 @@ export function MemberProfileView({
             firstName: member.name?.split(' ')[0] || '',
             lastName: member.name?.split(' ').slice(1).join(' ') || '',
             fullName: member.name || '',
-            memberNumber: parseInt(member.memberNumber) || 0
+            memberNumber: parseInt(member.memberNumber) || 0,
+            status: member.status
         },
         financials: {
             memberSavings: stats?.memberSavings || 0,

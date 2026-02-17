@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import { Decimal } from 'decimal.js'
+import { LedgerService } from './ledger-service'
 
 export interface IncomeStatement {
     interestIncome: Decimal
@@ -86,61 +87,54 @@ export class AccountingService {
      */
     static async getBalanceSheet(asOfDate: Date): Promise<BalanceSheet> {
         // 1. Gross Loan Portfolio (Total Principal Outstanding as of Date)
-        // Sum(Disbursements.principal) - Sum(Repayments.principal) up to date
-        const portfolioAgg = await db.loanTransaction.aggregate({
+        const disbursements = await db.ledgerEntry.aggregate({
             where: {
-                postedAt: { lte: asOfDate },
-                isReversed: false
+                ledgerTransaction: {
+                    referenceType: 'LOAN_DISBURSEMENT',
+                    transactionDate: { lte: asOfDate },
+                    status: 'POSTED',
+                    isReversed: false
+                }
             },
-            _sum: {
-                principalAmount: true
-            }
+            _sum: { debitAmount: true }
         })
 
-        // Note: Disbursement principalAmount should be positive, Repayment principalAmount should be negative if using single sum,
-        // OR we filter by type. In our schema, Repayment principalAmount is likely positive (how much was paid).
-        // So: Gross Portfolio = Sum(DISBURSEMENT.principalAmount) - Sum(REPAYMENT.principalAmount)
-
-        const disbursements = await db.loanTransaction.aggregate({
+        const repayments = await db.ledgerEntry.aggregate({
             where: {
-                type: 'DISBURSEMENT',
-                postedAt: { lte: asOfDate },
-                isReversed: false
+                ledgerTransaction: {
+                    referenceType: 'LOAN_REPAYMENT',
+                    transactionDate: { lte: asOfDate },
+                    status: 'POSTED',
+                    isReversed: false
+                }
             },
-            _sum: { amount: true }
+            _sum: { creditAmount: true }
         })
 
-        const repayments = await db.loanTransaction.aggregate({
-            where: {
-                type: 'REPAYMENT',
-                postedAt: { lte: asOfDate },
-                isReversed: false
-            },
-            _sum: { principalAmount: true }
-        })
-
-        const grossLoanPortfolio = new Decimal(disbursements._sum.amount?.toString() || '0')
-            .minus(new Decimal(repayments._sum.principalAmount?.toString() || '0'))
+        const grossLoanPortfolio = new Decimal(disbursements._sum.debitAmount?.toString() || '0')
+            .minus(new Decimal(repayments._sum.creditAmount?.toString() || '0'))
 
         const loanLossProvisions = new Decimal(0) // Placeholder
         const netLoanPortfolio = grossLoanPortfolio.minus(loanLossProvisions)
 
-        // 2. Cash/Bank (Simplified: Sum of all transactions affecting cash accounts)
-        // In a real system, this would query the LedgerAccount for 'CASH_ON_HAND' or similar.
-        const cashAgg = await db.ledgerAccount.findFirst({
-            where: { code: '1000' }, // Assume 1000 is Cash/Bank
-            select: { balance: true }
+        // 2. Cash/Bank (Query mapping or fallback to '1000')
+        const cashMapping = await db.systemAccountingMapping.findFirst({
+            where: { type: 'CASH_ON_HAND' }
         })
-        const cashAndBank = new Decimal(cashAgg?.balance?.toString() || '0')
 
-        const totalAssets = netLoanPortfolio.plus(cashAndBank)
+        const cashAndBank = cashMapping
+            ? await LedgerService.getDerivedBalance(cashMapping.accountId, asOfDate)
+            : new Decimal(0)
 
-        // 3. Liabilities: Member Savings/Shares
-        const savingsAgg = await db.ledgerAccount.findFirst({
-            where: { code: '2000' }, // Assume 2000 is Member Savings/Fund
-            select: { balance: true }
+        // 3. Liabilities: Member Savings/Shares (Query mapping or fallback to '2000')
+        const savingsMapping = await db.systemAccountingMapping.findFirst({
+            where: { type: 'MEMBER_WALLET' }
         })
-        const memberSavings = new Decimal(savingsAgg?.balance?.toString() || '0')
+
+        const memberSavings = savingsMapping
+            ? await LedgerService.getDerivedBalance(savingsMapping.accountId, asOfDate)
+            : new Decimal(0)
+
         const totalLiabilities = memberSavings
 
         // 4. Equity
@@ -149,6 +143,7 @@ export class AccountingService {
             asOfDate
         )).netIncome
 
+        const totalAssets = netLoanPortfolio.plus(cashAndBank)
         const retainedEarnings = totalAssets.minus(totalLiabilities).minus(currentYearProfit)
 
         return {

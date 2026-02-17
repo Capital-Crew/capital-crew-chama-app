@@ -18,7 +18,13 @@ import {
     Power
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getAllLedgers, approveLedgerAction, closeLedgerAction, reactivateLedgerAction, rejectLedgerAction } from '@/app/actions/ledger-actions';
+import {
+    getAllLedgers as getChartOfAccounts,
+    approveLedgerAction,
+    closeLedgerAction,
+    reactivateLedgerAction,
+    rejectLedgerAction
+} from '@/app/actions/accounting-actions';
 import { getAccountingPeriods, closeAccountingPeriodAction, openAccountingPeriodAction } from '@/app/actions/accounting-period-actions';
 import { LedgerForm } from './LedgerForm';
 import { PeriodForm } from './PeriodForm';

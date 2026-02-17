@@ -16,7 +16,7 @@ import {
     RotateCcw,
     AlertCircle
 } from 'lucide-react';
-import { getJournalTransactions, reverseJournalEntryAction } from '@/app/actions/ledger-actions';
+import { getJournalTransactions, reverseJournalEntryAction } from '@/app/actions/accounting-actions';
 import { toast } from 'sonner';
 
 interface JournalEntryLine {

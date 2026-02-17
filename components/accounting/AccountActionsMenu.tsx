@@ -9,7 +9,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
-import { deleteAccount, toggleAccountStatus } from '@/app/accounts-actions' // Ensure this export exists!
+import { deleteAccount, toggleAccountStatus } from '@/app/actions/accounting-actions'
 import { toast } from '@/lib/toast'
 
 export function AccountActionsMenu({ account, onUpdate }: { account: any, onUpdate: () => void }) {

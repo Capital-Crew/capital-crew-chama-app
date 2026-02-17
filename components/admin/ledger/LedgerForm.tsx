@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { AccountType, NormalBalance } from '@/lib/types/ledger';
-import { createLedgerAction } from '@/app/actions/ledger-actions';
+import { createLedgerAction } from '@/app/actions/accounting-actions';
 import { toast } from 'sonner';
 import { X, Save, AlertCircle } from 'lucide-react';
 

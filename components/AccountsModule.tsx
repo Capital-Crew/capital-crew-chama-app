@@ -6,14 +6,17 @@ import {
     getChartOfAccounts,
     getJournalEntries,
     getTrialBalance,
-    reverseJournalEntry,
-    toggleAccountStatus,
-    deleteAccount,
-    updateAccountType,
+    reverseJournalEntryAction as reverseJournalEntry,
     getJournalEntryDetails,
-    getBalanceSheetReport
-} from '@/app/accounts-actions'
-import { FileTextIcon, ListIcon, ScaleIcon, XCircleIcon, SearchIcon, FilterIcon, Settings, RefreshCw, Loader2, Save, ArrowLeftRightIcon, PlusIcon, DollarSign, ArrowRightIcon } from 'lucide-react'
+    getBalanceSheetReport,
+    approveLedgerAction,
+    closeLedgerAction,
+    reactivateLedgerAction,
+    rejectLedgerAction
+} from '@/app/actions/accounting-actions'
+import { getAccountingPeriods, closeAccountingPeriodAction, openAccountingPeriodAction } from '@/app/actions/accounting-period-actions'
+import { FileTextIcon, ListIcon, ScaleIcon, XCircleIcon, SearchIcon, FilterIcon, Settings, RefreshCw, Loader2, Save, ArrowLeftRightIcon, PlusIcon, DollarSign, ArrowRightIcon, ChevronDown, ChevronRight, Layers, Calendar, Shield, Clock, Power, RotateCcw, CheckCircle } from 'lucide-react'
+
 import {
     getSystemMappings,
     getAllAccounts,
@@ -30,7 +33,11 @@ import { getMembers } from '@/app/actions/get-members'
 import { ExpensesTab } from '@/components/accounting/ExpensesTab'
 import { AccountActionsMenu } from '@/components/accounting/AccountActionsMenu'
 import { MpesaLedger } from '@/components/accounting/MpesaLedger'
+import { JournalHistory } from '@/components/admin/ledger/JournalHistory'
+import { LedgerForm } from '@/components/admin/ledger/LedgerForm'
+import { PeriodForm } from '@/components/admin/ledger/PeriodForm'
 import { SystemAccountType } from '@prisma/client'
+
 import { Button } from '@/components/ui/button'
 import {
     Select,
@@ -54,7 +61,8 @@ import { cn } from '@/lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
 import { fadeIn, scaleIn } from '@/lib/animation-variants'
 
-type Tab = 'coa' | 'journal' | 'trial' | 'balanceSheet' | 'ledger' | 'config' | 'expenses' | 'transfers' | 'mpesa'
+type Tab = 'coa' | 'hierarchy' | 'periods' | 'journal' | 'trial' | 'balanceSheet' | 'ledger' | 'config' | 'expenses' | 'transfers' | 'mpesa'
+
 
 type MappingWithAccount = {
     id: string
@@ -123,6 +131,11 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
 
     const [isPending, startTransition] = useTransition()
 
+    const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set())
+    const [periods, setPeriods] = useState<any[]>([])
+    const [isLedgerModalOpen, setIsLedgerModalOpen] = useState(false)
+    const [isPeriodModalOpen, setIsPeriodModalOpen] = useState(false)
+
     // Fetch user permissions on mount
     useEffect(() => {
         const fetchPermissions = async () => {
@@ -131,6 +144,7 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
         }
         fetchPermissions()
     }, [])
+
 
     // Load data based on active tab
     useEffect(() => {
@@ -181,7 +195,14 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
             } else if (activeTab === 'balanceSheet') {
                 const bs = await getBalanceSheetReport()
                 setBalanceSheet(bs)
+            } else if (activeTab === 'hierarchy') {
+                const data = await getChartOfAccounts()
+                setChartOfAccounts(data)
+            } else if (activeTab === 'periods') {
+                const data = await getAccountingPeriods()
+                setPeriods(data)
             }
+
         } catch (error: any) {
             setMessage({ type: 'error', text: error.message })
             toast.error(error.message || "Failed to load data")
@@ -286,11 +307,147 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
         }
     }
 
-    const formatType = (type: string) => {
-        return type.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ')
+    const toggleNode = (id: string) => {
+        const next = new Set(expandedNodes)
+        if (next.has(id)) next.delete(id)
+        else next.add(id)
+        setExpandedNodes(next)
     }
 
-    // We explicitly define the list of granular events to ensure legacy types (CASH_ON_HAND etc) never appear.
+    const handleApprove = async (id: string) => {
+        try {
+            await approveLedgerAction(id)
+            toast.success("Ledger approved and activated")
+            loadData()
+        } catch (error: any) {
+            toast.error(error.message || "Approval failed")
+        }
+    }
+
+    const handleCloseLedger = async (id: string) => {
+        if (!confirm("Are you sure you want to close this ledger? This will prevent any further postings.")) return
+        try {
+            await closeLedgerAction(id)
+            toast.success("Ledger closed successfully")
+            loadData()
+        } catch (error: any) {
+            toast.error(error.message || "Failed to close ledger")
+        }
+    }
+
+    const handleReactivate = async (id: string) => {
+        if (!confirm("Are you sure you want to reactivate this ledger?")) return
+        try {
+            await reactivateLedgerAction(id)
+            toast.success("Ledger reactivated successfully")
+            loadData()
+        } catch (error: any) {
+            toast.error(error.message || "Failed to reactivate ledger")
+        }
+    }
+
+    const handleRejectLedger = async (id: string) => {
+        if (!confirm("Are you sure you want to reject this ledger? It will be permanently deleted.")) return
+        try {
+            await rejectLedgerAction(id)
+            toast.success("Ledger rejected and removed")
+            loadData()
+        } catch (error: any) {
+            toast.error(error.message || "Failed to reject ledger")
+        }
+    }
+
+    const handleClosePeriod = async (id: string) => {
+        if (!confirm("Are you sure you want to close this accounting period? This will prevent any further postings to this date range.")) return
+        try {
+            await closeAccountingPeriodAction(id)
+            toast.success("Accounting period closed")
+            loadData()
+        } catch (error: any) {
+            toast.error(error.message)
+        }
+    }
+
+    const renderLedgerRow = (ledger: any, depth: number = 0) => {
+        const hasChildren = ledger.children && ledger.children.length > 0;
+        const isExpanded = expandedNodes.has(ledger.id);
+
+        return (
+            <React.Fragment key={ledger.id}>
+                <tr className="hover:bg-slate-50 transition-colors border-b border-slate-100 group">
+                    <td className="py-3 pl-4">
+                        <div className="flex items-center gap-2" style={{ paddingLeft: `${depth * 24}px` }}>
+                            {hasChildren ? (
+                                <button onClick={() => toggleNode(ledger.id)} className="p-1 hover:bg-slate-200 rounded transition-colors text-slate-500">
+                                    {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                </button>
+                            ) : (
+                                <div className="w-6" />
+                            )}
+                            <span className="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">{ledger.code}</span>
+                            <span className="font-semibold text-slate-800">{ledger.name}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${ledger.type === 'ASSET' ? 'bg-blue-100 text-blue-700' :
+                            ledger.type === 'LIABILITY' ? 'bg-amber-100 text-amber-700' :
+                                ledger.type === 'EQUITY' ? 'bg-purple-100 text-purple-700' :
+                                    ledger.type === 'REVENUE' || ledger.type === 'INCOME' ? 'bg-emerald-100 text-emerald-700' :
+                                        'bg-rose-100 text-rose-700'
+                            }`}>
+                            {ledger.type}
+                        </span>
+                    </td>
+                    <td className="text-right font-mono font-bold text-slate-700 pr-8">
+                        {new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES' }).format(Number(ledger.balance))}
+                        <span className="text-[10px] text-slate-400 ml-1">{ledger.normalBalance === 'DEBIT' ? 'Dr' : 'Cr'}</span>
+                    </td>
+                    <td>
+                        <div className={`flex items-center gap-1.5 font-bold text-[11px] ${ledger.status === 'ACTIVE' ? 'text-emerald-600' :
+                            ledger.status === 'PENDING' ? 'text-amber-600' :
+                                'text-slate-400'
+                            }`}>
+                            {ledger.status === 'ACTIVE' ? <CheckCircle className="w-3.5 h-3.5" /> :
+                                ledger.status === 'PENDING' ? <Clock className="w-3.5 h-3.5" /> :
+                                    <XCircle className="w-3.5 h-3.5" />}
+                            {ledger.status}
+                        </div>
+                    </td>
+                    <td className="text-right pr-4">
+                        <div className="flex justify-end gap-2">
+                            {ledger.status === 'PENDING' && (
+                                <button
+                                    onClick={() => handleApprove(ledger.id)}
+                                    className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors shadow-sm"
+                                >
+                                    <CheckCircle className="w-3.5 h-3.5" />
+                                    Approve
+                                </button>
+                            )}
+                            {ledger.status === 'ACTIVE' && (
+                                <button
+                                    onClick={() => handleCloseLedger(ledger.id)}
+                                    className="flex items-center gap-1.5 border border-red-300 text-red-600 hover:bg-red-50 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+                                >
+                                    <Power className="w-3.5 h-3.5" />
+                                    Close
+                                </button>
+                            )}
+                            <button
+                                onClick={() => loadAccountLedger(ledger.code)}
+                                className="text-xs font-bold text-cyan-600 hover:underline px-2 py-1.5"
+                            >
+                                Ledger
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {isExpanded && hasChildren && ledger.children!.map((child: any) => renderLedgerRow(child, depth + 1))}
+            </React.Fragment>
+        );
+    }
+
+    // We explicitly define the list of granular events...
     const allSystemTypes: SystemAccountType[] = [
         // Income
         'INCOME_LOAN_INTEREST',
@@ -328,14 +485,15 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
             <div className="mb-8">
                 <div className="flex overflow-x-auto no-scrollbar pb-2 -mx-6 px-6 md:mx-0 md:px-0 md:pb-0 md:flex-wrap gap-2">
                     {[
-                        { id: 'coa', label: 'Chart of Accounts', shortLabel: 'CoA', icon: ListIcon },
-                        { id: 'journal', label: 'Journal Entries', shortLabel: 'Journal', icon: FileTextIcon },
+                        { id: 'coa', label: 'Dashboard', shortLabel: 'D/B', icon: ListIcon },
+                        { id: 'hierarchy', label: 'Hierarchy', shortLabel: 'Tree', icon: Layers },
+                        { id: 'journal', label: 'Journal', shortLabel: 'Journal', icon: History },
+                        { id: 'periods', label: 'Periods', shortLabel: 'Periods', icon: Calendar },
                         { id: 'transfers', label: 'Transfers', shortLabel: 'Transfers', icon: ArrowLeftRightIcon },
-                        { id: 'mpesa', label: 'M-Pesa', shortLabel: 'M-Pesa', icon: DollarSign },
-                        { id: 'expenses', label: 'Expenses', shortLabel: 'Expenses', icon: FileTextIcon },
-                        { id: 'trial', label: 'Trial Balance', shortLabel: 'Trial Bal.', icon: ScaleIcon },
-                        { id: 'balanceSheet', label: 'Balance Sheet', shortLabel: 'B/S', icon: ScaleIcon },
-                        ...(userAuth?.role !== 'Member' ? [{ id: 'config', label: 'Ledger Config', shortLabel: 'Config', icon: Settings }] : [])
+                        { id: 'expenses', label: 'Expenses', shortLabel: 'Exp.', icon: FileTextIcon },
+                        { id: 'trial', label: 'Trial Bal', shortLabel: 'T/B', icon: ScaleIcon },
+                        { id: 'balanceSheet', label: 'Reports', shortLabel: 'Financials', icon: ScaleIcon },
+                        ...(userAuth?.role !== 'Member' ? [{ id: 'config', label: 'Settings', shortLabel: 'Conf', icon: Settings }] : [])
                     ].map(tab => (
                         <button
                             key={tab.id}
@@ -353,6 +511,17 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                 </div>
             </div>
 
+            {/* Pending Approvals Banner */}
+            {chartOfAccounts.filter(l => l.status === 'PENDING').length > 0 && activeTab !== 'ledger' && (
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 shadow-sm mb-6">
+                    <div className="flex items-center gap-2 mb-4">
+                        <Shield className="w-5 h-5 text-amber-600" />
+                        <h3 className="font-bold text-amber-800 text-sm">Pending Ledger Approvals ({chartOfAccounts.filter(l => l.status === 'PENDING').length})</h3>
+                        <span className="text-[10px] uppercase tracking-widest font-black text-amber-500 bg-amber-100 px-2 py-0.5 rounded-full">Maker-Checker 1/2</span>
+                    </div>
+                </div>
+            )}
+
             {/* Messages */}
             {message && (
                 <div className={`p-4 rounded-xl mb-6 ${message.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
@@ -361,135 +530,88 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                 </div>
             )}
 
-            {/* Chart of Accounts Tab */}
-            {activeTab === 'coa' && (
-                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-                    {loading ? (
-                        <div className="p-12 text-center text-slate-400">Loading...</div>
-                    ) : (
-                        <>
-                            <div className="overflow-x-auto hidden md:block">
-                                <table className="w-full">
-                                    <thead className="bg-slate-50 border-b border-slate-200">
-                                        <tr>
-                                            <th className="px-6 py-4 text-left text-xs font-black text-slate-600 uppercase">Code</th>
-                                            <th className="px-6 py-4 text-left text-xs font-black text-slate-600 uppercase">Account Name</th>
-                                            <th className="px-6 py-4 text-left text-xs font-black text-slate-600 uppercase">Type</th>
-                                            <th className="px-6 py-4 text-right text-xs font-black text-slate-600 uppercase">Balance</th>
-                                            <th className="px-6 py-4 text-center text-xs font-black text-slate-600 uppercase">Transactions</th>
-                                            <th className="px-6 py-4 text-center text-xs font-black text-slate-600 uppercase">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {chartOfAccounts.map((account) => (
-                                            <tr key={account.id} className="hover:bg-slate-50">
-                                                <td className="px-6 py-4 font-mono text-sm font-bold text-slate-900">{account.code}</td>
-                                                <td className="px-6 py-4 text-sm font-bold text-slate-900">{account.name}</td>
-                                                <td className="px-6 py-4">
-                                                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-black uppercase ${account.type === 'ASSET' ? 'bg-blue-100 text-blue-700' :
-                                                        account.type === 'LIABILITY' ? 'bg-red-100 text-red-700' :
-                                                            account.type === 'EQUITY' ? 'bg-purple-100 text-purple-700' :
-                                                                account.type === 'INCOME' ? 'bg-green-100 text-green-700' :
-                                                                    'bg-orange-100 text-orange-700'
-                                                        }`}>
-                                                        {account.type}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-right font-mono text-sm font-bold text-slate-900">
-                                                    {account.balance.toLocaleString('en-KE', { style: 'currency', currency: 'KES' })}
-                                                </td>
-                                                <td className="px-6 py-4 text-center text-sm text-slate-600">{account._count.journalLines}</td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <div className="flex justify-center gap-2">
-                                                        <button
-                                                            onClick={() => loadAccountLedger(account.code)}
-                                                            className="text-xs font-bold text-cyan-600 hover:text-cyan-700 uppercase"
-                                                        >
-                                                            Ledger
-                                                        </button>
-                                                        {userAuth?.role !== 'Member' && (
-                                                            <AccountActionsMenu
-                                                                account={account}
-                                                                onUpdate={loadData}
-                                                            />
-                                                        )}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                            {/* Mobile CoA View */}
-                            <div className="md:hidden divide-y divide-slate-100">
-                                {chartOfAccounts.map((account) => {
-                                    const isExpanded = expandedAccountId === account.id;
-                                    return (
-                                        <div
-                                            key={account.id}
-                                            className={`p-4 bg-white transition-all duration-200 ${isExpanded ? 'bg-slate-50' : ''}`}
-                                            onClick={() => setExpandedAccountId(isExpanded ? null : account.id as any)}
-                                        >
-                                            <div className="flex justify-between items-start">
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`w-1 h-8 rounded-full ${account.type === 'ASSET' ? 'bg-blue-500' :
-                                                        account.type === 'LIABILITY' ? 'bg-red-500' :
-                                                            account.type === 'EQUITY' ? 'bg-purple-500' :
-                                                                account.type === 'INCOME' ? 'bg-green-500' :
-                                                                    'bg-orange-500'
-                                                        }`} />
-                                                    <div>
-                                                        <div className="font-mono text-xs font-black text-slate-500">{account.code}</div>
-                                                        <div className="font-bold text-slate-900">{account.name}</div>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <div className="font-mono font-bold text-slate-900">
-                                                        {account.balance.toLocaleString('en-KE', { style: 'currency', currency: 'KES' })}
-                                                    </div>
-                                                    <div className="text-[10px] font-black uppercase text-slate-400">{account.type}</div>
-                                                </div>
-                                            </div>
+            {/* Journal History Tab */}
+            {activeTab === 'journal' && (
+                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm p-6">
+                    <JournalHistory />
+                </div>
+            )}
 
-                                            <AnimatePresence>
-                                                {isExpanded && (
-                                                    <motion.div
-                                                        initial={{ height: 0, opacity: 0 }}
-                                                        animate={{ height: 'auto', opacity: 1 }}
-                                                        exit={{ height: 0, opacity: 0 }}
-                                                        className="overflow-hidden"
-                                                    >
-                                                        <div className="pt-4 mt-4 border-t border-slate-200 grid grid-cols-2 gap-3">
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    loadAccountLedger(account.code);
-                                                                }}
-                                                                className="flex items-center justify-center gap-2 px-4 py-3 bg-cyan-50 text-cyan-700 rounded-xl font-bold text-sm"
-                                                            >
-                                                                <ListIcon className="w-4 h-4" />
-                                                                View Ledger
-                                                            </button>
-                                                            {userAuth?.role !== 'Member' && (
-                                                                <div onClick={(e) => e.stopPropagation()} className="flex">
-                                                                    <div className="w-full">
-                                                                        <AccountActionsMenu
-                                                                            account={account}
-                                                                            onUpdate={loadData}
-                                                                        />
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </motion.div>
-                                                )}
-                                            </AnimatePresence>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </>
+            {/* Hierarchy Tab */}
+            {activeTab === 'hierarchy' && (
+                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                    {loading ? (
+                        <div className="p-12 text-center text-slate-400">
+                            <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-2 opacity-20" />
+                            Loading hierarchy...
+                        </div>
+                    ) : (
+                        <table className="table w-full">
+                            <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[10px] tracking-widest font-black">
+                                <tr>
+                                    <th className="py-4 pl-6 text-left">Ledger Account (Hierarchy)</th>
+                                    <th className="text-left">Account Type</th>
+                                    <th className="text-right pr-8">Current Balance</th>
+                                    <th className="text-left">Status</th>
+                                    <th className="text-right pr-6">Management</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {chartOfAccounts
+                                    .filter(l => !l.parentId)
+                                    .sort((a, b) => {
+                                        const order: Record<string, number> = { PENDING: 0, ACTIVE: 1, CLOSED: 2 };
+                                        return (order[a.status as string] ?? 1) - (order[b.status as string] ?? 1);
+                                    })
+                                    .map(ledger => renderLedgerRow(ledger))}
+                            </tbody>
+                        </table>
                     )}
+                </div>
+            )}
+
+            {/* Periods Tab */}
+            {activeTab === 'periods' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {periods.map(period => (
+                        <div key={period.id} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="p-3 bg-slate-50 rounded-xl">
+                                    <Calendar className="w-6 h-6 text-cyan-500" />
+                                </div>
+                                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${period.status === 'OPEN' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                                    }`}>
+                                    {period.status}
+                                </span>
+                            </div>
+                            <h3 className="font-bold text-slate-800">
+                                {new Date(period.startDate).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })} -
+                                {new Date(period.endDate).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
+                            </h3>
+                            <p className="text-xs text-slate-500 mt-1">{period.memo || 'Regular accounting period'}</p>
+
+                            <div className="mt-6 pt-6 border-t border-slate-50 flex justify-between items-center">
+                                <div className="text-[10px] text-slate-400 italic">
+                                    {period.status === 'CLOSED' ? `Closed by Admin at ${new Date(period.closedAt).toLocaleDateString()}` : 'Period remains open for postings'}
+                                </div>
+                                {period.status === 'OPEN' && (
+                                    <button
+                                        onClick={() => handleClosePeriod(period.id)}
+                                        className="text-xs font-black text-red-600 hover:text-red-700 uppercase"
+                                    >
+                                        Close Period
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                    <button
+                        onClick={() => setIsPeriodModalOpen(true)}
+                        className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-slate-200 rounded-2xl hover:border-cyan-300 hover:bg-cyan-50 transition-all group"
+                    >
+                        <PlusIcon className="w-10 h-10 text-slate-300 group-hover:text-cyan-400 mb-2 transition-colors" />
+                        <span className="font-bold text-slate-400 group-hover:text-cyan-700 uppercase text-xs">Open New Period</span>
+                    </button>
                 </div>
             )}
 
@@ -1418,6 +1540,22 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                     </div>
                 )
             }
+
+            {/* Modals */}
+            {isLedgerModalOpen && (
+                <LedgerForm
+                    onClose={() => setIsLedgerModalOpen(false)}
+                    onSuccess={loadData}
+                    existingLedgers={chartOfAccounts}
+                />
+            )}
+
+            {isPeriodModalOpen && (
+                <PeriodForm
+                    onClose={() => setIsPeriodModalOpen(false)}
+                    onSuccess={loadData}
+                />
+            )}
         </div >
     )
 }

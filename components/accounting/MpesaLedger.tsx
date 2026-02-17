@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/select"
 
 import { checkStatusAction, resolveManuallyAction, syncLedgerAction } from '@/app/actions/reconcile-action'
-import { getTransactionLedger } from '@/app/actions/ledger-actions'
+import { getTransactionLedger } from '@/app/actions/accounting-actions'
 
 interface Transaction {
     id: string

@@ -13,7 +13,7 @@ import {
     ArrowRightLeft,
     Calendar,
     AlertCircle,
-    History,
+    History as HistoryIcon,
     RotateCcw,
     Power
 } from 'lucide-react';
@@ -240,7 +240,7 @@ export function LedgerManager() {
                         className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${activeView === 'journal' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
                             }`}
                     >
-                        <History className="w-4 h-4" />
+                        <HistoryIcon className="w-4 h-4" />
                         Journal
                     </button>
                 </div>

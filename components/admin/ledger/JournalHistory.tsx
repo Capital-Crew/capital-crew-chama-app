@@ -10,7 +10,7 @@ import {
     User as UserIcon,
     Hash,
     FileText,
-    History,
+    History as HistoryIcon,
     CheckCircle,
     XCircle,
     RotateCcw,
@@ -93,7 +93,7 @@ export function JournalHistory() {
         <div className="space-y-4">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
                 <div className="flex items-center gap-2 text-slate-700">
-                    <History className="w-5 h-5 text-indigo-500" />
+                    <HistoryIcon className="w-5 h-5 text-indigo-500" />
                     <h2 className="font-bold">Transaction Journal</h2>
                 </div>
                 <div className="relative w-full md:w-96">
@@ -130,7 +130,7 @@ export function JournalHistory() {
                         ) : filtered.length === 0 ? (
                             <tr className="hover:bg-slate-50">
                                 <td colSpan={6} className="py-20 text-center text-slate-400 text-sm">
-                                    <History className="w-12 h-12 mx-auto mb-2 opacity-20" />
+                                    <HistoryIcon className="w-12 h-12 mx-auto mb-2 opacity-20" />
                                     <p>No transactions found matching your search.</p>
                                 </td>
                             </tr>

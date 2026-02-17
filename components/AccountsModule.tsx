@@ -15,7 +15,7 @@ import {
     rejectLedgerAction
 } from '@/app/actions/accounting-actions'
 import { getAccountingPeriods, closeAccountingPeriodAction, openAccountingPeriodAction } from '@/app/actions/accounting-period-actions'
-import { FileTextIcon, ListIcon, ScaleIcon, XCircleIcon, SearchIcon, FilterIcon, Settings, RefreshCw, Loader2, Save, ArrowLeftRightIcon, PlusIcon, DollarSign, ArrowRightIcon, ChevronDown, ChevronRight, Layers, Calendar, Shield, Clock, Power, RotateCcw, CheckCircle } from 'lucide-react'
+import { FileTextIcon, ListIcon, ScaleIcon, XCircleIcon, SearchIcon, FilterIcon, Settings, RefreshCw, Loader2, Save, ArrowLeftRightIcon, PlusIcon, DollarSign, ArrowRightIcon, ChevronDown, ChevronRight, Layers, Calendar, Shield, Clock, Power, RotateCcw, CheckCircle, History as HistoryIcon } from 'lucide-react'
 
 import {
     getSystemMappings,
@@ -487,7 +487,7 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                     {[
                         { id: 'coa', label: 'Dashboard', shortLabel: 'D/B', icon: ListIcon },
                         { id: 'hierarchy', label: 'Hierarchy', shortLabel: 'Tree', icon: Layers },
-                        { id: 'journal', label: 'Journal', shortLabel: 'Journal', icon: History },
+                        { id: 'journal', label: 'Journal', shortLabel: 'Journal', icon: HistoryIcon },
                         { id: 'periods', label: 'Periods', shortLabel: 'Periods', icon: Calendar },
                         { id: 'transfers', label: 'Transfers', shortLabel: 'Transfers', icon: ArrowLeftRightIcon },
                         { id: 'expenses', label: 'Expenses', shortLabel: 'Exp.', icon: FileTextIcon },

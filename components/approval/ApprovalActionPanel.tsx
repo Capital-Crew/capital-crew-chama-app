@@ -5,7 +5,7 @@ import { ApprovalHistoryDrawer } from './ApprovalHistoryDrawer'
 import { DelegationPanel } from './DelegationPanel'
 import { handleWorkflowTransition } from '@/app/actions/approval-workflow'
 import { toast } from '@/lib/toast'
-import { Loader2, Send, XCircle, History, UserCog } from 'lucide-react'
+import { Loader2, Send, XCircle, History as HistoryIcon, UserCog } from 'lucide-react'
 
 interface ApprovalActionPanelProps {
     status: string // 'APPLICATION', 'PENDING_APPROVAL', 'APPROVED'
@@ -77,7 +77,7 @@ export function ApprovalActionPanel({ status, entityType, entityId, canEdit }: A
                 onClick={() => setHistoryOpen(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold uppercase hover:bg-slate-200 transition-all"
             >
-                <History className="w-4 h-4" />
+                <HistoryIcon className="w-4 h-4" />
                 History
             </button>
 

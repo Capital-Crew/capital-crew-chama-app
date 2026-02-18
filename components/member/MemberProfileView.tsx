@@ -86,35 +86,22 @@ export function MemberProfileView({
             {/* Deactivate Control for ACTIVE members — standalone section */}
             {member.status === 'ACTIVE' && isSystemAdmin && (
                 <div className="px-4 md:px-8 mt-4">
-                    <div className="bg-red-950 rounded-3xl p-6 md:p-8 text-white shadow-xl shadow-red-200 border border-red-900/50">
-                        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-2xl bg-red-500/20 flex items-center justify-center backdrop-blur-sm">
-                                    <XCircle className="w-6 h-6 text-red-400" />
-                                </div>
-                                <div>
-                                    <h3 className="text-lg font-black uppercase tracking-tight">Member Deactivation</h3>
-                                    <p className="text-red-300 text-xs font-bold mt-1">
-                                        This will close the member&apos;s account and restrict system access.
-                                    </p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={async () => {
-                                    if (!window.confirm(`Deactivate ${member.name}? This will close their account and restrict access.`)) return;
-                                    const res = await deactivateMemberAction(member.id);
-                                    if (res.success) {
-                                        toast.success('Member deactivated successfully');
-                                        router.refresh();
-                                    } else {
-                                        toast.error(res.error || 'Failed to deactivate');
-                                    }
-                                }}
-                                className="w-full md:w-auto bg-red-500 text-white px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-400 transition-all active:scale-95 shadow-lg shadow-red-900/30 flex items-center justify-center gap-2"
-                            >
-                                <XCircle className="w-4 h-4" /> Deactivate Member
-                            </button>
-                        </div>
+                    <div className="flex justify-end">
+                        <button
+                            onClick={async () => {
+                                if (!window.confirm(`Deactivate ${member.name}? This will close their account and restrict access.`)) return;
+                                const res = await deactivateMemberAction(member.id);
+                                if (res.success) {
+                                    toast.success('Member deactivated successfully');
+                                    router.refresh();
+                                } else {
+                                    toast.error(res.error || 'Failed to deactivate');
+                                }
+                            }}
+                            className="w-full md:w-auto bg-red-600 text-white px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-red-500 transition-all active:scale-95 shadow-lg shadow-red-900/10 flex items-center justify-center gap-2"
+                        >
+                            <XCircle className="w-4 h-4" /> Deactivate Account
+                        </button>
                     </div>
                 </div>
             )}

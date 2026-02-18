@@ -98,6 +98,10 @@ export function AppSidebar({ user, approvalCount = 0, pendingLoanCount = 0 }: { 
                     <NavItem icon={<DashboardIcon className="w-5 h-5" />} label="Dashboard" href="/dashboard" active={pathname === '/dashboard'} />
                 )}
 
+                {canAccess('REPORTS_HUB') && (
+                    <NavItem icon={<ReportsIcon className="w-5 h-5" />} label="Reports Hub" href="/reports" active={pathname === '/reports'} />
+                )}
+
                 {canAccess('APPROVALS') && (
                     <NavItem
                         icon={<UserRightsIcon className="w-5 h-5" />}
@@ -141,10 +145,6 @@ export function AppSidebar({ user, approvalCount = 0, pendingLoanCount = 0 }: { 
 
                         {canAccess('ACCOUNTS') && (
                             <NavItem icon={<FileTextIcon className="w-5 h-5" />} label="Chart of Accounts" href="/accounts" active={pathname === '/accounts'} />
-                        )}
-
-                        {(canAccess('ADMIN') || canAccess('ACCOUNTS')) && (
-                            <NavItem icon={<ReportsIcon className="w-5 h-5" />} label="Reports Hub" href="/reports" active={pathname === '/reports'} />
                         )}
 
                         {canAccess('ADMIN') && (

@@ -10,8 +10,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     // Callbacks moved to auth.config.ts for Edge compatibility
     session: {
         strategy: "jwt",
-        maxAge: 300, // 5 minutes
-        updateAge: 60, // Extend session every minute if active
+        maxAge: 86400, // 24 hours
+        updateAge: 3600, // 1 hour
     },
     events: {
         async signIn({ user }) {

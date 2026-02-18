@@ -42,6 +42,7 @@ export default async function MemberProfilePage({ params }: PageProps) {
                     contributionStatus={detail.contributionStatus}
                     loans={detail.loans}
                     nextOfKin={detail.nextOfKin}
+                    unpaidPenalties={detail.unpaidPenalties}
                     currentUserId={session.user.id}
                     currentUserRole={session.user.role}
                     currentUserPermissions={permRes?.permissions}

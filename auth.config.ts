@@ -16,6 +16,7 @@ export const authConfig = {
                 nextUrl.pathname.startsWith('/settings') ||
                 nextUrl.pathname.startsWith('/admin') ||
                 nextUrl.pathname.startsWith('/accounts') ||
+                nextUrl.pathname.startsWith('/reports') ||
                 nextUrl.pathname.startsWith('/wallet');
             const isOnLogin = nextUrl.pathname.startsWith('/login');
 

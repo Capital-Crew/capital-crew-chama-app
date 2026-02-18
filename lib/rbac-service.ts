@@ -31,8 +31,8 @@ export const getPermissionsForRole = unstable_cache(
         return modules.map(mod => {
             const perm = permissions.find(p => p.moduleKey === mod.key);
 
-            // Safety: SYSTEM_ADMIN always has access to ADMIN module
-            if (role === 'SYSTEM_ADMIN' && mod.key === 'ADMIN') {
+            // Safety: SYSTEM_ADMIN always has access to ADMIN and REPORTS_HUB
+            if (role === 'SYSTEM_ADMIN' && (mod.key === 'ADMIN' || mod.key === 'REPORTS_HUB')) {
                 return { ...mod, canAccess: true };
             }
 

@@ -42,7 +42,7 @@ export function MemberProfileView({
     onBack
 }: MemberProfileViewProps) {
     const router = useRouter();
-    const [activeTab, setActiveTab] = useState<'loans' | 'contributions' | 'kin'>('loans');
+    const [activeTab, setActiveTab] = useState<'loans' | 'contributions' | 'kin' | 'fines'>('loans');
 
     // Normalize role for comparison — handles 'SYSTEM ADMIN', 'SYSTEM_ADMIN', 'system_admin' etc.
     const normalizedRole = currentUserRole?.toUpperCase().replace(/\s+/g, '_') || '';
@@ -254,17 +254,16 @@ export function MemberProfileView({
                 >
                     Contributions
                 </button>
-                <button
+                <TabButton
+                    isActive={activeTab === 'kin'}
                     onClick={() => setActiveTab('kin')}
-                    className={cn(
-                        "px-6 py-3 font-bold text-sm transition-all border-b-2",
-                        activeTab === 'kin'
-                            ? "border-cyan-500 text-cyan-600"
-                            : "border-transparent text-slate-400 hover:text-slate-600"
-                    )}
-                >
-                    Next of Kin
-                </button>
+                    label="Next of Kin"
+                />
+                <TabButton
+                    isActive={activeTab === 'fines'}
+                    onClick={() => setActiveTab('fines')}
+                    label="Meeting Fines"
+                />
             </div>
 
 
@@ -316,6 +315,15 @@ export function MemberProfileView({
                                 memberId={member.id}
                             />
                         </div>
+                    </CollapsibleSection>
+
+                    <CollapsibleSection
+                        title="Meeting Fines"
+                        isOpen={activeTab === 'fines'}
+                        onToggle={() => setActiveTab('fines')}
+                        icon={AlertCircle}
+                    >
+                        <ResponsiveFinesList fines={unpaidPenalties} />
                     </CollapsibleSection>
                 </div>
 
@@ -401,6 +409,15 @@ export function MemberProfileView({
                     )}
                     {activeTab === 'kin' && (
                         <NextOfKinManager initialData={nextOfKin} memberId={member.id} />
+                    )}
+
+                    {activeTab === 'fines' && (
+                        <div className="p-6">
+                            <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
+                                <AlertCircle className="w-6 h-6 text-red-500" /> Outstanding Meeting Fines
+                            </h3>
+                            <ResponsiveFinesList fines={unpaidPenalties} />
+                        </div>
                     )}
                 </div>
             </div>
@@ -683,6 +700,66 @@ function ResponsiveContributionsList({ contributions }: { contributions: any[] }
                                 <td className="px-6 py-4 text-slate-600 font-medium">{format(new Date(c.date), 'MMMM d, yyyy')}</td>
                                 <td className="px-6 py-4 text-slate-800 font-bold">{c.description}</td>
                                 <td className="px-6 py-4 text-right text-cyan-700 font-black">{formatCurrency(c.amount)}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    )
+}
+
+function ResponsiveFinesList({ fines }: { fines: any[] }) {
+    if (fines.length === 0) return <EmptyState message="No outstanding meeting fines found." />
+
+    return (
+        <div>
+            {/* Mobile Stack */}
+            <div className="md:hidden space-y-3">
+                {fines.map((f, i) => (
+                    <div key={i} className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm">
+                        <div className="flex justify-between items-start mb-2">
+                            <div>
+                                <p className="font-bold text-slate-800 uppercase text-xs">{f.type || 'Penalty'}</p>
+                                <p className="text-xs text-slate-500 mt-0.5">{f.meetingTitle}</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="font-black text-red-600 text-lg">{formatCurrency(f.amount)}</p>
+                            </div>
+                        </div>
+                        <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-50">
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">
+                                {format(new Date(f.date), 'MMM d, yyyy')}
+                            </p>
+                            {f.description && (
+                                <p className="text-[10px] text-slate-400 italic line-clamp-1 max-w-[150px]">{f.description}</p>
+                            )}
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/* Desktop Table */}
+            <div className="hidden md:block bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                <table className="w-full text-left text-sm">
+                    <thead className="bg-slate-50 border-b border-slate-200">
+                        <tr>
+                            <th className="px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Date</th>
+                            <th className="px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Description</th>
+                            <th className="px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-[10px] text-right">Fine Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {fines.map((f, i) => (
+                            <tr key={i} className="hover:bg-slate-50">
+                                <td className="px-6 py-4 text-slate-600 font-medium">
+                                    {format(new Date(f.date), 'MMMM d, yyyy')}
+                                </td>
+                                <td className="px-6 py-4">
+                                    <div className="font-bold text-slate-800">{f.meetingTitle}</div>
+                                    <div className="text-xs text-slate-500">{f.description || f.type}</div>
+                                </td>
+                                <td className="px-6 py-4 text-right text-red-600 font-black">{formatCurrency(f.amount)}</td>
                             </tr>
                         ))}
                     </tbody>

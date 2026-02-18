@@ -119,6 +119,7 @@ export async function seedChartOfAccounts() {
         { code: '2031', name: 'Unidentified Deposits', type: 'LIABILITY', parent: '2030' },
         // 3010 Deposits
         { code: '3011', name: 'Non-Withdrawable Deposits', type: 'LIABILITY', parent: '3010' },
+        { code: '3012', name: 'Member Withdrawable Wallet', type: 'LIABILITY', parent: '3010' },
         // 3020 Risk Funds
         { code: '3021', name: 'Benevolent / Insurance Fund', type: 'LIABILITY', parent: '3020' },
         // 4010 Interest Income
@@ -149,12 +150,9 @@ export async function seedChartOfAccounts() {
     }
 
     // ── 4. SYSTEM LEGACY ACCOUNTS (backward compatibility) ───────────────────
-    await upsertAccount('2200', 'Member Wallet (Withdrawable)', 'LIABILITY', '3010', 'System Legacy', 'Withdrawable member wallet funds')
-    await upsertAccount('1100', 'Cash On Hand (Main)', 'ASSET', '1010', 'System Legacy', 'Physical cash held by the SACCO')
-    await upsertAccount('4110', 'Interest Income (Legacy)', 'INCOME', '4010', 'System Legacy', 'Legacy interest income mapping')
-    await upsertAccount('4120', 'Fee Income (Legacy)', 'INCOME', '4020', 'System Legacy', 'Legacy fee income mapping')
 
-    const totalAccounts = roots.length + parents.length + children.length + 4 // 4 legacy
+
+    const totalAccounts = roots.length + parents.length + children.length
 
     // Audit log
     await prisma.auditLog.create({

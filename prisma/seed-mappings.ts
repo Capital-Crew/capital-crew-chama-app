@@ -9,20 +9,20 @@ export async function seedLedgerMappings() {
     console.log('🔗 Seeding Ledger Mappings...')
 
     const mappings = [
-        // Legacy Support
-        { type: 'CASH_ON_HAND', accountCode: '1100' },
+        // Base Mappings
+        { type: 'CASH_ON_HAND', accountCode: '1011' }, // Bank Account
         { type: 'RECEIVABLES', accountCode: '1021' }, // Principal Loans to Members
-        { type: 'MEMBER_WALLET', accountCode: '2200' },
+        { type: 'MEMBER_WALLET', accountCode: '3012' }, // Member Withdrawable Wallet
         { type: 'CONTRIBUTIONS', accountCode: '3011' }, // Non-Withdrawable Deposits
         { type: 'INCOME', accountCode: '4011' }, // Interest on Loans
 
         // Event Mappings
-        { type: 'EVENT_CASH_DEPOSIT', accountCode: '1100' }, // Dr Cash
-        { type: 'EVENT_CASH_WITHDRAWAL', accountCode: '1100' }, // Cr Cash
-        { type: 'EVENT_EXPENSE_PAYMENT', accountCode: '1100' }, // Cr Cash
-        { type: 'EVENT_LOAN_DISBURSEMENT', accountCode: '2200' }, // Cr Wallet (Funds added to wallet)
-        { type: 'EVENT_LOAN_REPAYMENT_PRINCIPAL', accountCode: '1021' }, // Principal Loans to Members
-        { type: 'EVENT_SHARE_CONTRIBUTION', accountCode: '3011' }, // Non-Withdrawable Deposits
+        { type: 'EVENT_CASH_DEPOSIT', accountCode: '1011' }, // Dr Bank Account
+        { type: 'EVENT_CASH_WITHDRAWAL', accountCode: '1011' }, // Cr Bank Account
+        { type: 'EVENT_EXPENSE_PAYMENT', accountCode: '1011' }, // Cr Bank Account
+        { type: 'EVENT_LOAN_DISBURSEMENT', accountCode: '3012' }, // Cr Member Withdrawable Wallet
+        { type: 'EVENT_LOAN_REPAYMENT_PRINCIPAL', accountCode: '1021' }, // Cr Principal Loans to Members
+        { type: 'EVENT_SHARE_CONTRIBUTION', accountCode: '3011' }, // Cr Non-Withdrawable Deposits
 
         // Income & Receivable Mappings
         { type: 'INCOME_LOAN_INTEREST', accountCode: '4011' }, // Interest on Loans
@@ -32,8 +32,8 @@ export async function seedLedgerMappings() {
         { type: 'RECEIVABLE_LOAN_PENALTY', accountCode: '1023' }, // Penalty Receivable
 
         { type: 'INCOME_LOAN_PROCESSING_FEE', accountCode: '4021' }, // Processing Fees
-        { type: 'INCOME_GENERAL_FEE', accountCode: '4021' }, // Processing Fees
-        { type: 'RECEIVABLE_LOAN_FEES', accountCode: '1024' } // Fees Receivable
+        { type: 'INCOME_GENERAL_FEE', accountCode: '4021' }, // Processing Fees (general)
+        { type: 'RECEIVABLE_LOAN_FEES', accountCode: '1024' }, // Fees Receivable
     ]
 
     for (const map of mappings) {

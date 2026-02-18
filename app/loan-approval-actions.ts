@@ -736,7 +736,7 @@ async function getAccountId(tx: any, code: string) {
     // Specific names based on known codes
     if (code === '1200') name = 'Loan Portfolio'
     if (code === '2000') name = 'Member Deposits / Wallets'
-    if (code === '2200') name = 'Share Capital'
+    if (code === '3012') name = 'Member Withdrawable Wallet'
     if (code === '4000') name = 'Processing Fee Income'
     if (code === '4200') name = 'Insurance Fee Income'
 
@@ -761,10 +761,10 @@ async function getAccountId(tx: any, code: string) {
 
 function getDefaultCode(type: string) {
     switch (type) {
-        case 'LOAN_PORTFOLIO': return '1200'
-        case 'FEE_INCOME': return '4000'
-        case 'INTEREST_INCOME': return '4100' // Interest Income
-        case 'PENALTY_INCOME': return '4200' // Penalty Income
+        case 'LOAN_PORTFOLIO': return '1021' // Principal Loans to Members
+        case 'FEE_INCOME': return '4021' // Processing Fees
+        case 'INTEREST_INCOME': return '4011' // Interest on Loans
+        case 'PENALTY_INCOME': return '4012' // Interest on Penalties
         default: return '9999'
     }
 }

@@ -239,8 +239,8 @@ export class BalanceChecker {
 
         if (walletBalance < requiredAmount) {
             throw new InsufficientBalanceError(
-                '2200',
-                'Member Wallet',
+                '3012',
+                'Member Withdrawable Wallet',
                 requiredAmount,
                 walletBalance
             )

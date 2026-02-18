@@ -59,12 +59,12 @@ export async function getMemberRealtimeStats(memberId: string): Promise<Serializ
 
     // Parallel fetch for speed
     const [
-        shareCapital, // Now Contributions (1200)
-        walletBalance, // Member Wallet (2200)
+        shareCapital, // Contributions (1200)
+        walletBalance, // Member Withdrawable Wallet (3012)
         loans
     ] = await Promise.all([
         getLedgerBalance('1200'), // Contributions & Loans
-        getLedgerBalance('2200'), // Member Wallet
+        getLedgerBalance('3012'), // Member Withdrawable Wallet
         db.loan.aggregate({
             _sum: {
                 current_balance: true
@@ -97,7 +97,7 @@ export async function getMemberRealtimeStats(memberId: string): Promise<Serializ
         },
         financials: {
             // Individual balances for real-time display
-            memberSavings: walletBalance,           // Member Wallet (2200)
+            memberSavings: walletBalance,           // Member Withdrawable Wallet (3012)
             contributions: shareCapital,             // Share Capital (1200)
             outstandingLoans: cumulativeLoanBalance, // Sum of active loans
 

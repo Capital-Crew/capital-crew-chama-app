@@ -172,7 +172,7 @@ export async function getDetailedMemberStats(memberId: string): Promise<{ stats:
         WalletService.getWalletBalance(memberId), // Savings (Account 2200)
         getAccountBalance(memberId, '1200', 'CREDIT'), // Contributions (Account 1200)
         getAccountBalance(memberId, '2100', 'CREDIT'), // Share Capital
-        getAccountBalance(memberId, '2200', 'CREDIT'), // Normal Shares
+        getAccountBalance(memberId, '3012', 'CREDIT'), // Member Withdrawable Wallet
         getAccountBalance(memberId, '2000', 'CREDIT'), // FOSA Shares
         db.loan.findMany({
             where: {

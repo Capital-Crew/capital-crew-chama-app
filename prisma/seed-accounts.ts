@@ -124,6 +124,7 @@ export async function seedChartOfAccounts() {
 
         // 3010 Deposits
         { code: '3011', name: 'Non-Withdrawable Deposits', type: 'LIABILITY' as const, parent: '3010' },
+        { code: '3012', name: 'Member Withdrawable Wallet', type: 'LIABILITY' as const, parent: '3010' },
 
         // 3020 Risk Funds
         { code: '3021', name: 'Benevolent / Insurance Fund', type: 'LIABILITY' as const, parent: '3020' },
@@ -172,17 +173,6 @@ export async function seedChartOfAccounts() {
     for (const c of children) {
         await upsertAccount(c.code, c.name, c.type, c.parent, 'Active Account')
     }
-
-    // Ensure critical system accounts exist even if not in the list (to prevent crashes)
-    await upsertAccount('2200', 'Member Wallet (Withdrawable)', 'LIABILITY', '3010', 'System Legacy')
-    await upsertAccount('1100', 'Cash On Hand (Main)', 'ASSET', '1010', 'System Legacy')
-    // 1300, 4100 etc might be replaced by the new specific codes.
-    // I previously mapped EVENT_LOAN_DISBURSEMENT to 2200.
-    // I mapped INCOME_LOAN_INTEREST to 4110 (which is now 4011 in this new list).
-    // BIG WARNING: The new list uses 4011, my recent mapping uses 4110.
-    // I should create 4110 aliases OR update mappings. I'll create the aliases for now to be safe.
-    await upsertAccount('4110', 'Interest Income (Legacy)', 'INCOME', '4010', 'System Legacy')
-    await upsertAccount('4120', 'Fee Income (Legacy)', 'INCOME', '4020', 'System Legacy')
 
     console.log('✅ Detailed Chart of Accounts seeded successfully!')
 }

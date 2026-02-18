@@ -456,21 +456,52 @@ export function UserRightsTable({ users: initialUsers }: UserRightsTableProps) {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto p-1">
-                            {permissionDefinitions.map((def) => (
-                                <div key={def.key} className="flex items-start gap-3 p-4 border rounded-xl hover:bg-slate-50 transition-all cursor-pointer" onClick={() => togglePermission(def.key as keyof UserPermissions)}>
-                                    <input
-                                        type="checkbox"
-                                        className="checkbox checkbox-primary mt-1"
-                                        checked={currentPerms[def.key as keyof UserPermissions]}
-                                        readOnly
-                                    />
-                                    <div>
-                                        <h4 className="font-bold text-sm text-slate-700">{def.label}</h4>
-                                        <p className="text-xs text-slate-500 mt-0.5">{def.description}</p>
-                                    </div>
+                        <div className="max-h-[60vh] overflow-y-auto p-1 space-y-6">
+                            {/* System Permissions */}
+                            <div>
+                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                    <Shield className="w-3 h-3" /> System Access
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {permissionDefinitions.filter(d => !d.key.startsWith('canViewReport')).map((def) => (
+                                        <div key={def.key} className="flex items-start gap-3 p-4 border rounded-xl hover:bg-slate-50 transition-all cursor-pointer" onClick={() => togglePermission(def.key as keyof UserPermissions)}>
+                                            <input
+                                                type="checkbox"
+                                                className="checkbox checkbox-primary mt-1"
+                                                checked={currentPerms[def.key as keyof UserPermissions]}
+                                                readOnly
+                                            />
+                                            <div>
+                                                <h4 className="font-bold text-sm text-slate-700">{def.label}</h4>
+                                                <p className="text-xs text-slate-500 mt-0.5">{def.description}</p>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
-                            ))}
+                            </div>
+
+                            {/* Report Permissions */}
+                            <div>
+                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                    <FileTextIcon className="w-3 h-3 text-[#00c2e0]" /> Granular Report Access
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {permissionDefinitions.filter(d => d.key.startsWith('canViewReport')).map((def) => (
+                                        <div key={def.key} className="flex items-start gap-3 p-4 border rounded-xl hover:bg-cyan-50/30 border-slate-200 hover:border-[#00c2e0]/30 transition-all cursor-pointer" onClick={() => togglePermission(def.key as keyof UserPermissions)}>
+                                            <input
+                                                type="checkbox"
+                                                className="checkbox checkbox-primary mt-1"
+                                                checked={currentPerms[def.key as keyof UserPermissions]}
+                                                readOnly
+                                            />
+                                            <div>
+                                                <h4 className="font-bold text-sm text-slate-700">{def.label}</h4>
+                                                <p className="text-xs text-slate-500 mt-0.5">{def.description}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
 
                         {error && <div className="alert alert-error text-sm mt-4"><span>{error}</span></div>}

@@ -30,7 +30,17 @@ const defaultPermissions: UserPermissions = {
     canEnrollMembers: false,
     canApproveMember: false,
     canActivateMember: false,
-    canManageLedger: false
+    canManageLedger: false,
+    canViewReportLoanDisbursement: false,
+    canViewReportActivePortfolio: false,
+    canViewReportPAR: false,
+    canViewReportTrialBalance: false,
+    canViewReportBalanceSheet: false,
+    canViewReportIncomeStatement: false,
+    canViewReportCashFlow: false,
+    canViewReportProductProfitability: false,
+    canViewReportFeeAnalysis: false,
+    canViewReportNetInterestMargin: false
 };
 
 const UpdatePermissionsSchema = z.object({
@@ -48,7 +58,17 @@ const UpdatePermissionsSchema = z.object({
         canEnrollMembers: z.boolean().optional().default(false),
         canApproveMember: z.boolean().optional().default(false),
         canActivateMember: z.boolean().optional().default(false),
-        canManageLedger: z.boolean().optional().default(false)
+        canManageLedger: z.boolean().optional().default(false),
+        canViewReportLoanDisbursement: z.boolean().optional().default(false),
+        canViewReportActivePortfolio: z.boolean().optional().default(false),
+        canViewReportPAR: z.boolean().optional().default(false),
+        canViewReportTrialBalance: z.boolean().optional().default(false),
+        canViewReportBalanceSheet: z.boolean().optional().default(false),
+        canViewReportIncomeStatement: z.boolean().optional().default(false),
+        canViewReportCashFlow: z.boolean().optional().default(false),
+        canViewReportProductProfitability: z.boolean().optional().default(false),
+        canViewReportFeeAnalysis: z.boolean().optional().default(false),
+        canViewReportNetInterestMargin: z.boolean().optional().default(false)
     })
 });
 
@@ -278,7 +298,17 @@ export async function getCurrentUserPermissions() {
                 canEnrollMembers: false,
                 canApproveMember: false,
                 canActivateMember: false,
-                canManageLedger: false
+                canManageLedger: false,
+                canViewReportLoanDisbursement: false,
+                canViewReportActivePortfolio: false,
+                canViewReportPAR: false,
+                canViewReportTrialBalance: false,
+                canViewReportBalanceSheet: false,
+                canViewReportIncomeStatement: false,
+                canViewReportCashFlow: false,
+                canViewReportProductProfitability: false,
+                canViewReportFeeAnalysis: false,
+                canViewReportNetInterestMargin: false
             }
         };
     } catch (error) {

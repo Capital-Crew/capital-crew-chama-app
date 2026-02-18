@@ -89,6 +89,9 @@ export function PreviewModal({ open, onOpenChange, report, data, rawData, filter
                                     <Icon className="w-4.5 h-4.5" />
                                 </div>
                                 <div>
+                                    <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500/70 dark:text-slate-400/50 mb-0.5">
+                                        Capital Crew SHG
+                                    </div>
                                     <DialogTitle className="text-base font-bold text-slate-900 dark:text-white">
                                         {report.title}
                                     </DialogTitle>

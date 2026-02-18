@@ -73,6 +73,7 @@ export function ExportModal({ open, onOpenChange, report, data }: ExportModalPro
                     </style>
                 </head>
                 <body>
+                    <div style="text-transform: uppercase; letter-spacing: 0.1em; font-size: 10px; font-weight: 800; color: #64748b; margin-bottom: 4px;">Capital Crew SHG</div>
                     <h1>${report.title}</h1>
                     <p style="color: #64748b; font-size: 11px; margin-bottom: 16px;">Generated on ${new Date().toLocaleDateString()}</p>
                     <table>

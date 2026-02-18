@@ -69,7 +69,7 @@ const formatType = (type: string) => {
     ).join(' ')
 }
 
-type Tab = 'coa' | 'hierarchy' | 'periods' | 'journal' | 'trial' | 'balanceSheet' | 'ledger' | 'config' | 'expenses' | 'transfers' | 'mpesa'
+type Tab = 'coa' | 'hierarchy' | 'periods' | 'journal' | 'ledger' | 'config' | 'expenses' | 'transfers' | 'mpesa'
 
 
 type MappingWithAccount = {
@@ -176,9 +176,6 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                 const result = await getJournalEntries(query)
                 setJournalEntries(result.entries)
                 setPagination(result.pagination)
-            } else if (activeTab === 'trial') {
-                const tb = await getTrialBalance()
-                setTrialBalance(tb)
             } else if (activeTab === 'config') {
                 const [mappingsData, accountsData] = await Promise.all([
                     getSystemMappings(),
@@ -200,9 +197,6 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
             } else if (activeTab === 'transfers') {
                 const data = await getTransferRequests()
                 setTransfers(data)
-            } else if (activeTab === 'balanceSheet') {
-                const bs = await getBalanceSheetReport()
-                setBalanceSheet(bs)
             } else if (activeTab === 'hierarchy') {
                 const data = await getChartOfAccounts()
                 setChartOfAccounts(data)
@@ -499,8 +493,6 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                         { id: 'periods', label: 'Periods', shortLabel: 'Periods', icon: CalendarIcon },
                         { id: 'transfers', label: 'Transfers', shortLabel: 'Transfers', icon: ArrowLeftRightIcon },
                         { id: 'expenses', label: 'Expenses', shortLabel: 'Exp.', icon: FileTextIcon },
-                        { id: 'trial', label: 'Trial Bal', shortLabel: 'T/B', icon: ScaleIcon },
-                        { id: 'balanceSheet', label: 'Reports', shortLabel: 'Financials', icon: ScaleIcon },
                         ...(userAuth?.role !== 'Member' ? [{ id: 'config', label: 'Settings', shortLabel: 'Conf', icon: Settings }] : [])
                     ].map(tab => (
                         <button
@@ -807,209 +799,6 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                 </div>
             )}
 
-            {/* Trial Balance Tab */}
-            {
-                activeTab === 'trial' && (
-                    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-                        {loading && !trialBalance ? (
-                            <div className="p-12 text-center text-slate-400">Loading Trial Balance...</div>
-                        ) : !trialBalance ? (
-                            <div className="p-12 text-center text-red-500">Failed to load Trial Balance.</div>
-                        ) : (
-                            <>
-                                <div className="p-6 border-b border-slate-200 bg-slate-50">
-                                    <h2 className="text-xl font-black text-slate-900 uppercase">Trial Balance</h2>
-                                    <p className="text-sm text-slate-600">As of {new Date().toLocaleDateString()}</p>
-                                </div>
-
-                                <div className="overflow-x-auto hidden md:block">
-                                    <table className="w-full">
-                                        <thead className="bg-slate-50">
-                                            <tr>
-                                                <th className="px-6 py-4 text-left text-xs font-black uppercase text-slate-600">Code</th>
-                                                <th className="px-6 py-4 text-left text-xs font-black uppercase text-slate-600">Account</th>
-                                                <th className="px-6 py-4 text-right text-xs font-black uppercase text-slate-600">Debit</th>
-                                                <th className="px-6 py-4 text-right text-xs font-black uppercase text-slate-600">Credit</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100">
-                                            {trialBalance.accounts.map((account: any) => (
-                                                <tr key={account.code} className="hover:bg-slate-50">
-                                                    <td className="px-6 py-3 font-mono text-sm font-bold">{account.code}</td>
-                                                    <td className="px-6 py-3 text-sm font-bold text-slate-900">{account.name}</td>
-                                                    <td className="px-6 py-3 text-right font-mono text-sm">
-                                                        {account.debit > 0 && `KES ${account.debit.toLocaleString()}`}
-                                                    </td>
-                                                    <td className="px-6 py-3 text-right font-mono text-sm">
-                                                        {account.credit > 0 && `KES ${account.credit.toLocaleString()}`}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                        <tfoot className="bg-slate-900 text-white font-black">
-                                            <tr>
-                                                <td colSpan={2} className="px-6 py-4 uppercase">Total</td>
-                                                <td className="px-6 py-4 text-right font-mono">KES {trialBalance.totalDebits.toLocaleString()}</td>
-                                                <td className="px-6 py-4 text-right font-mono">KES {trialBalance.totalCredits.toLocaleString()}</td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </div>
-
-                                {/* Mobile Trial Balance View */}
-                                <div className="md:hidden divide-y divide-slate-100">
-                                    {trialBalance.accounts.map((account: any) => (
-                                        <div
-                                            key={account.code}
-                                            className="p-4 bg-white active:bg-slate-50 transition-colors cursor-pointer"
-                                            onClick={() => loadAccountLedger(account.code)}
-                                        >
-                                            <div className="flex justify-between items-start mb-2">
-                                                <div>
-                                                    <div className="font-mono text-[10px] font-black text-slate-500">{account.code}</div>
-                                                    <div className="font-bold text-slate-900 text-xs flex items-center gap-1">
-                                                        {account.name}
-                                                        <ArrowRightIcon className="w-3 h-3 text-slate-300" />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-4 mt-2 bg-slate-50 rounded-lg p-2">
-                                                <div>
-                                                    <div className="text-[10px] uppercase font-black text-slate-500 mb-1">Debit</div>
-                                                    <div className="font-mono text-xs font-bold text-slate-900">
-                                                        {account.debit > 0 ? `KES ${account.debit.toLocaleString()}` : '-'}
-                                                    </div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <div className="text-[10px] uppercase font-black text-slate-500 mb-1">Credit</div>
-                                                    <div className="font-mono text-xs font-bold text-slate-900">
-                                                        {account.credit > 0 ? `KES ${account.credit.toLocaleString()}` : '-'}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    <div className="p-4 bg-slate-900 text-white">
-                                        <div className="flex justify-between items-center text-sm font-bold mb-2">
-                                            <span>TOTAL DEBITS</span>
-                                            <span className="font-mono">KES {trialBalance.totalDebits.toLocaleString()}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-sm font-bold">
-                                            <span>TOTAL CREDITS</span>
-                                            <span className="font-mono">KES {trialBalance.totalCredits.toLocaleString()}</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Balance Status */}
-                                <div className={`p-6 border-t border-slate-200 text-center ${trialBalance.isBalanced ? 'bg-green-50' : 'bg-red-50'
-                                    }`}>
-                                    {trialBalance.isBalanced ? (
-                                        <div className="text-green-700 font-bold uppercase">✓ Trial Balance is Balanced</div>
-                                    ) : (
-                                        <div className="text-red-700 font-bold uppercase">
-                                            ✗ Out of Balance by KES {Math.abs(trialBalance.difference).toLocaleString()}
-                                        </div>
-                                    )}
-                                </div>
-                            </>
-                        )}
-                    </div>
-                )
-            }
-
-            {/* Balance Sheet Tab */}
-            {activeTab === 'balanceSheet' && (
-                <div className="space-y-6">
-                    {loading && !balanceSheet ? (
-                        <div className="p-12 text-center text-slate-400">Loading Balance Sheet...</div>
-                    ) : !balanceSheet ? (
-                        <div className="p-12 text-center text-red-500">Failed to load Balance Sheet.</div>
-                    ) : (
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            {/* Assets */}
-                            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                                <div className="p-6 border-b border-slate-100 bg-blue-50/30">
-                                    <h3 className="text-lg font-black text-blue-900 uppercase tracking-tight">Assets</h3>
-                                </div>
-                                <div className="p-6 space-y-4">
-                                    <div className="flex justify-between items-center py-2 border-b border-slate-50">
-                                        <span className="text-slate-600 font-medium">Gross Loan Portfolio</span>
-                                        <span className="font-mono font-bold text-slate-900">KES {Number(balanceSheet.assets.grossLoanPortfolio).toLocaleString()}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center py-2 border-b border-slate-50">
-                                        <span className="text-slate-600 font-medium italic">Less: Loan Loss Provisions</span>
-                                        <span className="font-mono font-bold text-red-600">({Number(balanceSheet.assets.loanLossProvisions).toLocaleString()})</span>
-                                    </div>
-                                    <div className="flex justify-between items-center py-2 bg-slate-50 px-3 rounded-lg">
-                                        <span className="text-slate-900 font-bold">Net Loan Portfolio</span>
-                                        <span className="font-mono font-black text-slate-900">KES {Number(balanceSheet.assets.netLoanPortfolio).toLocaleString()}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center py-2 border-b border-slate-50">
-                                        <span className="text-slate-600 font-medium">Cash & Bank</span>
-                                        <span className="font-mono font-bold text-slate-900">KES {Number(balanceSheet.assets.cashAndBank).toLocaleString()}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center pt-6">
-                                        <span className="text-lg font-black text-slate-900 uppercase">Total Assets</span>
-                                        <span className="text-lg font-mono font-black text-blue-600 underline decoration-2 underline-offset-4">
-                                            KES {Number(balanceSheet.assets.totalAssets).toLocaleString()}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="space-y-8">
-                                {/* Liabilities */}
-                                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                                    <div className="p-6 border-b border-slate-100 bg-red-50/30">
-                                        <h3 className="text-lg font-black text-red-900 uppercase tracking-tight">Liabilities</h3>
-                                    </div>
-                                    <div className="p-6 space-y-4">
-                                        <div className="flex justify-between items-center py-2 border-b border-slate-50">
-                                            <span className="text-slate-600 font-medium">Member Savings / Shares</span>
-                                            <span className="font-mono font-bold text-slate-900">KES {Number(balanceSheet.liabilities.memberSavings).toLocaleString()}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center pt-6">
-                                            <span className="font-black text-slate-900 uppercase">Total Liabilities</span>
-                                            <span className="font-mono font-black text-red-600">KES {Number(balanceSheet.liabilities.totalLiabilities).toLocaleString()}</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Equity */}
-                                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                                    <div className="p-6 border-b border-slate-100 bg-purple-50/30">
-                                        <h3 className="text-lg font-black text-purple-900 uppercase tracking-tight">Equity</h3>
-                                    </div>
-                                    <div className="p-6 space-y-4">
-                                        <div className="flex justify-between items-center py-2 border-b border-slate-50">
-                                            <span className="text-slate-600 font-medium">Retained Earnings</span>
-                                            <span className="font-mono font-bold text-slate-900">KES {Number(balanceSheet.equity.retainedEarnings).toLocaleString()}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center py-2 border-b border-slate-50">
-                                            <span className="text-slate-600 font-medium text-green-700">Current Year Profit (P&L)</span>
-                                            <span className="font-mono font-bold text-green-600">KES {Number(balanceSheet.equity.currentYearProfit).toLocaleString()}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center pt-6">
-                                            <span className="font-black text-slate-900 uppercase">Total Equity</span>
-                                            <span className="font-mono font-black text-purple-600">KES {Number(balanceSheet.equity.totalEquity).toLocaleString()}</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Equivalence Check */}
-                                <div className="flex justify-between items-center p-4 bg-slate-900 rounded-2xl text-white shadow-xl shadow-slate-200">
-                                    <span className="text-xs font-black uppercase tracking-widest text-slate-400">Total Liab + Equity</span>
-                                    <span className="text-xl font-mono font-black">
-                                        KES {(Number(balanceSheet.liabilities.totalLiabilities) + Number(balanceSheet.equity.totalEquity)).toLocaleString()}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            )
-            }
 
             {/* Expenses Tab */}
             {

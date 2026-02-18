@@ -126,7 +126,6 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
         { id: 'adjustments', label: 'Loan Adjustments', icon: Scale },
         { id: 'sacco', label: 'SACCO Settings', icon: Settings },
         { id: 'welfare', label: 'Welfare', icon: HeartHandshake },
-        { id: 'ledger', label: 'Ledger Management', icon: BookOpen },
         { id: 'notifications', label: 'Notifications', icon: Mail },
         { id: 'rights', label: 'User Rights', icon: Shield }
     ];
@@ -579,33 +578,6 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
                 </div>
             )}
 
-            {/* Ledger Management Tab - Redirect to Unified Accounts */}
-            {activeTab === 'ledger' && (
-                <div className="space-y-6">
-                    <div>
-                        <h2 className="text-2xl font-bold text-slate-900">General Ledger & COA</h2>
-                        <p className="text-slate-600 mt-1">This module has been consolidated into the central Accounts system.</p>
-                    </div>
-
-                    <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center shadow-sm">
-                        <div className="w-20 h-20 bg-cyan-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <BookOpen className="w-10 h-10 text-cyan-500" />
-                        </div>
-                        <h3 className="text-xl font-bold text-slate-900 mb-2">Unified Accounting Interface</h3>
-                        <p className="text-slate-600 max-w-md mx-auto mb-8">
-                            To improve data integrity and consistency, Chart of Accounts, Ledger Management,
-                            and Reporting are now handled in the unified Accounts module.
-                        </p>
-                        <Link
-                            href="/accounts"
-                            className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-indigo-500 text-white px-8 py-4 rounded-xl font-bold shadow-lg shadow-cyan-500/25 hover:shadow-xl transition-all"
-                        >
-                            <ExternalLink className="w-5 h-5" />
-                            Open Unified Accounts
-                        </Link>
-                    </div>
-                </div>
-            )}
 
             {/* Notification Settings Tab */}
             {activeTab === 'notifications' && (

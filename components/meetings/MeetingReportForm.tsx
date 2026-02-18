@@ -2,10 +2,12 @@
 
 import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Calendar, FileText, Upload, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
+import { Calendar as CalendarLucide, FileText, Upload, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { AttendanceGrid, AttendanceEntry, AttendanceStatus } from './AttendanceGrid';
 import { submitMeetingReport } from '@/app/actions/meeting-actions';
+import { DatePickerField } from '@/components/ui/date-picker-field';
+import { format, parse } from 'date-fns';
 
 interface MeetingReportFormProps {
     members: { id: string; name: string; memberNumber: number }[];
@@ -139,15 +141,11 @@ export function MeetingReportForm({ members, settings }: MeetingReportFormProps)
                     </div>
                     <div className="space-y-2">
                         <label className="text-sm font-bold text-slate-700">Meeting Date</label>
-                        <div className="relative">
-                            <input
-                                type="date"
-                                required
-                                className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-cyan-500 focus:ring-4 focus:ring-cyan-50/50 transition-all font-medium uppercase"
-                                value={formData.date}
-                                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                            />
-                        </div>
+                        <DatePickerField
+                            value={formData.date ? parse(formData.date, 'yyyy-MM-dd', new Date()) : undefined}
+                            onChange={(date) => setFormData({ ...formData, date: date ? format(date, 'yyyy-MM-dd') : '' })}
+                            placeholder="Select meeting date"
+                        />
                     </div>
                     <div className="md:col-span-2 space-y-2">
                         <label className="text-sm font-bold text-slate-700">Upload Minutes (PDF)</label>

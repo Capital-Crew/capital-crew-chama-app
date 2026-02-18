@@ -18,10 +18,11 @@ import {
     ChevronRightIcon,
     AlertCircleIcon,
     UserIcon,
-    CalendarIcon
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/lib/toast'
+import { DatePickerField } from '@/components/ui/date-picker-field'
+import { format, parse } from 'date-fns'
 
 export function PortfolioReport() {
     // State
@@ -141,27 +142,21 @@ export function PortfolioReport() {
 
                 {/* Date Start Filter */}
                 <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
-                        <CalendarIcon className="w-3 h-3" /> Start Date
-                    </label>
-                    <input
-                        type="date"
-                        value={filters.startDate}
-                        onChange={(e) => setFilters(prev => ({ ...prev, startDate: e.target.value }))}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-cyan-400 transition-all"
+                    <DatePickerField
+                        label="Start Date"
+                        value={filters.startDate ? parse(filters.startDate, 'yyyy-MM-dd', new Date()) : undefined}
+                        onChange={(date) => setFilters(prev => ({ ...prev, startDate: date ? format(date, 'yyyy-MM-dd') : '' }))}
+                        labelClassName="text-[10px] font-black uppercase tracking-widest text-slate-400"
                     />
                 </div>
 
                 {/* Date End Filter */}
                 <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
-                        <CalendarIcon className="w-3 h-3" /> End Date
-                    </label>
-                    <input
-                        type="date"
-                        value={filters.endDate}
-                        onChange={(e) => setFilters(prev => ({ ...prev, endDate: e.target.value }))}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-cyan-400 transition-all"
+                    <DatePickerField
+                        label="End Date"
+                        value={filters.endDate ? parse(filters.endDate, 'yyyy-MM-dd', new Date()) : undefined}
+                        onChange={(date) => setFilters(prev => ({ ...prev, endDate: date ? format(date, 'yyyy-MM-dd') : '' }))}
+                        labelClassName="text-[10px] font-black uppercase tracking-widest text-slate-400"
                     />
                 </div>
 

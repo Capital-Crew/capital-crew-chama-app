@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { openAccountingPeriodAction } from '@/app/actions/accounting-period-actions';
 import { toast } from 'sonner';
-import { X, Calendar, Save, AlertCircle } from 'lucide-react';
+import { X, Calendar as CalendarLucide, Save, AlertCircle } from 'lucide-react';
+import { DatePickerField } from '@/components/ui/date-picker-field';
+import { format, parse } from 'date-fns';
 
 const periodSchema = z.object({
     startDate: z.string().min(1, "Start date is required"),
@@ -27,7 +29,7 @@ interface PeriodFormProps {
 export function PeriodForm({ onClose, onSuccess }: PeriodFormProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const { register, handleSubmit, formState: { errors } } = useForm<PeriodFormData>({
+    const { control, handleSubmit, formState: { errors } } = useForm<PeriodFormData>({
         resolver: zodResolver(periodSchema),
         defaultValues: {
             startDate: new Date().toISOString().split('T')[0],
@@ -59,7 +61,7 @@ export function PeriodForm({ onClose, onSuccess }: PeriodFormProps) {
             <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
                 <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4 flex justify-between items-center text-white">
                     <h2 className="font-black text-xl tracking-tight flex items-center gap-2">
-                        <Calendar className="w-5 h-5" />
+                        <CalendarLucide className="w-5 h-5" />
                         Open Accounting Period
                     </h2>
                     <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-lg transition-colors">
@@ -71,20 +73,32 @@ export function PeriodForm({ onClose, onSuccess }: PeriodFormProps) {
                     <div className="space-y-4">
                         <div className="form-control w-full">
                             <label className="label font-bold text-slate-700">Start Date</label>
-                            <input
-                                type="date"
-                                {...register('startDate')}
-                                className={`input input-bordered w-full rounded-xl ${errors.startDate ? 'input-error' : ''}`}
+                            <Controller
+                                name="startDate"
+                                control={control}
+                                render={({ field }) => (
+                                    <DatePickerField
+                                        value={field.value ? parse(field.value, 'yyyy-MM-dd', new Date()) : undefined}
+                                        onChange={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')}
+                                        placeholder="Select start date"
+                                    />
+                                )}
                             />
                             {errors.startDate && <span className="text-xs text-rose-500 mt-1 font-bold">{errors.startDate.message}</span>}
                         </div>
 
                         <div className="form-control w-full">
                             <label className="label font-bold text-slate-700">End Date</label>
-                            <input
-                                type="date"
-                                {...register('endDate')}
-                                className={`input input-bordered w-full rounded-xl ${errors.endDate ? 'input-error' : ''}`}
+                            <Controller
+                                name="endDate"
+                                control={control}
+                                render={({ field }) => (
+                                    <DatePickerField
+                                        value={field.value ? parse(field.value, 'yyyy-MM-dd', new Date()) : undefined}
+                                        onChange={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')}
+                                        placeholder="Select end date"
+                                    />
+                                )}
                             />
                             {errors.endDate && <span className="text-xs text-rose-500 mt-1 font-bold">{errors.endDate.message}</span>}
                         </div>

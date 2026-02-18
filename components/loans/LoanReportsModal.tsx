@@ -3,12 +3,14 @@
 import React, { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { CalendarIcon, TrendingUpIcon, LandmarkIcon, LayersIcon } from 'lucide-react'
+import { TrendingUpIcon, LandmarkIcon, LayersIcon } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import { getOperationalMetricsReport } from '@/app/actions/loan'
 import { toast } from '@/lib/toast'
 import { PortfolioReport } from './PortfolioReport'
 import { FileTextIcon, BarChart3Icon } from 'lucide-react'
+import { DatePickerField } from '@/components/ui/date-picker-field'
+import { format } from 'date-fns'
 
 interface LoanReportsModalProps {
     isOpen: boolean
@@ -20,14 +22,16 @@ export function LoanReportsModal({ isOpen, onClose }: LoanReportsModalProps) {
     const [loading, setLoading] = useState(false)
     const [metrics, setMetrics] = useState<any>(null)
     const [dateRange, setDateRange] = useState({
-        startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-        endDate: new Date().toISOString().split('T')[0]
+        startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1) as Date | undefined,
+        endDate: new Date() as Date | undefined
     })
 
     const loadMetrics = async () => {
         setLoading(true)
         try {
-            const data = await getOperationalMetricsReport(dateRange.startDate, dateRange.endDate)
+            const start = dateRange.startDate ? format(dateRange.startDate, 'yyyy-MM-dd') : ''
+            const end = dateRange.endDate ? format(dateRange.endDate, 'yyyy-MM-dd') : ''
+            const data = await getOperationalMetricsReport(start, end)
             setMetrics(data)
         } catch (error: any) {
             toast.error("Error", "Failed to load operational metrics")
@@ -82,21 +86,19 @@ export function LoanReportsModal({ isOpen, onClose }: LoanReportsModalProps) {
                             {/* Filters */}
                             <div className="flex flex-wrap gap-4 items-end bg-slate-50 p-6 rounded-2xl border border-slate-100">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Start Date</label>
-                                    <input
-                                        type="date"
+                                    <DatePickerField
+                                        label="Start Date"
                                         value={dateRange.startDate}
-                                        onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
-                                        className="block w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                                        onChange={(date) => setDateRange(prev => ({ ...prev, startDate: date }))}
+                                        labelClassName="text-[10px] font-black uppercase tracking-widest text-slate-400"
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">End Date</label>
-                                    <input
-                                        type="date"
+                                    <DatePickerField
+                                        label="End Date"
                                         value={dateRange.endDate}
-                                        onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
-                                        className="block w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all"
+                                        onChange={(date) => setDateRange(prev => ({ ...prev, endDate: date }))}
+                                        labelClassName="text-[10px] font-black uppercase tracking-widest text-slate-400"
                                     />
                                 </div>
                                 <Button

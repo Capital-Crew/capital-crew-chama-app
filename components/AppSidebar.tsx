@@ -7,7 +7,7 @@ import { HeartHandshake, Activity } from 'lucide-react';
 
 import {
     DashboardIcon, MembersIcon, LoansIcon,
-    AuditLogIcon, SettingsIcon, UserRightsIcon, IncomeIcon as WalletIcon, FileTextIcon
+    AuditLogIcon, SettingsIcon, UserRightsIcon, IncomeIcon as WalletIcon, FileTextIcon, ReportsIcon
 } from './icons';
 import { useModuleAccess } from '@/hooks/useModuleAccess';
 
@@ -141,6 +141,10 @@ export function AppSidebar({ user, approvalCount = 0, pendingLoanCount = 0 }: { 
 
                         {canAccess('ACCOUNTS') && (
                             <NavItem icon={<FileTextIcon className="w-5 h-5" />} label="Chart of Accounts" href="/accounts" active={pathname === '/accounts'} />
+                        )}
+
+                        {(canAccess('ADMIN') || canAccess('ACCOUNTS')) && (
+                            <NavItem icon={<ReportsIcon className="w-5 h-5" />} label="Reports Hub" href="/reports" active={pathname === '/reports'} />
                         )}
 
                         {canAccess('ADMIN') && (

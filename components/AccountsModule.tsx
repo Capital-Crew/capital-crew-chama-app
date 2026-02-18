@@ -15,7 +15,7 @@ import {
     rejectLedgerAction
 } from '@/app/actions/accounting-actions'
 import { getAccountingPeriods, closeAccountingPeriodAction, openAccountingPeriodAction } from '@/app/actions/accounting-period-actions'
-import { FileTextIcon, ListIcon, ScaleIcon, XCircleIcon, SearchIcon, FilterIcon, Settings, RefreshCw, Loader2, Save, ArrowLeftRightIcon, PlusIcon, DollarSign, ArrowRightIcon, ChevronDown, ChevronRight, Layers, Calendar, Shield, Clock, Power, RotateCcw, CheckCircle, History as HistoryIcon } from 'lucide-react'
+import { FileTextIcon, ListIcon, ScaleIcon, XCircleIcon, SearchIcon, FilterIcon, Settings, RefreshCw, Loader2, Save, ArrowLeftRightIcon, PlusIcon, DollarSign, ArrowRightIcon, ChevronDown, ChevronRight, Layers, Calendar as CalendarIcon, Shield, Clock, Power, RotateCcw, CheckCircle, History as HistoryIcon } from 'lucide-react'
 
 import {
     getSystemMappings,
@@ -29,6 +29,8 @@ import { TransferRequestForm } from '@/components/accounting/TransferRequestForm
 import { TransferList } from '@/components/accounting/TransferList'
 import { getCurrentUserPermissions } from '@/app/actions/user-permissions'
 import { getExpenses, getExpenseCategories } from '@/app/actions/expenses'
+import { DatePickerField } from '@/components/ui/date-picker-field'
+import { format, parse } from 'date-fns'
 import { getMembers } from '@/app/actions/get-members'
 import { ExpensesTab } from '@/components/accounting/ExpensesTab'
 import { AccountActionsMenu } from '@/components/accounting/AccountActionsMenu'
@@ -60,6 +62,12 @@ import { toast } from '@/lib/toast'
 import { cn } from '@/lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
 import { fadeIn, scaleIn } from '@/lib/animation-variants'
+
+const formatType = (type: string) => {
+    return type.split('_').map(word =>
+        word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    ).join(' ')
+}
 
 type Tab = 'coa' | 'hierarchy' | 'periods' | 'journal' | 'trial' | 'balanceSheet' | 'ledger' | 'config' | 'expenses' | 'transfers' | 'mpesa'
 
@@ -409,7 +417,7 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                             }`}>
                             {ledger.status === 'ACTIVE' ? <CheckCircle className="w-3.5 h-3.5" /> :
                                 ledger.status === 'PENDING' ? <Clock className="w-3.5 h-3.5" /> :
-                                    <XCircle className="w-3.5 h-3.5" />}
+                                    <XCircleIcon className="w-3.5 h-3.5" />}
                             {ledger.status}
                         </div>
                     </td>
@@ -488,7 +496,7 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                         { id: 'coa', label: 'Dashboard', shortLabel: 'D/B', icon: ListIcon },
                         { id: 'hierarchy', label: 'Hierarchy', shortLabel: 'Tree', icon: Layers },
                         { id: 'journal', label: 'Journal', shortLabel: 'Journal', icon: HistoryIcon },
-                        { id: 'periods', label: 'Periods', shortLabel: 'Periods', icon: Calendar },
+                        { id: 'periods', label: 'Periods', shortLabel: 'Periods', icon: CalendarIcon },
                         { id: 'transfers', label: 'Transfers', shortLabel: 'Transfers', icon: ArrowLeftRightIcon },
                         { id: 'expenses', label: 'Expenses', shortLabel: 'Exp.', icon: FileTextIcon },
                         { id: 'trial', label: 'Trial Bal', shortLabel: 'T/B', icon: ScaleIcon },
@@ -577,7 +585,7 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                         <div key={period.id} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow">
                             <div className="flex justify-between items-start mb-4">
                                 <div className="p-3 bg-slate-50 rounded-xl">
-                                    <Calendar className="w-6 h-6 text-cyan-500" />
+                                    <CalendarIcon className="w-6 h-6 text-cyan-500" />
                                 </div>
                                 <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${period.status === 'OPEN' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
                                     }`}>
@@ -641,11 +649,10 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                                 <option value="OPENING_BALANCE">Opening Balance</option>
                                 <option value="MIGRATION">Migration</option>
                             </select>
-                            <input
-                                type="date"
-                                value={filters.startDate}
-                                onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
-                                className="px-3 py-1.5 border border-slate-300 rounded-lg text-xs"
+                            <DatePickerField
+                                value={filters.startDate ? parse(filters.startDate, 'yyyy-MM-dd', new Date()) : undefined}
+                                onChange={(date) => setFilters({ ...filters, startDate: date ? format(date, 'yyyy-MM-dd') : '' })}
+                                placeholder="Filter by date"
                             />
                             <button
                                 onClick={loadData}

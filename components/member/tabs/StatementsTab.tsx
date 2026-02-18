@@ -1,4 +1,8 @@
+'use client'
+
+import { useState } from 'react'
 import { format } from 'date-fns'
+import { DatePickerField } from '@/components/ui/date-picker-field'
 
 interface LedgerEntry {
     id: string
@@ -10,6 +14,9 @@ interface LedgerEntry {
 }
 
 export default function StatementsTab({ ledger }: { ledger: LedgerEntry[] }) {
+    const [startDate, setStartDate] = useState<Date | undefined>(undefined)
+    const [endDate, setEndDate] = useState<Date | undefined>(undefined)
+
     return (
         <div className="space-y-6">
             {/* Filter Toolbar */}
@@ -17,9 +24,9 @@ export default function StatementsTab({ ledger }: { ledger: LedgerEntry[] }) {
                 <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Date Range</label>
                     <div className="flex items-center space-x-2">
-                        <input type="date" className="bg-white border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none" />
+                        <DatePickerField value={startDate} onChange={setStartDate} placeholder="Start" />
                         <span className="text-slate-400">-</span>
-                        <input type="date" className="bg-white border border-slate-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none" />
+                        <DatePickerField value={endDate} onChange={setEndDate} placeholder="End" />
                     </div>
                 </div>
                 <div>

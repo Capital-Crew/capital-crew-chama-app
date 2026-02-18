@@ -24,6 +24,17 @@ interface UserPermissions {
     canApproveMember: boolean
     canActivateMember: boolean
     canManageLedger: boolean
+    // Granular Report Permissions
+    canViewReportLoanDisbursement: boolean
+    canViewReportActivePortfolio: boolean
+    canViewReportPAR: boolean
+    canViewReportTrialBalance: boolean
+    canViewReportBalanceSheet: boolean
+    canViewReportIncomeStatement: boolean
+    canViewReportCashFlow: boolean
+    canViewReportProductProfitability: boolean
+    canViewReportFeeAnalysis: boolean
+    canViewReportNetInterestMargin: boolean
 }
 
 // Default permissions object
@@ -40,7 +51,17 @@ const defaultPermissions: UserPermissions = {
     canEnrollMembers: false,
     canApproveMember: false,
     canActivateMember: false,
-    canManageLedger: false
+    canManageLedger: false,
+    canViewReportLoanDisbursement: false,
+    canViewReportActivePortfolio: false,
+    canViewReportPAR: false,
+    canViewReportTrialBalance: false,
+    canViewReportBalanceSheet: false,
+    canViewReportIncomeStatement: false,
+    canViewReportCashFlow: false,
+    canViewReportProductProfitability: false,
+    canViewReportFeeAnalysis: false,
+    canViewReportNetInterestMargin: false,
 };
 
 interface User {
@@ -103,7 +124,18 @@ export function UserRightsTable({ users: initialUsers }: UserRightsTableProps) {
         { key: 'canEnrollMembers', label: 'Enroll Members', description: 'Register new members and create their wallets' },
         { key: 'canApproveMember', label: 'Approve Members', description: 'Approve pending members after enrollment' },
         { key: 'canActivateMember', label: 'Activate Members', description: 'Activate approved members to start using the system' },
-        { key: 'canManageLedger', label: 'Manage General Ledger', description: 'Configure hierarchical COA, approve ledgers, and open/close accounting periods' }
+        { key: 'canManageLedger', label: 'General Ledger', description: 'Configure hierarchical COA and accounting periods' },
+        // Granular Reports
+        { key: 'canViewReportLoanDisbursement', label: 'Report: Loan Disbursement', description: 'Access to Loan Disbursement analytical report' },
+        { key: 'canViewReportActivePortfolio', label: 'Report: Active Portfolio', description: 'Access to Active Loan Portfolio report' },
+        { key: 'canViewReportPAR', label: 'Report: PAR / Delinquency', description: 'Access to Delinquency & PAR analytical report' },
+        { key: 'canViewReportTrialBalance', label: 'Report: Trial Balance', description: 'Access to Trial Balance financial report' },
+        { key: 'canViewReportBalanceSheet', label: 'Report: Balance Sheet', description: 'Access to Balance Sheet financial report' },
+        { key: 'canViewReportIncomeStatement', label: 'Report: Income Statement', description: 'Access to Income Statement financial report' },
+        { key: 'canViewReportCashFlow', label: 'Report: Cash Flow', description: 'Access to Cash Flow financial report' },
+        { key: 'canViewReportProductProfitability', label: 'Report: Profitability', description: 'Access to Product Profitability report' },
+        { key: 'canViewReportFeeAnalysis', label: 'Report: Fee Analysis', description: 'Access to Fee Analysis analytical report' },
+        { key: 'canViewReportNetInterestMargin', label: 'Report: Interest Margin', description: 'Access to Net Interest Margin report' }
     ];
 
     // Filter Logic

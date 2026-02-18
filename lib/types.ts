@@ -95,6 +95,18 @@ export interface UserPermissions {
     canApproveMember: boolean;
     canActivateMember: boolean;
     canManageLedger: boolean; // Added for Ledger Management
+
+    // Granular Report Permissions
+    canViewReportLoanDisbursement: boolean;
+    canViewReportActivePortfolio: boolean;
+    canViewReportPAR: boolean;
+    canViewReportTrialBalance: boolean;
+    canViewReportBalanceSheet: boolean;
+    canViewReportIncomeStatement: boolean;
+    canViewReportCashFlow: boolean;
+    canViewReportProductProfitability: boolean;
+    canViewReportFeeAnalysis: boolean;
+    canViewReportNetInterestMargin: boolean;
 }
 
 // Extended Models

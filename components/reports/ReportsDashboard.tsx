@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
-import { format } from 'date-fns'
+import { useSession } from 'next-auth/react'
 import {
     REPORTS,
     CATEGORY_LABELS,
@@ -26,6 +25,21 @@ import {
 import { FilterModal } from './filter-modal'
 import { PreviewModal } from './preview-modal'
 import { ExportModal } from './export-modal'
+import { UserPermissions } from '@/lib/types'
+
+// ── Permission Mapping ──
+const PERMISSION_MAP: Record<string, keyof UserPermissions> = {
+    'loan-disbursement': 'canViewReportLoanDisbursement',
+    'active-loan-portfolio': 'canViewReportActivePortfolio',
+    'delinquency-par': 'canViewReportPAR',
+    'trial-balance': 'canViewReportTrialBalance',
+    'balance-sheet': 'canViewReportBalanceSheet',
+    'income-statement': 'canViewReportIncomeStatement',
+    'cash-flow': 'canViewReportCashFlow',
+    'product-profitability': 'canViewReportProductProfitability',
+    'fee-analysis': 'canViewReportFeeAnalysis',
+    'net-interest-margin': 'canViewReportNetInterestMargin',
+}
 
 // ── Action dispatcher ──
 async function fetchReport(report: Report, filters: FilterOptions) {
@@ -85,6 +99,9 @@ function normalizeRows(data: any, report: Report): any[] {
 }
 
 export function ReportsDashboard() {
+    const { data: session } = useSession()
+    const userPermissions = (session?.user as any)?.permissions as UserPermissions | undefined
+
     const [selectedReport, setSelectedReport] = useState<Report | null>(null)
     const [showFilterModal, setShowFilterModal] = useState(false)
     const [showPreviewModal, setShowPreviewModal] = useState(false)
@@ -127,11 +144,26 @@ export function ReportsDashboard() {
         setShowExportModal(true)
     }, [])
 
+    // Filter reports based on permissions
+    const filteredReports = REPORTS.filter(report => {
+        if (!userPermissions) return false
+
+        // Admin override
+        if ((session?.user as any)?.role === 'SYSTEM_ADMIN' || userPermissions.canViewAll) {
+            return true
+        }
+
+        const permKey = PERMISSION_MAP[report.id]
+        if (!permKey) return true // Default to show if no granular key defined
+
+        return userPermissions[permKey] === true
+    })
+
     const grouped = CATEGORY_ORDER.map(cat => ({
         category: cat,
         label: CATEGORY_LABELS[cat],
-        reports: REPORTS.filter(r => r.category === cat),
-    }))
+        reports: filteredReports.filter(r => r.category === cat),
+    })).filter(group => group.reports.length > 0)
 
     return (
         <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950">

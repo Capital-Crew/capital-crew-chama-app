@@ -14,6 +14,7 @@ async function main() {
         { key: 'WALLET', name: 'Wallet', description: 'View and manage wallet transactions.' },
         { key: 'WELFARE', name: 'Welfare', description: 'Manage welfare fund contributions and claims.' },
         { key: 'ACCOUNTS', name: 'Chart of Accounts', description: 'Manage financial accounts and ledgers.' },
+        { key: 'REPORTS_HUB', name: 'Reports Hub', description: 'Access to financial insights and analytical reports.' },
         { key: 'ADMIN', name: 'System Admin', description: 'Configure system settings and roles.' },
         { key: 'AUDIT', name: 'Audit Trail', description: 'View system audit logs.' },
     ]
@@ -37,7 +38,7 @@ async function main() {
     // Seed Permissions
     const officerRoles = ['CHAIRPERSON', 'TREASURER', 'SECRETARY']
     // Granting ADMIN access to officers as well for "All Access" request
-    const officerModules = ['DASHBOARD', 'APPROVALS', 'MEMBERS', 'LOANS', 'WALLET', 'WELFARE', 'ACCOUNTS', 'AUDIT', 'ADMIN']
+    const officerModules = ['DASHBOARD', 'APPROVALS', 'MEMBERS', 'LOANS', 'WALLET', 'WELFARE', 'ACCOUNTS', 'AUDIT', 'ADMIN', 'REPORTS_HUB']
 
     for (const role of officerRoles) {
         console.log(`\n👮 Seeding permissions for ${role}...`)
@@ -63,7 +64,7 @@ async function main() {
     // Seed MEMBER Permissions (Temporary Full Access)
     console.log(`\n👤 Seeding permissions for MEMBER (FULL ACCESS)...`)
     // Granting all modules to MEMBER as requested
-    const memberModules = ['DASHBOARD', 'APPROVALS', 'MEMBERS', 'LOANS', 'WALLET', 'WELFARE', 'ACCOUNTS', 'ADMIN', 'AUDIT']
+    const memberModules = ['DASHBOARD', 'APPROVALS', 'MEMBERS', 'LOANS', 'WALLET', 'WELFARE', 'ACCOUNTS', 'ADMIN', 'AUDIT', 'REPORTS_HUB']
     for (const moduleKey of memberModules) {
         await prisma.rolePermission.upsert({
             where: {

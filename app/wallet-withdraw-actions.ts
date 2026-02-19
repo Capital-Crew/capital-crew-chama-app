@@ -65,12 +65,19 @@ export async function withdrawFunds(input: {
         // 0a. Resolve Wallet (Atomic)
         const wallet = await WalletService.createWallet(input.memberId, tx)
 
-        // 0b. Re-Check Balance (Atomic Lock / Fresh Read)
-        // Since getMemberWalletBalance traverses journal lines, it sees the current state in this TX context.
-        // For true pessimistic locking we'd need SELECT ... FOR UPDATE, but typically 'REPEATABLE READ' isolation (default in some) suffices,
-        // or effectively short gap reduces risk. For high concurrency, use CoreLedger.getAccountBalanceLocked if available.
-        // Given existing structure, a fresh read is a good improvement.
-        const currentBalance = await getMemberWalletBalance(input.memberId, tx)
+        // 0b. Re-Check Balance with Pessimistic Locking (SELECT FOR UPDATE)
+        // This ensures no other transaction can spend this same balance until we commit.
+        const [lockedAccount] = await tx.$queryRaw<{ balance: any }[]>`
+            SELECT "balance" FROM "LedgerAccount"
+            WHERE "id" = ${wallet.glAccountId}
+            FOR UPDATE
+        `
+
+        if (!lockedAccount) {
+            throw new Error('Ledger Account not found during withdrawal lock.')
+        }
+
+        const currentBalance = Number(lockedAccount.balance)
 
         if (input.amount > currentBalance) {
             throw new Error(

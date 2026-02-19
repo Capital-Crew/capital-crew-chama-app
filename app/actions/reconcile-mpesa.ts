@@ -102,13 +102,13 @@ export async function assignTransactionToMember(transactionId: string, memberId:
             externalReferenceId: transaction.mpesaReceiptNumber || transaction.checkoutRequestId,
             lines: [
                 {
-                    accountId: assetAccountMap.account.id,
+                    accountId: assetAccountMap.account.id, // Dr Cash/Bank Asset
                     debitAmount: Number(transaction.amount),
                     creditAmount: 0,
                     description: `Cash Deposit (Reconciled)`
                 },
                 {
-                    accountId: liabilityAccountMap.account.id, // Use the GL Account ID
+                    accountId: wallet.glAccountId, // Cr Specific Member Wallet Liability
                     debitAmount: 0,
                     creditAmount: Number(transaction.amount),
                     description: `Credit to Wallet (${member.memberNumber})`

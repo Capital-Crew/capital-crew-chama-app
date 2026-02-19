@@ -274,6 +274,11 @@ export class AccountingEngine {
             throw new Error(`Account ${accountCode} not found`)
         }
 
+        // OPTIMIZATION: Use cached balance if no filters are applied
+        if (!referenceId && !asOfDate) {
+            return toNumber(account.balance)
+        }
+
         const lines = await client.ledgerEntry.findMany({
             where: {
                 ledgerAccountId: account.id,
@@ -346,7 +351,10 @@ export class AccountingEngine {
     /**
      * Generate sequential entry number
      */
-
+    private static async generateEntryNumber(tx: DbClient): Promise<string> {
+        const count = await tx.ledgerTransaction.count()
+        return `JE-${(count + 1).toString().padStart(6, '0')}`
+    }
 }
 
 // Helper to get system mapping code
@@ -363,7 +371,7 @@ async function getSystemCode(type: SystemAccountType, tx?: DbClient): Promise<st
 
         // If no mapping found, throw error to force user configuration
         throw new Error(`System accounting mapping not configured for ${type}. Please configure in Accounts → Ledger Config.`)
-    } catch (error) {
+    } catch (error: any) {
         // Re-throw to surface configuration issues
         if (error instanceof Error && error.message.includes('not configured')) {
             throw error
@@ -542,7 +550,7 @@ export async function getLoanPenaltyBalance(loanId: string, tx?: DbClient): Prom
         // Penalties are Assets (Receivables)
         // Debit increases (Accrual), Credit decreases (Payment)
         return await AccountingEngine.getAccountBalance(penaltyCode, loanId, undefined, tx)
-    } catch (e) {
+    } catch (e: any) {
         // If no mapping, assume not tracking penalties on ledger separately yet
         return 0
     }
@@ -556,7 +564,7 @@ export async function getLoanFeeBalance(loanId: string, tx?: DbClient): Promise<
         const feeCode = await getSystemCode('RECEIVABLE_LOAN_FEES' as SystemAccountType, tx)
         // Fees are Assets (Receivables)
         return await AccountingEngine.getAccountBalance(feeCode, loanId, undefined, tx)
-    } catch (e) {
+    } catch (e: any) {
         // If no mapping, return 0 (or fallback to legacy behavior if strictly needed, but we want to migrate)
         return 0
     }
@@ -605,10 +613,14 @@ export const AccountingService = {
         }
 
         // 3. Query Mappings
+        if (!loan.loanProductId) {
+            throw new Error(`Loan ${loanId} is not linked to a product. Cannot resolve accounting mappings.`)
+        }
+
         const mappings = await tx.productAccountingMapping.findMany({
             where: {
                 productId: loan.loanProductId,
-                accountType: { in: [debitType, creditType] }
+                accountType: { in: [debitType, creditType] } as any
             },
             include: { account: true }
         })
@@ -617,14 +629,14 @@ export const AccountingService = {
         const creditMap = mappings.find(m => m.accountType === creditType)
 
         // 4. Validate Configuration
-        if (!debitMap) {
-            throw new Error(`Accounting configuration missing for Product ${loan.loanProduct.name}: No ${debitType} account mapped.`)
+        if (!debitMap || !debitMap.account) {
+            throw new Error(`Accounting configuration missing for Product ${loan.loanProduct?.name || 'Unknown'}: No ${debitType} account mapped.`)
         }
-        if (!creditMap) {
-            throw new Error(`Accounting configuration missing for Product ${loan.loanProduct.name}: No ${creditType} account mapped.`)
+        if (!creditMap || !creditMap.account) {
+            throw new Error(`Accounting configuration missing for Product ${loan.loanProduct?.name || 'Unknown'}: No ${creditType} account mapped.`)
         }
 
-        console.log(`posting ${eventType} for ${amount}. DR: ${debitMap.account.name} | CR: ${creditMap.account.name}`)
+        console.log(`posting ${eventType} for ${amount}. DR: ${(debitMap as any).account.name} | CR: ${(creditMap as any).account.name}`)
 
         // 5. Post Journal Entry
         return await AccountingEngine.postJournalEntry({
@@ -636,13 +648,13 @@ export const AccountingService = {
             createdByName: 'System',
             lines: [
                 {
-                    accountCode: debitMap.account.code,
+                    accountCode: (debitMap as any).account.code,
                     debitAmount: amount,
                     creditAmount: 0,
                     description: `${eventType} Receivable`
                 },
                 {
-                    accountCode: creditMap.account.code,
+                    accountCode: (creditMap as any).account.code,
                     debitAmount: 0,
                     creditAmount: amount,
                     description: `${eventType} Income`

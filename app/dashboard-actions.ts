@@ -41,9 +41,10 @@ export async function getDashboardStats(): Promise<Serialized<any>> {
         allLoans,
         contributionsAgg,
         contributorStats,
-        loanLedgerEntries
+        loanPortfolioAgg,
+        topLoansHeuristic
     ] = await Promise.all([
-        // A. All Loans (for historical totals and member mapping)
+        // A. All Loans (for historical totals)
         prisma.loan.findMany({
             select: {
                 id: true,
@@ -53,15 +54,10 @@ export async function getDashboardStats(): Promise<Serialized<any>> {
             }
         }),
 
-        // B. Total Contributions (Sum of all Member Balances)
-        // Account 1200 / 3000 (Member Fund) - LIABILITY/EQUITY -> Credit is positive
+        // B. Total Contributions (Account 1200 / 3000 mapping)
         prisma.ledgerEntry.aggregate({
             where: {
                 ledgerAccount: { code: contributionAccountCode },
-                ledgerTransaction: {
-                    referenceType: 'SHARE_CONTRIBUTION',
-                    referenceId: { in: memberIds }
-                }
             },
             _sum: { debitAmount: true, creditAmount: true }
         }),
@@ -75,39 +71,28 @@ export async function getDashboardStats(): Promise<Serialized<any>> {
             },
             _sum: { totalAmount: true },
             orderBy: {
-                _sum: { totalAmount: 'desc' }
+                _sum: { totalAmount: 'desc' },
             },
             take: 5
         }),
 
-        // D. BULK FETCH: Ledger Entries for ALL Loans
-        // We fetch all ASSET entries related to loans to calculate outstanding balances
-        // This replaces the N+1 loop calls to `getLoanPrincipalBalance` etc.
-        prisma.ledgerEntry.findMany({
+        // D. Outstanding Loans (Using Cached Balances for speed)
+        prisma.ledgerAccount.aggregate({
             where: {
-                ledgerAccount: { type: 'ASSET' },
-                ledgerTransaction: {
-                    // Filter for known loan transaction types to reduce noise
-                    /* referenceType: {
-                        in: [
-                            'LOAN_DISBURSEMENT',
-                            'LOAN_REPAYMENT',
-                            'LOAN_INTEREST_ACCRUAL',
-                            'LOAN_PENALTY_ACCRUAL',
-                            'LOAN_FEE_CHARGE',
-                            'REVERSAL'
-                        ]
-                    } */
-                }
+                systemMappings: { some: { type: 'LOAN_PORTFOLIO' } }
             },
+            _sum: { balance: true }
+        }),
+
+        // E. Top Borrowers Heuristic
+        prisma.loan.findMany({
+            where: { status: { in: ['ACTIVE', 'OVERDUE'] } },
+            orderBy: { outstandingBalance: 'desc' },
+            take: 10,
             select: {
-                debitAmount: true,
-                creditAmount: true,
-                ledgerTransaction: {
-                    select: {
-                        referenceId: true // This matches loan.id
-                    }
-                }
+                memberId: true,
+                outstandingBalance: true,
+                member: { select: { name: true } }
             }
         })
     ])
@@ -115,56 +100,22 @@ export async function getDashboardStats(): Promise<Serialized<any>> {
     // --- AGGREGATION & CALCULATIONS ---
 
     // 1. Total Contributions
-    // Credit Normal: Credits - Debits
     const totalContributions = Number(contributionsAgg._sum.creditAmount || 0) - Number(contributionsAgg._sum.debitAmount || 0)
 
     // 2. Total Loans Issued (Historical)
-    // Sum of amounts of valid loans
     const totalLoansIssued = allLoans
         .filter((l: any) => ['ACTIVE', 'OVERDUE', 'CLEARED'].includes(l.status))
         .reduce((sum: number, l: any) => sum + Number(l.amount), 0)
 
-    // 3. Calculate Real-Time Outstanding Balances from Ledger Entries
-    // Map: LoanID -> Balance
-    const loanBalances = new Map<string, number>()
+    const outstandingLoans = Number((loanPortfolioAgg as any)._sum.balance || 0)
 
-    loanLedgerEntries.forEach((entry: any) => {
-        const loanId = entry.ledgerTransaction.referenceId
-        const debit = Number(entry.debitAmount)
-        const credit = Number(entry.creditAmount)
-        // Asset: Debit increases (+), Credit decreases (-)
-        const net = debit - credit
-
-        const current = loanBalances.get(loanId) || 0
-        loanBalances.set(loanId, current + net)
-    })
-
-    // Filter for Active Loans (Status checks) + Positive Balance
-    // Note: We trust the ledger for the balance, but use status for filtering logic if needed.
-    // Strictly speaking, "Outstanding Loans" should be the sum of all positive loan asset balances.
-
-    let outstandingLoans = 0
+    // 4. Top Borrowers (Aggregated from Heuristic)
     const memberLoanTotals = new Map<string, number>()
-
-    // Iterate over All Loans to link Ledger Balance to Member
-    allLoans.forEach((loan: any) => {
-        if (['ACTIVE', 'OVERDUE'].includes(loan.status)) {
-            const balance = loanBalances.get(loan.id) || 0
-
-            // Only count if balance is > 0 (floating point safety)
-            if (balance > 0.01) {
-                outstandingLoans += balance
-
-                // For Top Borrowers
-                const currentMemberTotal = memberLoanTotals.get(loan.memberId) || 0
-                memberLoanTotals.set(loan.memberId, currentMemberTotal + balance)
-            }
-        }
+    topLoansHeuristic.forEach((loan: any) => {
+        const current = memberLoanTotals.get(loan.memberId) || 0
+        memberLoanTotals.set(loan.memberId, current + Number(loan.outstandingBalance))
     })
 
-    console.log(`[Dashboard] Total Outstanding Loans: ${outstandingLoans.toFixed(2)}`)
-
-    // 4. Top Borrowers
     const topBorrowers = Array.from(memberLoanTotals.entries())
         .map(([memberId, amount]) => ({
             name: memberMap.get(memberId) || 'Unknown Member',

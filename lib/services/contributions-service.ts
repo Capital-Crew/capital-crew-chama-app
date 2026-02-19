@@ -3,6 +3,7 @@ import { AccountingEngine } from "@/lib/accounting/AccountingEngine";
 import { startOfMonth, addMonths, isSameMonth } from "date-fns";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
+import { getSystemMappingsDict } from "@/app/actions/system-accounting";
 
 export class ContributionsService {
     /**
@@ -145,7 +146,7 @@ export class ContributionsService {
                         description: `Transfer to Contributions`
                     },
                     {
-                        accountCode: '1200', // Credit Contributions (Member Fund)
+                        accountCode: (await getSystemMappingsDict()).EVENT_SHARE_CONTRIBUTION || '3011', // Credit Contributions (Member Fund)
                         debitAmount: 0,
                         creditAmount: amount,
                         description: `Share Contribution`

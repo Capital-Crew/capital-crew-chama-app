@@ -371,7 +371,7 @@ export async function disburseWelfare(requisitionId: string) {
         // Using MANUAL_ADJUSTMENT as fallback since WELFARE_DISBURSEMENT enum gen failed
         const journalEntry = await AccountingEngine.postJournalEntry({
             transactionDate: new Date(),
-            referenceType: 'MANUAL_ADJUSTMENT',
+            referenceType: 'WELFARE_DISBURSEMENT',
             referenceId: requisition.id,
             description: `Welfare Disbursement: ${requisition.welfareType.name} - ${requisition.member.name}`,
             lines: [

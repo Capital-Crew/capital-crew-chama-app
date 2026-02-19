@@ -7,6 +7,7 @@ import {
     addLoanRepayment,
     getActiveLoansByMember
 } from '@/app/wallet-add-funds-actions'
+import { useSearchParams } from 'next/navigation'
 import {
     withdrawFunds,
     getWithdrawableBalance
@@ -42,7 +43,20 @@ interface ActiveLoan {
 }
 
 export function WalletOperations({ memberId, userRole, onTransactionComplete }: { memberId: string; userRole?: string; onTransactionComplete?: () => void }) {
-    const [activeMainTab, setActiveMainTab] = useState<MainTab>('deposits')
+    const searchParams = useSearchParams()
+    const initialTab = (searchParams.get('tab') as MainTab) || 'deposits'
+    const initialSubTab = searchParams.get('subtab') || 'mpesa'
+
+    const [activeMainTab, setActiveMainTab] = useState<MainTab>(initialTab)
+    const [activeSubTab, setActiveSubTab] = useState(initialSubTab)
+
+    // Sync state if search params change
+    useEffect(() => {
+        const tab = searchParams.get('tab') as MainTab
+        const subtab = searchParams.get('subtab')
+        if (tab) setActiveMainTab(tab)
+        if (subtab) setActiveSubTab(subtab)
+    }, [searchParams])
 
     // Shared State
     const [loading, setLoading] = useState(false)
@@ -318,7 +332,7 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
                 {/* CONTENT: Deposits */}
                 {activeMainTab === 'deposits' && (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
-                        <Tabs defaultValue="mpesa" className="w-full">
+                        <Tabs value={activeSubTab} onValueChange={setActiveSubTab} className="w-full">
                             <TabsList className="w-full flex overflow-x-auto md:grid md:grid-cols-3 mb-6 gap-2 md:gap-0 p-1 md:p-1 bg-slate-100/50 md:bg-slate-100 rounded-xl md:rounded-lg scrollbar-none">
                                 <TabsTrigger value="mpesa" className="flex-1 min-w-[120px] md:min-w-0 data-[state=active]:bg-green-100 data-[state=active]:text-green-800 data-[state=active]:shadow-sm">
                                     <SmartphoneIcon className="w-4 h-4 mr-2" /> M-Pesa

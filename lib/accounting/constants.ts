@@ -38,4 +38,5 @@ export const DEFAULT_MAPPINGS: Record<SystemAccountType, string> = {
     INCOME_GENERAL_FEE: '4021', // Processing Fees (general)
     INCOME_REFINANCE_FEE: '4021', // Processing Fees (refinance)
     RECEIVABLE_LOAN_FEES: '1024', // Fees Receivable
+    EVENT_MEETING_FINES: '4012', // Interest on Penalties
 }

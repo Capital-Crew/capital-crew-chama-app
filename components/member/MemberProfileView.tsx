@@ -231,29 +231,17 @@ export function MemberProfileView({
             )}
 
             {/* Desktop Tab Navigation */}
-            <div className="hidden md:flex px-8 gap-4 border-b border-slate-100">
-                <button
+            <div className="hidden md:flex items-center border-b border-slate-100 bg-white sticky top-0 z-10 px-8">
+                <TabButton
+                    isActive={activeTab === 'loans'}
                     onClick={() => setActiveTab('loans')}
-                    className={cn(
-                        "px-6 py-3 font-bold text-sm transition-all border-b-2",
-                        activeTab === 'loans'
-                            ? "border-cyan-500 text-cyan-600"
-                            : "border-transparent text-slate-400 hover:text-slate-600"
-                    )}
-                >
-                    Loans History
-                </button>
-                <button
+                    label="Loans History"
+                />
+                <TabButton
+                    isActive={activeTab === 'contributions'}
                     onClick={() => setActiveTab('contributions')}
-                    className={cn(
-                        "px-6 py-3 font-bold text-sm transition-all border-b-2",
-                        activeTab === 'contributions'
-                            ? "border-cyan-500 text-cyan-600"
-                            : "border-transparent text-slate-400 hover:text-slate-600"
-                    )}
-                >
-                    Contributions
-                </button>
+                    label="Contributions"
+                />
                 <TabButton
                     isActive={activeTab === 'kin'}
                     onClick={() => setActiveTab('kin')}
@@ -323,7 +311,18 @@ export function MemberProfileView({
                         onToggle={() => setActiveTab('fines')}
                         icon={AlertCircle}
                     >
-                        <ResponsiveFinesList fines={unpaidPenalties} />
+                        <div className="flex flex-col gap-4">
+                            <ResponsiveFinesList fines={unpaidPenalties} />
+                            {unpaidPenalties && unpaidPenalties.length > 0 && (
+                                <button
+                                    onClick={() => router.push('/wallet?tab=deposits&subtab=penalty')}
+                                    className="w-full py-4 bg-red-600 text-white font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-red-200 flex items-center justify-center gap-2 hover:bg-red-700 transition-all active:scale-95"
+                                >
+                                    <Receipt className="w-5 h-5" />
+                                    Pay Meeting Fines
+                                </button>
+                            )}
+                        </div>
                     </CollapsibleSection>
                 </div>
 
@@ -413,9 +412,20 @@ export function MemberProfileView({
 
                     {activeTab === 'fines' && (
                         <div className="p-6">
-                            <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
-                                <AlertCircle className="w-6 h-6 text-red-500" /> Outstanding Meeting Fines
-                            </h3>
+                            <div className="flex items-center justify-between mb-8">
+                                <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
+                                    <AlertCircle className="w-6 h-6 text-red-500" /> Outstanding Meeting Fines
+                                </h3>
+                                {unpaidPenalties && unpaidPenalties.length > 0 && (
+                                    <button
+                                        onClick={() => router.push('/wallet?tab=deposits&subtab=penalty')}
+                                        className="px-6 py-3 bg-red-600 text-white text-xs font-black uppercase tracking-widest rounded-xl shadow-lg shadow-red-200 flex items-center gap-2 hover:bg-red-700 transition-all active:scale-95"
+                                    >
+                                        <Receipt className="w-4 h-4" />
+                                        Pay Fines
+                                    </button>
+                                )}
+                            </div>
                             <ResponsiveFinesList fines={unpaidPenalties} />
                         </div>
                     )}
@@ -480,7 +490,7 @@ function TabButton({ isActive, onClick, label }: { isActive: boolean; onClick: (
     return (
         <button
             onClick={onClick}
-            className={`pb-4 text-sm font-black transition-all border-b-2 uppercase tracking-wide px-4 ${isActive
+            className={`py-4 text-xs font-black transition-all border-b-2 uppercase tracking-widest px-6 ${isActive
                 ? 'border-cyan-500 text-cyan-600'
                 : 'border-transparent text-slate-400 hover:text-slate-600'
                 }`}

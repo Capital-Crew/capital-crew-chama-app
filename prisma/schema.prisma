@@ -418,6 +418,7 @@ enum ReferenceType {
   EXPENSE_PAYOUT
   BULK_PAYOUT
   PENALTY
+  MEETING_FINES
 }
 
 // Event Sourcing Enums
@@ -1666,6 +1667,7 @@ enum SystemAccountType {
   INCOME_GENERAL_FEE
   INCOME_REFINANCE_FEE
   RECEIVABLE_LOAN_FEES
+  EVENT_MEETING_FINES
 
   // Legacy / Fallbacks (Optional, keeping for safety if code references them)
   CASH_ON_HAND

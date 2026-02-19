@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { AccountingEngine } from '@/lib/accounting/AccountingEngine'
 import { getSaccoSettings } from '../sacco-settings-actions'
 import { Prisma } from '@prisma/client'
+import { getSystemMappingsDict } from './system-accounting'
 
 export async function submitMeetingReport(input: {
     title: string;
@@ -23,11 +24,8 @@ export async function submitMeetingReport(input: {
             return { success: false, error: 'Unauthorized' };
         }
 
-        // 1. Get Settings for penalties and GL account
+        // 1. Get Settings for penalties
         const settings = await getSaccoSettings();
-        if (!settings.meetingFeesGlId) {
-            return { success: false, error: 'Meeting Fees GL Account not configured in Sacco Settings' };
-        }
 
         // 2. Atomic Transaction
         return await db.$transaction(async (tx) => {
@@ -118,9 +116,6 @@ export async function payPenalty(penaltyId: string) {
         }
 
         const settings = await getSaccoSettings();
-        if (!settings.meetingFeesGlId) {
-            return { success: false, error: 'Meeting Fees GL Account not configured' };
-        }
 
         return await db.$transaction(async (tx) => {
             // 1. Fetch Penalty Bill
@@ -153,6 +148,13 @@ export async function payPenalty(penaltyId: string) {
                 throw new Error(`Insufficient wallet balance (Current: KES ${wallet.glAccount.balance.toLocaleString()})`);
             }
 
+            // 3. Resolve Mapping
+            const mappings = await getSystemMappingsDict();
+            const meetingFinesCode = mappings.EVENT_MEETING_FINES;
+            if (!meetingFinesCode) {
+                throw new Error("System Mapping for 'EVENT_MEETING_FINES' is missing. Please configure in Ledger Config.");
+            }
+
             // 3. Post Journal Entry
             await AccountingEngine.postJournalEntry({
                 transactionDate: new Date(),
@@ -169,7 +171,7 @@ export async function payPenalty(penaltyId: string) {
                         description: `Penalty Payment Deduction`
                     },
                     {
-                        accountId: settings.meetingFeesGlId,
+                        accountCode: meetingFinesCode,
                         debitAmount: 0,
                         creditAmount: penaltyAmount,
                         description: `Penalty Payment Revenue`

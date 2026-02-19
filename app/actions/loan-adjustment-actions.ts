@@ -1,6 +1,6 @@
 'use server'
 
-import prisma from "@/lib/prisma"
+import { db as prisma } from "@/lib/db"
 import { auth } from "@/auth"
 import { AdjustmentCategory } from "@/lib/types"
 import { revalidatePath } from "next/cache"

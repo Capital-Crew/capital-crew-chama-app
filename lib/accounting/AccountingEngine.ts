@@ -1,4 +1,4 @@
-import prisma from '@/lib/prisma'
+import { db as prisma } from '@/lib/db'
 import { Decimal } from 'decimal.js'
 import { toDecimal, toNumber } from '../financialMath'
 import { AccountType, ReferenceType, Prisma, SystemAccountType, PrismaClient } from '@prisma/client'

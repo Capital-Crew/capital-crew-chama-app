@@ -1,5 +1,5 @@
 
-import prisma from "@/lib/prisma";
+import { db as prisma } from "@/lib/db";
 
 async function checkMappings() {
     console.log("Checking System Accounting Mappings...");

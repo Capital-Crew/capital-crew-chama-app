@@ -1,5 +1,5 @@
 import { auth } from '@/auth';
-import prisma from '@/lib/prisma';
+import { db as prisma } from '@/lib/db';
 import { getCurrentUserPermissions } from '@/app/actions/user-permissions';
 
 export default async function DebugLedgerPage() {

@@ -1,4 +1,4 @@
-import prisma from '@/lib/prisma'
+import { db as prisma } from '@/lib/db'
 import { AccountingEngine } from '@/lib/accounting/AccountingEngine'
 import { WalletService } from './WalletService'
 import { SystemAccountType, ReferenceType, WalletTransactionType, Prisma } from '@prisma/client'

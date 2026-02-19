@@ -1,7 +1,7 @@
 'use server'
 
 import { auth } from '@/auth'
-import prisma from '@/lib/prisma'
+import { db as prisma } from '@/lib/db'
 import { AccountingEngine } from '@/lib/accounting/AccountingEngine'
 import { TransactionReplayService } from '@/lib/services/TransactionReplayService'
 import { Prisma } from '@prisma/client'

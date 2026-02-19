@@ -1,4 +1,4 @@
-import prisma from '@/lib/prisma'
+import { db as prisma } from '@/lib/db'
 import { getMemberContributionBalance } from '@/lib/accounting/AccountingEngine'
 import { getSaccoSettings } from '@/app/sacco-settings-actions'
 import { processTransactions } from '@/lib/statementProcessor'

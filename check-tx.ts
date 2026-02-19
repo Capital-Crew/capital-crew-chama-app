@@ -1,6 +1,6 @@
 
 
-import prisma from './lib/prisma'
+import { db as prisma } from './lib/db'
 
 async function main() {
     console.log('--- Checking Latest Transaction ---')

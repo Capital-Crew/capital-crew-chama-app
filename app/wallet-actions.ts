@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import prisma from '@/lib/prisma'
+import { db as prisma } from '@/lib/db'
 import { WalletTransactionType, LedgerTransactionType } from '@prisma/client'
 import { z } from 'zod'
 

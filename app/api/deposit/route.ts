@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma"; // (Default export from lib/prisma.ts)
+import { db as prisma } from "@/lib/db"; // (Default export from lib/prisma.ts)
 import { initiateSTKPush } from "@/lib/mpesa";
 
 export async function POST(req: Request) {

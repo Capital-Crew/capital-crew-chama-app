@@ -1,7 +1,7 @@
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import { WalletPageClient } from '@/components/wallet/WalletPageClient'
-import prisma from '@/lib/prisma'
+import { db as prisma } from '@/lib/db'
 
 export default async function WalletPage() {
     const session = await auth()

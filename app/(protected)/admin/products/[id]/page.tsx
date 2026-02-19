@@ -14,7 +14,7 @@ import Link from "next/link"
 import { Edit, ArrowLeft } from "lucide-react"
 import { ProductAccountingForm } from "@/components/products/ProductAccountingForm"
 
-import prisma from "@/lib/prisma"
+import { db as prisma } from "@/lib/db"
 
 export default async function ProductDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const session = await auth()

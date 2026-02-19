@@ -1,6 +1,6 @@
 'use server'
 
-import prisma from '@/lib/prisma'
+import { db as prisma } from '@/lib/db'
 import { auth } from '@/auth'
 import { getSystemMappingsDict } from '@/app/actions/system-accounting'
 import { AccountingEngine } from '@/lib/accounting/AccountingEngine'

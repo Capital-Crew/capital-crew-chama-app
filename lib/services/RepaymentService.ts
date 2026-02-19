@@ -1,4 +1,4 @@
-import prisma from '@/lib/prisma'
+import { db as prisma } from '@/lib/db'
 // import { CoreLedger } from '@/lib/accounting/CoreLedger' // Removed
 // import { WalletService } from './WalletService' // Removed
 // import { LoanTransactionType } from '@prisma/client' // Removed

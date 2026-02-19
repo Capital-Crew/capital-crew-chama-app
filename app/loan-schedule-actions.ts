@@ -1,6 +1,6 @@
 'use server'
 
-import prisma from '@/lib/prisma'
+import { db as prisma } from '@/lib/db'
 import { calculateLoanSchedule, type LoanScheduleResult } from '@/lib/services/loanCalculator'
 
 /**

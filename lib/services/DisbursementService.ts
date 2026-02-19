@@ -1,5 +1,5 @@
 
-import prisma from '@/lib/prisma'
+import { db as prisma } from '@/lib/db'
 import { CoreLedger } from '@/lib/accounting/CoreLedger'
 import { WalletService } from './WalletService'
 import { LoanTransactionType } from '@prisma/client'

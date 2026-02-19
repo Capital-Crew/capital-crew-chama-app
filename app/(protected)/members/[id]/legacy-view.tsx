@@ -1,6 +1,6 @@
 
 import { notFound } from 'next/navigation'
-import prisma from '@/lib/prisma'
+import { db as prisma } from '@/lib/db'
 import { getMemberContributionBalance, getMemberWalletBalance, getLoanFinancials } from '@/lib/accounting/AccountingEngine'
 import { MemberStatsGrid } from '@/components/member/legacy-dashboard/MemberStatsGrid'
 import { ActiveLoansTable } from '@/components/member/legacy-dashboard/ActiveLoansTable'
@@ -51,7 +51,7 @@ export default async function MemberLegacyProfilePage({ params }: PageProps) {
         totalOutstandingBalance += financials.total;
 
         // Fetch current unpaid installment from RepaymentSchedule
-        const currentInstallment = await prisma.repaymentSchedule.findFirst({
+        const currentInstallment = await prisma.repaymentInstallment.findFirst({
             where: {
                 loanId: loan.id,
                 isFullyPaid: false
@@ -69,11 +69,11 @@ export default async function MemberLegacyProfilePage({ params }: PageProps) {
         activeLoans.push({
             id: loan.id,
             loanNumber: loan.loanApplicationNumber,
-            productName: loan.loanProduct.name,
-            approvedAmount: loan.amount,
+            productName: loan.loanProduct?.name || 'N/A',
+            approvedAmount: loan.amount ? Number(loan.amount.toString()) : 0,
 
             // Map to interface
-            expectedAmount: monthlyDue,
+            expectedAmount: monthlyDue ?? 0,
             arrears: 0, // Defaulting to 0 as we only fetched current installment
             nextExpectedDate: currentInstallment?.dueDate ? new Date(currentInstallment.dueDate).toISOString() : null,
             isOverdue: currentInstallment?.dueDate ? new Date(currentInstallment.dueDate) < new Date() : false,

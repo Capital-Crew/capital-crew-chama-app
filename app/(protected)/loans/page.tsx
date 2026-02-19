@@ -1,6 +1,6 @@
 
 import { serializeMember, serializeMembers } from "@/lib/serializers"
-import prisma from "@/lib/prisma"
+import { db as prisma } from "@/lib/db"
 import { LoanManagement } from "@/components/LoanManagement"
 
 import { auth } from "@/auth"

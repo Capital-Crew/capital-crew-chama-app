@@ -221,24 +221,59 @@ export class ReportingService {
             orderBy: { code: 'asc' }
         })
 
-        // 2. Calculate balances as of date
-        const statement = await Promise.all(accounts.map(async (account) => {
-            const balance = await AccountingEngine.getAccountBalance(account.code, undefined, asOfDate)
+        // 2. Fetch Aggregated Debits and Credits by Account ID
+        // Optimized: Single query instead of N (account count) queries
+        const aggregations = await db.ledgerEntry.groupBy({
+            by: ['ledgerAccountId'],
+            _sum: {
+                debitAmount: true,
+                creditAmount: true
+            },
+            where: {
+                ledgerTransaction: {
+                    transactionDate: { lte: asOfDate }
+                }
+            }
+        })
+
+        // Map aggregations for O(1) lookup
+        const aggregationMap = new Map<string, { debit: Decimal, credit: Decimal }>()
+        aggregations.forEach(agg => {
+            aggregationMap.set(agg.ledgerAccountId, {
+                debit: new Decimal(agg._sum.debitAmount?.toString() || '0'),
+                credit: new Decimal(agg._sum.creditAmount?.toString() || '0')
+            })
+        })
+
+        // 3. Calculate balances
+        const statement = accounts.map((account) => {
+            const agg = aggregationMap.get(account.id) || { debit: new Decimal(0), credit: new Decimal(0) }
+
+            let balance = new Decimal(0)
+
+            // Asset/Expense: Debit increases (+), Credit decreases (-)
+            // Liability/Equity/Revenue: Credit increases (+), Debit decreases (-)
+            if (['ASSET', 'EXPENSE'].includes(account.type)) {
+                balance = agg.debit.minus(agg.credit)
+            } else {
+                balance = agg.credit.minus(agg.debit)
+            }
+
             return {
                 id: account.id,
                 code: account.code,
                 name: account.name,
                 type: account.type, // ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE
-                balance
+                balance: balance.toNumber()
             }
-        }))
+        })
 
         // 3. Filter based on statement type
         if (type === 'TRIAL_BALANCE') {
             return {
                 type,
                 asOfDate,
-                accounts: statement.filter(a => a.balance !== 0),
+                accounts: statement.filter(a => a.balance !== 0), // Filter out zero balance accounts? Maybe keep for completeness if requested.
                 totals: {
                     debit: statement.filter(a => ['ASSET', 'EXPENSE'].includes(a.type)).reduce((sum, a) => sum + Math.max(0, a.balance), 0),
                     credit: statement.filter(a => ['LIABILITY', 'EQUITY', 'REVENUE'].includes(a.type)).reduce((sum, a) => sum + Math.max(0, a.balance), 0)

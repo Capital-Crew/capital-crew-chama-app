@@ -1,4 +1,4 @@
-import prisma from "@/lib/prisma"
+import { db as prisma } from "@/lib/db"
 import { SystemAdminModule } from "@/components/SystemAdminModule"
 import { auth } from "@/auth"
 import { getWelfareTypes } from '@/app/welfare-types-actions'

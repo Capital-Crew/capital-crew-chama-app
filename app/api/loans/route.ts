@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { z } from 'zod'
-import prisma from '@/lib/prisma'
+import { db as prisma } from '@/lib/db'
 import { calculateLoanQualification } from '@/app/sacco-settings-actions'
 import { generateLoanApplicationNumber, generateRepaymentSchedule } from '@/lib/utils'
 

@@ -1,4 +1,4 @@
-import prisma from "@/lib/prisma";
+import { db as prisma } from "@/lib/db";
 import { LoanProductWizard } from "@/components/products/LoanProductWizard";
 
 export default async function CreateProductPage() {

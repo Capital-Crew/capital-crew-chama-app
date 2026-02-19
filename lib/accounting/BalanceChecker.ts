@@ -1,5 +1,5 @@
 import { Prisma, PrismaClient } from '@prisma/client'
-import prisma from '@/lib/prisma'
+import { db as prisma } from '@/lib/db'
 import { InsufficientBalanceError, OverdraftPreventionError } from './errors'
 
 type DbClient = Prisma.TransactionClient | PrismaClient

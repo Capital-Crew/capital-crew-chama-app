@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
-import prisma from '@/lib/prisma';
+import { db as prisma } from '@/lib/db';
 import { AccountingEngine } from '@/lib/accounting/AccountingEngine';
 import { getSystemMappingsDict } from '@/app/actions/system-accounting';
 import { WalletService } from '@/lib/services/WalletService';

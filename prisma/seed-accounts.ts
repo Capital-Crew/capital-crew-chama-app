@@ -1,5 +1,5 @@
 
-import prisma from '@/lib/prisma'
+import { db as prisma } from '@/lib/db'
 import { AccountType } from '@prisma/client'
 
 // Helper function to upsert an account

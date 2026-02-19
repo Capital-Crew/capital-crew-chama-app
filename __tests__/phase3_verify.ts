@@ -2,7 +2,7 @@
 import { WalletService } from '../lib/services/WalletService'
 import { DisbursementService } from '../lib/services/DisbursementService'
 import { RepaymentService } from '../lib/services/RepaymentService'
-import prisma from '../lib/prisma'
+import { db as prisma } from '../lib/db'
 import { WalletStatus } from '@prisma/client'
 
 async function main() {

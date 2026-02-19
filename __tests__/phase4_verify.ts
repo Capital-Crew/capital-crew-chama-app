@@ -1,6 +1,6 @@
 
 import { SafetyNet } from '../lib/accounting/SafetyNet'
-import prisma from '../lib/prisma'
+import { db as prisma } from '../lib/db'
 
 async function main() {
     console.log('--- STARTING PHASE 4 VERIFICATION (Safety Net) ---')

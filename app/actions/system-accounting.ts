@@ -1,6 +1,6 @@
 "use server"
 
-import prisma from "@/lib/prisma"
+import { db as prisma } from "@/lib/db"
 import { SystemAccountType } from "@prisma/client"
 import { revalidatePath } from "next/cache"
 import { DEFAULT_MAPPINGS } from "@/lib/accounting/constants"

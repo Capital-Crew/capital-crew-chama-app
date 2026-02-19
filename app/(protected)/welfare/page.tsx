@@ -1,6 +1,6 @@
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
-import prisma from '@/lib/prisma'
+import { db as prisma } from '@/lib/db'
 import { getWelfareTypes } from '@/app/welfare-types-actions'
 import { getWelfareRequisitions } from '@/app/welfare-requisition-actions'
 import { getMembers } from '@/app/actions/get-members'
@@ -42,7 +42,7 @@ export default async function WelfarePage() {
     // Fetch Claims: "All members can see the list of Pending and Approved claims"
     // So we fetch ALL for everyone.
     const historyRes = await getWelfareRequisitions('ALL')
-    const requisitions = historyRes.success ? historyRes.data : []
+    const requisitions = historyRes.success ? (historyRes.data || []) : []
 
     // Fetch Members for Selector (Only needed for Execs)
     let membersList: any[] = []

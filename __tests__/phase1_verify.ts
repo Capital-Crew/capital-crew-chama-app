@@ -1,6 +1,6 @@
 
 import { CoreLedger } from '../lib/accounting/CoreLedger'
-import prisma from '../lib/prisma'
+import { db as prisma } from '../lib/db'
 import { ReferenceType } from '@prisma/client'
 
 async function main() {

@@ -79,7 +79,7 @@ export async function getDashboardStats(): Promise<Serialized<any>> {
         // D. Outstanding Loans (Using Cached Balances for speed)
         prisma.ledgerAccount.aggregate({
             where: {
-                systemMappings: { some: { type: 'LOAN_PORTFOLIO' } }
+                productMappings: { some: { accountType: 'LOAN_PORTFOLIO' } }
             },
             _sum: { balance: true }
         }),

@@ -3,7 +3,7 @@
 import { auth } from "@/auth"
 import { PrismaClient } from "@prisma/client"
 import { randomUUID } from "crypto"
-// import prisma from "@/lib/prisma" // BYPASSING SINGLETON
+// import { db as prisma } from "@/lib/db" // BYPASSING SINGLETON
 import { loanProductWizardSchema, LoanProductWizardValues } from "@/lib/schemas/loan-product-schema"
 import { ProductAccountingType } from "@prisma/client"
 import { revalidatePath } from "next/cache"

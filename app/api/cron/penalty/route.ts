@@ -1,7 +1,7 @@
 
 import { NextResponse } from 'next/server'
 import { PenaltyService } from '@/services/penalty-engine'
-import prisma from '@/lib/prisma'
+import { db as prisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 

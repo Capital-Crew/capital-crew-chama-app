@@ -1,7 +1,7 @@
 'use server'
 
 import { z } from 'zod'
-import prisma from '@/lib/prisma'
+import { db as prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 

@@ -1,6 +1,6 @@
 
 import { AccountingEngine } from './lib/accounting/AccountingEngine';
-import prisma from './lib/prisma';
+import { db as prisma } from '@/lib/db';
 import { ReferenceType } from '@prisma/client';
 
 async function injectCapital() {

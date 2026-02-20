@@ -19,7 +19,7 @@ export const DEFAULT_MAPPINGS: Record<SystemAccountType, string> = {
     RECEIVABLES: '1021', // Principal Loans to Members
     MEMBER_WALLET: '3012', // Member Withdrawable Wallet
     CONTRIBUTIONS: '3011', // Non-Withdrawable Deposits
-    INCOME: '4011', // Interest on Loans (primary income)
+    REVENUE: '4011', // Interest on Loans (primary income)
 
     // Asset / Wallet Events
     EVENT_EXPENSE_PAYMENT: '1011', // Cr Bank Account

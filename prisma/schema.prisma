@@ -372,9 +372,9 @@ enum AccountType {
   ASSET
   LIABILITY
   EQUITY
-  REVENUE  // Replaces INCOME
+  REVENUE
   EXPENSE
-  INCOME   // Deprecated, aliased to REVENUE
+  INCOME
 }
 
 enum LedgerStatus {
@@ -1669,11 +1669,12 @@ enum SystemAccountType {
   RECEIVABLE_LOAN_FEES
   EVENT_MEETING_FINES
 
-  // Legacy / Fallbacks (Optional, keeping for safety if code references them)
+  // Base System Mappings
   CASH_ON_HAND
   RECEIVABLES
   MEMBER_WALLET
   CONTRIBUTIONS
+  REVENUE
   INCOME
 }
 

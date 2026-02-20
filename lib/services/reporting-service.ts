@@ -273,10 +273,25 @@ export class ReportingService {
             return {
                 type,
                 asOfDate,
-                accounts: statement.filter(a => a.balance !== 0), // Filter out zero balance accounts? Maybe keep for completeness if requested.
+                accounts: statement.filter(a => a.balance !== 0).map(a => {
+                    const isDebitSide = ['ASSET', 'EXPENSE'].includes(a.type)
+                    return {
+                        ...a,
+                        debit: isDebitSide ? Math.max(0, a.balance) : (a.balance < 0 ? Math.abs(a.balance) : 0),
+                        credit: !isDebitSide ? Math.max(0, a.balance) : (a.balance < 0 ? Math.abs(a.balance) : 0)
+                    }
+                }),
                 totals: {
-                    debit: statement.filter(a => ['ASSET', 'EXPENSE'].includes(a.type)).reduce((sum, a) => sum + Math.max(0, a.balance), 0),
-                    credit: statement.filter(a => ['LIABILITY', 'EQUITY', 'REVENUE'].includes(a.type)).reduce((sum, a) => sum + Math.max(0, a.balance), 0)
+                    debit: statement.reduce((sum, a) => {
+                        const isDebitSide = ['ASSET', 'EXPENSE'].includes(a.type)
+                        const d = isDebitSide ? Math.max(0, a.balance) : (a.balance < 0 ? Math.abs(a.balance) : 0)
+                        return sum + d
+                    }, 0),
+                    credit: statement.reduce((sum, a) => {
+                        const isDebitSide = ['ASSET', 'EXPENSE'].includes(a.type)
+                        const c = !isDebitSide ? Math.max(0, a.balance) : (a.balance < 0 ? Math.abs(a.balance) : 0)
+                        return sum + c
+                    }, 0)
                 }
             }
         }

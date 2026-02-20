@@ -305,7 +305,7 @@ export class AccountingEngine {
 
         for (const line of lines) {
             // Asset/Expense: Debit increases, Credit decreases
-            // Liability/Equity/Income: Credit increases, Debit decreases
+            // Liability/Equity/Revenue: Credit increases, Debit decreases
             if (['ASSET', 'EXPENSE'].includes(account.type)) {
                 balance = balance.plus(line.debitAmount).minus(line.creditAmount)
             } else {

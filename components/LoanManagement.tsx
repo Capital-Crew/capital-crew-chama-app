@@ -121,11 +121,11 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
             filtered = filtered.filter(l => l.loanProductId === productSearchId);
         }
 
-        // Sort chronologically (earliest to latest) by disbursementDate
+        // Sort by disbursementDate in descending order (most recent first)
         return [...filtered].sort((a, b) => {
             const dateA = a.disbursementDate ? new Date(a.disbursementDate).getTime() : 0;
             const dateB = b.disbursementDate ? new Date(b.disbursementDate).getTime() : 0;
-            return dateA - dateB;
+            return dateB - dateA;
         });
     }, [loans, memberSearchId, productSearchId]);
 

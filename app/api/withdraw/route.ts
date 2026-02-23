@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
 import { WithdrawalService } from "@/lib/services/WithdrawalService";
+import { auth } from "@/auth";
 
 export async function POST(req: Request) {
     try {
+        const session = await auth();
+        if (!session?.user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
         const { userId, amount, phoneNumber } = await req.json();
 
         if (!userId || !amount || !phoneNumber) {
@@ -12,15 +18,21 @@ export async function POST(req: Request) {
             );
         }
 
+        // RBAC: Only admin or the user themselves can initiate withdrawal
+        const isAdmin = ['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER'].includes(session.user.role);
+        if (!isAdmin && session.user.id !== userId) {
+            return NextResponse.json({ error: "Forbidden: You can only withdraw from your own wallet" }, { status: 403 });
+        }
+
+        if (Number(amount) <= 0) {
+            return NextResponse.json({ error: "Amount must be greater than zero" }, { status: 400 });
+        }
+
         // Process Withdrawal
-        // We use a generated reference for now, or could use M-Pesa's if we had async B2C.
         const reference = `WD-${Date.now()}`;
 
         // Call Service
         const transactionId = await WithdrawalService.processWithdrawal(userId, Number(amount), reference);
-
-        // In a real B2C set up, we would initiate the M-Pesa request here.
-        // Since we are "ensuring logic", the Service handling the Ledger/Wallet debit is the key part.
 
         return NextResponse.json({
             success: true,

@@ -270,28 +270,25 @@ export class ReportingService {
 
         // 3. Filter based on statement type
         if (type === 'TRIAL_BALANCE') {
+            const tbRows = statement.filter(a => a.balance !== 0).map(a => {
+                const isDebitSide = ['ASSET', 'EXPENSE'].includes(a.type)
+                return {
+                    ...a,
+                    debit: isDebitSide ? Math.max(0, a.balance) : (a.balance < 0 ? Math.abs(a.balance) : 0),
+                    credit: !isDebitSide ? Math.max(0, a.balance) : (a.balance < 0 ? Math.abs(a.balance) : 0)
+                }
+            })
+
+            const totalDebit = tbRows.reduce((sum, a) => sum.plus(new Decimal(a.debit.toString())), new Decimal(0))
+            const totalCredit = tbRows.reduce((sum, a) => sum.plus(new Decimal(a.credit.toString())), new Decimal(0))
+
             return {
                 type,
                 asOfDate,
-                accounts: statement.filter(a => a.balance !== 0).map(a => {
-                    const isDebitSide = ['ASSET', 'EXPENSE'].includes(a.type)
-                    return {
-                        ...a,
-                        debit: isDebitSide ? Math.max(0, a.balance) : (a.balance < 0 ? Math.abs(a.balance) : 0),
-                        credit: !isDebitSide ? Math.max(0, a.balance) : (a.balance < 0 ? Math.abs(a.balance) : 0)
-                    }
-                }),
+                accounts: tbRows,
                 totals: {
-                    debit: statement.reduce((sum, a) => {
-                        const isDebitSide = ['ASSET', 'EXPENSE'].includes(a.type)
-                        const d = isDebitSide ? Math.max(0, a.balance) : (a.balance < 0 ? Math.abs(a.balance) : 0)
-                        return sum + d
-                    }, 0),
-                    credit: statement.reduce((sum, a) => {
-                        const isDebitSide = ['ASSET', 'EXPENSE'].includes(a.type)
-                        const c = !isDebitSide ? Math.max(0, a.balance) : (a.balance < 0 ? Math.abs(a.balance) : 0)
-                        return sum + c
-                    }, 0)
+                    debit: totalDebit.toNumber(),
+                    credit: totalCredit.toNumber()
                 }
             }
         }
@@ -301,20 +298,36 @@ export class ReportingService {
             const liabilities = statement.filter(a => a.type === 'LIABILITY')
             const equity = statement.filter(a => a.type === 'EQUITY')
 
+            // Calculate Net Income (Profit/Loss) to balance the sheet
+            const revenue = statement.filter(a => a.type === 'REVENUE')
+            const expenses = statement.filter(a => a.type === 'EXPENSE')
+            const totalRevenue = revenue.reduce((sum, a) => sum.plus(new Decimal(a.balance.toString())), new Decimal(0))
+            const totalExpenses = expenses.reduce((sum, a) => sum.plus(new Decimal(a.balance.toString())), new Decimal(0))
+            const netIncome = totalRevenue.minus(totalExpenses)
+
+            // Add Net Income as a virtual line item in Equity
+            equity.push({
+                id: 'NET_INCOME_VIRTUAL',
+                code: 'Earnings',
+                name: 'Current Year Earnings (Net Income)',
+                type: 'EQUITY',
+                balance: netIncome.toNumber()
+            })
+
             return {
                 type,
                 asOfDate,
                 assets: {
                     items: assets,
-                    total: assets.reduce((sum, a) => sum + a.balance, 0)
+                    total: assets.reduce((sum, a) => sum.plus(new Decimal(a.balance.toString())), new Decimal(0)).toNumber()
                 },
                 liabilities: {
                     items: liabilities,
-                    total: liabilities.reduce((sum, a) => sum + a.balance, 0)
+                    total: liabilities.reduce((sum, a) => sum.plus(new Decimal(a.balance.toString())), new Decimal(0)).toNumber()
                 },
                 equity: {
                     items: equity,
-                    total: equity.reduce((sum, a) => sum + a.balance, 0)
+                    total: equity.reduce((sum, a) => sum.plus(new Decimal(a.balance.toString())), new Decimal(0)).toNumber()
                 }
             }
         }
@@ -323,21 +336,21 @@ export class ReportingService {
             const revenue = statement.filter(a => a.type === 'REVENUE')
             const expenses = statement.filter(a => a.type === 'EXPENSE')
 
-            const totalRevenue = revenue.reduce((sum, a) => sum + a.balance, 0)
-            const totalExpenses = expenses.reduce((sum, a) => sum + a.balance, 0)
+            const totalRevenue = revenue.reduce((sum, a) => sum.plus(new Decimal(a.balance.toString())), new Decimal(0))
+            const totalExpenses = expenses.reduce((sum, a) => sum.plus(new Decimal(a.balance.toString())), new Decimal(0))
 
             return {
                 type,
                 asOfDate,
                 revenue: {
                     items: revenue,
-                    total: totalRevenue
+                    total: totalRevenue.toNumber()
                 },
                 expenses: {
                     items: expenses,
-                    total: totalExpenses
+                    total: totalExpenses.toNumber()
                 },
-                netIncome: totalRevenue - totalExpenses
+                netIncome: totalRevenue.minus(totalExpenses).toNumber()
             }
         }
     }

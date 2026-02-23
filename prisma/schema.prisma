@@ -707,7 +707,7 @@ model GuarantorMap {
   guarantorId String
   guarantor   Member @relation(fields: [guarantorId], references: [id])
 
-  amountGuaranteed Float
+  amountGuaranteed Decimal @db.Decimal(15, 2)
 
   createdAt DateTime @default(now())
 

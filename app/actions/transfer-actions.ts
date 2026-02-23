@@ -5,16 +5,14 @@ import { auth } from '@/auth'
 import { revalidatePath } from 'next/cache'
 import { ApprovalStatus, TransferStatus } from '@prisma/client'
 import { AccountingEngine } from '@/lib/accounting/AccountingEngine'
-
-// ========================================
-// CREATE TRANSFER REQUEST
-// ========================================
+import { withIdempotency } from '@/lib/idempotency'
 
 export async function createTransferRequest(data: {
     sourceAccountId: string;
     destinationAccountId: string;
     amount: number;
     description: string;
+    idempotencyKey?: string;
 }) {
     const session = await auth()
 
@@ -32,7 +30,7 @@ export async function createTransferRequest(data: {
         return { error: 'Source and Destination accounts cannot be the same.' }
     }
 
-    try {
+    const businessLogic = async () => {
         const result = await db.$transaction(async (tx) => {
             // Fetch source account to determine its type
             const sourceAccount = await tx.ledgerAccount.findUnique({
@@ -44,10 +42,6 @@ export async function createTransferRequest(data: {
                 throw new Error('Source account not found')
             }
 
-            // SMART TRANSFER LOGIC
-            // Determine which account gets debited and which gets credited
-            // based on the source account's normal balance type
-
             const debitNormalTypes = ['ASSET', 'EXPENSE']
             const isSourceDebitNormal = debitNormalTypes.includes(sourceAccount.type)
 
@@ -55,19 +49,11 @@ export async function createTransferRequest(data: {
             let creditAccountId: string
 
             if (isSourceDebitNormal) {
-                // Source is Asset/Expense (Debit Normal)
-                // To DECREASE it, we CREDIT the source
-                // To INCREASE destination, we DEBIT the destination
                 creditAccountId = data.sourceAccountId
                 debitAccountId = data.destinationAccountId
-                console.log(`[Smart Transfer] ${sourceAccount.code} is Debit-Normal (${sourceAccount.type}). Crediting Source, Debiting Destination.`)
             } else {
-                // Source is Liability/Equity/Income (Credit Normal)
-                // To DECREASE it, we DEBIT the source
-                // To INCREASE destination, we CREDIT the destination
                 debitAccountId = data.sourceAccountId
                 creditAccountId = data.destinationAccountId
-                console.log(`[Smart Transfer] ${sourceAccount.code} is Credit-Normal (${sourceAccount.type}). Debiting Source, Crediting Destination.`)
             }
 
             // 1. Create Request with intelligently assigned debit/credit
@@ -92,13 +78,23 @@ export async function createTransferRequest(data: {
                 }
             })
 
-            return request
+            return { success: true, id: request.id }
         })
 
         revalidatePath('/accounting/transfers')
         revalidatePath('/accounts')
-        return { success: true, id: result.id }
+        return result
+    }
 
+    try {
+        if (data.idempotencyKey) {
+            return await withIdempotency({
+                key: data.idempotencyKey,
+                path: 'createTransferRequest',
+                businessLogic
+            })
+        }
+        return await businessLogic()
     } catch (error: any) {
         console.error('Create Transfer Error:', error)
         return { error: error.message || 'Failed to create transfer request' }

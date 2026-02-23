@@ -2,10 +2,10 @@
 
 import { auth } from '@/auth'
 import { db } from '@/lib/db'
-import { BatchPaymentStatus, AuditLogAction, SystemAccountType } from '@prisma/client'
+import { BatchPaymentStatus, AuditLogAction } from '@prisma/client'
 import { Decimal } from 'decimal.js'
 import { serializeFinancials, Serialized } from "@/lib/safe-serialization"
-import { getSystemMappingsDict } from './system-accounting'
+import { revalidatePath } from 'next/cache'
 
 const prisma = db
 
@@ -17,51 +17,44 @@ export type BulkPayoutItem = {
 /**
  * Process a Bulk Payout (Dividends, Interest, etc.)
  * 
- * Logic:
- * 1. Create BatchPayment record
- * 2. For each member:
- *    - Credit their Wallet (via GL + WalletTransaction + BatchItem)
- *    - Debit the Dividend/Interest Source Account
- * 3. Log results
+ * Performance Optimized: Moves loop outside the primary transaction to prevent
+ * excessive table locking. Each payout is processed in its own atomic transaction.
  */
 export async function processBulkPayout(
     title: string,
     type: 'DIVIDEND' | 'INTEREST' | 'BONUS',
-    sourceAccountId: string, // The Expense/Equity account to Debit (e.g. Dividends Payable)
+    sourceAccountId: string,
     payoutList: BulkPayoutItem[]
 ): Promise<Serialized<any>> {
     const session = await auth()
-    if (!session?.user) throw new Error("Unauthorized")
+    if (!session?.user?.id) throw new Error("Unauthorized")
 
     if (!payoutList.length) return serializeFinancials({ success: false, error: "No payouts to process" })
 
-    // Calculate Grand Total
     const grandTotal = payoutList.reduce((sum, item) => sum + item.amount, 0)
 
     try {
         const { AccountingEngine } = await import('@/lib/accounting/AccountingEngine')
 
-        // We use a high timeout for bulk processing
-        const result = await prisma.$transaction(async (tx) => {
-            // 1. Create Batch Header
-            const batch = await tx.batchPayment.create({
-                data: {
-                    title,
-                    type,
-                    totalAmount: new Decimal(grandTotal),
-                    status: BatchPaymentStatus.PROCESSING,
-                    createdById: session.user.id!
-                }
-            })
+        // 1. Create Batch Header (Initial state)
+        const batch = await prisma.batchPayment.create({
+            data: {
+                title,
+                type,
+                totalAmount: new Decimal(grandTotal),
+                status: BatchPaymentStatus.PROCESSING,
+                createdById: session.user.id
+            }
+        })
 
-            let successCount = 0
-            let failCount = 0
-            const errors: string[] = []
+        let successCount = 0
+        let failCount = 0
+        const errors: string[] = []
 
-            // 2. Process Items
-            for (const item of payoutList) {
-                try {
-                    // Find Member's Wallet
+        // 2. Process Items Individually (Decoupled Transactions)
+        for (const item of payoutList) {
+            try {
+                await prisma.$transaction(async (tx) => {
                     const wallet = await tx.wallet.findUnique({
                         where: { memberId: item.memberId },
                         include: { glAccount: true }
@@ -73,13 +66,11 @@ export async function processBulkPayout(
 
                     const amount = Number(item.amount)
 
-                    // POST JOURNAL ENTRY
-                    // DR Source Account (Equity/Expense)
-                    // CR Member Wallet (Liability)
+                    // POST JOURNAL ENTRY (DR Source, CR Member Wallet)
                     await AccountingEngine.postJournalEntry({
                         transactionDate: new Date(),
-                        referenceType: 'BULK_PAYOUT', // Use newly added enum value
-                        referenceId: batch.id, // Linking all JEs to the Batch ID
+                        referenceType: 'BULK_PAYOUT',
+                        referenceId: batch.id,
                         description: `${type} Payout: ${title} - Member ${item.memberId}`,
                         createdBy: session.user.id!,
                         createdByName: session.user.name || 'Admin',
@@ -99,19 +90,25 @@ export async function processBulkPayout(
                         ]
                     }, tx)
 
-                    // Wallet Transaction (Display only, balance via GL)
+                    // Get Balance After
+                    const updatedWalletGL = await tx.ledgerAccount.findUnique({
+                        where: { id: wallet.glAccountId }
+                    })
+                    const balanceAfter = updatedWalletGL?.balance || 0
+
+                    // Wallet Transaction record
                     const wTx = await tx.walletTransaction.create({
                         data: {
                             walletId: wallet.id,
-                            type: 'DIVIDEND_PAYOUT', // Or make dynamic if needed
+                            type: 'DIVIDEND_PAYOUT',
                             amount: new Decimal(amount),
                             description: `${type}: ${title}`,
-                            balanceAfter: 0, // Placeholder
+                            balanceAfter: balanceAfter,
                             immutable: true
                         }
                     })
 
-                    // Batch Item (Tracking)
+                    // Batch Item Tracking
                     await tx.batchItem.create({
                         data: {
                             batchId: batch.id,
@@ -121,45 +118,44 @@ export async function processBulkPayout(
                             walletTransactionId: wTx.id
                         }
                     })
+                }, { timeout: 10000 })
 
-                    successCount++
+                successCount++
+            } catch (err: any) {
+                failCount++
+                console.error(`Bulk payout item failed for member ${item.memberId}:`, err.message)
+                errors.push(`Member ${item.memberId}: ${err.message}`)
 
-                } catch (err: any) {
-                    failCount++
-                    errors.push(`Member ${item.memberId}: ${err.message}`)
-
-                    // Log failure in BatchItem
-                    await tx.batchItem.create({
-                        data: {
-                            batchId: batch.id,
-                            memberId: item.memberId,
-                            amount: new Decimal(item.amount),
-                            status: 'FAILED',
-                            error: err.message
-                        }
-                    })
-                }
+                // Record Failure (Outside the item transaction if it failed)
+                await prisma.batchItem.create({
+                    data: {
+                        batchId: batch.id,
+                        memberId: item.memberId,
+                        amount: new Decimal(item.amount),
+                        status: 'FAILED',
+                        error: err.message
+                    }
+                })
             }
+        }
 
-            // 3. Complete Batch
-            await tx.batchPayment.update({
-                where: { id: batch.id },
-                data: {
-                    status: (failCount === 0) ? 'COMPLETED' : (successCount > 0 ? 'COMPLETED' : 'FAILED'), // Allow partial completion? For now, yes.
-                    processedAt: new Date(),
-                    description: failCount > 0 ? `Finished with ${failCount} errors: ${errors.slice(0, 3).join(', ')}...` : null
-                }
-            })
+        // 3. Complete Batch Header
+        const finalStatus = (failCount === 0) ? BatchPaymentStatus.COMPLETED : (successCount > 0 ? BatchPaymentStatus.COMPLETED : BatchPaymentStatus.FAILED)
 
-            return { batch, successCount, failCount, errors }
-        }, {
-            timeout: 60000 // 60s timeout for transaction
+        await prisma.batchPayment.update({
+            where: { id: batch.id },
+            data: {
+                status: finalStatus,
+                processedAt: new Date(),
+                description: failCount > 0 ? `Finished with ${failCount} errors. First error: ${errors[0]}` : null
+            }
         })
 
-        return serializeFinancials({ success: true, data: result })
+        revalidatePath('/admin/payouts')
+        return serializeFinancials({ success: true, data: { batchId: batch.id, successCount, failCount, errors } })
 
     } catch (error: any) {
-        console.error("Bulk payout failed:", error)
+        console.error("Bulk payout orchestration failed:", error)
         return serializeFinancials({ success: false, error: error.message })
     }
 }

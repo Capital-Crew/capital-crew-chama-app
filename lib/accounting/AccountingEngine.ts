@@ -18,8 +18,8 @@ Decimal.set({ precision: 20, rounding: Decimal.ROUND_HALF_UP })
 export interface JournalLineInput {
     accountCode?: string
     accountId?: string
-    debitAmount: number
-    creditAmount: number
+    debitAmount: number | Prisma.Decimal
+    creditAmount: number | Prisma.Decimal
     description?: string
 }
 
@@ -337,15 +337,18 @@ export class AccountingEngine {
      * Calculate totals for validation
      */
     private static calculateTotals(lines: JournalLineInput[]) {
-        let totalDebit = 0
-        let totalCredit = 0
+        let totalDebit = new Decimal(0)
+        let totalCredit = new Decimal(0)
 
         for (const line of lines) {
-            totalDebit += line.debitAmount
-            totalCredit += line.creditAmount
+            totalDebit = totalDebit.plus(new Decimal(line.debitAmount.toString()))
+            totalCredit = totalCredit.plus(new Decimal(line.creditAmount.toString()))
         }
 
-        return { totalDebit, totalCredit }
+        return {
+            totalDebit: totalDebit.toNumber(),
+            totalCredit: totalCredit.toNumber()
+        }
     }
 
     /**

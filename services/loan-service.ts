@@ -480,7 +480,7 @@ export class LoanService {
                 }
             })
 
-            // 5. GL Journal Entry
+            // GL Journal Entry Construction (Balanced by Construction)
             const mappings = await getSystemMappingsDict()
             const getAccountId = async (code: string) => {
                 const acc = await tx.ledgerAccount.findUnique({ where: { code } })
@@ -489,30 +489,22 @@ export class LoanService {
 
             const journalLines = []
             let lineIndex = 0
+            let totalDeductionsCredit = new Prisma.Decimal(0)
 
-            // DEBIT: Principal (Asset +)
+            // A. DEBIT: Principal (Source of Truth)
             const loanPortfolioId = await getAccountId(mappings.EVENT_LOAN_DISBURSEMENT!)
             if (loanPortfolioId) {
                 journalLines.push({
                     accountId: loanPortfolioId,
-                    debitAmount: principal, // Use Decimal directly
+                    debitAmount: principal,
                     creditAmount: 0,
                     description: `Principal - ${loan.loanApplicationNumber}`,
                     index: lineIndex++
                 })
             }
 
-            // CREDIT: Net Disbursement (Member Wallet)
-            const memberWalletId = await getAccountId(mappings.MEMBER_WALLET!)
-            if (memberWalletId) {
-                journalLines.push({
-                    accountId: memberWalletId,
-                    debitAmount: 0,
-                    creditAmount: netDisbursement, // Use Decimal directly
-                    description: `Net Disbursement`,
-                    index: lineIndex++
-                })
-            }
+            // B. CREDIT: Accumulate Deductions
+            // ... (Fees will be added below and accumulated into totalDeductionsCredit) ...
 
             // CREDIT: Processing Fees
             const processingIncomeId = await getAccountId(mappings.INCOME_LOAN_PROCESSING_FEE!)
@@ -524,6 +516,7 @@ export class LoanService {
                     description: `Processing Fee`,
                     index: lineIndex++
                 })
+                totalDeductionsCredit = totalDeductionsCredit.plus(loan.processingFee)
             }
 
             // CREDIT: Insurance Fees
@@ -536,6 +529,7 @@ export class LoanService {
                     description: `Insurance Fee`,
                     index: lineIndex++
                 })
+                totalDeductionsCredit = totalDeductionsCredit.plus(loan.insuranceFee)
             }
 
             // CREDIT: Share Capital Deduction
@@ -566,6 +560,7 @@ export class LoanService {
                         description: `Offset Clearance - ${topUp.oldLoanId}`,
                         index: lineIndex++
                     })
+                    totalDeductionsCredit = totalDeductionsCredit.plus(dClearance)
                 }
 
                 // Refinance Fee Income
@@ -577,7 +572,22 @@ export class LoanService {
                         description: `Refinance Fee - ${topUp.oldLoanId}`,
                         index: lineIndex++
                     })
+                    totalDeductionsCredit = totalDeductionsCredit.plus(dRefinanceFee)
                 }
+            }
+
+            // C. DERIVE Net Disbursement (Final Credit line to balance the entry)
+            const dDerivedNetDisbursement = principal.minus(totalDeductionsCredit)
+            const memberWalletId = await getAccountId(mappings.MEMBER_WALLET!)
+
+            if (dDerivedNetDisbursement.gt(0) && memberWalletId) {
+                journalLines.push({
+                    accountId: memberWalletId,
+                    debitAmount: 0,
+                    creditAmount: dDerivedNetDisbursement,
+                    description: `Net Disbursement to Wallet`,
+                    index: lineIndex++
+                })
             }
 
             // Post Journal Entry

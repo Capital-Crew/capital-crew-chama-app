@@ -21,6 +21,8 @@ import { startLoanApplication } from '@/app/actions/loan-application-actions';
 import { useRouter } from 'next/navigation';
 import { BarChart3Icon } from 'lucide-react';
 import { LoanReportsModal } from './loans/LoanReportsModal';
+import { SearchableSelect } from './ui/searchable-select';
+import { FilterIcon, UserIcon, PackageIcon, XIcon, SearchIcon } from 'lucide-react';
 // import { LoansPortfolioSummary } from './loans/LoansPortfolioSummary';
 
 interface LoanManagementProps {
@@ -42,6 +44,10 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
     const [isCreating, setIsCreating] = useState(false);
     const [isReportsModalOpen, setIsReportsModalOpen] = useState(false);
     const [requiredApprovals, setRequiredApprovals] = useState(3);
+
+    // Filters for Disbursed Tab
+    const [memberSearchId, setMemberSearchId] = useState('');
+    const [productSearchId, setProductSearchId] = useState('');
 
     useEffect(() => {
         getSaccoSettings().then(settings => {
@@ -102,9 +108,26 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
         [loans]
     );
 
-    const disbursedLoans = useMemo(() => loans.filter(l =>
-        String(l.status) === 'DISBURSED' || String(l.status) === 'ACTIVE' || String(l.status) === 'CLEARED' || String(l.status) === 'OVERDUE'
-    ), [loans]);
+    const disbursedLoans = useMemo(() => {
+        let filtered = loans.filter(l =>
+            String(l.status) === 'DISBURSED' || String(l.status) === 'ACTIVE' || String(l.status) === 'CLEARED' || String(l.status) === 'OVERDUE'
+        );
+
+        // Apply filters
+        if (memberSearchId) {
+            filtered = filtered.filter(l => l.memberId === memberSearchId);
+        }
+        if (productSearchId) {
+            filtered = filtered.filter(l => l.loanProductId === productSearchId);
+        }
+
+        // Sort chronologically (earliest to latest) by disbursementDate
+        return [...filtered].sort((a, b) => {
+            const dateA = a.disbursementDate ? new Date(a.disbursementDate).getTime() : 0;
+            const dateB = b.disbursementDate ? new Date(b.disbursementDate).getTime() : 0;
+            return dateA - dateB;
+        });
+    }, [loans, memberSearchId, productSearchId]);
 
     const getActiveData = () => {
         switch (activeTab) {
@@ -303,15 +326,61 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
                                 </p>
                             </div>
                             <div className="text-right">
-                                <p className="text-[10px] uppercase font-bold text-slate-400">Date</p>
+                                <p className="text-[10px] uppercase font-bold text-slate-400">
+                                    {activeTab === 'disbursed' ? 'Disbursed Date' : 'Date'}
+                                </p>
                                 <p className="font-bold text-slate-600 text-sm">
-                                    {formatDate(l.applicationDate)}
+                                    {formatDate(activeTab === 'disbursed' ? (l.disbursementDate || l.applicationDate) : l.applicationDate)}
                                 </p>
                             </div>
                         </div>
                     </div>
                 ))}
             </div>
+
+            {/* Filters for Disbursed Tab */}
+            {activeTab === 'disbursed' && (
+                <div className="bg-white border-2 border-slate-100 rounded-3xl p-6 shadow-sm animate-in fade-in slide-in-from-top-4 duration-300">
+                    <div className="flex flex-col md:flex-row gap-6 items-end">
+                        <div className="flex-1 w-full space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2 ml-1">
+                                <UserIcon className="w-3 h-3 text-cyan-500" /> Member Filter
+                            </label>
+                            <SearchableSelect
+                                options={members.map(m => ({ value: m.id, label: m.name }))}
+                                value={memberSearchId}
+                                onChange={setMemberSearchId}
+                                placeholder="Select a member..."
+                            />
+                        </div>
+                        <div className="flex-1 w-full space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2 ml-1">
+                                <PackageIcon className="w-3 h-3 text-blue-500" /> Loan Product Filter
+                            </label>
+                            <select
+                                value={productSearchId}
+                                onChange={(e) => setProductSearchId(e.target.value)}
+                                className="w-full bg-white border-slate-200 rounded-xl px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all shadow-sm h-11 focus:ring-2 focus:ring-cyan-500/20 outline-none"
+                            >
+                                <option value="">All Loan Products</option>
+                                {products.map(p => (
+                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="flex-shrink-0">
+                            {(memberSearchId || productSearchId) && (
+                                <button
+                                    onClick={() => { setMemberSearchId(''); setProductSearchId(''); }}
+                                    className="h-11 px-6 rounded-xl border-2 border-red-50 text-red-500 hover:bg-red-50 transition-all text-xs font-bold flex items-center gap-2"
+                                >
+                                    <XIcon className="w-4 h-4" /> Reset Filters
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Desktop: Table */}
             <div className="hidden md:block bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
@@ -322,7 +391,9 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
                             <th className="px-6 py-4">Member</th>
                             <th className="px-6 py-4">Amount</th>
                             <th className="px-6 py-4">Status</th>
-                            <th className="px-6 py-4 text-right">Date</th>
+                            <th className="px-6 py-4 text-right">
+                                {activeTab === 'disbursed' ? 'Disbursed Date' : 'Application Date'}
+                            </th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -334,7 +405,9 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
                                     {formatCurrency(typeof l.amount === 'object' ? (l.amount as any).toNumber() : Number(l.amount))}
                                 </td>
                                 <td className="px-6 py-4"><LoanStatusBadge status={l.status as any} size="sm" /></td>
-                                <td className="px-6 py-4 text-right text-slate-400">{formatDate(l.applicationDate)}</td>
+                                <td className="px-6 py-4 text-right text-slate-400">
+                                    {formatDate(activeTab === 'disbursed' ? (l.disbursementDate || l.applicationDate) : l.applicationDate)}
+                                </td>
                             </tr>
                         ))}
                     </tbody>

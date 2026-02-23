@@ -242,6 +242,8 @@ export const getNotificationMessage = (type: NotificationType, data: { memberNam
             return `Dear ${memberName}, we regret to inform you that your application ${loan.loanApplicationNumber} has been rejected.`;
         case NotificationType.LOAN_CLEARED:
             return `Congratulations ${memberName}! Your loan ${loan.loanApplicationNumber} has been fully paid.`;
+        case NotificationType.LOAN_DISBURSED:
+            return `Dear ${memberName}, your loan ${loan.loanApplicationNumber} for ${formatCurrency(Number(loan.amount))} has been disbursed to your wallet.`;
         default:
             return `Update regarding your account.`;
     }

@@ -21,9 +21,29 @@ import { LoanService } from '@/services/loan-service'
 export async function disburseLoan(loanId: string) {
     const session = await auth()
 
-    // Strict role check for disbursement (Admins only)
-    if (!session?.user || !['CHAIRPERSON', 'TREASURER', 'SECRETARY', 'SYSTEM_ADMIN'].includes(session.user.role)) {
-        throw new Error("Unauthorized: Only administrators can disburse loans")
+    if (!session?.user) {
+        throw new Error("Unauthorized: Please log in to continue")
+    }
+
+    // 1. Fetch Loan to verify ownership
+    const loan = await prisma.loan.findUnique({
+        where: { id: loanId },
+        select: { memberId: true, loanApplicationNumber: true }
+    })
+
+    if (!loan) {
+        throw new Error("Loan not found")
+    }
+
+    // 2. Authorization Logic:
+    // - Owner (initiator) can disburse their own loan
+    // - System Admin & Chairperson can disburse on behalf of member
+    // - Treasurer/Secretary are excluded from this specific step (strict requirement)
+    const isOwner = session.user.memberId === loan.memberId
+    const isPowerAdmin = ['SYSTEM_ADMIN', 'CHAIRPERSON'].includes(session.user.role)
+
+    if (!isOwner && !isPowerAdmin) {
+        throw new Error("Unauthorized: Only the loan initiator or a senior administrator can disburse this loan")
     }
 
     try {

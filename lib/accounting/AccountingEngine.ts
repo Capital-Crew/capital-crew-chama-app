@@ -324,13 +324,24 @@ export class AccountingEngine {
         let totalCredits = toDecimal(0)
 
         for (const line of lines) {
-            totalDebits = totalDebits.plus(line.debitAmount)
-            totalCredits = totalCredits.plus(line.creditAmount)
+            // Use toString() to handle both number and Prisma.Decimal correctly
+            totalDebits = totalDebits.plus(new Decimal(line.debitAmount.toString()))
+            totalCredits = totalCredits.plus(new Decimal(line.creditAmount.toString()))
         }
 
         // Allow tiny rounding difference (0.01)
         const difference = totalDebits.minus(totalCredits).abs()
-        return difference.lte(0.01)
+        const isBalanced = difference.lte(0.01)
+
+        if (!isBalanced) {
+            console.error('AccountingEngine: Journal Entry Imbalance Detected');
+            console.error('Total Debits:', totalDebits.toString());
+            console.error('Total Credits:', totalCredits.toString());
+            console.error('Difference:', difference.toString());
+            console.log('Lines:', JSON.stringify(lines, null, 2));
+        }
+
+        return isBalanced
     }
 
     /**

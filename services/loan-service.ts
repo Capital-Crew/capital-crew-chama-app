@@ -495,7 +495,7 @@ export class LoanService {
             if (loanPortfolioId) {
                 journalLines.push({
                     accountId: loanPortfolioId,
-                    debitAmount: Number(principal),
+                    debitAmount: principal, // Use Decimal directly
                     creditAmount: 0,
                     description: `Principal - ${loan.loanApplicationNumber}`,
                     index: lineIndex++
@@ -508,7 +508,7 @@ export class LoanService {
                 journalLines.push({
                     accountId: memberWalletId,
                     debitAmount: 0,
-                    creditAmount: Number(netDisbursement),
+                    creditAmount: netDisbursement, // Use Decimal directly
                     description: `Net Disbursement`,
                     index: lineIndex++
                 })
@@ -516,11 +516,11 @@ export class LoanService {
 
             // CREDIT: Processing Fees
             const processingIncomeId = await getAccountId(mappings.INCOME_LOAN_PROCESSING_FEE!)
-            if (Number(loan.processingFee) > 0 && processingIncomeId) {
+            if (loan.processingFee.gt(0) && processingIncomeId) {
                 journalLines.push({
                     accountId: processingIncomeId,
                     debitAmount: 0,
-                    creditAmount: Number(loan.processingFee),
+                    creditAmount: loan.processingFee,
                     description: `Processing Fee`,
                     index: lineIndex++
                 })
@@ -528,11 +528,11 @@ export class LoanService {
 
             // CREDIT: Insurance Fees
             const generalIncomeId = await getAccountId(mappings.INCOME_GENERAL_FEE!)
-            if (Number(loan.insuranceFee) > 0 && generalIncomeId) {
+            if (loan.insuranceFee.gt(0) && generalIncomeId) {
                 journalLines.push({
                     accountId: generalIncomeId,
                     debitAmount: 0,
-                    creditAmount: Number(loan.insuranceFee),
+                    creditAmount: loan.insuranceFee,
                     description: `Insurance Fee`,
                     index: lineIndex++
                 })
@@ -540,11 +540,11 @@ export class LoanService {
 
             // CREDIT: Share Capital Deduction
             const shareCapitalId = await getAccountId(mappings.EVENT_SHARE_CONTRIBUTION!)
-            if (Number(loan.shareCapitalDeduction) > 0 && shareCapitalId) {
+            if (loan.shareCapitalDeduction.gt(0) && shareCapitalId) {
                 journalLines.push({
                     accountId: shareCapitalId,
                     debitAmount: 0,
-                    creditAmount: Number(loan.shareCapitalDeduction),
+                    creditAmount: loan.shareCapitalDeduction,
                     description: `Share Capital Deduction`,
                     index: lineIndex++
                 })
@@ -553,25 +553,27 @@ export class LoanService {
             // CREDIT: Loan Offsets & Refinance Fees
             const refinanceIncomeId = await getAccountId(mappings.INCOME_REFINANCE_FEE!)
             for (const topUp of loan.topUps) {
-                const clearanceAmount = Number(topUp.totalOffset) - Number(topUp.refinanceFee || 0)
+                const dTopUpTotal = new Prisma.Decimal(topUp.totalOffset)
+                const dRefinanceFee = new Prisma.Decimal(topUp.refinanceFee || 0)
+                const dClearance = dTopUpTotal.minus(dRefinanceFee)
 
                 // Debt clearance (Asset reduction)
-                if (clearanceAmount > 0 && loanPortfolioId) {
+                if (dClearance.gt(0) && loanPortfolioId) {
                     journalLines.push({
                         accountId: loanPortfolioId,
                         debitAmount: 0,
-                        creditAmount: clearanceAmount,
+                        creditAmount: dClearance,
                         description: `Offset Clearance - ${topUp.oldLoanId}`,
                         index: lineIndex++
                     })
                 }
 
                 // Refinance Fee Income
-                if (Number(topUp.refinanceFee) > 0 && (refinanceIncomeId || generalIncomeId)) {
+                if (dRefinanceFee.gt(0) && (refinanceIncomeId || generalIncomeId)) {
                     journalLines.push({
                         accountId: refinanceIncomeId || generalIncomeId!,
                         debitAmount: 0,
-                        creditAmount: Number(topUp.refinanceFee),
+                        creditAmount: dRefinanceFee,
                         description: `Refinance Fee - ${topUp.oldLoanId}`,
                         index: lineIndex++
                     })

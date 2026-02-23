@@ -372,132 +372,88 @@ export async function disburseLoanToWallet(loanId: string) {
 
                 AuditContext.track('Loan Validated', { loanId, amount: loan.amount });
 
-                // 1. Calculate Amounts
-                const principal = Number(loan.amount)
+                // 1. Calculate Amounts using Decimal for precision
+                const dPrincipal = new Prisma.Decimal(loan.amount || 0).toDecimalPlaces(2)
+                const dProcessingFee = new Prisma.Decimal(loan.processingFee || 0).toDecimalPlaces(2)
+                const dInsuranceFee = new Prisma.Decimal(loan.insuranceFee || 0).toDecimalPlaces(2)
+                const dShareDeduction = new Prisma.Decimal(loan.shareCapitalDeduction || 0).toDecimalPlaces(2)
 
-                // Deductions
-                const processingFee = Number(loan.processingFee)
-                const insuranceFee = Number(loan.insuranceFee)
-                const shareDeduction = Number(loan.shareCapitalDeduction)
+                // 3. Resolve System Mappings early for use in calculations
+                const mappings = await getSystemMappingsDict()
+                const { DEFAULT_MAPPINGS } = await import('@/lib/accounting/constants')
+                const getCode = (type: SystemAccountType) => mappings[type] || DEFAULT_MAPPINGS[type]
 
-                // Offsets (Top-ups) - Includes Principal + Interest + Penalties + Refinance Fee
-                const totalOffset = loan.topUps.reduce((sum, t) => sum + Number(t.totalOffset), 0)
+                const getAccountId = async (tx: Prisma.TransactionClient, code: string) => {
+                    const acc = await tx.ledgerAccount.findUnique({ where: { code } })
+                    if (!acc) throw new Error(`Account with code ${code} not found. Ensure system accounting is configured.`)
+                    return acc.id
+                }
 
-                // Net
-                const netDisbursement = principal - processingFee - insuranceFee - shareDeduction - totalOffset
+                // Offsets (Top-ups)
+                let dTotalOffsets = new Prisma.Decimal(0)
+                const offsetLines: any[] = []
+                let lineIndex = 0
 
-                if (netDisbursement <= 0) {
+                for (const topUp of loan.topUps) {
+                    const dTopUpTotal = new Prisma.Decimal(topUp.totalOffset).toDecimalPlaces(2)
+                    const dRefinanceFee = new Prisma.Decimal(topUp.refinanceFee || 0).toDecimalPlaces(2)
+                    const dClearance = dTopUpTotal.minus(dRefinanceFee)
+
+                    dTotalOffsets = dTotalOffsets.plus(dTopUpTotal)
+
+                    // Reconstruct lines for Offset
+                    if (dClearance.gt(0)) {
+                        offsetLines.push({
+                            accountId: (await getAccountId(tx, getCode('RECEIVABLES'))),
+                            accountType: 'ASSET',
+                            description: `Offset Clearance - ${topUp.oldLoanNumber}`,
+                            debitAmount: 0,
+                            creditAmount: dClearance,
+                            index: lineIndex++
+                        })
+                    }
+                    if (dRefinanceFee.gt(0)) {
+                        offsetLines.push({
+                            accountId: (await getAccountId(tx, getCode('INCOME_REFINANCE_FEE'))),
+                            accountType: 'INCOME',
+                            description: `Refinance Fee - ${topUp.oldLoanNumber}`,
+                            debitAmount: 0,
+                            creditAmount: dRefinanceFee,
+                            index: lineIndex++
+                        })
+                    }
+                }
+
+                // Calculate Net
+                const dTotalDeductions = dProcessingFee.plus(dInsuranceFee).plus(dShareDeduction).plus(dTotalOffsets)
+                const dNetDisbursement = dPrincipal.minus(dTotalDeductions)
+
+                if (dNetDisbursement.lt(0)) {
                     throw new Error(
-                        `Cannot disburse loan: Net disbursement is ${netDisbursement < 0 ? 'negative' : 'zero'} (KES ${netDisbursement.toFixed(2)}). ` +
-                        `Principal: ${principal}, Fees: ${processingFee + insuranceFee}, Share Deduction: ${shareDeduction}, Offsets: ${totalOffset}. ` +
+                        `Cannot disburse loan: Net disbursement is negative (KES ${dNetDisbursement.toFixed(2)}). ` +
+                        `Principal: ${dPrincipal.toFixed(2)}, Deductions: ${dTotalDeductions.toFixed(2)}. ` +
                         `Please adjust the loan amount or deductions.`
                     )
                 }
 
                 AuditContext.track('Amounts Calculated', {
-                    principal,
-                    processingFee,
-                    insuranceFee,
-                    shareDeduction,
-                    totalOffset,
-                    netDisbursement
+                    principal: dPrincipal.toNumber(),
+                    netDisbursement: dNetDisbursement.toNumber(),
+                    totalDeductions: dTotalDeductions.toNumber()
                 });
 
-                // 2. Resolve Member Wallet (Unique Liability Account)
-                // This ensures every member has a distinct Ledger Account for their wallet
-                // If wallet doesn't exist, it creates one (Code: WAL-XXXXXX)
+                // 2. Resolve Member Wallet
                 const memberWallet = await WalletService.createWallet(loan.memberId, tx)
                 const memberWalletAccountId = memberWallet.glAccountId
 
-                // 3. Perform Accounting (General Ledger) via AccountingEngine
-                // Fetch dynamic mappings
-                const mappings = await getSystemMappingsDict()
-                const { DEFAULT_MAPPINGS } = await import('@/lib/accounting/constants') // Allow fallback
-
+                // 3. Perform Accounting
                 const fundingAccountCode = mappings['EVENT_LOAN_DISBURSEMENT'] || DEFAULT_MAPPINGS['EVENT_LOAN_DISBURSEMENT']
 
                 if (!fundingAccountCode) {
                     throw new Error("System Mapping for 'EVENT_LOAN_DISBURSEMENT' is missing.")
                 }
 
-                const getCode = (type: SystemAccountType) => mappings[type] || DEFAULT_MAPPINGS[type]
-
-                // OVERDRAFT PROTECTION: Check if Funding Source (Loan Disbursement Account) has sufficient balance
-                const { BalanceChecker } = await import('@/lib/accounting/BalanceChecker')
-                // const disbursementAccountBalance = await BalanceChecker.getAccountBalance(fundingAccountCode, tx)
-
-                // REMOVED: The Loan Portfolio (1100/1200) receives the DEBIT (Asset Increase).
-                // Checking if it has "sufficient funds" implies it's a Source (Credit), which is incorrect.
-                // Since we are crediting Member Wallet (Liability), we are effectively expanding the balance sheet.
-                // Cash checks should happen at Withdrawal, not Disbursement to Wallet.
-
-                /*
-                if (disbursementAccountBalance < netDisbursement) {
-                    throw new Error(
-                        `Insufficient funds in ${fundingAccountCode} (Disbursement Account). ` +
-                        `Required: KES ${netDisbursement.toLocaleString()}, ` +
-                        `Available: KES ${disbursementAccountBalance.toLocaleString()}. ` +
-                        `Please credit the Loan Portfolio with opening capital.`
-                    )
-                }
-                */
-
-                // Build Journal Lines
-                let lineIndex = 0
-
-                // 1. Round ALL components first
-                const roundedPrincipal = Number(Number(principal).toFixed(2))
-                const roundedProcessingFee = Number(Number(processingFee).toFixed(2))
-                const roundedInsuranceFee = Number(Number(insuranceFee).toFixed(2))
-                const roundedShareDeduction = Number(Number(shareDeduction).toFixed(2))
-
-                // 2. Round Offsets
-                let roundedTotalOffsets = 0
-                const roundedOffsetLines: any[] = []
-
-                for (const topUp of loan.topUps) {
-                    const clearanceAmount = Number(topUp.totalOffset) - Number(topUp.refinanceFee || 0);
-                    const roundedClearance = Number(Number(clearanceAmount).toFixed(2))
-                    const roundedRefinanceFee = Number(Number(topUp.refinanceFee || 0).toFixed(2))
-
-                    roundedTotalOffsets += roundedClearance + roundedRefinanceFee
-
-                    // Reconstruct lines for Offset
-                    if (roundedClearance > 0) {
-                        roundedOffsetLines.push({
-                            accountId: (await getAccountId(tx, getCode('RECEIVABLES'))),
-                            accountType: 'ASSET',
-                            description: `Offset Clearance - ${topUp.oldLoanNumber}`,
-                            debitAmount: 0,
-                            creditAmount: roundedClearance,
-                            index: lineIndex++
-                        })
-                    }
-                    if (roundedRefinanceFee > 0) {
-                        roundedOffsetLines.push({
-                            accountId: (await getAccountId(tx, getCode('INCOME_REFINANCE_FEE'))),
-                            accountType: 'INCOME',
-                            description: `Refinance Fee - ${topUp.oldLoanNumber}`,
-                            debitAmount: 0,
-                            creditAmount: roundedRefinanceFee,
-                            index: lineIndex++
-                        })
-                    }
-                }
-
-                // 3. Calculate Deductions Sum
-                const totalDeductions = roundedProcessingFee + roundedInsuranceFee + roundedShareDeduction + roundedTotalOffsets
-
-                // 4. DERIVE Net Disbursement to ensure Balance
-                // Principal (Debit) = Net (Credit) + Deductions (Credit)
-                // Therefore: Net = Principal - Deductions
-                const derivedNetDisbursement = Number((roundedPrincipal - totalDeductions).toFixed(2))
-
-                if (derivedNetDisbursement < 0) {
-                    throw new Error(`Rounding Error: Net disbursement calculated as negative (KES ${derivedNetDisbursement}). Please check deductions.`)
-                }
-
-                // 5. Rebuild Journal Lines with ROUNDED values
+                // 5. Rebuild Journal Lines with Decimal values
                 const finalJournalLines: any[] = []
                 let idx = 0
 
@@ -506,57 +462,57 @@ export async function disburseLoanToWallet(loanId: string) {
                     accountId: (await getAccountId(tx, fundingAccountCode)),
                     accountType: 'ASSET',
                     description: `Principal Disbursement - ${loan.loanApplicationNumber}`,
-                    debitAmount: roundedPrincipal,
+                    debitAmount: dPrincipal,
                     creditAmount: 0,
                     index: idx++
                 })
 
                 // CREDIT: Net Disbursement
-                if (derivedNetDisbursement > 0) {
+                if (dNetDisbursement.gt(0)) {
                     finalJournalLines.push({
                         accountId: memberWalletAccountId,
                         accountType: 'LIABILITY',
                         description: `Net Disbursement to Wallet`,
                         debitAmount: 0,
-                        creditAmount: derivedNetDisbursement,
+                        creditAmount: dNetDisbursement,
                         index: idx++
                     })
                 }
 
                 // CREDIT: Fees & Deductions
-                if (roundedProcessingFee > 0) {
+                if (dProcessingFee.gt(0)) {
                     finalJournalLines.push({
                         accountId: (await getAccountId(tx, getCode('INCOME_LOAN_PROCESSING_FEE'))),
                         accountType: 'INCOME',
                         description: 'Processing Fee',
                         debitAmount: 0,
-                        creditAmount: roundedProcessingFee,
+                        creditAmount: dProcessingFee,
                         index: idx++
                     })
                 }
-                if (roundedInsuranceFee > 0) {
+                if (dInsuranceFee.gt(0)) {
                     finalJournalLines.push({
                         accountId: (await getAccountId(tx, getCode('INCOME_GENERAL_FEE'))),
                         accountType: 'INCOME',
                         description: 'Insurance Fee',
                         debitAmount: 0,
-                        creditAmount: roundedInsuranceFee,
+                        creditAmount: dInsuranceFee,
                         index: idx++
                     })
                 }
-                if (roundedShareDeduction > 0) {
+                if (dShareDeduction.gt(0)) {
                     finalJournalLines.push({
                         accountId: (await getAccountId(tx, getCode('CONTRIBUTIONS'))),
                         accountType: 'ASSET',
                         description: 'Contribution Deduction',
                         debitAmount: 0,
-                        creditAmount: roundedShareDeduction,
+                        creditAmount: dShareDeduction,
                         index: idx++
                     })
                 }
 
                 // CREDIT: Offsets
-                roundedOffsetLines.forEach(l => {
+                offsetLines.forEach(l => {
                     finalJournalLines.push({ ...l, index: idx++ })
                 })
 

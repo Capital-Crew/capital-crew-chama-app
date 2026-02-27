@@ -316,6 +316,9 @@ export async function getJournalEntryDetails(entryId: string): Promise<Serialize
  * Get ledger for a specific business transaction ID
  */
 export async function getTransactionLedger(transactionId: string) {
+    const session = await auth()
+    if (!session?.user) return null
+
     try {
         const ledgerEntry = await db.ledgerTransaction.findFirst({
             where: {

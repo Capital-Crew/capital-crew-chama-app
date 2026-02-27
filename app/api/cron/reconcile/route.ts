@@ -1,6 +1,7 @@
 
 import { NextResponse } from "next/server";
 import { db as prisma } from "@/lib/db";
+import { handleApiError } from "@/lib/api-utils";
 import { checkTransactionStatus } from "@/lib/mpesa-status";
 import { WalletService } from "@/lib/services/WalletService";
 import { ReconciliationService } from "@/lib/services/reconciliation-service";
@@ -85,8 +86,7 @@ export async function GET(req: Request) {
 
         return NextResponse.json({ success: true, results, expired: expiredTransactions.count });
 
-    } catch (error: any) {
-        console.error("Reconciliation Error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return handleApiError(error, 'Reconcile Cron GET');
     }
 }

@@ -9,8 +9,7 @@ async function main() {
 
     // Ensure Secret is set for the handler check
     if (!process.env.CRON_SECRET) {
-        console.warn("⚠️ CRON_SECRET not found in env, using default for test context if needed.");
-        process.env.CRON_SECRET = "MY_SECRET_PASSWORD_123";
+        throw new Error("CRON_SECRET not found in environment. Please set it in .env.local");
     }
 
     // Mock Request with correct Auth Header

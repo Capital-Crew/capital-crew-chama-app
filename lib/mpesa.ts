@@ -102,3 +102,7 @@ export async function initiateSTKPush(phoneNumber: string, amount: number) {
         throw new Error(`Failed to initiate STK Push: ${error.message}`);
     }
 }
+
+export const MpesaService = {
+    initiateSTKPush,
+};

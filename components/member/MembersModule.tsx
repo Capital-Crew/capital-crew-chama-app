@@ -207,7 +207,7 @@ function EnrollModal({ onClose }: { onClose: () => void }) {
                     <div className="bg-blue-50 p-3 rounded-xl border border-blue-100 flex gap-3 items-start">
                         <div className="text-blue-500 font-bold text-xs mt-0.5">ℹ️</div>
                         <p className="text-[10px] font-bold text-blue-600 leading-relaxed">
-                            Default password: <span className="font-mono bg-blue-100 px-1 rounded">CapitalCrew@2024</span>. Member must change on first login.
+                            A temporary password will be generated. The member will be required to change it on their first login.
                         </p>
                     </div>
 

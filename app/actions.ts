@@ -124,7 +124,7 @@ export async function createUserAccount(formData: FormData) {
     }
 
     // Default Password Logic
-    const defaultPassword = "CapitalCrew@2024" // Hardcoded secure default
+    const defaultPassword = process.env.DEFAULT_MEMBER_PASSWORD || "CapitalCrew@Secure2025"
     const bcrypt = require('bcryptjs')
     const hashedPassword = await bcrypt.hash(defaultPassword, 10)
 

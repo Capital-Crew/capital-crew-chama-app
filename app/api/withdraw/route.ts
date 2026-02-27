@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { WithdrawalService } from "@/lib/services/WithdrawalService";
 import { auth } from "@/auth";
+import { handleApiError } from "@/lib/api-utils";
 
 export async function POST(req: Request) {
     try {
@@ -42,7 +43,6 @@ export async function POST(req: Request) {
         });
 
     } catch (error: any) {
-        console.error("Withdrawal Error:", error);
-        return NextResponse.json({ error: error.message || "Withdrawal Failed" }, { status: 500 });
+        return handleApiError(error, 'Withdrawal POST');
     }
 }

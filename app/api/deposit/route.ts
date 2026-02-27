@@ -1,56 +1,40 @@
 import { NextResponse } from "next/server";
-import { db as prisma } from "@/lib/db"; // (Default export from lib/prisma.ts)
-import { initiateSTKPush } from "@/lib/mpesa";
+import { MpesaService } from "@/lib/mpesa";
+import { auth } from "@/auth";
+import { handleApiError } from "@/lib/api-utils";
 
 export async function POST(req: Request) {
     try {
-        const { phoneNumber, amount, memberId } = await req.json();
-
-        if (!phoneNumber || !amount || !memberId) {
-            return NextResponse.json(
-                { error: "Phone, Amount, and Member ID are required" },
-                { status: 400 }
-            );
+        const session = await auth();
+        if (!session?.user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        // Create a pending transaction
-        const tempId = `PENDING_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+        const { amount, phoneNumber } = await req.json();
 
-        const transaction = await prisma.transaction.create({
-            data: {
-                phoneNumber: phoneNumber,
-                amount: amount,
-                memberId: memberId,
-                status: "PENDING", // Enum value
-                checkoutRequestId: tempId,
-            },
-        });
+        if (!amount || !phoneNumber) {
+            return NextResponse.json({ error: "Amount and Phone Number are required" }, { status: 400 });
+        }
 
-        try {
-            const stkResponse = await initiateSTKPush(phoneNumber, amount);
-            const checkoutRequestId = stkResponse.CheckoutRequestID;
+        const cleanPhone = phoneNumber.startsWith("+") ? phoneNumber.substring(1) : phoneNumber;
 
-            // Update the transaction with the real CheckoutRequestID
-            await prisma.transaction.update({
-                where: { id: transaction.id },
-                data: {
-                    checkoutRequestId: checkoutRequestId,
-                },
+        // Use MpesaService
+        const result = await MpesaService.initiateSTKPush(
+            cleanPhone,
+            Number(amount)
+        );
+
+        if (result.ResponseCode === "0") {
+            return NextResponse.json({
+                success: true,
+                message: "Payment requested. Please check your phone for the M-Pesa pin prompt.",
+                checkoutRequestId: result.CheckoutRequestID
             });
-
-            return NextResponse.json({ success: true, message: "STK Push Initiated", checkoutRequestId });
-        } catch (error: any) {
-            // If STK push fails, mark transaction as FAILED
-            await prisma.transaction.update({
-                where: { id: transaction.id },
-                data: { status: "FAILED" },
-            });
-            console.error("STK Push Failed:", error);
-            return NextResponse.json({ error: error.message || "STK Push Failed" }, { status: 500 });
+        } else {
+            throw new Error(result.ResponseDescription || "STK Push Failed");
         }
 
     } catch (error: any) {
-        console.error("Deposit Error:", error);
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+        return handleApiError(error, 'Deposit POST');
     }
 }

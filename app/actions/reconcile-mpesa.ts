@@ -1,11 +1,17 @@
 'use server'
 
 import { db as prisma } from "@/lib/db"
+import { auth } from '@/auth'
 import { AccountingEngine } from "@/lib/accounting/AccountingEngine"
 import { revalidatePath } from "next/cache"
 import { ReferenceType } from "@prisma/client"
 
 export async function assignTransactionToMember(transactionId: string, memberId: string) {
+    const session = await auth()
+    if (!session?.user || !['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER'].includes(session.user.role)) {
+        return { success: false, error: "Unauthorized: Access Restricted" }
+    }
+
     try {
         const transaction = await prisma.transaction.findUnique({
             where: { id: transactionId }

@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server'
 import { InterestService } from '@/services/interest-engine'
 import { db as prisma } from '@/lib/db'
+import { handleApiError } from '@/lib/api-utils'
 
 export const dynamic = 'force-dynamic' // Ensure it runs every time
 
@@ -28,17 +29,7 @@ export async function GET(request: Request) {
             message: 'Interest Batch Processed',
             results
         })
-    } catch (error: any) {
-        console.error('Cron Job Failed:', error)
-
-        await prisma.auditLog.create({
-            data: {
-                userId: 'SYSTEM',
-                action: 'INTEREST_ENGINE_RUN',
-                details: `Cron trigger FAILED. Error: ${error.message}`
-            }
-        }).catch(() => { })
-
-        return NextResponse.json({ error: error.message }, { status: 500 })
+    } catch (error) {
+        return handleApiError(error, 'Interest Cron GET')
     }
 }

@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server'
 import { PenaltyService } from '@/services/penalty-engine'
 import { db as prisma } from '@/lib/db'
+import { handleApiError } from '@/lib/api-utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,17 +23,7 @@ export async function GET(request: Request) {
             message: 'Penalty Check Completed',
             results
         })
-    } catch (error: any) {
-        console.error('Penalty Cron Failed:', error)
-
-        await prisma.auditLog.create({
-            data: {
-                userId: 'SYSTEM',
-                action: 'PENALTY_ENGINE_RUN',
-                details: `Cron trigger FAILED. Error: ${error.message}`
-            }
-        }).catch(() => { })
-
-        return NextResponse.json({ error: error.message }, { status: 500 })
+    } catch (error) {
+        return handleApiError(error, 'Penalty Cron GET')
     }
 }

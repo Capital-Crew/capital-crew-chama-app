@@ -112,6 +112,11 @@ export async function updateUserPermissions(input: {
         // 3. Validate input
         const validated = UpdatePermissionsSchema.parse(input);
 
+        // SELF-MODIFICATION GUARD: Prevent user from modifying their own permissions
+        if (validated.userId === session.user.id) {
+            throw new Error('Security Error: You cannot modify your own permissions. Contact another administrator.');
+        }
+
         // 4. Update user permissions
         const updatedUser = await db.user.update({
             where: { id: validated.userId },
@@ -227,6 +232,18 @@ export async function updateUserRole(userId: string, role: UserRole) {
 
         if (currentUser?.role !== 'CHAIRPERSON') {
             throw new Error('Only the Chairperson can update user roles');
+        }
+
+        // SELF-MODIFICATION GUARD: Prevent user from modifying their own role
+        if (userId === session.user.id) {
+            throw new Error('Security Error: You cannot modify your own role. Contact another administrator.');
+        }
+
+        // HIERARCHY GUARD: Only CHAIRPERSON can grant CHAIRPERSON role
+        // (Note: Since we already check if requester is CHAIRPERSON above, this is redundant
+        // but explicit logic is safer if the above check is ever relaxed)
+        if (role === 'CHAIRPERSON' && currentUser.role !== 'CHAIRPERSON') {
+            throw new Error('Only the Chairperson can grant the Chairperson role to others');
         }
 
         const updatedUser = await db.user.update({

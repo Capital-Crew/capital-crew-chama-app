@@ -13,6 +13,16 @@ const SAFARICOM_IPS = [
 ];
 
 export async function POST(req: Request) {
+    // 0. IP Validation (Security Hardening)
+    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown';
+    const isSafaricomIp = SAFARICOM_IPS.includes(clientIp);
+
+    // Skip validation only in development if needed, but for production-grade audit we enforce it.
+    if (!isSafaricomIp && process.env.NODE_ENV === 'production') {
+        console.warn(`Blocked unauthorized M-Pesa callback attempt from IP: ${clientIp}`);
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     try {
         const payload = await req.json();
         const { Body } = payload;

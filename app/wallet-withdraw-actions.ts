@@ -7,6 +7,13 @@ import { revalidatePath } from 'next/cache'
 import { getSystemMappingsDict } from '@/app/actions/system-accounting'
 import { WalletService } from '@/lib/services/WalletService'
 import { Prisma } from '@prisma/client'
+import { z } from 'zod'
+
+const WithdrawSchema = z.object({
+    memberId: z.string().cuid().or(z.string().uuid()),
+    amount: z.number().positive('Withdrawal amount must be greater than zero'),
+    description: z.string().min(1, 'Description is required').max(255, 'Description too long')
+})
 
 /**
  * Withdraw Funds
@@ -28,10 +35,12 @@ export async function withdrawFunds(input: {
         throw new Error('Unauthorized')
     }
 
-    // Validate amount
-    if (input.amount <= 0) {
-        throw new Error('Withdrawal amount must be greater than zero')
+    // Validate inputs
+    const validated = WithdrawSchema.safeParse(input)
+    if (!validated.success) {
+        throw new Error(`Validation Error: ${validated.error.errors.map(e => e.message).join(', ')}`)
     }
+    const { memberId, amount, description } = validated.data
 
     // Get member
     const member = await prisma.member.findUnique({
@@ -43,12 +52,12 @@ export async function withdrawFunds(input: {
     }
 
     // Get withdrawable balance from AccountingEngine (source of truth)
-    const withdrawableBalance = await getMemberWalletBalance(input.memberId)
+    const withdrawableBalance = await getMemberWalletBalance(memberId)
 
     // STRICT VALIDATION: Prevent overdraft
-    if (input.amount > withdrawableBalance) {
+    if (amount > withdrawableBalance) {
         throw new Error(
-            `Insufficient withdrawable balance. Available: KES ${withdrawableBalance.toLocaleString()}, Requested: KES ${input.amount.toLocaleString()}`
+            `Insufficient withdrawable balance. Available: KES ${withdrawableBalance.toLocaleString()}, Requested: KES ${amount.toLocaleString()}`
         )
     }
 
@@ -154,6 +163,12 @@ export async function getWithdrawableBalance(memberId: string): Promise<number> 
 
     if (!session?.user?.id) {
         throw new Error('Unauthorized')
+    }
+
+    // Basic validation for the ID
+    const validatedId = z.string().cuid().or(z.string().uuid()).safeParse(memberId)
+    if (!validatedId.success) {
+        throw new Error('Invalid member ID format')
     }
 
     return await getMemberWalletBalance(memberId)

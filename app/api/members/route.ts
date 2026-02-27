@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db as prisma } from '@/lib/db'
+import { handleApiError } from '@/lib/api-utils'
 
 export async function GET(request: NextRequest) {
     try {
@@ -21,8 +22,7 @@ export async function GET(request: NextRequest) {
         }
 
         return NextResponse.json({ member })
-    } catch (error: any) {
-        console.error('[Members API] Error:', error)
-        return NextResponse.json({ error: error.message }, { status: 500 })
+    } catch (error) {
+        return handleApiError(error, 'Members GET')
     }
 }

@@ -1,4 +1,4 @@
-import { prisma } from './prisma';
+import { db as prisma } from './db';
 import { Prisma } from '@prisma/client';
 
 /**
@@ -55,7 +55,7 @@ export async function withIdempotency<T>({
                 key,
                 path,
                 locked: true,
-                response: null
+                response: Prisma.JsonNull
             }
         });
 
@@ -68,7 +68,7 @@ export async function withIdempotency<T>({
             await prisma.idempotencyRecord.update({
                 where: { key },
                 data: {
-                    response: result as Prisma.JsonValue,
+                    response: result as any, // Cast to any to handle complex return types in JSON
                     locked: false
                 }
             });

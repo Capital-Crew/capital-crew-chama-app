@@ -2,6 +2,8 @@
 
 import React from 'react';
 import { MemberProfileView } from './MemberProfileView';
+import { MessageSquare, Calendar } from 'lucide-react';
+import Link from 'next/link'
 
 interface MemberDashboardProps {
     detail: any;
@@ -18,7 +20,20 @@ export function MemberDashboard({ detail }: MemberDashboardProps) {
 
     return (
         <div className="p-8 bg-slate-50 min-h-screen">
-            <h1 className="text-2xl font-bold text-slate-900 mb-6">My Personal Dashboard</h1>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                <div>
+                    <h1 className="text-2xl font-black text-slate-900 tracking-tight">My Dashboard</h1>
+                    <p className="text-sm text-slate-500 font-medium">Real-time overview of your SACCO activity</p>
+                </div>
+
+                <Link
+                    href="/meetings/apology"
+                    className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black text-sm shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95"
+                >
+                    <MessageSquare className="w-4 h-4" />
+                    SUBMIT MEETING APOLOGY
+                </Link>
+            </div>
             <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 overflow-hidden">
                 <MemberProfileView
                     member={detail.member}

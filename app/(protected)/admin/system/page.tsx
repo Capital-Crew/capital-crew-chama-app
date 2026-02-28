@@ -22,7 +22,7 @@ export default async function SystemAdminPage() {
         );
     }
 
-    const [products, members, welfareTypesRes, welfareReqsRes, expenseAccounts, users, modules, permissions] = await Promise.all([
+    const [products, members, welfareTypesRes, welfareReqsRes, expenseAccounts, users, modules, permissions, apologies] = await Promise.all([
         prisma.loanProduct.findMany({
             // Fetch ALL products so we can toggle active state, not just active ones
             orderBy: { name: 'asc' }
@@ -69,7 +69,19 @@ export default async function SystemAdminPage() {
             where: { email: { not: 'admin@capitalcrew.co.ke' } }
         }),
         prisma.systemModule.findMany({ orderBy: { key: 'asc' } }),
-        prisma.rolePermission.findMany()
+        prisma.rolePermission.findMany(),
+        prisma.apology.findMany({
+            include: {
+                meeting: { select: { title: true, date: true } },
+                user: {
+                    select: {
+                        name: true,
+                        member: { select: { memberNumber: true } }
+                    }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        })
     ])
 
     const welfareTypes = welfareTypesRes.success ? welfareTypesRes.data : []
@@ -121,6 +133,7 @@ export default async function SystemAdminPage() {
                 users={users}
                 modules={modules}
                 permissions={permissions}
+                apologies={apologies as any}
             />
         </div>
     )

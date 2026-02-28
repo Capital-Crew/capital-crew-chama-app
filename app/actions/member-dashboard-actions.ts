@@ -680,7 +680,7 @@ export async function getMemberFullDetail(memberId: string) {
             }
         }),
         calculateCurrentMonthStatus(memberId),
-        user ? db.penaltyBill.findMany({
+        user ? db.attendanceFine.findMany({
             where: { userId: user.id, status: 'PENDING' },
             include: { meeting: true },
             orderBy: { createdAt: 'desc' }

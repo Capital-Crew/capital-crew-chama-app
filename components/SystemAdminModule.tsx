@@ -21,7 +21,8 @@ import { NotificationSettings } from '@/components/admin/NotificationSettings'
 import { UserRightsTable } from '@/components/admin/UserRightsTable'
 import { PermissionsMatrix } from '@/components/admin/PermissionsMatrix'
 import { MobileDrawer } from '@/components/ui/MobileDrawer';
-import { BookOpen, ExternalLink } from 'lucide-react';
+import { BookOpen, ExternalLink, MessageSquareText } from 'lucide-react';
+import { MeetingApologyManager } from '@/components/meetings/MeetingApologyManager';
 
 
 interface Member {
@@ -40,9 +41,10 @@ interface SettingsProps {
     users?: any[]; // Passed from page
     modules?: any[];
     permissions?: any[];
+    apologies?: any[];
 }
 
-export function SystemAdminModule({ products, members = [], welfareTypes = [], welfareRequisitions = [], expenseAccounts = [], users = [], modules = [], permissions = [] }: SettingsProps) {
+export function SystemAdminModule({ products, members = [], welfareTypes = [], welfareRequisitions = [], expenseAccounts = [], users = [], modules = [], permissions = [], apologies = [] }: SettingsProps) {
     const [activeTab, setActiveTab] = useState('products');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [saccoSettings, setSaccoSettings] = useState<any>(null);
@@ -127,7 +129,8 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
         { id: 'sacco', label: 'SACCO Settings', icon: Settings },
         { id: 'welfare', label: 'Welfare', icon: HeartHandshake },
         { id: 'notifications', label: 'Notifications', icon: Mail },
-        { id: 'rights', label: 'User Rights', icon: Shield }
+        { id: 'rights', label: 'User Rights', icon: Shield },
+        { id: 'apologies', label: 'Meeting Apologies', icon: MessageSquareText }
     ];
 
     return (
@@ -540,7 +543,23 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
                                                     </option>
                                                 ))}
                                             </select>
-                                            <p className="text-xs text-slate-500">GL account where meeting penalties will be credited</p>
+                                            <p className="text-xs text-slate-500">GL account where meeting penalties will be credited (Revenue)</p>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-semibold text-slate-700">Receivable Ledger for Fees</label>
+                                            <select
+                                                name="meetingReceivableGlId"
+                                                defaultValue={settingsForm.meetingReceivableGlId}
+                                                className="w-full bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 rounded-xl px-4 py-3 text-sm font-medium transition-all outline-none"
+                                            >
+                                                <option value="">Select an Account</option>
+                                                {expenseAccounts?.filter((acc: any) => acc.type === 'ASSET' || acc.type === 'RECEIVABLE').map((acc: any) => (
+                                                    <option key={acc.id} value={acc.id}>
+                                                        {acc.code} - {acc.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <p className="text-xs text-slate-500">Asset account where unpaid meeting penalties will be tracked (Receivable)</p>
                                         </div>
                                     </div>
                                 </div>
@@ -603,6 +622,13 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
                         </p>
                     </div>
                     <UserRightsTable users={users} />
+                </div>
+            )}
+
+            {/* Meeting Apologies Tab */}
+            {activeTab === 'apologies' && (
+                <div className="space-y-6">
+                    <MeetingApologyManager apologies={apologies} />
                 </div>
             )}
 

@@ -14,18 +14,43 @@ export default async function NewMeetingReportPage() {
 
     // Role Check removed: Everyone can access as per user request
 
-    // 1. Fetch Active Members
-    const members = await prisma.member.findMany({
-        where: { status: { in: ['ACTIVE', 'PENDING', 'APPROVED'] } },
-        select: {
-            id: true,
-            name: true,
-            memberNumber: true
+    // 1. Fetch COMPLETED meetings that haven't been processed yet
+    const meetings = await prisma.meeting.findMany({
+        where: {
+            status: 'COMPLETED',
+            isPenaltiesProcessed: false,
+            date: { lte: new Date() }
+        },
+        orderBy: { date: 'desc' }
+    });
+
+    // 2. Fetch Active Members with their User IDs (needed for processing)
+    const rawMembers = await prisma.member.findMany({
+        where: { status: { in: ['ACTIVE', 'APPROVED'] } },
+        include: {
+            user: {
+                select: { id: true }
+            }
         },
         orderBy: { memberNumber: 'asc' }
     });
 
-    // 2. Fetch Sacco Settings
+    // 3. Fetch Apologies for available meetings to pre-inform the form
+    // Note: The form will dynamically show apologies once a meeting is selected if we want to be fancy,
+    // but for now we'll fetch all apologies for pending meetings.
+    const apologies = await prisma.apology.findMany({
+        where: { meetingId: { in: meetings.map(m => m.id) } }
+    });
+
+    const members = rawMembers.map(m => ({
+        id: m.id,
+        name: m.name,
+        memberNumber: m.memberNumber,
+        userId: m.user?.id || null,
+        apologyStatus: apologies.find(a => a.userId === m.user?.id)?.status || null
+    }));
+
+    // 4. Fetch Sacco Settings
     const settings = await getSaccoSettings();
 
     return (
@@ -57,6 +82,7 @@ export default async function NewMeetingReportPage() {
 
             <main className="max-w-7xl mx-auto px-4 md:px-8 py-8">
                 <MeetingReportForm
+                    meetings={meetings}
                     members={members}
                     settings={{
                         penaltyAbsentAmount: Number(settings.penaltyAbsentAmount),

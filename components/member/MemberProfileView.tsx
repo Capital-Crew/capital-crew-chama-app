@@ -173,7 +173,7 @@ export function MemberProfileView({
                     )}
             </div>
 
-            {/* Penalty Alert Section (The "Red Card") */}
+            {/* Fine Alert Section (The "Red Card") */}
             {unpaidPenalties.length > 0 && (
                 <div className="px-4 md:px-8 mb-8">
                     <div className="bg-red-600 rounded-3xl p-6 md:p-8 text-white shadow-xl shadow-red-200 animate-in fade-in zoom-in duration-500">
@@ -183,8 +183,8 @@ export function MemberProfileView({
                                     <AlertCircle className="w-10 h-10 text-white" />
                                 </div>
                                 <div>
-                                    <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight">Outstanding Penalties</h2>
-                                    <p className="text-red-100 font-medium">You have {unpaidPenalties.length} pending penalty {unpaidPenalties.length === 1 ? 'bill' : 'bills'} that require your attention.</p>
+                                    <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight">Outstanding Meeting Fines</h2>
+                                    <p className="text-red-100 font-medium">You have {unpaidPenalties.length} pending meeting {unpaidPenalties.length === 1 ? 'fine' : 'fines'} that require your attention.</p>
                                 </div>
                             </div>
                             <div className="text-center md:text-right">
@@ -196,26 +196,26 @@ export function MemberProfileView({
                         </div>
 
                         <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            {unpaidPenalties.map((penalty: any) => (
-                                <div key={penalty.id} className="bg-white/10 rounded-2xl p-5 backdrop-blur-md border border-white/20 flex justify-between items-center">
+                            {unpaidPenalties.map((fine: any) => (
+                                <div key={fine.id} className="bg-white/10 rounded-2xl p-5 backdrop-blur-md border border-white/20 flex justify-between items-center">
                                     <div>
-                                        <p className="font-black text-sm uppercase tracking-wide text-red-50">{penalty.type} PENALTY</p>
-                                        <p className="font-bold text-lg leading-tight mt-1">{penalty.meetingTitle}</p>
-                                        <p className="text-xs font-medium text-red-100 mt-1 opacity-80">{format(new Date(penalty.date), 'PPPP')}</p>
+                                        <p className="font-black text-sm uppercase tracking-wide text-red-50">{fine.type} FINE</p>
+                                        <p className="font-bold text-lg leading-tight mt-1">{fine.meetingTitle || 'Meeting Fine'}</p>
+                                        <p className="text-xs font-medium text-red-100 mt-1 opacity-80">{format(new Date(fine.date), 'PPPP')}</p>
                                     </div>
                                     <div className="flex flex-col items-end gap-3">
-                                        <p className="font-black text-xl">{formatCurrency(penalty.amount)}</p>
+                                        <p className="font-black text-xl">{formatCurrency(fine.amount)}</p>
                                         <button
                                             onClick={async () => {
-                                                const confirmed = window.confirm(`Pay ${formatCurrency(penalty.amount)} penalty for ${penalty.meetingTitle}? This will be deducted from your wallet.`);
+                                                const confirmed = window.confirm(`Pay ${formatCurrency(fine.amount)} fine for ${fine.meetingTitle}? This will be deducted from your wallet.`);
                                                 if (!confirmed) return;
 
-                                                const res = await payPenalty(penalty.id);
+                                                const res = await payPenalty(fine.id);
                                                 if (res.success) {
-                                                    toast.success('Penalty paid successfully');
+                                                    toast.success('Fine paid successfully');
                                                     router.refresh();
                                                 } else {
-                                                    toast.error(res.error || 'Failed to pay penalty');
+                                                    toast.error(res.error || 'Failed to pay fine');
                                                 }
                                             }}
                                             className="bg-white text-red-600 px-6 py-2 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-red-50 transition-all active:scale-95 shadow-lg shadow-red-900/20"

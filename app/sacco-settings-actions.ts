@@ -64,6 +64,7 @@ export async function updateSaccoSettings(formData: FormData) {
     const penaltyAbsentAmount = parseFloat(formData.get('penaltyAbsentAmount') as string) || 500
     const penaltyLateAmount = parseFloat(formData.get('penaltyLateAmount') as string) || 200
     const meetingFeesGlId = formData.get('meetingFeesGlId') as string || null
+    const meetingReceivableGlId = formData.get('meetingReceivableGlId') as string || null
 
     // Validate inputs
     if (loanMultiplier < 0 || processingFeePercent < 0 || insuranceFeePercent < 0 || shareCapitalBoost < 0 || penaltyRate < 0 || rescheduleFeePercent < 0 || refinanceFeePercentage < 0 || welfareMonthlyContribution < 0 || welfareCurrentBalance < 0 || monthlyContributionAmount < 1 || latePaymentPenalty < 0 || penaltyAbsentAmount < 0 || penaltyLateAmount < 0) {
@@ -98,7 +99,8 @@ export async function updateSaccoSettings(formData: FormData) {
                 latePaymentPenalty,
                 penaltyAbsentAmount,
                 penaltyLateAmount,
-                meetingFeesGlId
+                meetingFeesGlId,
+                meetingReceivableGlId
             }
         })
     } else {
@@ -121,7 +123,8 @@ export async function updateSaccoSettings(formData: FormData) {
                 latePaymentPenalty,
                 penaltyAbsentAmount,
                 penaltyLateAmount,
-                meetingFeesGlId
+                meetingFeesGlId,
+                meetingReceivableGlId
             }
         })
     }
@@ -131,7 +134,7 @@ export async function updateSaccoSettings(formData: FormData) {
         data: {
             userId: session.user.id!,
             action: 'SETTINGS_UPDATED',
-            details: `Updated settings: Mult=${loanMultiplier}, Proc=${processingFeePercent}%, Ins=${insuranceFeePercent}%, Pen=${penaltyRate}%, Welfare=${welfareMonthlyContribution}/mo, WelfareBal=${welfareCurrentBalance}, Contribution=${monthlyContributionAmount}/mo, LatePenalty=${latePaymentPenalty}, MeetingAbsent=${penaltyAbsentAmount}, MeetingLate=${penaltyLateAmount}`
+            details: `Updated settings: Mult=${loanMultiplier}, Proc=${processingFeePercent}%, Ins=${insuranceFeePercent}%, Pen=${penaltyRate}%, Welfare=${welfareMonthlyContribution}/mo, WelfareBal=${welfareCurrentBalance}, Contribution=${monthlyContributionAmount}/mo, LatePenalty=${latePaymentPenalty}, MeetingAbsent=${penaltyAbsentAmount}, MeetingLate=${penaltyLateAmount}, MeetingFeesGL=${meetingFeesGlId}, MeetingRecGL=${meetingReceivableGlId}`
         }
     })
 
@@ -151,7 +154,8 @@ export async function updateSaccoSettings(formData: FormData) {
         latePaymentPenalty: Number(s.latePaymentPenalty || 200),
         penaltyAbsentAmount: Number(s.penaltyAbsentAmount || 500),
         penaltyLateAmount: Number(s.penaltyLateAmount || 200),
-        meetingFeesGlId: s.meetingFeesGlId
+        meetingFeesGlId: s.meetingFeesGlId,
+        meetingReceivableGlId: s.meetingReceivableGlId
     })
 
     const serialized = serializeSettings(settings)
@@ -178,7 +182,8 @@ function serializeSettings(s: any) {
         latePaymentPenalty: Number(s.latePaymentPenalty || 200),
         penaltyAbsentAmount: Number(s.penaltyAbsentAmount || 500),
         penaltyLateAmount: Number(s.penaltyLateAmount || 200),
-        meetingFeesGlId: s.meetingFeesGlId
+        meetingFeesGlId: s.meetingFeesGlId,
+        meetingReceivableGlId: s.meetingReceivableGlId
     }
 }
 

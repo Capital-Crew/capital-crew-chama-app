@@ -34,8 +34,7 @@ export async function submitMeetingReport(input: {
                 data: {
                     title: input.title,
                     date: new Date(input.date),
-                    minutesUrl: input.minutesUrl,
-                    createdBy: session.user.id
+                    minutesUrl: input.minutesUrl
                 }
             });
 

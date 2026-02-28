@@ -11,7 +11,7 @@ import { getSystemMappingsDict } from './system-accounting'
 export async function submitMeetingReport(input: {
     title: string;
     date: string;
-    minutesUrl: string;
+    minutesUrl?: string;
     attendance: {
         memberId: string;
         status: 'PRESENT' | 'ABSENT' | 'LATE' | 'APOLOGY';

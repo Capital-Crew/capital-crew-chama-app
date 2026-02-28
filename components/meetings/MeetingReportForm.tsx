@@ -66,28 +66,35 @@ export function MeetingReportForm({ members, settings }: MeetingReportFormProps)
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!file) {
-            toast.error('Please upload meeting minutes (PDF)');
-            return;
-        }
 
         setIsSubmitting(true);
         try {
-            // 1. Upload file via the API we created
-            const uploadFormData = new FormData();
-            uploadFormData.append('file', file);
+            let minutesUrl = '';
 
-            const uploadRes = await fetch('/api/upload/minutes', {
-                method: 'POST',
-                body: uploadFormData
-            });
+            // 1. Upload file if selected
+            if (file) {
+                try {
+                    const uploadFormData = new FormData();
+                    uploadFormData.append('file', file);
 
-            if (!uploadRes.ok) {
-                const error = await uploadRes.json();
-                throw new Error(error.error || 'File upload failed');
+                    const uploadRes = await fetch('/api/upload/minutes', {
+                        method: 'POST',
+                        body: uploadFormData
+                    });
+
+                    if (!uploadRes.ok) {
+                        const errorData = await uploadRes.json();
+                        throw new Error(errorData.error || 'File upload failed');
+                    }
+
+                    const { url } = await uploadRes.json();
+                    minutesUrl = url;
+                } catch (uploadError: any) {
+                    console.error('Minutes Upload Failed:', uploadError);
+                    toast.warning(`Minutes upload failed: ${uploadError.message}. Proceeding with attendance report only.`);
+                    // We continue even if upload fails as per user request to decouple
+                }
             }
-
-            const { url: minutesUrl } = await uploadRes.json();
 
             // 2. Submit report data
             const result = await submitMeetingReport({
@@ -148,7 +155,7 @@ export function MeetingReportForm({ members, settings }: MeetingReportFormProps)
                         />
                     </div>
                     <div className="md:col-span-2 space-y-2">
-                        <label className="text-sm font-bold text-slate-700">Upload Minutes (PDF)</label>
+                        <label className="text-sm font-bold text-slate-700">Upload Minutes (Optional PDF)</label>
                         <div
                             className={`border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center transition-all cursor-pointer ${file ? 'border-green-400 bg-green-50/30' : 'border-slate-300 hover:border-cyan-400 bg-slate-50/50'}`}
                             onClick={() => document.getElementById('file-upload')?.click()}

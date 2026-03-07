@@ -69,7 +69,7 @@ const NavItem: React.FC<NavItemProps> = ({ icon, label, href, active, hidden, ba
     );
 };
 
-export function AppSidebar({ user, approvalCount = 0, pendingLoanCount = 0 }: { user: { name: string, role: string }, approvalCount?: number, pendingLoanCount?: number }) {
+export function AppSidebar({ user, approvalCount = 0, pendingLoanCount = 0 }: { user: { name: string, role: string, memberId?: string }, approvalCount?: number, pendingLoanCount?: number }) {
     const pathname = usePathname();
     const { canAccess } = useModuleAccess();
 
@@ -161,7 +161,10 @@ export function AppSidebar({ user, approvalCount = 0, pendingLoanCount = 0 }: { 
 
             {/* User Profile / Footer */}
             <div className="p-6 mt-auto">
-                <div className="bg-white/5 backdrop-blur-md rounded-3xl p-4 border border-white/10 flex items-center gap-4 group cursor-pointer hover:bg-white/10 transition-all duration-300">
+                <Link
+                    href={user.memberId ? `/members/${user.memberId}` : '#'}
+                    className="bg-white/5 backdrop-blur-md rounded-3xl p-4 border border-white/10 flex items-center gap-4 group cursor-pointer hover:bg-white/10 transition-all duration-300"
+                >
                     <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#00c2e0] to-cyan-600 flex items-center justify-center text-white font-black text-sm shadow-md group-hover:scale-105 transition-transform">
                         {user.name?.charAt(0) || 'U'}
                     </div>
@@ -170,7 +173,7 @@ export function AppSidebar({ user, approvalCount = 0, pendingLoanCount = 0 }: { 
                         <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{user.role}</p>
                     </div>
                     <div className="w-2 h-2 rounded-full bg-[#00ffcc] shadow-[0_0_10px_rgba(0,255,204,0.6)] animate-pulse" />
-                </div>
+                </Link>
             </div>
         </aside>
     );

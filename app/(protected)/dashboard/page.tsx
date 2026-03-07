@@ -3,6 +3,7 @@ import { DashboardView } from '@/components/DashboardView'
 import { auth } from '@/auth'
 import { getMemberFullDetail } from '@/app/actions/member-dashboard-actions'
 import { MemberDashboard } from '@/components/member/MemberDashboard'
+import { redirect } from 'next/navigation'
 
 // Force dynamic rendering to ensure real-time data
 export const dynamic = 'force-dynamic'
@@ -10,9 +11,15 @@ export const revalidate = 0 // Never cache, always fetch fresh data
 
 export default async function DashboardPage() {
     const session = await auth()
+
+    // Guard: if session expired or missing, send back to login
+    if (!session) {
+        redirect('/login')
+    }
+
     const memberId = session?.user?.memberId;
 
-    // Fetch Global Stats for everyone
+    // Fetch Global Stats — session is guaranteed valid at this point
     const stats = await getDashboardStats()
     const trends = await getMonthlyTrends()
 

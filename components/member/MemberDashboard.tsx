@@ -43,8 +43,9 @@ export function MemberDashboard({ detail }: MemberDashboardProps) {
                     loans={detail.loans}
                     nextOfKin={detail.nextOfKin}
                     unpaidPenalties={detail.unpaidPenalties}
-                    currentUserId={detail.member.id} // Or session user id? The profile view expects member id for Next of Kin but currentUserId for appraisal.
-                    currentUserRole="MEMBER" // Default to member for the personal dashboard
+                    attendanceHistory={detail.attendanceHistory}
+                    currentUserId={detail.member.id}
+                    currentUserRole="MEMBER"
                 />
             </div>
         </div>

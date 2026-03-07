@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { UserPermissions } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Clock, CheckCircle2, AlertCircle, ChevronDown, ChevronUp, ChevronRight, Receipt, Activity, XCircle } from 'lucide-react';
+import { Clock, CheckCircle2, AlertCircle, ChevronDown, ChevronUp, ChevronRight, Receipt, Activity, XCircle, Calendar, MessageSquare } from 'lucide-react';
 import { MemberQuickStats } from './MemberQuickStats';
 import { NextOfKinManager } from './NextOfKinManager';
 import { LoanAppraisalCard } from '../LoanAppraisalCard';
@@ -22,6 +22,7 @@ interface MemberProfileViewProps {
     contributionStatus: any;
     nextOfKin: any[];
     unpaidPenalties?: any[];
+    attendanceHistory?: any[];
     currentUserRole: string;
     currentUserId: string;
     currentUserPermissions?: UserPermissions;
@@ -36,17 +37,19 @@ export function MemberProfileView({
     contributionStatus,
     nextOfKin,
     unpaidPenalties = [],
+    attendanceHistory = [],
     currentUserRole,
     currentUserId,
     currentUserPermissions,
     onBack
 }: MemberProfileViewProps) {
     const router = useRouter();
-    const [activeTab, setActiveTab] = useState<'loans' | 'contributions' | 'kin' | 'fines'>('loans');
+    const [activeTab, setActiveTab] = useState<'loans' | 'contributions' | 'kin' | 'fines' | 'attendance'>('loans');
 
     // Normalize role for comparison — handles 'SYSTEM ADMIN', 'SYSTEM_ADMIN', 'system_admin' etc.
     const normalizedRole = currentUserRole?.toUpperCase().replace(/\s+/g, '_') || '';
     const isSystemAdmin = normalizedRole === 'SYSTEM_ADMIN' || normalizedRole === 'SYSTEM_ADMINISTRATOR';
+    const isSelf = currentUserId === member.userId;
     const [selectedLoanId, setSelectedLoanId] = useState<string | null>(null);
 
     const [modalTab, setModalTab] = useState<'appraisal' | 'statement'>('appraisal');
@@ -205,23 +208,25 @@ export function MemberProfileView({
                                     </div>
                                     <div className="flex flex-col items-end gap-3">
                                         <p className="font-black text-xl">{formatCurrency(fine.amount)}</p>
-                                        <button
-                                            onClick={async () => {
-                                                const confirmed = window.confirm(`Pay ${formatCurrency(fine.amount)} fine for ${fine.meetingTitle}? This will be deducted from your wallet.`);
-                                                if (!confirmed) return;
+                                        {isSelf && (
+                                            <button
+                                                onClick={async () => {
+                                                    const confirmed = window.confirm(`Pay ${formatCurrency(fine.amount)} fine for ${fine.meetingTitle}? This will be deducted from your wallet.`);
+                                                    if (!confirmed) return;
 
-                                                const res = await payPenalty(fine.id);
-                                                if (res.success) {
-                                                    toast.success('Fine paid successfully');
-                                                    router.refresh();
-                                                } else {
-                                                    toast.error(res.error || 'Failed to pay fine');
-                                                }
-                                            }}
-                                            className="bg-white text-red-600 px-6 py-2 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-red-50 transition-all active:scale-95 shadow-lg shadow-red-900/20"
-                                        >
-                                            Pay Now
-                                        </button>
+                                                    const res = await payPenalty(fine.id);
+                                                    if (res.success) {
+                                                        toast.success('Fine paid successfully');
+                                                        router.refresh();
+                                                    } else {
+                                                        toast.error(res.error || 'Failed to pay fine');
+                                                    }
+                                                }}
+                                                className="bg-white text-red-600 px-6 py-2 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-red-50 transition-all active:scale-95 shadow-lg shadow-red-900/20"
+                                            >
+                                                Pay Now
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             ))}
@@ -251,6 +256,11 @@ export function MemberProfileView({
                     isActive={activeTab === 'fines'}
                     onClick={() => setActiveTab('fines')}
                     label="Meeting Fines"
+                />
+                <TabButton
+                    isActive={activeTab === 'attendance'}
+                    onClick={() => setActiveTab('attendance')}
+                    label="Meeting History"
                 />
             </div>
 
@@ -313,7 +323,7 @@ export function MemberProfileView({
                     >
                         <div className="flex flex-col gap-4">
                             <ResponsiveFinesList fines={unpaidPenalties} />
-                            {unpaidPenalties && unpaidPenalties.length > 0 && (
+                            {unpaidPenalties && unpaidPenalties.length > 0 && isSelf && (
                                 <button
                                     onClick={() => router.push('/wallet?tab=deposits&subtab=penalty')}
                                     className="w-full py-4 bg-red-600 text-white font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-red-200 flex items-center justify-center gap-2 hover:bg-red-700 transition-all active:scale-95"
@@ -407,7 +417,11 @@ export function MemberProfileView({
                         </div>
                     )}
                     {activeTab === 'kin' && (
-                        <NextOfKinManager initialData={nextOfKin} memberId={member.id} />
+                        <NextOfKinManager
+                            initialData={nextOfKin}
+                            memberId={member.id}
+                            canEdit={isSelf}
+                        />
                     )}
 
                     {activeTab === 'fines' && (
@@ -416,7 +430,7 @@ export function MemberProfileView({
                                 <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
                                     <AlertCircle className="w-6 h-6 text-red-500" /> Outstanding Meeting Fines
                                 </h3>
-                                {unpaidPenalties && unpaidPenalties.length > 0 && (
+                                {unpaidPenalties && unpaidPenalties.length > 0 && isSelf && (
                                     <button
                                         onClick={() => router.push('/wallet?tab=deposits&subtab=penalty')}
                                         className="px-6 py-3 bg-red-600 text-white text-xs font-black uppercase tracking-widest rounded-xl shadow-lg shadow-red-200 flex items-center gap-2 hover:bg-red-700 transition-all active:scale-95"
@@ -427,6 +441,26 @@ export function MemberProfileView({
                                 )}
                             </div>
                             <ResponsiveFinesList fines={unpaidPenalties} />
+                        </div>
+                    )}
+
+                    {activeTab === 'attendance' && (
+                        <div className="p-6">
+                            <div className="flex items-center justify-between mb-8">
+                                <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
+                                    <Calendar className="w-6 h-6 text-indigo-500" /> Meeting Attendance History
+                                </h3>
+                                {isSelf && (
+                                    <Link
+                                        href="/meetings/apology"
+                                        className="px-6 py-3 bg-indigo-600 text-white text-xs font-black uppercase tracking-widest rounded-xl shadow-lg shadow-indigo-200 flex items-center gap-2 hover:bg-indigo-700 transition-all active:scale-95"
+                                    >
+                                        <MessageSquare className="w-4 h-4" />
+                                        Submit Apology
+                                    </Link>
+                                )}
+                            </div>
+                            <ResponsiveAttendanceHistory list={attendanceHistory} />
                         </div>
                     )}
                 </div>
@@ -440,7 +474,7 @@ export function MemberProfileView({
                 currentUserId={currentUserId!}
                 activeTab={modalTab}
             />
-        </div>
+        </div >
     );
 }
 
@@ -775,6 +809,49 @@ function ResponsiveFinesList({ fines }: { fines: any[] }) {
                     </tbody>
                 </table>
             </div>
+        </div>
+    )
+}
+
+function ResponsiveAttendanceHistory({ list }: { list: any[] }) {
+    if (list.length === 0) return <EmptyState message="No meeting attendance history found." />
+
+    return (
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+            <table className="w-full text-left text-sm">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                        <th className="px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Date</th>
+                        <th className="px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Meeting</th>
+                        <th className="px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-[10px]">Status</th>
+                        <th className="px-6 py-4 font-bold text-slate-500 uppercase tracking-wider text-[10px] text-right">Details</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                    {list.map((item, i) => (
+                        <tr key={i} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-6 py-4 text-slate-600 font-medium">
+                                {format(new Date(item.meetingDate), 'MMMM d, yyyy')}
+                            </td>
+                            <td className="px-6 py-4 text-slate-800 font-bold">{item.meetingTitle}</td>
+                            <td className="px-6 py-4">
+                                <span className={cn(
+                                    "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
+                                    item.status === 'PRESENT' ? "bg-green-100 text-green-700" :
+                                        item.status === 'ABSENT' ? "bg-red-100 text-red-700" :
+                                            item.status === 'LATE' ? "bg-yellow-100 text-yellow-700" :
+                                                "bg-slate-100 text-slate-700"
+                                )}>
+                                    {item.status}
+                                </span>
+                            </td>
+                            <td className="px-6 py-4 text-right text-slate-400 text-xs font-bold uppercase tracking-tighter">
+                                {item.status === 'LATE' ? `${item.minutesLate} Mins Late` : '-'}
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
         </div>
     )
 }

@@ -668,7 +668,7 @@ export async function getMemberFullDetail(memberId: string) {
     const user = await db.user.findUnique({ where: { memberId } });
 
     // Parallelize all major dashboard fetches
-    const [stats, contributions, portfolio, member, contributionStatus, unpaidPenalties] = await Promise.all([
+    const [stats, contributions, portfolio, member, contributionStatus, unpaidPenalties, attendanceHistory] = await Promise.all([
         getDetailedMemberStats(memberId),
         getContributionHistory(memberId),
         getLoanPortfolio(memberId),
@@ -684,7 +684,12 @@ export async function getMemberFullDetail(memberId: string) {
             where: { userId: user.id, status: 'PENDING' },
             include: { meeting: true },
             orderBy: { createdAt: 'desc' }
-        }) : Promise.resolve([])
+        }) : Promise.resolve([]),
+        db.meetingAttendee.findMany({
+            where: { memberId },
+            include: { meeting: true },
+            orderBy: { meeting: { date: 'desc' } }
+        })
     ]);
 
     if (!stats || !member) return null;
@@ -700,7 +705,8 @@ export async function getMemberFullDetail(memberId: string) {
             contact: member.contactInfo?.mobile || member.contact,
             status: member.status,
             contributionArrears: Number(member.contributionArrears || 0),
-            penaltyArrears: Number(member.penaltyArrears || 0)
+            penaltyArrears: Number(member.penaltyArrears || 0),
+            userId: user?.id
         },
         stats: stats.stats,
         contributions: contributions,
@@ -721,6 +727,13 @@ export async function getMemberFullDetail(memberId: string) {
             meetingTitle: p.meeting?.title || 'Unknown Meeting',
             date: p.meeting?.date || p.createdAt,
             description: p.reason
+        })),
+        attendanceHistory: (attendanceHistory as any[]).map(a => ({
+            id: a.id,
+            meetingTitle: a.meeting?.title || 'Unknown Meeting',
+            meetingDate: a.meeting?.date || new Date(),
+            status: a.status,
+            minutesLate: a.minutesLate
         }))
     });
 }

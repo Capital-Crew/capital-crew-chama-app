@@ -18,11 +18,12 @@ interface NextOfKinData {
 interface NextOfKinManagerProps {
     initialData: NextOfKinData[];
     memberId: string;
+    canEdit?: boolean;
 }
 
 const RELATIONSHIPS = ['SPOUSE', 'CHILD', 'PARENT', 'SIBLING', 'OTHER'];
 
-export function NextOfKinManager({ initialData, memberId }: NextOfKinManagerProps) {
+export function NextOfKinManager({ initialData, memberId, canEdit = true }: NextOfKinManagerProps) {
     const router = useRouter();
     const [isEditing, setIsEditing] = useState(initialData.length === 0);
     const [beneficiaries, setBeneficiaries] = useState<NextOfKinData[]>(
@@ -137,12 +138,14 @@ export function NextOfKinManager({ initialData, memberId }: NextOfKinManagerProp
                             </span>
                         </div>
                     </div>
-                    <button
-                        onClick={() => setIsEditing(true)}
-                        className="flex items-center gap-2 text-xs font-black text-cyan-600 bg-cyan-50 hover:bg-cyan-100 px-4 py-2 rounded-xl transition-all"
-                    >
-                        <Pencil className="w-4 h-4" /> Edit
-                    </button>
+                    {canEdit && (
+                        <button
+                            onClick={() => setIsEditing(true)}
+                            className="flex items-center gap-2 text-xs font-black text-cyan-600 bg-cyan-50 hover:bg-cyan-100 px-4 py-2 rounded-xl transition-all"
+                        >
+                            <Pencil className="w-4 h-4" /> Edit
+                        </button>
+                    )}
                 </div>
 
                 {(isUnderAllocated || isOverAllocated) && (

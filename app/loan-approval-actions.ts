@@ -647,6 +647,9 @@ export async function disburseLoanToWallet(loanId: string) {
  * Get loan journey (timeline of events)
  */
 export async function getLoanJourney(loanId: string) {
+    const session = await auth()
+    if (!session?.user) throw new Error('Unauthorized')
+
     const events = await prisma.loanJourneyEvent.findMany({
         where: { loanId },
         orderBy: { timestamp: 'asc' }

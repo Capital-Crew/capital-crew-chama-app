@@ -17,6 +17,21 @@ import { calculateTopUpDetails, validateNetLoan } from '@/lib/topup-calculator'
 import { EmailService } from '@/lib/services/EmailService'
 
 export async function createMember(formData: FormData) {
+    const session = await auth()
+    if (!session?.user) throw new Error('Unauthorized')
+
+    // Check admin permissions
+    const userRole = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true, permissions: true }
+    })
+
+    const isSystemAdmin = userRole?.role === 'SYSTEM_ADMIN'
+    const hasEnrollPermission = (userRole?.permissions as any)?.canEnrollMembers === true
+    if (!isSystemAdmin && !['CHAIRPERSON', 'SECRETARY', 'TREASURER'].includes(userRole?.role as string) && !hasEnrollPermission) {
+        throw new Error('Unauthorized: You do not have permission to enroll members.')
+    }
+
     const name = formData.get('name') as string
     const contact = formData.get('contact') as string
 
@@ -675,6 +690,14 @@ export async function applyForLoan(prevState: any, formData: FormData) {
 }
 
 export async function submitVote(loanId: string, decision: ApprovalStatus, notes: string, userId: string) {
+    const session = await auth()
+    if (!session?.user) throw new Error('Unauthorized')
+
+    // Ensure the voter is the logged in user, or an admin
+    if (userId !== session.user.id && !['SYSTEM_ADMIN', 'CHAIRPERSON'].includes((session.user as any).role)) {
+        throw new Error('Unauthorized: Cannot vote on behalf of another user')
+    }
+
     const loan = await prisma.loan.findUnique({ where: { id: loanId } })
     if (!loan) return { error: 'Loan not found' }
 
@@ -758,6 +781,12 @@ export async function submitVote(loanId: string, decision: ApprovalStatus, notes
 }
 
 export async function disburseLoan(loanId: string) {
+    const session = await auth()
+    if (!session?.user) throw new Error('Unauthorized')
+
+    const isAdmin = ['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER', 'SECRETARY'].includes((session.user as any).role)
+    if (!isAdmin) throw new Error('Unauthorized: Only administrators can disburse loans via legacy flow')
+
     const loan = await prisma.loan.findUnique({ where: { id: loanId } })
     if (!loan) return
 
@@ -771,6 +800,11 @@ export async function disburseLoan(loanId: string) {
 }
 
 export async function createLoanProduct(formData: FormData) {
+    const session = await auth()
+    if (!session?.user || !['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER'].includes((session.user as any).role)) {
+        throw new Error('Unauthorized: Only administrators can manage loan products')
+    }
+
     const name = formData.get('name') as string
     const principal = parseFloat(formData.get('principal') as string)
     const rate = parseFloat(formData.get('interestRatePerPeriod') as string)
@@ -795,6 +829,11 @@ export async function createLoanProduct(formData: FormData) {
 }
 
 export async function createChargeTemplate(formData: FormData) {
+    const session = await auth()
+    if (!session?.user || !['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER'].includes((session.user as any).role)) {
+        throw new Error('Unauthorized: Only administrators can manage charge templates')
+    }
+
     const name = formData.get('name') as string
     const amount = parseFloat(formData.get('amount') as string)
 

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { db as prisma } from '@/lib/db'
 import { WalletTransactionType, LedgerTransactionType } from '@prisma/client'
 import { z } from 'zod'
+import { auth } from '@/auth'
 
 import { WalletService } from '@/lib/services/WalletService'
 import { ContributionsService } from '@/lib/services/contributions-service'
@@ -17,6 +18,9 @@ export async function addContribution(prevState: any, formData: FormData) {
     const walletId = String(formData.get('walletId'))
 
     try {
+        const session = await auth()
+        if (!session?.user) throw new Error('Unauthorized')
+
         const schema = z.object({
             amount: z.number().min(50, 'Minimum contribution is 50'),
             memberId: z.string(),
@@ -55,6 +59,8 @@ const walletTransactionSchema = z.object({
  * Automatically called when a new member is created
  */
 export async function createWallet(memberId: string) {
+    const session = await auth()
+    if (!session?.user) throw new Error('Unauthorized')
     return await WalletService.createWallet(memberId)
 }
 
@@ -78,6 +84,9 @@ import { serializeFinancials, Serialized } from "@/lib/safe-serialization"
  * - balance (liquid, withdrawable)
  */
 export async function getWalletBalance(memberId: string): Promise<Serialized<any>> {
+    const session = await auth()
+    if (!session?.user) throw new Error('Unauthorized')
+
     const member = await prisma.member.findUnique({
         where: { id: memberId },
         include: {
@@ -166,6 +175,9 @@ export async function getWalletBalance(memberId: string): Promise<Serialized<any
  * Get paginated wallet transaction history
  */
 export async function getWalletTransactions(memberId: string, page: number = 1, limit: number = 20): Promise<Serialized<any>> {
+    const session = await auth()
+    if (!session?.user) throw new Error('Unauthorized')
+
     const wallet = await prisma.wallet.findUnique({
         where: { memberId }
     })
@@ -234,6 +246,14 @@ export async function createWalletTransaction(input: {
  * Creates a new REVERSAL transaction that negates the original
  */
 export async function reverseTransaction(transactionId: string, reason: string, userId: string): Promise<Serialized<any>> {
+    const session = await auth()
+    if (!session?.user) throw new Error('Unauthorized')
+
+    const userRole = session.user.role as string
+    if (userId !== session.user.id && !['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER'].includes(userRole)) {
+        throw new Error('Unauthorized: Insufficient permissions to reverse transaction for another user')
+    }
+
     const originalTx = await prisma.walletTransaction.findUnique({
         where: { id: transactionId },
         include: { wallet: true }

@@ -33,9 +33,7 @@ export function MembersModule({ initialMembers, initialDetail, userRole, current
 
     // HANDLERS
     const handleSelectMember = async (id: string) => {
-        console.log(`[MembersModule] Selecting member: ${id}`);
         if (id === selectedDetail?.member?.id) {
-            console.log(`[MembersModule] Member ${id} already selected`);
             // Already selected, just switch view on mobile
             setViewMode('PROFILE');
             return;
@@ -43,13 +41,10 @@ export function MembersModule({ initialMembers, initialDetail, userRole, current
 
         setIsLoading(true);
         try {
-            console.log(`[MembersModule] Fetching details for ${id}`);
             const detail = await getMemberFullDetail(id);
-            console.log(`[MembersModule] Received details for ${id}:`, detail ? 'Success' : 'Null');
             setSelectedDetail(detail);
             setViewMode('PROFILE');
         } catch (error) {
-            console.error("Failed to fetch member details", error);
         } finally {
             setIsLoading(false);
         }

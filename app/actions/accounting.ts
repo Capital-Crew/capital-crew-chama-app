@@ -46,7 +46,6 @@ export async function updateProductMappings(productId: string, mappings: Record<
         revalidatePath('/loan-management/products') // Or wherever this form lives
         return { success: true }
     } catch (error: any) {
-        console.error('Update Mapping Failed:', error)
         return { success: false, error: error.message }
     }
 }

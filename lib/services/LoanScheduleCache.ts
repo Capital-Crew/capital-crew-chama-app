@@ -136,11 +136,9 @@ export class LoanScheduleCache {
         })
 
         if (loan?.cachedSchedule) {
-            console.log(`[Cache] Hit for Loan ${loanId}`)
             return loan.cachedSchedule as any as ScheduleItem[]
         }
 
-        console.log(`[Cache] Miss for Loan ${loanId}. Generating...`)
         return await this.generateAndSaveSchedule(loanId)
     }
 }

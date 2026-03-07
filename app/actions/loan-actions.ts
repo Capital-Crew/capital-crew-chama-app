@@ -31,7 +31,6 @@ export async function getPendingLoanCount() {
         })
         return count
     } catch (error) {
-        console.error('Error fetching pending loan count:', error)
         return 0
     }
 }
@@ -89,7 +88,6 @@ export async function getPendingLoans() {
             productName: loan.loanProduct.name
         }))
     } catch (error) {
-        console.error('Error fetching pending loans:', error)
         return []
     }
 }

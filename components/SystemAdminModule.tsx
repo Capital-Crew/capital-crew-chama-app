@@ -62,7 +62,8 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
         latePaymentPenalty: 200,
         penaltyAbsentAmount: 500,
         penaltyLateAmount: 200,
-        meetingFeesGlId: ''
+        meetingFeesGlId: '',
+        meetingReceivableGlId: ''
     });
 
     const [isAdjustmentModalOpen, setIsAdjustmentModalOpen] = useState(false);
@@ -86,7 +87,8 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
                     latePaymentPenalty: Number(settings.latePaymentPenalty) || 200,
                     penaltyAbsentAmount: Number(settings.penaltyAbsentAmount) || 500,
                     penaltyLateAmount: Number(settings.penaltyLateAmount) || 200,
-                    meetingFeesGlId: settings.meetingFeesGlId || ''
+                    meetingFeesGlId: settings.meetingFeesGlId || '',
+                    meetingReceivableGlId: settings.meetingReceivableGlId || ''
                 });
             });
         }

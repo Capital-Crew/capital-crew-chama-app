@@ -43,7 +43,6 @@ export function LoanOffsetSelector({
         setError(null)
         getMemberActiveLoans(memberId)
             .then(data => {
-                console.log('Raw loan data from server:', data)
 
                 // Adapt Server Action result to component state
                 const adaptedLoans = data.map((l: any) => {
@@ -53,14 +52,12 @@ export function LoanOffsetSelector({
                         current_balance: l.outstandingBalance || 0,
                         outstandingBalance: l.outstandingBalance || 0
                     }
-                    console.log('Adapted loan:', adapted)
                     return adapted
                 })
 
                 setActiveLoans(adaptedLoans)
             })
             .catch(err => {
-                console.error('Failed to fetch active loans:', err)
                 setError('Failed to load active loans')
             })
             .finally(() => setLoading(false))

@@ -23,7 +23,6 @@ export class ContributionsService {
 
             // Safety check to prevent infinite loops
             if (monthlyRate <= 0) {
-                console.warn(`[ContributionsService] monthlyRate is ${monthlyRate}. Defaulting to 1 to prevent infinite loop.`);
             }
             const safeMonthlyRate = monthlyRate > 0 ? monthlyRate : 1;
 

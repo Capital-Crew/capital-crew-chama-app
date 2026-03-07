@@ -109,11 +109,9 @@ export function MpesaLedger({ members = [] }: MpesaLedgerProps) {
             if (Array.isArray(data)) {
                 setTransactions(data)
             } else {
-                console.error("Unexpected API response:", data)
                 setTransactions([])
             }
         } catch (error) {
-            console.error(error)
             toast.error("Failed to load transactions")
             setTransactions([])
         } finally {
@@ -175,7 +173,6 @@ export function MpesaLedger({ members = [] }: MpesaLedgerProps) {
                 }
             }
         } catch (error) {
-            console.error(error);
             toast.error("Failed to check status");
         } finally {
             setCheckingStatusId(null);
@@ -205,7 +202,6 @@ export function MpesaLedger({ members = [] }: MpesaLedgerProps) {
             }
             fetchTransactions();
         } catch (error) {
-            console.error(error);
             toast.error("Incomplete bulk check.");
         } finally {
             setCheckingAll(false);
@@ -233,7 +229,6 @@ export function MpesaLedger({ members = [] }: MpesaLedgerProps) {
                 toast.error(result.message);
             }
         } catch (error) {
-            console.error(error);
             toast.error("Failed to resolve manually");
         } finally {
             setResolving(false);
@@ -252,7 +247,6 @@ export function MpesaLedger({ members = [] }: MpesaLedgerProps) {
             const ledger = await getTransactionLedger(tx.id);
             setCurrentLedger(ledger);
         } catch (error) {
-            console.error(error);
             toast.error("Failed to load ledger details");
         } finally {
             setViewingLedger(false);
@@ -273,7 +267,6 @@ export function MpesaLedger({ members = [] }: MpesaLedgerProps) {
                 toast.info(result.message);
             }
         } catch (error) {
-            console.error(error);
             toast.error("Failed to sync ledger");
         } finally {
             setSyncingLedger(false);
@@ -300,7 +293,6 @@ export function MpesaLedger({ members = [] }: MpesaLedgerProps) {
                 toast.error(result.error || "Reconciliation failed");
             }
         } catch (error) {
-            console.error(error);
             toast.error("An error occurred during reconciliation");
         } finally {
             setReconciling(false);

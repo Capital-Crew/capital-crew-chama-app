@@ -19,7 +19,6 @@ export async function POST(req: Request) {
 
     // Skip validation only in development if needed, but for production-grade audit we enforce it.
     if (!isSafaricomIp && process.env.NODE_ENV === 'production') {
-        console.warn(`Blocked unauthorized M-Pesa callback attempt from IP: ${clientIp}`);
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -28,14 +27,12 @@ export async function POST(req: Request) {
         const { Body } = payload;
 
         if (!Body || !Body.stkCallback) {
-            console.error("Invalid M-Pesa Callback Payload", payload);
             return NextResponse.json({ error: "Invalid Payload" }, { status: 400 });
         }
 
         const { stkCallback } = Body;
         const { MerchantRequestID, CheckoutRequestID, ResultCode, ResultDesc, CallbackMetadata } = stkCallback;
 
-        console.log("M-Pesa Callback Received:", { CheckoutRequestID, ResultCode, ResultDesc });
 
         // 1. Find Transaction
         const transaction = await prisma.transaction.findUnique({
@@ -43,7 +40,6 @@ export async function POST(req: Request) {
         });
 
         if (!transaction) {
-            console.warn(`Transaction not found for CheckoutRequestID: ${CheckoutRequestID}`);
             return NextResponse.json({ result: "Transaction not found" });
         }
 
@@ -75,9 +71,7 @@ export async function POST(req: Request) {
                     amount: Number(transaction.amount),
                     memberId: transaction.memberId || undefined
                 });
-                console.log(`Financial posting completed for transaction ${transaction.id}`);
             } catch (ledgerError) {
-                console.error("Financial Posting Failed for M-Pesa Deposit:", ledgerError);
                 // The callback itself is success because M-Pesa logic is done, but we log the internal failure.
             }
 
@@ -94,7 +88,6 @@ export async function POST(req: Request) {
 
         return NextResponse.json({ result: "Success" });
     } catch (error) {
-        console.error("Callback Processing Error:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }

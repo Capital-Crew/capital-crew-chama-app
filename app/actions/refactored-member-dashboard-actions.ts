@@ -99,7 +99,6 @@ export async function getRefactoredLoanPortfolio(memberId: string): Promise<Refa
             })
 
         } catch (error) {
-            console.error(`Error processing loan ${loan.id}:`, error)
             // Include loan with zero values on error
             portfolioItems.push({
                 id: loan.id,
@@ -133,7 +132,6 @@ export async function getRefactoredMemberPortfolio(memberId: string) {
             data: portfolio
         }
     } catch (error: any) {
-        console.error('Error fetching member portfolio:', error)
         return {
             success: false,
             error: error.message

@@ -13,7 +13,6 @@ export async function getProductMappings(productId: string) {
 
         return mappings
     } catch (error) {
-        console.error('Error fetching product mappings:', error)
         return []
     }
 }
@@ -44,7 +43,6 @@ export async function updateProductMapping(
         revalidatePath(`/admin/products/${productId}`)
         return { success: true, message: 'Mapping updated successfully' }
     } catch (error) {
-        console.error('Error updating product mapping:', error)
         return { success: false, message: 'Failed to update mapping' }
     }
 }

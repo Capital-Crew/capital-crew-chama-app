@@ -45,7 +45,6 @@ export async function POST(
             transaction
         }, { status: 201 })
     } catch (error: any) {
-        console.error('Error creating wallet transaction:', error)
         return NextResponse.json(
             { error: error.message || 'Failed to create transaction' },
             { status: 500 }

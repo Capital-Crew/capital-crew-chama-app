@@ -43,12 +43,10 @@ export function LoanSystemMonitoring() {
                 })
                 setMetrics(result.data.metrics)
             } else {
-                console.error('Failed to load system health:', result.error)
             }
 
             setLoading(false)
         } catch (error) {
-            console.error('Error loading system health:', error)
             setLoading(false)
         }
     }

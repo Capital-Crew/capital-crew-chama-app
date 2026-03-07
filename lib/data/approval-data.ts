@@ -134,7 +134,6 @@ export async function getPendingApprovals() {
                     })
                 }
             } catch (error) {
-                console.error(`Error fetching entity details for ${req.type}:`, error)
             }
 
             return {
@@ -199,7 +198,6 @@ export async function getApprovalCounts() {
 
         return totalCount
     } catch (error) {
-        console.error('Error fetching approval counts:', error)
         return 0
     }
 }

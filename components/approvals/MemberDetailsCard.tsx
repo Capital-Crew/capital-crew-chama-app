@@ -32,7 +32,6 @@ export function MemberDetailsCard({ requestId, memberId, isOpen, onClose }: Memb
             const data = await response.json()
             setMember(data)
         } catch (e) {
-            console.error(e)
             toast.error("Could not load member details")
         } finally {
             setLoading(false)

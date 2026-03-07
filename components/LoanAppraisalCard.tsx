@@ -145,7 +145,6 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
             const data = await response.json()
             setLoan(data.loan)
         } catch (error) {
-            console.error('Failed to fetch loan:', error)
         } finally {
             setLoading(false)
         }
@@ -212,7 +211,6 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
             toast.success('Loan disbursed successfully')
             onClose() // Close modal on success
         } catch (error: any) {
-            console.error('Disbursement error:', error)
             toast.error(error.message || 'Failed to disburse loan')
         } finally {
             setSubmitting(false)

@@ -108,7 +108,6 @@ export async function assignUsername(formData: FormData) {
         return { success: true }
 
     } catch (error: any) {
-        console.error("Assign Username Error:", error)
         return { success: false, error: "Database error occurred." }
     }
 }

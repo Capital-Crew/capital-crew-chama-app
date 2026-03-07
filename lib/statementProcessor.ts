@@ -99,7 +99,6 @@ export function processTransactions(transactions: WalletTransaction[]): Statemen
             // Unknown type fallback
             // Assume Debit or just log warning? 
             // Logic in existing code:
-            console.warn(`Unknown transaction type: ${type}`);
             displayDescription = `UNKNOWN: ${type} - ${tx.description}`;
         }
 

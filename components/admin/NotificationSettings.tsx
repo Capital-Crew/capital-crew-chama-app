@@ -35,7 +35,6 @@ export function NotificationSettings() {
             const data = await getNotificationConfigs()
             setConfigs(data)
         } catch (error) {
-            console.error(error)
             toast.error("Failed to load settings");
         } finally {
             setLoading(false)
@@ -68,7 +67,6 @@ export function NotificationSettings() {
             toast.success("Settings saved");
 
         } catch (error) {
-            console.error(error)
             toast.error("Failed to save settings");
         } finally {
             setSaving(false)

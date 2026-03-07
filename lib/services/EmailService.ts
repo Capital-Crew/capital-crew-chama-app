@@ -29,7 +29,6 @@ export class EmailService {
     static async sendEmail(to: string | string[], subject: string, html: string, attachments: Attachment[] = []) {
         try {
             if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-                console.warn('SMTP Credentials not found. Email not sent:', subject)
                 return false
             }
 
@@ -41,10 +40,8 @@ export class EmailService {
                 attachments
             })
 
-            console.log('Message sent: %s', info.messageId)
             return true
         } catch (error) {
-            console.error('Error sending email:', error)
             return false
         }
     }
@@ -73,7 +70,6 @@ export class EmailService {
         const recipients = await this.getRecipientsForEvent('LOAN_SUBMISSION')
 
         if (recipients.length === 0) {
-            console.log('No recipients configured for LOAN_SUBMISSION')
             return
         }
 
@@ -110,7 +106,6 @@ export class EmailService {
         // Combine recipients (Dedup)
         const recipients = Array.from(new Set([memberEmail, ...ccs]))
 
-        console.log(`Sending Loan Approval Email to: ${recipients.join(', ')}`)
 
         const subject = `Loan Approved: ${loanNumber}`
         const html = `

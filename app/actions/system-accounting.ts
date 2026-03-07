@@ -68,7 +68,6 @@ export async function getStrictGLAccounts() {
 
         return accountsWithBalance;
     } catch (error) {
-        console.error('Error fetching strict accounts:', error);
         throw new Error('Failed to fetch strict accounts');
     }
 }
@@ -86,7 +85,6 @@ export async function getAllAccounts() {
         });
         return accounts;
     } catch (error) {
-        console.error('Error fetching accounts:', error);
         throw new Error('Failed to fetch accounts');
     }
 }

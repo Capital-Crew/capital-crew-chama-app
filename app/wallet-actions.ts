@@ -123,7 +123,6 @@ export async function getWalletBalance(memberId: string): Promise<Serialized<any
         shareContributions = Number(member.shareContributions) || 0
 
     } catch (error) {
-        console.warn('Ledger error:', memberId, error)
         shareContributions = Number(member.shareContributions) || 0
         // walletBalance remains 0 if error
     }

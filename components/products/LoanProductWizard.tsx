@@ -83,10 +83,8 @@ export function LoanProductWizard({ accounts, initialData, productId }: LoanProd
         try {
             let result;
             if (isEditMode && productId) {
-                console.log("Updating Product:", productId);
                 result = await updateLoanProductWizard(productId, data);
             } else {
-                console.log("Creating New Product");
                 result = await createLoanProductWizard(data);
             }
 

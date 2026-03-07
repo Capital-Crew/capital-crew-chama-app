@@ -69,7 +69,6 @@ export function WalletDashboard({ memberId }: { memberId: string }) {
                 : await getWithdrawableBalanceHistory(memberId, order)
             setTransactions(data)
         } catch (error: any) {
-            console.error('Failed to load transactions:', error)
         } finally {
             setLoadingTransactions(false)
         }

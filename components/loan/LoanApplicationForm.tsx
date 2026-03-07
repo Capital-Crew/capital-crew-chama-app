@@ -146,7 +146,6 @@ export function LoanApplicationForm({
                     setActiveLoans(setLoans);
                     setSelectedLoansToOffset([]);
                 })
-                .catch(err => console.error('Error fetching active loans:', err));
         }
     }, [debouncedMemberId]);
 
@@ -164,7 +163,6 @@ export function LoanApplicationForm({
             calculateLoanQualification(debouncedMemberId, selectedLoansToOffset, amount, feeExemptions)
                 .then(result => setQualification(result))
                 .catch(error => {
-                    console.error('Failed to calculate qualification:', error);
                     setCalcError(error.message || 'Failed to calculate fees. Please try again.');
                 })
                 .finally(() => setCalculatingQualification(false));
@@ -194,7 +192,6 @@ export function LoanApplicationForm({
         <form action={async (formData) => {
             // Prevent duplicate submissions
             if (isSubmitting) {
-                console.log('Submission already in progress, ignoring...');
                 return;
             }
 
@@ -254,7 +251,6 @@ export function LoanApplicationForm({
                                     try {
                                         await applyForLoan(null, formData);
                                     } catch (error) {
-                                        console.error('Failed to save draft:', error);
                                     }
                                 }
                                 handleCancel();

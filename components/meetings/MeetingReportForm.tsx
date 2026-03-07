@@ -98,8 +98,9 @@ export function MeetingReportForm({ meetings, members, settings }: MeetingReport
                 toast.success('Attendance processed and penalties posted!');
                 router.push('/dashboard');
             } else {
-                throw new Error(result.error || 'Failed to process attendance');
+                throw new Error(('error' in result ? result.error : null) || 'Failed to process attendance');
             }
+
         } catch (error: any) {
             toast.error(error.message);
         } finally {

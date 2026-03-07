@@ -70,7 +70,6 @@ export async function createMemberAction(formData: FormData): Promise<ActionResu
         return { success: true, data: member }
 
     } catch (error: any) {
-        console.error("Create Member Error:", error)
         return { success: false, error: error.message || "Failed to create member" }
     }
 }

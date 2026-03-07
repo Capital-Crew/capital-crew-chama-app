@@ -78,7 +78,6 @@ export async function calculateBorrowingPower(memberId: string): Promise<CreditS
                 loanBalance = Number(loan.netDisbursementAmount || loan.amount || 0);
             }
         } catch (error) {
-            console.error(`Error calculating balance for loan ${loan.id}:`, error);
             // Fallback on error
             loanBalance = Number(loan.netDisbursementAmount || loan.amount || 0);
         }

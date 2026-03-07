@@ -19,7 +19,6 @@ export async function getWelfareFundBalance() {
             monthlyContribution: Number(settings?.welfareMonthlyContribution || 0)
         }
     } catch (error: any) {
-        console.error('Error fetching welfare fund balance:', error)
         return { success: false, error: error.message }
     }
 }
@@ -69,7 +68,6 @@ export async function addWelfareFundContribution(amount: number, description: st
         revalidatePath('/welfare')
         return { success: true }
     } catch (error: any) {
-        console.error('Error adding welfare contribution:', error)
         return { success: false, error: error.message }
     }
 }
@@ -87,7 +85,6 @@ export async function getWelfareFundTransactions() {
         })
         return { success: true, data: transactions }
     } catch (error: any) {
-        console.error('Error fetching welfare transactions:', error)
         return { success: false, error: error.message }
     }
 }
@@ -127,7 +124,6 @@ export async function processMonthlyWelfareContribution() {
         }
         return { success: false, message: 'No monthly contribution set' }
     } catch (error: any) {
-        console.error('Error processing monthly contribution:', error)
         return { success: false, error: error.message }
     }
 }

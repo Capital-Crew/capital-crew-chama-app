@@ -41,7 +41,6 @@ export async function createLoanProductWizard(data: LoanProductWizardValues) {
 
     // Transactional Creation (Manual)
     try {
-        console.log("Attempting to create Product via RAW SQL...");
 
         // Use Raw SQL to bypass Stale Client Validation
         // We use UUID for ID or let DB generate if default is supported, but safe to generate.
@@ -71,12 +70,10 @@ export async function createLoanProductWizard(data: LoanProductWizardValues) {
             )
         `;
 
-        console.log("Product Created via SQL:", id);
         const newProduct = { id }; // Mock object for next steps
 
         // 2. Create Accounting Mappings
         const createMapping = async (type: ProductAccountingType, accountId: string) => {
-            console.log(`Creating Mapping SQL: ${type} -> ${accountId}`);
             const mappingId = randomUUID();
             await prisma.$executeRaw`
                 INSERT INTO "ProductAccountingMapping" ("id", "productId", "accountId", "accountType")
@@ -105,10 +102,6 @@ export async function createLoanProductWizard(data: LoanProductWizardValues) {
         return { success: true, productId: newProduct.id };
 
     } catch (error: any) {
-        console.error("________________________________________________________________");
-        console.error("FULL PRISMA ERROR DETAILS:");
-        console.error(error);
-        console.error("________________________________________________________________");
 
         await prisma.$disconnect();
 
@@ -150,7 +143,6 @@ export async function updateLoanProductWizard(id: string, data: LoanProductWizar
     } = validated.data;
 
     try {
-        console.log("Attempting to UPDATE Product via RAW SQL:", id);
 
         const now = new Date();
 
@@ -179,13 +171,11 @@ export async function updateLoanProductWizard(id: string, data: LoanProductWizar
             WHERE "id" = ${id}
         `;
 
-        console.log("Product Updated via SQL");
 
         // 2. Update Accounting Mappings (Delete & Recreate)
         // Using transaction if possible? Raw queries are separate.
         // Isolation is okay here.
 
-        console.log("Deleting old mappings...");
         await prisma.$executeRaw`DELETE FROM "ProductAccountingMapping" WHERE "productId" = ${id}`;
 
         const createMapping = async (type: ProductAccountingType, accountId: string) => {
@@ -217,7 +207,6 @@ export async function updateLoanProductWizard(id: string, data: LoanProductWizar
         return { success: true, productId: id };
 
     } catch (error: any) {
-        console.error("FULL UPDATE ERROR DETAILS:", error);
         await prisma.$disconnect();
 
         // Check for unique constraint on shortCode if changed
@@ -237,7 +226,6 @@ export async function toggleLoanProductStatus(productId: string, isActive: boole
     const prisma = new PrismaClient(); // LOCAL INSTANCE
 
     try {
-        console.log(`Toggling Product ${productId} to isActive=${isActive}`);
 
         // Raw SQL Update
         await prisma.$executeRaw`
@@ -258,7 +246,6 @@ export async function toggleLoanProductStatus(productId: string, isActive: boole
         revalidatePath('/admin/system');
         return { success: true };
     } catch (error: any) {
-        console.error("TOGGLE ERROR:", error);
         await prisma.$disconnect();
         throw new Error("Failed to update status");
     }

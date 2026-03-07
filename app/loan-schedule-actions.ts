@@ -40,7 +40,6 @@ export async function getLoanSchedule(loanId: string): Promise<LoanScheduleResul
 
         return schedule
     } catch (error) {
-        console.error('Error calculating loan schedule:', error)
         return null
     }
 }
@@ -81,7 +80,6 @@ export async function getLoanWithSchedule(loanId: string) {
             schedule
         }
     } catch (error) {
-        console.error('Error fetching loan with schedule:', error)
         return null
     }
 }

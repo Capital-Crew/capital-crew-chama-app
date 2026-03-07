@@ -136,7 +136,7 @@ export function useFormAutoSave({
                         formData: data,
                         loanType: currentLoanType,
                         step: currentStep
-                    }).catch(console.error)
+                    })
                 }
             }
         }

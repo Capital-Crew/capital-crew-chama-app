@@ -88,7 +88,6 @@ export async function updateBeneficiaries(memberId: string, beneficiaries: any[]
         revalidatePath(`/members/${memberId}`)
         return { success: true }
     } catch (error: any) {
-        console.error('Update Kin Error:', error)
         if (error instanceof z.ZodError) {
             const errorMessages = error.issues.map(err => {
                 return err.path.length > 0 ? `${err.path.join('.')}: ${err.message}` : err.message

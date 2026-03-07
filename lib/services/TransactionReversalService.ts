@@ -121,39 +121,35 @@ export class TransactionReversalService {
                         })
 
                         // Create explicit Reversal Transaction in Wallet
+                        // P3.2: Compute real balance after reversal
+                        const postReversalBalance = await getMemberWalletBalance(memberId!, tx)
                         await tx.walletTransaction.create({
                             data: {
                                 walletId: walletTx.walletId,
                                 type: 'REVERSAL',
                                 amount: walletTx.amount,
                                 description: `Reversal of ${walletTx.type} - ${reason}`,
-                                balanceAfter: 0,
+                                balanceAfter: postReversalBalance,
                                 reverses: walletTx.id
                             }
                         })
 
                         // --- CASCADING REVERSAL: Check for Related Loan ---
                         if (walletTx.relatedLoanId) {
-                            console.log(`[Reversal] Found linked Loan ${walletTx.relatedLoanId} for WalletTx ${refId}. Cascading reversal...`)
 
                             // 1. Find the corresponding Loan Transaction
                             // Usually a Repayment in Wallet corresponds to a Repayment in Loan
                             // We try to match by ReferenceId (ideal) or Amount+Date (heuristic)
+                            // P3.3: Use direct FK match instead of amount+type heuristic
+                            // to avoid reversing the wrong transaction when amounts are identical
                             const loanTx = await tx.loanTransaction.findFirst({
                                 where: {
                                     loanId: walletTx.relatedLoanId,
-                                    amount: walletTx.amount,
+                                    referenceId: walletTx.id,  // Direct FK
                                     isReversed: false,
-                                    // postedAt vs createdAt might vary slightly, but should be close.
-                                    // Safest is if they share a reference.
-                                    // If LoanTransaction.referenceId points to WalletTx.id:
-                                    // If LoanTransaction.referenceId points to WalletTx.id:
-                                    // OR if we can't find by direct ID, we look for 'REPAYMENT'
-                                    type: 'REPAYMENT'
                                 }
                             })
 
-                            console.log(`[Reversal] Cascade Search: LoanId=${walletTx.relatedLoanId}, Amount=${walletTx.amount}. Found? ${!!loanTx}`)
 
                             if (loanTx) {
                                 // 2. Reverse the Loan Transaction
@@ -182,7 +178,6 @@ export class TransactionReversalService {
                                 try {
                                     revalidatePath(`/loans/${loanTx.loanId}`)
                                 } catch (e) {
-                                    console.warn('Cache revalidation failed (likely script environment)', e)
                                 }
                             }
                         }
@@ -208,7 +203,8 @@ export class TransactionReversalService {
                             data: { isReversed: true }
                         })
 
-                        // Create Reversal Entry
+                        // P4.3: Look up real admin name instead of hardcoding 'Admin'
+                        const adminUser = await tx.user.findUnique({ where: { id: adminId }, select: { name: true } })
                         await tx.shareTransaction.create({
                             data: {
                                 memberId: shareTx.memberId,
@@ -216,7 +212,7 @@ export class TransactionReversalService {
                                 amount: shareTx.amount,
                                 description: `Reversal of Share purchase - ${reason}`,
                                 createdBy: adminId,
-                                creatorName: 'Admin', // Should look up name
+                                creatorName: adminUser?.name || 'Admin',
                                 reverses: shareTx.id
                             }
                         })
@@ -275,7 +271,6 @@ export class TransactionReversalService {
                         tx
                     )
                 } else {
-                    console.warn(`No GL Entry found for ${type} ${refId}. Skipping GL Reversal.`)
                     // This might be valid for legacy data or drafts, but ideally we should have one.
                 }
 
@@ -345,14 +340,12 @@ export class TransactionReversalService {
                         await TransactionReplayService.replayTransactions(loanTx.loanId, undefined, tx)
                         try {
                             revalidatePath(`/loans/${loanTx.loanId}`)
-                        } catch (e) { console.warn('Cache revalidation failed', e) }
                     }
                 }
 
                 if (memberId) {
                     try {
                         revalidatePath(`/members/${memberId}`)
-                    } catch (e) { console.warn('Cache revalidation failed', e) }
                 }
 
                 return { success: true }
@@ -361,7 +354,6 @@ export class TransactionReversalService {
                 timeout: 20000
             })
         } catch (error: any) {
-            console.error('Universal Reversal Failed:', error)
             return { success: false, error: error.message }
         }
     }

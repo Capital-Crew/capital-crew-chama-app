@@ -5,6 +5,8 @@ import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
 import { revalidatePath } from 'next/cache';
+import { rateLimiter } from '@/lib/ratelimit';
+import { EmailService } from '@/lib/services/EmailService';
 
 /**
  * Zod Schemas for validation
@@ -15,8 +17,8 @@ const RequestResetSchema = z.object({
 
 const ResetPasswordSchema = z.object({
     token: z.string().min(1, "Token is required"),
-    password: z.string().min(6, "Password must be at least 6 characters"),
-    confirmPassword: z.string().min(6, "Confirm password must be at least 6 characters"),
+    password: z.string().min(10, "Password must be at least 10 characters"),
+    confirmPassword: z.string().min(10, "Confirm password must be at least 10 characters"),
 }).refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",
     path: ["confirmPassword"],
@@ -28,6 +30,11 @@ const ResetPasswordSchema = z.object({
  */
 export async function requestPasswordReset(formData: FormData) {
     const email = formData.get('email') as string;
+
+    const { success } = await rateLimiter.limit(email || 'unknown');
+    if (!success) {
+        return { success: false, error: "Too many attempts. Please wait 15 minutes and try again." };
+    }
 
     const validated = RequestResetSchema.safeParse({ email });
     if (!validated.success) {
@@ -62,16 +69,24 @@ export async function requestPasswordReset(formData: FormData) {
             }
         });
 
-        // 4. Mock "Send Email"
+        // 4. Emaill delivery via nodemailer
         const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
         const resetLink = `${baseUrl}/auth/reset-password?token=${token}`;
-        console.log(`\n🔑 PASSWORD RESET REQUESTED for: ${email}`);
-        console.log(`🔗 RESET LINK: ${resetLink}\n`);
+
+        const subject = "Password Reset Request";
+        const html = `
+            <h2>Password Reset</h2>
+            <p>You requested a password reset. Click the link below to set a new password:</p>
+            <p><a href="${resetLink}">Reset Password</a></p>
+            <p>This link will expire in 1 hour.</p>
+            <p>If you did not request this, please ignore this email.</p>
+        `;
+
+        await EmailService.sendEmail(email, subject, html);
 
         return { success: true, message: "If an account exists with that email, a reset link has been sent." };
 
     } catch (error) {
-        console.error("Request Password Reset Error:", error);
         return { success: false, error: "Failed to process request. Please try again later." };
     }
 }
@@ -82,6 +97,12 @@ export async function requestPasswordReset(formData: FormData) {
  */
 export async function resetPassword(formData: FormData) {
     const token = formData.get('token') as string;
+
+    const { success } = await rateLimiter.limit(token || 'unknown');
+    if (!success) {
+        return { success: false, error: "Too many attempts. Please wait 15 minutes and try again." };
+    }
+
     const password = formData.get('password') as string;
     const confirmPassword = formData.get('confirmPassword') as string;
 
@@ -134,7 +155,6 @@ export async function resetPassword(formData: FormData) {
         return { success: true, message: "Your password has been reset successfully. You can now login." };
 
     } catch (error) {
-        console.error("Reset Password Error:", error);
         return { success: false, error: "Failed to reset password. Please try again later." };
     }
 }

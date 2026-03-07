@@ -64,7 +64,6 @@ export async function changePassword(data: ChangePasswordValues) {
         return { success: "Password changed successfully." };
 
     } catch (e) {
-        console.error("Change Password Error:", e);
         return { error: "Failed to change password." };
     }
 }

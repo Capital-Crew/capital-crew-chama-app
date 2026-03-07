@@ -18,7 +18,6 @@ export function useInactivityLogout(timeoutMs: number = INACTIVITY_TIMEOUT) {
         }
 
         timerRef.current = setTimeout(async () => {
-            console.log('[InactivityLogout] User idle for too long. Logging out...')
             await handleSignOut()
         }, timeoutMs)
     }, [timeoutMs])

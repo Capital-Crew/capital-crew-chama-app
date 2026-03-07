@@ -16,7 +16,6 @@ export default function GlobalError({
 
     // Log the error immediately on mount
     useEffect(() => {
-        console.error('[ErrorBoundary] Unhandled error caught:', error)
 
         // TODO: Send to monitoring service (Sentry, LogRocket, etc.)
         // Example:
@@ -32,7 +31,6 @@ export default function GlobalError({
             setTimeout(() => setCopied(false), 2000)
         } catch {
             // Fallback for older browsers
-            console.log('Digest:', error.digest)
         }
     }
 

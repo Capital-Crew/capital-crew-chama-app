@@ -137,7 +137,6 @@ export async function getMemberStats(memberId: string): Promise<MemberStats | nu
             }
         }
     } catch (error) {
-        console.error("Error fetching member stats:", error)
         return null
     }
 }
@@ -268,7 +267,6 @@ export async function getDetailedMemberStats(memberId: string): Promise<{ stats:
             schedule = loan.repaymentSchedule as any[];
         } else {
             // CACHE MISS - Generate, Save, and Use
-            console.log(`[Cache] Generating schedule for loan ${loan.id}`)
             schedule = await LoanScheduleCache.generateAndSaveSchedule(loan.id)
         }
         const now = new Date();
@@ -694,7 +692,6 @@ export async function getMemberFullDetail(memberId: string) {
 
     if (!stats || !member) return null;
 
-    console.log(`[getMemberFullDetail] Member ${memberId} has ${member?.nextOfKin?.length || 0} Next of Kin records`);
 
     return serializePrisma({
         member: {

@@ -356,7 +356,6 @@ export async function getTransactionLedger(transactionId: string) {
 
         return serializeFinancials(ledgerEntry);
     } catch (error) {
-        console.error("Error fetching ledger:", error);
         return null;
     }
 }

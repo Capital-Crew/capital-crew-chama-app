@@ -8,10 +8,8 @@ export async function GET(
 ) {
     try {
         const session = await auth()
-        console.log('[Active Loans API] Session check:', { hasUser: !!session?.user, requestUrl: req.url, memberId: (await params).memberId })
 
         if (!session?.user) {
-            console.log('[Active Loans API] 401 Unauthorized - No session')
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
@@ -39,7 +37,6 @@ export async function GET(
             count: loans.length
         })
     } catch (error: any) {
-        console.error('[Active Loans API] Error:', error)
         return NextResponse.json(
             { error: error.message || 'Failed to fetch active loans' },
             { status: 500 }

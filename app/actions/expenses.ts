@@ -36,13 +36,11 @@ export async function createExpenseRequest(data: {
             const { initiateWorkflow } = await import('@/app/actions/workflow-engine')
             await initiateWorkflow('EXPENSE', expense.id, session.user.id)
         } catch (e) {
-            console.error("Failed to initiate expense workflow:", e)
         }
 
         revalidatePath('/accounts')
         return serializeFinancials({ success: true, expense })
     } catch (error: any) {
-        console.error("Failed to create expense request:", error)
         return serializeFinancials({ success: false, error: error.message })
     }
 }
@@ -100,6 +98,11 @@ export async function submitExpenseSurrender(expenseId: string, actualAmount: nu
  * Approve a Claim (Reimbursement)
  */
 export async function approveReimbursementClaim(expenseId: string) {
+    const session = await auth()
+    if (!session?.user?.id) throw new Error('Unauthorized')
+    const allowedRoles = ['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER']
+    if (!allowedRoles.includes(session.user.role as string)) throw new Error('Forbidden: Insufficient permissions')
+
     return await prisma.$transaction(async (tx) => {
         await ExpenseService.finalizeExpense(expenseId, tx)
         return { success: true }
@@ -110,6 +113,9 @@ export async function approveReimbursementClaim(expenseId: string) {
  * Get Expenses
  */
 export async function getExpenses(): Promise<Serialized<any>> {
+    const session = await auth()
+    if (!session?.user?.id) throw new Error('Unauthorized')
+
     const expenses = await prisma.expense.findMany({
         include: {
             requester: { select: { id: true, name: true, role: true } },
@@ -127,6 +133,9 @@ export async function getExpenses(): Promise<Serialized<any>> {
  * Get Expense Categories (Groups + SubCategories) for dropdowns
  */
 export async function getExpenseCategories() {
+    const session = await auth()
+    if (!session?.user?.id) throw new Error('Unauthorized')
+
     return await prisma.expenseCategoryGroup.findMany({
         where: { isActive: true },
         include: {

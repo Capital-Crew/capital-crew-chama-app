@@ -22,7 +22,6 @@ export async function GET(request: Request) {
 
         return NextResponse.json({ status: transaction.status });
     } catch (error) {
-        console.error("Error fetching transaction status:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }

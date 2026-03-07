@@ -200,7 +200,6 @@ export async function reverseLoanTransaction(transactionId: string, reason: stri
             timeout: 60000
         })
     } catch (e: any) {
-        console.error('Reversal Error', e)
         return { error: e.message || 'Failed to reverse transaction' }
     }
 }

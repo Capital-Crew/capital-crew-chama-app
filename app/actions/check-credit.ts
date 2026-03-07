@@ -25,7 +25,6 @@ export async function checkCreditLimit() {
             message: credit.maxLoanAmount <= 0 ? "You do not have enough specific borrowing power." : undefined
         }
     } catch (e) {
-        console.error(e)
         // Fail open or closed? Closed for safety.
         return { canBorrow: false, maxAmount: 0, message: "Failed to calculate credit limit." }
     }

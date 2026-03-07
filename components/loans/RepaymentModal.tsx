@@ -61,7 +61,7 @@ export function RepaymentModal({ isOpen, onClose, loan, onSuccess }: RepaymentMo
                         feesBalance: fresh.feesBalance,
                         penaltyBalance: fresh.penaltyBalance
                     })
-                }).catch(err => console.error('Failed to refresh balance:', err))
+                })
             })
         }
     }, [isOpen, loan.id])
@@ -97,7 +97,6 @@ export function RepaymentModal({ isOpen, onClose, loan, onSuccess }: RepaymentMo
             }
         } catch (err: any) {
             setError(err.message || 'Repayment failed')
-            console.error(err)
         } finally {
             setLoading(false)
         }

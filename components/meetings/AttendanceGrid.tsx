@@ -9,10 +9,12 @@ export interface AttendanceEntry {
     memberId: string;
     memberName: string;
     memberNumber: number;
+    userId: string;
     status: AttendanceStatus;
     minutesLate?: number;
     apologyStatus?: 'PENDING' | 'APPROVED' | 'REJECTED' | null;
 }
+
 
 interface AttendanceGridProps {
     entries: AttendanceEntry[];
@@ -41,8 +43,8 @@ export function AttendanceGrid({ entries, onStatusChange, onMinutesLateChange }:
                                             <span className="font-bold text-slate-900">{entry.memberName}</span>
                                             {entry.apologyStatus && (
                                                 <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter ${entry.apologyStatus === 'APPROVED' ? 'bg-indigo-100 text-indigo-700' :
-                                                        entry.apologyStatus === 'PENDING' ? 'bg-amber-100 text-amber-700' :
-                                                            'bg-slate-100 text-slate-600'
+                                                    entry.apologyStatus === 'PENDING' ? 'bg-amber-100 text-amber-700' :
+                                                        'bg-slate-100 text-slate-600'
                                                     }`}>
                                                     Apology: {entry.apologyStatus}
                                                 </span>

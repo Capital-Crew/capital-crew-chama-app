@@ -17,7 +17,9 @@ export const authConfig = {
                 nextUrl.pathname.startsWith('/admin') ||
                 nextUrl.pathname.startsWith('/accounts') ||
                 nextUrl.pathname.startsWith('/reports') ||
-                nextUrl.pathname.startsWith('/wallet');
+                nextUrl.pathname.startsWith('/wallet') ||
+                nextUrl.pathname.startsWith('/meetings') ||
+                nextUrl.pathname.startsWith('/welfare');
             const isOnLogin = nextUrl.pathname.startsWith('/login');
 
             // Redirect unauthenticated users to login
@@ -39,10 +41,9 @@ export const authConfig = {
             if (isRestrictedAdmin) {
                 if (!isLoggedIn) return false; // Force login
 
-                // Strict RBAC Check
-                // Note: auth.user is typed generically
+                // Strict RBAC Check — only management roles can access admin/audit/accounts
                 const userRole = (auth?.user as any)?.role;
-                const allowedRoles = ['SYSTEM_ADMIN', 'CHAIRPERSON', 'SECRETARY', 'TREASURER', 'SYSTEM_ADMINISTRATOR', 'MEMBER'];
+                const allowedRoles = ['SYSTEM_ADMIN', 'CHAIRPERSON', 'SECRETARY', 'TREASURER'];
 
                 if (!allowedRoles.includes(userRole)) {
                     // Redirect unauthorized users to dashboard

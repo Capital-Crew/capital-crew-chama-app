@@ -144,7 +144,6 @@ export async function assignTransactionToMember(transactionId: string, memberId:
         return { success: true, message: "Transaction linked and wallet credited successfully." };
 
     } catch (error: any) {
-        console.error("Reconciliation Error:", error);
         return { success: false, error: error.message || "Failed to reconcile transaction" };
     }
 }

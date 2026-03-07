@@ -213,7 +213,6 @@ export async function calculateLoanQualification(memberId: string, loansToOffset
 
     const settings = await getSaccoSettings()
 
-    console.log(`[calculateLoanQualification] Fetching member: ${memberId}`);
     // Get member with shares and existing loans
     const member = await prisma.member.findUnique({
         where: { id: memberId },
@@ -248,16 +247,6 @@ export async function calculateLoanQualification(memberId: string, loansToOffset
     // Do NOT fall back to grossQualifyingAmount - that's just their borrowing capacity
     const baseAmount = truncateToDecimals(appliedAmount || 0)
 
-    console.log('[calculateLoanQualification] Debug:', {
-        memberId,
-        memberContributions,
-        grossQualifyingAmount,
-        appliedAmount,
-        baseAmount,
-        loansToOffset: loansToOffset.length,
-        exemptions
-    });
-
     // Calculate fees based on the applied amount (0 if not provided)
     // Check exemptions
     const exemptProcessing = exemptions?.processingFee === true || exemptions?.processingFee === 'true';
@@ -284,7 +273,6 @@ export async function calculateLoanQualification(memberId: string, loansToOffset
             }
         });
 
-        console.log('[calculateLoanQualification] Selected loans for offset:', selectedLoans.length);
 
         // Calculate total offset amount (full clearance of each loan)
         for (const loan of selectedLoans) {
@@ -312,12 +300,10 @@ export async function calculateLoanQualification(memberId: string, loansToOffset
 
             if (outstandingBalance > 0) {
                 selectedLoansOffset = addMoney(selectedLoansOffset, outstandingBalance);
-                console.log(`[calculateLoanQualification] Loan ${loan.loanApplicationNumber}: Outstanding Balance = ${outstandingBalance}`);
             } else {
                 // Fallback: use net disbursement or original loan amount if balance is 0
                 const fallbackAmount = truncateToDecimals(Number(loan.netDisbursementAmount || loan.amount || 0));
                 selectedLoansOffset = addMoney(selectedLoansOffset, fallbackAmount);
-                console.log(`[calculateLoanQualification] Loan ${loan.loanApplicationNumber}: Using fallback amount = ${fallbackAmount} (stored balance was 0)`);
             }
         }
     }
@@ -326,16 +312,6 @@ export async function calculateLoanQualification(memberId: string, loansToOffset
     const topUpFee = (selectedLoansOffset > 0)
         ? calculatePercentage(selectedLoansOffset, Number(settings.refinanceFeePercentage))
         : 0
-
-    console.log('[calculateLoanQualification] Fees:', {
-        processingFee,
-        insuranceFee,
-        shareCapitalDeduction,
-        topUpFee,
-        selectedLoansOffset,
-        topUpFeeCalculatedOn: 'offset amount',
-        hasOffsets: loansToOffset.length > 0
-    });
 
     // Total exposure across ALL active loans
     let totalExposure = 0;
@@ -382,17 +358,6 @@ export async function calculateLoanQualification(memberId: string, loansToOffset
     // Subtract all deductions (fees + offsets)
     const netDisbursementAmount = Math.max(0, subtractMoney(baseAmount, totalDeductions))
 
-    console.log('[calculateLoanQualification] Final calculation:', {
-        baseAmount,
-        processingFee,
-        insuranceFee,
-        shareCapitalDeduction,
-        topUpFee,
-        selectedLoansOffset,
-        totalDeductions,
-        netDisbursementAmount
-    });
-
     return {
         memberShares: memberContributions,
         grossQualifyingAmount: grossQualifyingAmount,
@@ -413,7 +378,6 @@ export async function calculateLoanQualification(memberId: string, loansToOffset
  * Used for loan offset selection in application form
  */
 export async function getMemberActiveLoans(memberId: string) {
-    console.log('[getMemberActiveLoans] Fetching for member:', memberId);
     try {
         // Import statement processor for consistent balance calculation (same as Loans tab)
         const { processTransactions } = await import('@/lib/statementProcessor')
@@ -432,7 +396,6 @@ export async function getMemberActiveLoans(memberId: string) {
             orderBy: { disbursementDate: 'desc' }
         })
 
-        console.log(`[getMemberActiveLoans] Found ${loans.length} active loans`);
 
         // Calculate balances using the SAME logic as the Loans tab
         const loansWithBalances = loans.map((loanItem: any) => {
@@ -474,7 +437,6 @@ export async function getMemberActiveLoans(memberId: string) {
                     penalties: 0 // Default to 0 as we don't have separate penalty tracking yet
                 }
             } catch (err) {
-                console.error(`[getMemberActiveLoans] Error processing loan ${loan.id}:`, err);
                 // Return safe fallback
                 return {
                     id: loan.id,
@@ -492,7 +454,6 @@ export async function getMemberActiveLoans(memberId: string) {
 
         return loansWithBalances
     } catch (e) {
-        console.error('[getMemberActiveLoans] FAILED:', e);
         throw e;
     }
 }

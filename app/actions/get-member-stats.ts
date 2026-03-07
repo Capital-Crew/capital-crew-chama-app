@@ -129,7 +129,6 @@ export async function getAllMemberLoans(memberId: string): Promise<Serialized<Me
         // Use the centralized mapper for consistent logic
         return serializeFinancials(loans.map(loan => mapLoanToTableRow(loan)));
     } catch (error) {
-        console.error("Error fetching member loans:", error);
         return [];
     }
 }

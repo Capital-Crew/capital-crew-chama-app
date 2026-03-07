@@ -51,7 +51,6 @@ export async function createWelfareType(data: WelfareTypeFormData) {
         revalidatePath('/admin/system')
         return { success: true, data: welfareType }
     } catch (error: any) {
-        console.error('Error creating welfare type:', error)
         return { success: false, error: error.message }
     }
 }
@@ -84,7 +83,6 @@ export async function updateWelfareType(id: string, data: Partial<WelfareTypeFor
         revalidatePath('/admin/system')
         return { success: true, data: welfareType }
     } catch (error: any) {
-        console.error('Error updating welfare type:', error)
         return { success: false, error: error.message }
     }
 }
@@ -126,7 +124,6 @@ export async function deleteWelfareType(id: string) {
         revalidatePath('/admin/system')
         return { success: true, message: 'Welfare type deleted' }
     } catch (error: any) {
-        console.error('Error deleting welfare type:', error)
         return { success: false, error: error.message }
     }
 }
@@ -148,7 +145,6 @@ export async function getWelfareTypes(includeInactive = false) {
         })
         return { success: true, data: types }
     } catch (error: any) {
-        console.error('Error fetching welfare types:', error)
         return { success: false, error: error.message }
     }
 }
@@ -166,7 +162,6 @@ export async function getWelfareTypeById(id: string) {
         })
         return { success: true, data: type }
     } catch (error: any) {
-        console.error('Error fetching welfare type:', error)
         return { success: false, error: error.message }
     }
 }
@@ -191,7 +186,6 @@ export async function addCustomField(data: CustomFieldFormData) {
         revalidatePath(`/welfare`)
         return { success: true, data: field }
     } catch (error: any) {
-        console.error('Error adding custom field:', error)
         return { success: false, error: error.message }
     }
 }
@@ -212,7 +206,6 @@ export async function updateCustomField(id: string, data: Partial<CustomFieldFor
         revalidatePath(`/welfare`)
         return { success: true, data: field }
     } catch (error: any) {
-        console.error('Error updating custom field:', error)
         return { success: false, error: error.message }
     }
 }
@@ -226,7 +219,6 @@ export async function deleteCustomField(id: string) {
         revalidatePath(`/welfare`)
         return { success: true }
     } catch (error: any) {
-        console.error('Error deleting custom field:', error)
         return { success: false, error: error.message }
     }
 }
@@ -244,7 +236,6 @@ export async function reorderCustomFields(welfareTypeId: string, orderedIds: str
         revalidatePath(`/welfare`)
         return { success: true }
     } catch (error: any) {
-        console.error('Error reordering fields:', error)
         return { success: false, error: error.message }
     }
 }

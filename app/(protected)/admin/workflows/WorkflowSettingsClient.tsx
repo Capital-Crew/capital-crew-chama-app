@@ -19,7 +19,6 @@ export function WorkflowSettingsClient({ workflows }: WorkflowSettingsClientProp
             toast.success("Stage threshold updated successfully");
         } catch (error) {
             toast.error("Failed to update settings");
-            console.error(error);
         } finally {
             setUpdating(null);
         }

@@ -42,7 +42,6 @@ export function MemberRegistry({ members, userRole }: { members: Member[], userR
             setSelectedMemberDetail(detail);
             setIsDetailOpen(true);
         } catch (err) {
-            console.error("Failed to load member detail:", err);
             alert("Failed to load member details. Please try again.");
         } finally {
             setLoadingDetail(false);

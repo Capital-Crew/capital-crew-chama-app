@@ -109,7 +109,6 @@ export async function POST(
         })
 
     } catch (error: any) {
-        console.error('Error processing repayment:', error)
 
         return NextResponse.json(
             {

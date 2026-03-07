@@ -59,7 +59,6 @@ export const submitLoanApproval = withAudit(
     AuditLogAction.LOAN_VOTE_CAST,
     async (loanId: string, decision: 'APPROVED' | 'REJECTED', notes: string) => {
         const session = await auth()
-        console.log('submitLoanApproval - Session:', JSON.stringify(session, null, 2))
 
         // @ts-ignore
         if (!session?.user?.memberId) {
@@ -665,7 +664,6 @@ async function getAccountId(tx: any, code: string) {
     if (acc) return acc.id
 
     // Auto-seed if missing to prevent FK crashes
-    console.log(`Auto-seeding missing GL Account: ${code}`)
 
     // Simple type deduction based on standard accounting codes
     let type = 'ASSET'

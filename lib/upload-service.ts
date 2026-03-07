@@ -30,7 +30,6 @@ export async function uploadFile(file: File): Promise<string> {
         // Return public URL path
         return `/${relativePath.replace(/\\/g, '/')}`;
     } catch (error) {
-        console.error('File Upload Error:', error);
         throw new Error('Failed to upload file to storage');
     }
 }

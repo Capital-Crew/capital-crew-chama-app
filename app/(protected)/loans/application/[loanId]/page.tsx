@@ -66,7 +66,6 @@ export default async function LoanDraftPage({ params }: PageProps) {
         try {
             creditSnapshot = await calculateBorrowingPower(loan.memberId)
         } catch (e) {
-            console.error("Failed to calc credit", e)
         }
     }
 

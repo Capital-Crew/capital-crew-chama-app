@@ -96,7 +96,6 @@ export async function createWelfareRequisition(data: WelfareRequisitionFormData)
         revalidatePath('/welfare')
         return { success: true, data: requisition }
     } catch (error: any) {
-        console.error('Error creating welfare requisition:', error)
         return { success: false, error: error.message }
     }
 }
@@ -123,7 +122,6 @@ export async function getWelfareRequisitions(status?: string, memberId?: string)
 
         return { success: true, data: requisitions }
     } catch (error: any) {
-        console.error('Error fetching requisitions:', error)
         return { success: false, error: error.message }
     }
 }
@@ -164,7 +162,6 @@ export async function getWelfareRequisitionById(id: string) {
 
         return { success: true, data: requisition }
     } catch (error: any) {
-        console.error('Error fetching requisition:', error)
         return { success: false, error: error.message }
     }
 }
@@ -201,7 +198,6 @@ export async function cancelWelfareRequisition(id: string) {
         revalidatePath(`/welfare/${id}`)
         return { success: true }
     } catch (error: any) {
-        console.error('Error cancelling requisition:', error)
         return { success: false, error: error.message }
     }
 }
@@ -313,7 +309,6 @@ export async function submitWelfareApproval(requisitionId: string, decision: 'AP
         return { success: true }
 
     } catch (error: any) {
-        console.error('Error submitting approval:', error)
         return { success: false, error: error.message }
     }
 }
@@ -433,7 +428,6 @@ export async function disburseWelfare(requisitionId: string) {
         revalidatePath(`/welfare/${requisitionId}`)
         return { success: true }
     } catch (error: any) {
-        console.error('Error disbursing welfare:', error)
         return { success: false, error: error.message }
     }
 }

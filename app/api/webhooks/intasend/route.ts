@@ -21,7 +21,6 @@ export async function POST(req: Request) {
 
         // 1. Verify Signature
         if (!verifySignature(req, bodyText)) {
-            console.error('IntaSend Webhook Signature Verification Failed');
             return NextResponse.json({ error: 'Invalid Signature' }, { status: 401 });
         }
 
@@ -33,12 +32,10 @@ export async function POST(req: Request) {
             return NextResponse.json({ challenge });
         }
 
-        console.log(`Webhook Received: [${payload.event_type || 'UNKNOWN'}] Status: [${state}] Ref: [${api_ref}]`);
 
         // CASE A: INCOMING COLLECTION (STK PUSH SUCCESS)
         if (payload.event_type === 'charge.success' || (payload.event_type === 'collection.received' && state === 'COMPLETE')) {
             if (metadata?.transactionType === 'DEPOSIT') {
-                console.log('✅ Processing DEPOSIT collection via CollectionService');
 
                 try {
                     await CollectionService.processIntasendDeposit({
@@ -49,7 +46,6 @@ export async function POST(req: Request) {
                         phoneNumber: account || payload.phone_number || 'Unknown'
                     });
                 } catch (error: any) {
-                    console.error('IntaSend Collection Processing Failed:', error.message);
                     // Still return success to IntaSend as the payment was received
                 }
             }
@@ -58,7 +54,6 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: true });
 
     } catch (error) {
-        console.error('Webhook Error:', error);
         return NextResponse.json({ error: 'Webhook Handler Failed' }, { status: 500 });
     }
 }

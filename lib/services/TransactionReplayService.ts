@@ -53,7 +53,6 @@ export class TransactionReplayService {
 
             // If no installments, we can't replay against schedule.
             if (allInstallments.length === 0) {
-                console.warn(`No installments found for loan ${loanId} during replay.`)
                 // If there are transactions but no installments, we might have a data integrity issue, 
                 // but we can't do anything here.
                 return { installmentsUpdated: 0, transactionsReplayed: 0 }

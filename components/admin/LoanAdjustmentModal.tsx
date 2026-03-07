@@ -126,7 +126,6 @@ export function LoanAdjustmentModal({
             setSearchInput('');
             onClose();
         } catch (error) {
-            console.error(error);
         } finally {
             setIsSubmitting(false);
         }

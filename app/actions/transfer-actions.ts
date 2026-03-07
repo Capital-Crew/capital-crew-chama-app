@@ -96,7 +96,6 @@ export async function createTransferRequest(data: {
         }
         return await businessLogic()
     } catch (error: any) {
-        console.error('Create Transfer Error:', error)
         return { error: error.message || 'Failed to create transfer request' }
     }
 }
@@ -197,7 +196,6 @@ export async function approveTransfer(requestId: string, notes?: string) {
         return result
 
     } catch (error: any) {
-        console.error('Approve Transfer Error:', error)
         return { error: error.message || 'Failed to approve transfer' }
     }
 }

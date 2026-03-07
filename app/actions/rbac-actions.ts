@@ -39,7 +39,6 @@ export const togglePermission = withModuleProtection('ADMIN', async (role: UserR
         revalidatePath('/dashboard'); // revalidate sidebar
         return { success: true };
     } catch (error) {
-        console.error("Failed to toggle permission", error);
         return { error: "Failed to update permission" };
     }
 });

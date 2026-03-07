@@ -88,7 +88,6 @@ export async function processApproval(requestId: string, decision: 'APPROVED' | 
         revalidatePath('/admin/approvals') // specific page
         return { success: true }
     } catch (error: any) {
-        console.error("Approval Error:", error)
         return { error: error.message }
     }
 }

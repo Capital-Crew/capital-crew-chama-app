@@ -30,7 +30,9 @@ export async function checkTransactionStatus(checkoutRequestId: string): Promise
 
     // If missing envs, we can't do real check.
     if (!BASE_URL || !PASSKEY) {
-        console.warn("⚠️ Missing M-Pesa Envs. Defaulting to MOCK SUCCESS for dev/testing.");
+        if (process.env.NODE_ENV !== 'production') {
+            console.warn("⚠️ Missing M-Pesa Envs. Defaulting to MOCK SUCCESS for dev/testing.");
+        }
         return {
             status: 'COMPLETED',
             mpesaReceiptNumber: checkoutRequestId
@@ -90,7 +92,9 @@ export async function checkTransactionStatus(checkoutRequestId: string): Promise
         // --- MOCK SERVER COMPATIBILITY ---
         const isLocalMock = (BASE_URL || "").includes('localhost') || (BASE_URL || "").includes('127.0.0.1');
         if (isLocalMock) {
-            console.warn("⚠️ MOCK MODE DETECTED: Simulating Success Response for Local Dev.");
+            if (process.env.NODE_ENV !== 'production') {
+                console.warn("⚠️ MOCK MODE DETECTED: Simulating Success Response for Local Dev.");
+            }
             return {
                 status: 'COMPLETED',
                 mpesaReceiptNumber: checkoutRequestId

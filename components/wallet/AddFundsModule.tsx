@@ -63,12 +63,9 @@ export function AddFundsModule({ memberId, userRole }: { memberId: string; userR
 
     const loadActiveLoans = async () => {
         try {
-            console.log('[AddFundsModule] Fetching loans for member:', memberId)
             const loans = await getActiveLoansByMember(memberId)
-            console.log('[AddFundsModule] Received loans:', loans)
             setActiveLoans(loans)
         } catch (error: any) {
-            console.error('[AddFundsModule] Error loading loans:', error)
             setMessage({ type: 'error', text: error.message })
         }
     }

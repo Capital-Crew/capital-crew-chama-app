@@ -54,7 +54,6 @@ export async function updateProfile(data: ProfileFormValues) {
         revalidatePath("/profile");
         return { success: "Profile updated successfully" };
     } catch (error) {
-        console.error("Profile update error:", error);
         return { error: "Failed to update profile" };
     }
 }
@@ -94,7 +93,6 @@ export async function updateProfileImage(formData: FormData) {
         revalidatePath("/", "layout"); // Revalidate layout to update header
         return { success: "Profile picture updated" };
     } catch (error) {
-        console.error("Image upload error:", error);
         return { error: "Failed to update profile picture" };
     }
 }
@@ -121,7 +119,6 @@ export async function updateAvatarPreset(presetId: string) {
         revalidatePath("/", "layout"); // Revalidate layout to update header
         return { success: "Avatar updated successfully" };
     } catch (error) {
-        console.error("Avatar preset update error:", error);
         return { error: "Failed to update avatar" };
     }
 }
@@ -190,7 +187,6 @@ export async function changePassword(data: PasswordChangeValues) {
         if (error instanceof z.ZodError) {
             return { error: error.issues[0].message };
         }
-        console.error("Password change error:", error);
         return { error: "Failed to change password" };
     }
 }

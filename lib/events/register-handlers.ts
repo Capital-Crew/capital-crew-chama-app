@@ -72,7 +72,6 @@ export function registerEventHandlers() {
         await LegacyEventHandler.handleAuditLog(event)
     })
 
-    console.log('✅ Event handlers registered')
 }
 
 /**

@@ -41,7 +41,6 @@ export async function GET(
         })
 
     } catch (error: any) {
-        console.error('Error fetching due amounts:', error)
 
         return NextResponse.json(
             {

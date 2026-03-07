@@ -80,7 +80,6 @@ export async function POST(
                 })
             } catch (e) {
                 // Ignore if model doesn't exist or fails (failsafe)
-                console.warn('ApprovalRequest update failed or model missing', e)
             }
 
 
@@ -102,7 +101,6 @@ export async function POST(
         return NextResponse.json({ success: true })
 
     } catch (error: any) {
-        console.error('Cancellation error:', error)
         return NextResponse.json({ error: 'Failed to cancel application' }, { status: 500 })
     }
 }

@@ -28,7 +28,6 @@ export function WalletTransactionHistory({ memberId }: { memberId: string }) {
                 const data = await response.json()
                 setTransactions(data.transactions || [])
             } catch (err) {
-                console.error('Failed to fetch transactions:', err)
             } finally {
                 setLoading(false)
             }

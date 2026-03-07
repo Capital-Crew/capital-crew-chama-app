@@ -153,11 +153,9 @@ export async function updateUserPermissions(input: {
         };
 
     } catch (error) {
-        console.error('Update permissions error:', error);
 
         if (error instanceof z.ZodError) {
             const zodError = error as z.ZodError;
-            console.error('Zod Error Details:', JSON.stringify(zodError.issues, null, 2));
             const checklist = zodError.issues || [];
             const message = checklist.length > 0
                 ? `${checklist[0].path.join('.')}: ${checklist[0].message}`
@@ -209,7 +207,6 @@ export async function getAllUsersWithPermissions() {
         }));
 
     } catch (error) {
-        console.error('Get users error:', error);
         throw new Error('Failed to fetch users');
     }
 }
@@ -275,7 +272,6 @@ export async function updateUserRole(userId: string, role: UserRole) {
         };
 
     } catch (error) {
-        console.error('Update role error:', error);
         throw error instanceof Error ? error : new Error('Failed to update role');
     }
 }
@@ -329,7 +325,6 @@ export async function getCurrentUserPermissions() {
             }
         };
     } catch (error) {
-        console.error('Get current user permissions error:', error);
         return null;
     }
 }

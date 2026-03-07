@@ -74,13 +74,11 @@ export async function triggerInterestEngine() {
                 }
             })
         } catch (logError) {
-            console.error('Failed to log interest engine execution:', logError)
         }
 
         revalidatePath('/admin/system')
         return { success: true, results }
     } catch (error: any) {
-        console.error('Interest Engine Manual Trigger Failed:', error)
 
         try {
             await prisma.auditLog.create({
@@ -91,7 +89,6 @@ export async function triggerInterestEngine() {
                 }
             })
         } catch (logError) {
-            console.error('Failed to log interest engine failure:', logError)
         }
 
         return { success: false, error: error.message }
@@ -122,13 +119,11 @@ export async function triggerPenaltyEngine() {
                 }
             })
         } catch (logError) {
-            console.error('Failed to log penalty engine execution:', logError)
         }
 
         revalidatePath('/admin/system')
         return { success: true, results }
     } catch (error: any) {
-        console.error('Penalty Engine Manual Trigger Failed:', error)
 
         try {
             await prisma.auditLog.create({
@@ -139,7 +134,6 @@ export async function triggerPenaltyEngine() {
                 }
             })
         } catch (logError) {
-            console.error('Failed to log penalty engine failure:', logError)
         }
 
         return { success: false, error: error.message }
@@ -193,8 +187,6 @@ export async function initializeInterestDatesForExistingLoans() {
         // Filter in JavaScript to avoid Prisma type issues with null
         const loansNeedingInit = allActiveLoans.filter(loan => !loan.nextInterestRunDate)
 
-        console.log(`Found ${loansNeedingInit.length} loans needing interest date initialization`)
-        console.log(`Total active loans: ${allActiveLoans.length}`)
 
         let updated = 0
         const now = new Date()
@@ -224,7 +216,6 @@ export async function initializeInterestDatesForExistingLoans() {
             loansUpdated: updated
         }
     } catch (error: any) {
-        console.error('Failed to initialize interest dates:', error)
         return {
             success: false,
             error: error.message
@@ -263,7 +254,6 @@ export async function forceInterestRunForAllLoans() {
             loansUpdated: result.count
         }
     } catch (error: any) {
-        console.error('Failed to force interest run:', error)
         return {
             success: false,
             error: error.message

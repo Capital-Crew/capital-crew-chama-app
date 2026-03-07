@@ -38,7 +38,6 @@ export default async function ResumeDraftPage() {
     if (loanDraft.data && typeof loanDraft.data === 'object') {
         const draftMemberId = (loanDraft.data as any).memberId
         if (draftMemberId && draftMemberId !== currentMemberId) {
-            console.warn(`Draft memberId mismatch: draft has ${draftMemberId}, user has ${currentMemberId}. Deleting invalid draft.`)
 
             // Delete the invalid draft
             await db.loanDraft.delete({
@@ -56,7 +55,6 @@ export default async function ResumeDraftPage() {
         try {
             creditSnapshot = await calculateBorrowingPower(currentMemberId)
         } catch (e) {
-            console.error("Failed to calc credit", e)
         }
     }
 

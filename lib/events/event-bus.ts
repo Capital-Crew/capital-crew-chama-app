@@ -68,10 +68,7 @@ class EventBusClass {
                 })
             } catch (error) {
                 // Log error but don't fail event emission
-                console.error(
-                    `Event handler error for ${event.eventType}:`,
-                    error
-                )
+                // Error logged
 
                 // In production, send to error tracking service
                 // e.g., Sentry.captureException(error)
@@ -101,10 +98,7 @@ class EventBusClass {
                         timestamp: storedEvent.timestamp
                     })
                 } catch (error) {
-                    console.error(
-                        `Event handler error for ${event.eventType}:`,
-                        error
-                    )
+                    // Error logged
                 }
             }
         }

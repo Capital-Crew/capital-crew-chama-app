@@ -59,7 +59,6 @@ export function logCalculation(
 
     // Log to console in development
     if (process.env.NODE_ENV === 'development') {
-        console.log('[FINANCIAL_CALC]', JSON.stringify(log, null, 2))
     }
 
     // In production, this would be sent to a logging service
@@ -247,7 +246,6 @@ export class CalculationAuditBatch {
     async flush() {
         // In production, send to logging service
         if (process.env.NODE_ENV === 'development') {
-            console.log(`[BATCH_${this.batchId}]`, {
                 totalCalculations: this.logs.length,
                 logs: this.logs
             })

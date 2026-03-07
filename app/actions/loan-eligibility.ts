@@ -93,7 +93,6 @@ export async function checkLoanEligibility(memberId: string): Promise<Eligibilit
         return { isEligible: true, totalArrears: 0 }
 
     } catch (error) {
-        console.error('Eligibility check failed:', error)
         // Default to "Blocked" on system error to be safe, or allow? 
         // Safer to block and ask to contact admin.
         return {

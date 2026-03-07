@@ -128,7 +128,6 @@ export class OverpaymentHandlerService {
             // 3. Refund process
             if (remainingOverpayment > 0) {
                 // TODO: Implement credit balance tracking or early closure logic
-                console.warn(`Loan ${loanId} has excess overpayment: ${remainingOverpayment}`)
             }
 
             return { installmentsAffected }

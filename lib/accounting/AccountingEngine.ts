@@ -334,11 +334,6 @@ export class AccountingEngine {
         const isBalanced = difference.lte(0.01)
 
         if (!isBalanced) {
-            console.error('AccountingEngine: Journal Entry Imbalance Detected');
-            console.error('Total Debits:', totalDebits.toString());
-            console.error('Total Credits:', totalCredits.toString());
-            console.error('Difference:', difference.toString());
-            console.log('Lines:', JSON.stringify(lines, null, 2));
         }
 
         return isBalanced
@@ -650,7 +645,6 @@ export const AccountingService = {
             throw new Error(`Accounting configuration missing for Product ${loan.loanProduct?.name || 'Unknown'}: No ${creditType} account mapped.`)
         }
 
-        console.log(`posting ${eventType} for ${amount}. DR: ${(debitMap as any).account.name} | CR: ${(creditMap as any).account.name}`)
 
         // 5. Post Journal Entry
         return await AccountingEngine.postJournalEntry({

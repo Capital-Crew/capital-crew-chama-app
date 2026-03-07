@@ -30,12 +30,10 @@ export async function getAuditLogs({
     const allowedRoles = ['CHAIRPERSON', 'SYSTEM_ADMINISTRATOR', 'SYSTEM_ADMIN'];
 
     if (!session?.user) {
-        console.error('[getAuditLogs] No session found');
         throw new Error('Unauthorized: No session');
     }
 
     if (!allowedRoles.includes(session.user.role)) {
-        console.error(`[getAuditLogs] Access Denied. User: ${session.user.email}, Role: ${session.user.role}`);
         throw new Error(`Unauthorized: Role ${session.user.role} not allowed`);
     }
 

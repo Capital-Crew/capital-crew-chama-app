@@ -63,7 +63,6 @@ export function LoanApprovalsClient({ initialLoans, currentUser }: LoanApprovals
             setRejectLoanId(null)
             router.refresh() // Sync with server for sidebar counts etc
         } catch (error) {
-            console.error(error)
             toast.error("Failed to reject loan")
         } finally {
             setIsRejecting(false)

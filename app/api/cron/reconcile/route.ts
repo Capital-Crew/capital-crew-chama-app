@@ -16,7 +16,6 @@ export async function GET(req: Request) {
     }
 
     try {
-        console.log("Starting Reconciliation Cron Job...");
 
         // 2. Find Stuck Transactions
         // Logic: PENDING status, Created > 1 min ago, Created < 24 hours ago
@@ -36,7 +35,6 @@ export async function GET(req: Request) {
             }
         });
 
-        console.log(`Found ${stuckTransactions.length} stuck transactions.`);
 
         const results = {
             processed: stuckTransactions.length,
@@ -53,15 +51,12 @@ export async function GET(req: Request) {
 
                 if (result.status === 'COMPLETED') {
                     results.fixed++;
-                    console.log(`FIXED: Transaction ${tx.id} marked COMPLETED.`);
                 } else if (result.status === 'FAILED') {
                     results.failed++;
-                    console.log(`UPDATED: Transaction ${tx.id} marked FAILED.`);
                 } else {
                     results.stillPending++;
                 }
             } catch (err) {
-                console.error(`Error processing transaction ${tx.id}:`, err);
                 // Don't halt the whole loop
             }
         }
@@ -81,7 +76,6 @@ export async function GET(req: Request) {
         });
 
         if (expiredTransactions.count > 0) {
-            console.log(`EXPIRED: Marked ${expiredTransactions.count} old pending transactions as FAILED.`);
         }
 
         return NextResponse.json({ success: true, results, expired: expiredTransactions.count });

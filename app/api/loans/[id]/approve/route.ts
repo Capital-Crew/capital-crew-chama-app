@@ -61,7 +61,6 @@ export async function PATCH(
         }
 
     } catch (error: any) {
-        console.error('Loan approval error:', error)
         return NextResponse.json({
             error: 'Failed to process approval',
             message: error.message

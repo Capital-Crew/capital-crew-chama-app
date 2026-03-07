@@ -60,7 +60,6 @@ export async function disburseLoan(loanId: string) {
 
         return result
     } catch (error: any) {
-        console.error('Unified Disbursement Failed:', error)
         return { error: error.message || "Failed to disburse loan" }
     }
 }

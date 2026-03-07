@@ -68,7 +68,6 @@ export async function GET() {
         })
 
     } catch (error: any) {
-        console.error('Error fetching system health:', error)
 
         return NextResponse.json(
             {

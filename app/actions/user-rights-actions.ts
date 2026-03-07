@@ -49,7 +49,6 @@ export async function updateUserRights(targetUserId: string, newRole: UserRole) 
         revalidatePath('/admin/system')
         return { success: true }
     } catch (error) {
-        console.error("Failed to update user rights:", error)
         return { success: false, error: "Database error occurred" }
     }
 }

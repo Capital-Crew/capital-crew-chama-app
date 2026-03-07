@@ -523,7 +523,6 @@ export async function getActiveLoansByMember(memberId: string) {
                 fees = await getLoanFeeBalance(loan.id)
             } catch (error) {
                 // If accounts aren't seeded or error, fail safe to 0 to trigger fallback below if needed
-                console.error(`Error fetching balances for loan ${loan.id}:`, error)
             }
 
             let outstanding = penalty + interest + principal + fees
@@ -534,12 +533,9 @@ export async function getActiveLoansByMember(memberId: string) {
             // 2. AND No transactions exist (implies it's a new/legacy loan not yet seeded in ledger)
             // This prevents "Resurrecting" a paid-off loan that is still marked ACTIVE
             if (outstanding <= 0 && loan._count.transactions === 0) {
-                console.log(`[DEBUG] Fallback triggered for Loan ${loan.loanApplicationNumber} (ID: ${loan.id})`)
-                console.log(`[DEBUG] Reason: outstanding=${outstanding}, transactions=${loan._count.transactions}`)
                 principal = Number(loan.amount)
                 outstanding = principal
             } else {
-                console.log(`[DEBUG] Ledger Balance used for ${loan.loanApplicationNumber}: ${outstanding} (Tx Count: ${loan._count.transactions})`)
             }
 
             // Ensure we don't return negative small dust
@@ -556,7 +552,6 @@ export async function getActiveLoansByMember(memberId: string) {
                     })
                     finalStatus = 'CLEARED'
                 } catch (err) {
-                    console.error('Error auto-clearing loan:', err)
                 }
             }
 
@@ -600,7 +595,6 @@ export async function getLoanFreshBalance(loanId: string) {
         principal = await getLoanPrincipalBalance(loanId)
         fees = await getLoanFeeBalance(loanId)
     } catch (e) {
-        console.error('Error fetching fresh balance:', e)
     }
 
     let outstanding = penalty + interest + principal + fees

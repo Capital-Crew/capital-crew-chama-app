@@ -123,7 +123,6 @@ export async function processBulkPayout(
                 successCount++
             } catch (err: any) {
                 failCount++
-                console.error(`Bulk payout item failed for member ${item.memberId}:`, err.message)
                 errors.push(`Member ${item.memberId}: ${err.message}`)
 
                 // Record Failure (Outside the item transaction if it failed)
@@ -155,7 +154,6 @@ export async function processBulkPayout(
         return serializeFinancials({ success: true, data: { batchId: batch.id, successCount, failCount, errors } })
 
     } catch (error: any) {
-        console.error("Bulk payout orchestration failed:", error)
         return serializeFinancials({ success: false, error: error.message })
     }
 }

@@ -24,7 +24,6 @@ export function EngineHealthDashboard() {
             setHealth(healthData)
             setHistory(historyData)
         } catch (error) {
-            console.error('Failed to load engine health:', error)
         } finally {
             setLoading(false)
         }

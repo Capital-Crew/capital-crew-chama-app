@@ -52,7 +52,6 @@ export function serializePrisma<T>(data: T, visited = new WeakSet<any>()): T {
 
         return data;
     } catch (error) {
-        console.error('[serializePrisma] Error serializing data:', error);
         return null as unknown as T;
     }
 }

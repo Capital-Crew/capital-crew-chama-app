@@ -110,7 +110,6 @@ export async function processTransfer(
 
     } catch (error) {
         // Handle errors gracefully
-        console.error('Transfer processing error:', error);
 
         if (error instanceof z.ZodError) {
             throw new Error(`Validation error: ${error.issues[0].message}`);

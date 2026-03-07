@@ -36,7 +36,6 @@ export async function handleWorkflowTransition(
             return { error: 'Unknown Entity Type' }
         }
     } catch (error: any) {
-        console.error('Workflow Transition Error:', error)
         return { error: error.message || 'Workflow failed' }
     }
 }

@@ -39,7 +39,6 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ success: true })
     } catch (error: any) {
-        console.error('Error in beacon save:', error)
         return NextResponse.json(
             { error: error.message || 'Failed to save' },
             { status: 500 }

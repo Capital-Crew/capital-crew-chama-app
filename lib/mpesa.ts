@@ -22,7 +22,6 @@ export async function getAccessToken() {
     ).toString("base64");
 
     try {
-        console.log(`Connecting to M-Pesa at: ${BASE_URL}`); // Debug log
         const response = await axios.get(
             `${BASE_URL}/oauth/v1/generate?grant_type=client_credentials`,
             {
@@ -33,7 +32,6 @@ export async function getAccessToken() {
         );
         return response.data.access_token;
     } catch (error: any) {
-        console.error("M-Pesa Access Token Error:", error.message);
         // Throw detailed error
         const details = error.code ? `(${error.code} at ${BASE_URL})` : error.response ? `(Status: ${error.response.status})` : '';
         throw new Error(`Failed to get M-Pesa access token: ${error.message} ${details}`);
@@ -80,7 +78,6 @@ export async function initiateSTKPush(phoneNumber: string, amount: number) {
         TransactionDesc: "Deposit",
     };
 
-    console.log("Sending STK Push Payload:", JSON.stringify({ ...payload, Password: "***" }, null, 2));
 
     try {
         const response = await axios.post(
@@ -94,9 +91,7 @@ export async function initiateSTKPush(phoneNumber: string, amount: number) {
         );
         return response.data;
     } catch (error: any) {
-        console.error("M-Pesa STK Push Error:", error.message);
         if (error.response) {
-            console.error("Response Data:", JSON.stringify(error.response.data, null, 2));
             throw new Error(`STK Push Failed: ${JSON.stringify(error.response.data)}`);
         }
         throw new Error(`Failed to initiate STK Push: ${error.message}`);

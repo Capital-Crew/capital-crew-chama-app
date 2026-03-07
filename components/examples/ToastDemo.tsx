@@ -32,7 +32,6 @@ export function ToastDemo() {
                         {
                             action: {
                                 label: "Add Funds",
-                                onClick: () => console.log("Navigate to wallet")
                             }
                         }
                     )

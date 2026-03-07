@@ -117,11 +117,9 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
             try {
                 const { getLoanFreshBalance } = await import('@/app/wallet-add-funds-actions')
                 const fresh = await getLoanFreshBalance(loan.id)
-                console.log('Fresh balance:', fresh)
 
                 // If balance changed, update selectedLoan
                 if (fresh.outstandingBalance !== loan.outstandingBalance) {
-                    console.log('Updating stale balance:', loan.outstandingBalance, '->', fresh.outstandingBalance)
                     setSelectedLoan(prev => prev ? {
                         ...prev,
                         outstandingBalance: fresh.outstandingBalance,
@@ -137,7 +135,6 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
                     // However, if we want to be safe, we can just let the next render handle manual updates
                 }
             } catch (err) {
-                console.error('Failed to strict-fetch loan balance:', err)
             }
         }
         fetchFresh()
@@ -156,7 +153,6 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
             const loans = await getActiveLoansByMember(memberId)
             setActiveLoans(loans)
         } catch (error: any) {
-            console.error('Error loading loans:', error)
             setMessage({ type: 'error', text: error.message })
         }
     }

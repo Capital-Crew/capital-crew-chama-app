@@ -3,6 +3,23 @@
 import { auth } from '@/auth'
 import { db } from '@/lib/db'
 import { getNextLoanNumber } from '@/lib/utils'
+import { z } from 'zod'
+
+/**
+ * Zod schema for allowed draft loan fields.
+ * SECURITY: Only permit fields a member legitimately edits in the form.
+ * Never allow status, outstandingBalance, memberId, etc.
+ */
+const loanDraftUpdateSchema = z.object({
+    amount: z.number().positive().optional(),
+    installments: z.number().int().positive().max(360).optional(),
+    loanProductId: z.string().optional(),
+    purpose: z.string().max(1000).optional(),
+    guarantors: z.any().optional(),
+    feeExemptions: z.any().optional(),
+})
+
+type LoanDraftUpdateInput = z.infer<typeof loanDraftUpdateSchema>
 
 /**
  * Starts a new loan application by creating a blank DRAFT record.
@@ -78,7 +95,6 @@ export async function startLoanApplication(memberId?: string) {
 
         return { success: true, loanId: loan.id }
     } catch (error) {
-        console.error('Failed to start application:', error)
         throw new Error('Failed to start application')
     }
 }
@@ -86,16 +102,25 @@ export async function startLoanApplication(memberId?: string) {
 /**
  * Updates a draft loan (Auto-save)
  */
-export async function updateLoanDraft(loanId: string, data: any) {
+export async function updateLoanDraft(loanId: string, data: unknown) {
     const session = await auth()
     if (!session?.user) throw new Error('Unauthorized')
+
+    // SECURITY: Validate and allowlist fields before touching the DB
+    const parseResult = loanDraftUpdateSchema.safeParse(data)
+    if (!parseResult.success) {
+        throw new Error('Invalid update data: ' + parseResult.error.issues[0].message)
+    }
+    const safeData = parseResult.data
 
     // Verify ownership (or Admin)
     const loan = await db.loan.findUnique({
         where: { id: loanId },
         include: {
             member: {
-                select: { userId: true }
+                select: {
+                    user: { select: { id: true } }
+                }
             }
         }
     })
@@ -108,7 +133,7 @@ export async function updateLoanDraft(loanId: string, data: any) {
     })
 
     // Strict ownership check: Only the loan owner or admins can update
-    const isOwner = loan.member.userId === session.user.id
+    const isOwner = loan.member?.user?.id === session.user.id
     const isAdmin = ['SYSTEM_ADMIN', 'CHAIRPERSON'].includes(user?.role || '')
 
     if (!isOwner && !isAdmin) {
@@ -116,20 +141,9 @@ export async function updateLoanDraft(loanId: string, data: any) {
     }
 
     // Admin/Chairperson Restriction: Can ONLY edit exemptions if not the owner
-    let updateData = data
+    let updateData: Partial<LoanDraftUpdateInput> = safeData
     if (isAdmin && !isOwner) {
-        // Filter data to ONLY allow feeExemptions
-        // We assume 'data' might contain other fields from the form auto-save
-        // We strictly pick only 'feeExemptions'
-        if (!data.feeExemptions) {
-            // If they tried to edit something else, we technically should block it, 
-            // but auto-save might send everything. We just ignore non-exemption fields.
-            // If ONLY non-exemption fields were sent, we do nothing or throw?
-            // Let's safe-guard by only picking feeExemptions.
-            updateData = {}
-        } else {
-            updateData = { feeExemptions: data.feeExemptions }
-        }
+        updateData = safeData.feeExemptions ? { feeExemptions: safeData.feeExemptions } : {}
     }
 
     if (Object.keys(updateData).length > 0) {
@@ -160,7 +174,9 @@ export async function discardDraft(loanId: string) {
         where: { id: loanId },
         include: {
             member: {
-                select: { userId: true }
+                select: {
+                    user: { select: { id: true } }
+                }
             }
         }
     })
@@ -169,7 +185,7 @@ export async function discardDraft(loanId: string) {
 
     // Permission Logic
     const isSystemAdmin = user?.role === 'SYSTEM_ADMIN'
-    const isOwner = loan.member.userId === session.user.id
+    const isOwner = loan.member?.user?.id === session.user.id
 
     // Allow deletion if System Admin OR Owner
     if (!isSystemAdmin && !isOwner) {

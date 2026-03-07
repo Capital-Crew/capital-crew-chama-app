@@ -114,7 +114,6 @@ export function DepositForm({ memberId }: { memberId?: string }) {
                             setIsLoading(false);
                         }
                     } catch (err) {
-                        console.error("Polling error", err);
                     }
                 }, 2000);
 
@@ -125,7 +124,6 @@ export function DepositForm({ memberId }: { memberId?: string }) {
                 setIsLoading(false);
             }
         } catch (error: any) {
-            console.error("Deposit Error:", error);
             toast.error("Deposit Failed", {
                 description: error.response?.data?.error || "Something went wrong. Please try again.",
             });

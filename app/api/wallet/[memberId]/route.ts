@@ -10,7 +10,6 @@ export async function GET(
         const session = await auth()
         const { memberId } = await params
 
-        console.log('[Wallet API] Request for memberId:', memberId)
 
         if (!session?.user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -27,10 +26,8 @@ export async function GET(
         // Try to get wallet balance
         try {
             const walletInfo = await getWalletBalance(memberId)
-            console.log('[Wallet API] Success:', walletInfo)
             return NextResponse.json(walletInfo, { status: 200 })
         } catch (walletError: any) {
-            console.error('[Wallet API] getWalletBalance error:', walletError.message)
 
             // Return empty wallet data instead of failing
             return NextResponse.json({
@@ -42,7 +39,6 @@ export async function GET(
             }, { status: 200 })
         }
     } catch (error: any) {
-        console.error('[Wallet API] Fatal error:', error)
         return NextResponse.json(
             { error: error.message || 'Failed to fetch wallet information' },
             { status: 500 }

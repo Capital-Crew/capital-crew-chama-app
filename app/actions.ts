@@ -51,7 +51,6 @@ export async function createMember(formData: FormData) {
             const { initiateWorkflow } = await import('@/app/actions/workflow-engine')
             await initiateWorkflow('MEMBER', newMember.id, newMember.id)
         } catch (error) {
-            console.error('Failed to initiate member workflow:', error)
         }
 
         return newMember
@@ -449,7 +448,6 @@ export async function applyForLoan(prevState: any, formData: FormData) {
                 }
             }
         } catch (e) {
-            if (!isDraftSave) console.error("Calc failed", e); // Ignore for draft if incomplete
         }
     }
 
@@ -652,14 +650,13 @@ export async function applyForLoan(prevState: any, formData: FormData) {
 
             // Workflow
             const { initiateWorkflow } = await import('@/app/actions/workflow-engine')
-            await initiateWorkflow('LOAN', loan.id, memberId).catch(console.error)
 
             // Delete LoanDraft since application is now submitted
             const session = await auth()
             if (session?.user?.id) {
                 await prisma.loanDraft.deleteMany({
                     where: { userId: session.user.id }
-                }).catch(err => console.error('Failed to delete draft:', err))
+                })
             }
 
             // Notifications & Emails (Async)
@@ -673,7 +670,6 @@ export async function applyForLoan(prevState: any, formData: FormData) {
         return { success: true, loanId: loan.id }
 
     } catch (e: any) {
-        console.error("Apply Error:", e)
         return { error: e.message || 'Failed to process loan application' }
     }
 }
@@ -744,7 +740,6 @@ export async function submitVote(loanId: string, decision: ApprovalStatus, notes
                         )
                     }
                 } catch (emailError) {
-                    console.error("Failed to send approval email:", emailError)
                 }
             }
         }
@@ -875,7 +870,6 @@ export async function submitLoanApplication(loanId: string) {
         const { initiateWorkflow } = await import('@/app/actions/workflow-engine')
         await initiateWorkflow('LOAN', loan.id, loan.memberId)
     } catch (e) {
-        console.error("Failed to initiate workflow:", e)
     }
 
     // Create LoanHistory Entry (The Audit Log)

@@ -92,14 +92,14 @@ export async function submitRepayment(formData: FormData): Promise<ActionRespons
                     entries: {
                         create: [
                             {
-                                ledgerAccountId: 'mock-cash-id',
+                                ledgerAccountId: process.env.CASH_LEDGER_ACCOUNT_ID!,
                                 description: 'Cash Received',
                                 debitAmount: repaymentAmount,
                                 creditAmount: 0,
                                 ledgerAccount: { connect: { code: '1000' } }
                             },
                             {
-                                ledgerAccountId: 'mock-loan-id',
+                                ledgerAccountId: process.env.LOAN_LEDGER_ACCOUNT_ID!,
                                 description: 'Loan Principal Repayment',
                                 debitAmount: 0,
                                 creditAmount: repaymentAmount,
@@ -128,7 +128,6 @@ export async function submitRepayment(formData: FormData): Promise<ActionRespons
             }
         })
     } catch (error: any) {
-        console.error('submitRepayment Error:', error)
         // If validation inside returned an object, it's fine. If an error was thrown (e.g. database), catch here.
         // Wait, if I returned inside transaction, the transaction commits?
         // Yes, if I return a value, it commits.

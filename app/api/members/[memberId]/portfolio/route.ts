@@ -22,7 +22,6 @@ export async function GET(
         })
 
     } catch (error: any) {
-        console.error('Error fetching member portfolio:', error)
 
         return NextResponse.json(
             {

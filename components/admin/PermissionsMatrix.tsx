@@ -61,7 +61,6 @@ export function PermissionsMatrix({ modules, initialPermissions }: PermissionsMa
             }
             toast.success("Permission updated");
         } catch (error) {
-            console.error(error);
             toast.error("Failed to update permission");
             setPermissions(previousState); // Revert on error
         } finally {

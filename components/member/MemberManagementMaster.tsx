@@ -38,7 +38,6 @@ export function MemberManagementMaster({ initialMembers, initialDetail, userRole
             const detail = await getMemberFullDetail(memberId);
             setSelectedDetail(detail);
         } catch (err) {
-            console.error("Failed to load member detail:", err);
         } finally {
             setLoadingId(null);
         }

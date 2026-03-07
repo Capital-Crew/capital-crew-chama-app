@@ -51,7 +51,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             authorize: async (credentials) => {
                 const parsed = z.object({
                     email: z.string().email(),
-                    password: z.string().min(6),
+                    password: z.string().min(10),
                 }).safeParse(credentials);
 
                 if (!parsed.success) return null;
@@ -64,7 +64,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     });
 
                     if (!user) {
-                        console.log('Authorize - User not found:', email)
                         return null;
                     }
 
@@ -73,8 +72,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                         const timeLeft = Math.ceil((user.lockoutUntil.getTime() - new Date().getTime()) / 60000);
                         throw new Error(`Account is locked. Try again in ${timeLeft} minutes.`);
                     }
-
-                    console.log('Authorize - User Found:', { id: user.id, memberId: user.memberId })
 
                     const passwordsMatch = await bcrypt.compare(password, user.passwordHash);
 

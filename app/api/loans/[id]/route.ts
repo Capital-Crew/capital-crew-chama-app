@@ -12,14 +12,11 @@ export async function GET(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        console.log(`API Loan GET: Headers Cookie: ${request.headers.get('cookie')?.substring(0, 20)}...`)
         const session = await auth()
-        console.log(`API Loan GET: Session user: ${session?.user?.email}, ID: ${session?.user?.id}`)
 
         const { id } = await params
 
         if (!session?.user) {
-            console.log('API Loan GET: Unauthorized - No Session User')
             return NextResponse.json({ error: 'Unauthorized', debug: 'No session' }, { status: 401 })
         }
 
@@ -118,7 +115,6 @@ export async function GET(
                 const freshBalance = await getMemberContributionBalance(loan.memberId)
                 if (freshBalance > 0) effectiveShares = freshBalance
             } catch (e) {
-                console.warn('Failed to refresh member balance on loan fetch', e)
             }
         }
 
@@ -180,7 +176,6 @@ export async function GET(
 
     } catch (error: any) {
         // Syntax fixed
-        console.error('Get loan error:', error)
         return NextResponse.json({
             error: 'Failed to fetch loan',
             message: error.message

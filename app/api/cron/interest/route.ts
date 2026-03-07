@@ -8,11 +8,11 @@ export const dynamic = 'force-dynamic' // Ensure it runs every time
 
 export async function GET(request: Request) {
     try {
-        // Optional: Add secret key validation here
-        // const authHeader = request.headers.get('authorization')
-        // if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-        //     return new NextResponse('Unauthorized', { status: 401 })
-        // }
+        // Security: Require Bearer token matching CRON_SECRET
+        const authHeader = request.headers.get('authorization')
+        if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+            return new NextResponse('Unauthorized', { status: 401 })
+        }
 
         const results = await InterestService.processMonthlyBatch()
 

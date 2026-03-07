@@ -13,7 +13,6 @@ export async function checkStatusAction(transactionId: string) {
 
         return result;
     } catch (error: any) {
-        console.error("Manual Reconciliation Error:", error);
         return {
             success: false,
             status: 'ERROR',
@@ -31,7 +30,6 @@ export async function resolveManuallyAction(transactionId: string, mpesaReceiptN
 
         return result;
     } catch (error: any) {
-        console.error("Manual Resolution Error:", error);
         return {
             success: false,
             message: error.message || "Failed to resolve transaction"
@@ -45,7 +43,6 @@ export async function syncLedgerAction(transactionId: string) {
         revalidatePath('/accounting');
         return result;
     } catch (error: any) {
-        console.error("Sync Ledger Error:", error);
         return { success: false, message: error.message || "Failed to sync ledger" };
     }
 }

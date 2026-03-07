@@ -146,6 +146,9 @@ export async function getDashboardStats(): Promise<Serialized<any>> {
  * Optimized to fetch data in bulk and aggregate in memory.
  */
 export async function getMonthlyTrends(): Promise<Serialized<any[]>> {
+    const session = await auth()
+    if (!session?.user?.id) throw new Error('Unauthorized')
+
     const prisma = db as any;
 
     const today = new Date();

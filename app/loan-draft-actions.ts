@@ -47,7 +47,6 @@ export async function saveLoanDraft({ formData, loanType, step = 1 }: SaveLoanDr
 
         return { success: true, savedAt: new Date().toISOString(), draftId: draft.id }
     } catch (error: any) {
-        console.error('Error saving loan draft:', error)
         return { error: error.message || 'Failed to save draft' }
     }
 }
@@ -76,7 +75,6 @@ export async function getLoanDraft() {
 
         return draft
     } catch (error: any) {
-        console.error('Error fetching loan draft:', error)
         return null
     }
 }
@@ -114,7 +112,6 @@ export async function deleteLoanDraft() {
 
         return { success: true }
     } catch (error: any) {
-        console.error('Error deleting loan draft:', error)
         return { error: error.message || 'Failed to delete draft' }
     }
 }

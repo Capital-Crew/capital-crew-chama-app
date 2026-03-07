@@ -20,7 +20,6 @@ export function ApprovalHistoryDrawer({ isOpen, onClose, entityType, entityId }:
             setLoading(true)
             getApprovalHistory(entityType, entityId)
                 .then(setHistory)
-                .catch(console.error)
                 .finally(() => setLoading(false))
         }
     }, [isOpen, entityType, entityId])

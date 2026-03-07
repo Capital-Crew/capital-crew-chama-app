@@ -7,6 +7,7 @@ import { AccountingEngine } from '@/lib/accounting/AccountingEngine'
 import { getSaccoSettings } from '../sacco-settings-actions'
 import { Prisma } from '@prisma/client'
 import { getSystemMappingsDict } from './system-accounting'
+import { z } from 'zod'
 
 export async function submitApology(input: {
     meetingId: string;
@@ -206,7 +207,6 @@ export async function processMeetingAttendance(input: {
         });
 
     } catch (error: any) {
-        console.error('Attendance Processing Error:', error);
         return { success: false, error: error.message || 'Failed to process attendance' };
     } finally {
         revalidatePath('/dashboard');
@@ -216,6 +216,76 @@ export async function processMeetingAttendance(input: {
 
 // Temporary alias for backward compatibility during build/cache recovery
 export const submitMeetingReport = processMeetingAttendance;
+
+const createMeetingSchema = z.object({
+    title: z.string().min(1, 'Title is required').max(200).trim(),
+    date: z.coerce.date(),
+})
+
+export async function createMeeting(input: {
+    title: string;
+    date: Date;
+}) {
+    try {
+        const session = await auth();
+        const allowedRoles = ['SYSTEM_ADMIN', 'SECRETARY', 'CHAIRPERSON'];
+        if (!session?.user?.id || !allowedRoles.includes(session.user.role as string)) {
+            return { success: false, error: 'Unauthorized' };
+        }
+
+        const parsed = createMeetingSchema.safeParse(input);
+        if (!parsed.success) return { success: false, error: parsed.error.issues[0].message };
+
+        const meeting = await db.meeting.create({
+            data: {
+                title: parsed.data.title,
+                date: parsed.data.date,
+                status: 'SCHEDULED'
+            }
+        });
+
+        await db.auditLog.create({
+            data: {
+                userId: session.user.id,
+                action: 'MEETING_CREATED',
+                details: `Meeting "${meeting.title}" scheduled for ${meeting.date.toDateString()}`
+            }
+        });
+
+        revalidatePath('/admin/meetings');
+        return { success: true, meeting };
+    } catch (error: any) {
+        return { success: false, error: error.message || 'Failed to create meeting' };
+    }
+}
+
+export async function updateMeetingStatus(meetingId: string, status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED') {
+    try {
+        const session = await auth();
+        const allowedRoles = ['SYSTEM_ADMIN', 'SECRETARY', 'CHAIRPERSON'];
+        if (!session?.user?.id || !allowedRoles.includes(session.user.role as string)) {
+            return { success: false, error: 'Unauthorized' };
+        }
+
+        const meeting = await db.meeting.findUnique({ where: { id: meetingId } });
+        if (!meeting) return { success: false, error: 'Meeting not found' };
+
+        if (meeting.isPenaltiesProcessed && status !== 'COMPLETED') {
+            return { success: false, error: 'Cannot change status of a processed meeting' };
+        }
+
+        await db.meeting.update({
+            where: { id: meetingId },
+            data: { status }
+        });
+
+        revalidatePath('/admin/meetings');
+        revalidatePath('/meetings');
+        return { success: true };
+    } catch (error: any) {
+        return { success: false, error: error.message || 'Failed to update meeting status' };
+    }
+}
 
 export async function payPenalty(penaltyId: string) {
     try {
@@ -314,7 +384,6 @@ export async function payPenalty(penaltyId: string) {
             return { success: true };
         });
     } catch (error: any) {
-        console.error('Pay Penalty Error:', error);
         return { success: false, error: error.message || 'Failed to pay penalty' };
     } finally {
         revalidatePath('/dashboard');

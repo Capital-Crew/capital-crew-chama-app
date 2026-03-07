@@ -104,7 +104,6 @@ export const getNextLoanNumber = (lastLoanNumber: string | null | undefined): st
 
     // Handle new format (LNXXX)
     if (!lastLoanNumber.startsWith('LN')) {
-        console.warn(`Unexpected loan number format: ${lastLoanNumber}. Starting from LN001`);
         return 'LN001';
     }
 
@@ -115,20 +114,17 @@ export const getNextLoanNumber = (lastLoanNumber: string | null | undefined): st
 
         // Validate parsed number
         if (isNaN(number) || number < 0) {
-            console.warn(`Invalid loan number: ${lastLoanNumber}. Starting from LN001`);
             return 'LN001';
         }
 
         // Check for overflow (max 999 with 3 digits)
         if (number >= 999) {
-            console.warn(`Loan number approaching maximum (${number}). Consider expanding format.`);
         }
 
         const nextNumber = number + 1;
         // Pad with zeros to maintain 3-digit format
         return `LN${nextNumber.toString().padStart(3, '0')}`;
     } catch (error) {
-        console.error(`Error generating loan number from ${lastLoanNumber}:`, error);
         return 'LN001';
     }
 };
@@ -251,9 +247,9 @@ export const getNotificationMessage = (type: NotificationType, data: { memberNam
 
 export const generateRandomPassword = (length: number = 10): string => {
     const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()";
-    let retVal = "";
-    for (let i = 0, n = charset.length; i < length; ++i) {
-        retVal += charset.charAt(Math.floor(Math.random() * n));
-    }
-    return retVal;
+    const array = new Uint32Array(length);
+    crypto.getRandomValues(array);
+    return Array.from(array)
+        .map(n => charset[n % charset.length])
+        .join('');
 };

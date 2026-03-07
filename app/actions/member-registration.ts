@@ -77,18 +77,14 @@ export async function createMemberWithWallet(formData: FormData): Promise<Regist
             })
             const nextMemberNumber = (stats._max.memberNumber || 0) + 1
 
-            // 3. Generate Unique Wallet ID (5 digits)
-            // Retry logic could be added, but collision chance on 5 digits is distinct. 
-            // Better to use a "WAL-" prefix + 6 random digits to be safe like existing pattern?
-            // User requested "unique 5-digit string or UUID". Let's do 5-digit string.
-            // Loop a few times to ensure uniqueness?
+            // 3. Generate Unique Wallet ID using cryptographically secure random bytes (P4.2)
             let uniqueWalletId = ''
             let isUnique = false
             let attempts = 0
 
             while (!isUnique && attempts < 5) {
-                const randomPart = Math.floor(10000 + Math.random() * 90000).toString() // 10000-99999
-                uniqueWalletId = `WAL-${randomPart}` // Prefix for clarity
+                const { randomBytes } = await import('crypto')
+                uniqueWalletId = `WAL-${randomBytes(4).toString('hex').toUpperCase()}`
 
                 const existing = await tx.wallet.findUnique({
                     where: { accountRef: uniqueWalletId }
@@ -96,6 +92,7 @@ export async function createMemberWithWallet(formData: FormData): Promise<Regist
                 if (!existing) isUnique = true
                 attempts++
             }
+
 
             if (!isUnique) throw new Error("Failed to generate unique Wallet ID. Please try again.")
 
@@ -163,7 +160,6 @@ export async function createMemberWithWallet(formData: FormData): Promise<Regist
         }
 
     } catch (error: any) {
-        console.error("Atomic Registration Error:", error)
         return { success: false, error: error.message || "Registration failed." }
     }
 }

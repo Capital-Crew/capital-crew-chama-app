@@ -36,11 +36,9 @@ export async function getAuditLogs(
     filters: AuditLogFilter = {}
 ): Promise<AuditLogResponse> {
     const session = await auth()
-    console.log('[getAuditLogs] Session user:', session?.user?.email, session?.user?.role);
 
     // Strict Access Control - System Admin Only
     if (!session?.user || !['SYSTEM_ADMIN', 'CHAIRPERSON'].includes(session.user.role)) {
-        console.error('[getAuditLogs] Unauthorized access attempt by:', session?.user?.email);
         throw new Error("Unauthorized: Access Restricted to System Administrator")
     }
 
@@ -84,7 +82,6 @@ export async function getAuditLogs(
         ])
 
 
-        console.log(`[getAuditLogs] Returning ${logs.length} logs. Total: ${total}`);
         return {
             logs,
             total,
@@ -97,7 +94,6 @@ export async function getAuditLogs(
             } // Placeholder - fetched separately
         }
     } catch (error) {
-        console.error("Failed to fetch audit logs:", error)
         throw new Error("Failed to retrieve audit trail data")
     }
 }
@@ -137,7 +133,6 @@ export async function getAuditStats() {
         return { totalToday, totalThisMonth, criticalAlerts }
 
     } catch (error) {
-        console.error("Failed to fetch audit stats:", error)
         return { totalToday: 0, totalThisMonth: 0, criticalAlerts: 0 }
     }
 }

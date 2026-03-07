@@ -10,7 +10,9 @@ const LIMIT = 10; // requests
 const WINDOW = 60 * 1000; // 1 minute
 
 async function rateLimit(request: NextRequest) {
-    const ip = (request as any).ip ?? request.headers.get('x-forwarded-for')?.split(',')[0] ?? '127.0.0.1';
+    const rawIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    const IP_REGEX = /^(\d{1,3}\.){3}\d{1,3}$|^[a-f0-9:]+$/i
+    const ip = (rawIp && IP_REGEX.test(rawIp)) ? rawIp : '127.0.0.1'
     const now = Date.now();
 
     const record = rateLimitMap.get(ip) || { count: 0, windowStart: now };
@@ -64,6 +66,14 @@ export default auth(async (req) => {
     // 3. Set Global CORS Header (Secure restricted origin)
     response.headers.set('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
     response.headers.set('Access-Control-Allow-Credentials', 'true');
+
+    // 4. Security Headers (P2.3)
+    response.headers.set('X-Content-Type-Options', 'nosniff');
+    response.headers.set('X-Frame-Options', 'DENY');
+    response.headers.set('X-XSS-Protection', '1; mode=block');
+    response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+    response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
 
     return response;
 });

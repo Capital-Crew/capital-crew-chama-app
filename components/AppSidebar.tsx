@@ -131,7 +131,7 @@ export function AppSidebar({ user, approvalCount = 0, pendingLoanCount = 0 }: { 
                     <NavItem icon={<HeartHandshake className="w-5 h-5" />} label="Welfare" href="/welfare" active={pathname.startsWith('/welfare')} />
                 )}
 
-                <NavItem icon={<Activity className="w-5 h-5" />} label="Meetings" href="/meetings/report/new" active={pathname.startsWith('/meetings')} />
+                <NavItem icon={<Activity className="w-5 h-5" />} label="Meetings" href="/meetings" active={pathname.startsWith('/meetings')} />
 
                 {canAccess('REPORTS_HUB') && (
                     <NavItem icon={<ReportsIcon className="w-5 h-5" />} label="Reports Hub" href="/reports" active={pathname === '/reports'} />
@@ -154,6 +154,10 @@ export function AppSidebar({ user, approvalCount = 0, pendingLoanCount = 0 }: { 
 
                         {canAccess('AUDIT') && (
                             <NavItem icon={<AuditLogIcon className="w-5 h-5" />} label="Audit Trail" href="/audit" active={pathname === '/audit'} />
+                        )}
+
+                        {canAccess('ADMIN') && (
+                            <NavItem icon={<Activity className="w-5 h-5" />} label="Meetings Admin" href="/admin/meetings" active={pathname.startsWith('/admin/meetings')} />
                         )}
                     </>
                 )}

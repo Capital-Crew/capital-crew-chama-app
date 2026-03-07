@@ -65,7 +65,6 @@ export function AdminRequisitionList({ requisitions }: AdminRequisitionListProps
                 toast.error(res?.error || 'Action failed')
             }
         } catch (error) {
-            console.error("Error during welfare action:", error)
             toast.error('An error occurred')
         } finally {
             setIsProcessing(false)

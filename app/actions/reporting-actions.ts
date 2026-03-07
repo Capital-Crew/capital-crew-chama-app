@@ -34,7 +34,7 @@ function auditLog(userId: string, details: string, summary: string) {
             severity: 'INFO',
             ipAddress: '0.0.0.0',
         }
-    }).catch(err => console.error('[Audit] Report log failed:', err))
+    })
 }
 
 // ──────────────────────────────────────────

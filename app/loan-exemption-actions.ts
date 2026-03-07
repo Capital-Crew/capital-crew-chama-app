@@ -60,7 +60,6 @@ export async function updateLoanExemptions(loanId: string, exemptions: LoanExemp
 
         return { success: true }
     } catch (error: any) {
-        console.error('Error updating loan exemptions:', error)
         return { error: error.message || 'Failed to update exemptions' }
     }
 }
@@ -79,7 +78,6 @@ export async function getLoanExemptions(loanId: string) {
 
         return loan?.feeExemptions as LoanExemptions || {}
     } catch (error: any) {
-        console.error('Error fetching loan exemptions:', error)
         return {}
     }
 }

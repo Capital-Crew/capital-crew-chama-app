@@ -74,7 +74,6 @@ export function FilterModal({ open, onOpenChange, report, onPreview, loading, er
                     setMembers(opts.members)
                     setProducts(opts.products)
                 })
-                .catch(err => console.error('Failed to load filter options:', err))
                 .finally(() => setOptionsLoading(false))
         }
     }, [open, needsDropdowns])

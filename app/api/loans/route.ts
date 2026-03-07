@@ -35,7 +35,6 @@ export async function POST(request: NextRequest) {
         }
 
         const { memberId, loanProductId, requestedAmount, contractRef } = validation.data
-        console.log(`[API] POST /loans received for memberId: ${memberId}, amount: ${requestedAmount}`);
 
         // Verify user is submitting for themselves or is admin
         const user = await prisma.user.findUnique({
@@ -74,7 +73,6 @@ export async function POST(request: NextRequest) {
         try {
             appraisal = await calculateLoanQualification(memberId, [], requestedAmount)
         } catch (err: any) {
-            console.error(`[API] Appraisal failed: ${err.message}`);
             if (err.message === 'Member not found') {
                 return NextResponse.json({ error: 'Member not found', message: `No member found with ID: ${memberId}` }, { status: 404 });
             }
@@ -193,7 +191,6 @@ export async function POST(request: NextRequest) {
         })
 
     } catch (error: any) {
-        console.error('Loan application error:', error)
         return NextResponse.json({
             error: 'Failed to create loan application',
             message: error.message
@@ -261,7 +258,6 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ loans })
 
     } catch (error: any) {
-        console.error('List loans error:', error)
         return NextResponse.json({
             error: 'Failed to fetch loans',
             message: error.message

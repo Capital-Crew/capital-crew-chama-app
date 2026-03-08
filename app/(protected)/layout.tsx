@@ -21,11 +21,20 @@ export default async function ProtectedLayout({ children }: { children: React.Re
         redirect("/auth/force-change-password");
     }
 
+    // Fetch live user role from DB to prevent stale JWT bypassing
+    const { db } = await import('@/lib/db');
+    const liveUser = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true }
+    });
+
+    const currentRole = liveUser?.role || (session.user as any).role;
+
     // Parallel Fetching for performance
     const [approvalCount, pendingLoanCountResult, permissionsList] = await Promise.all([
         getApprovalCounts(),
         import('@/app/actions/loan-actions').then(mod => mod.getPendingLoanCount()),
-        import('@/lib/rbac-service').then(mod => mod.getPermissionsForRole((session.user as any).role))
+        import('@/lib/rbac-service').then(mod => mod.getPermissionsForRole(currentRole))
     ]);
 
     // Ensure we handle the potential 0 or error returns safely

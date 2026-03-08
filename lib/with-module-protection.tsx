@@ -25,7 +25,7 @@ export function withModuleProtection(
             return redirect('/dashboard');
         }
 
-        return <WrappedComponent { ...props } />;
+        return <WrappedComponent {...props} />;
     };
 }
 
@@ -35,7 +35,16 @@ export function withModuleProtection(
  */
 export async function protectPage(moduleKey: string) {
     const session = await auth();
-    if (!session?.user) return false;
+    if (!session?.user?.id) return false;
 
-    return await checkPermission(session.user.role, moduleKey);
+    // Fetch the live role from the DB to prevent stale JWT bypasses
+    const { db } = await import('@/lib/db');
+    const dbUser = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true }
+    });
+
+    if (!dbUser?.role) return false;
+
+    return await checkPermission(dbUser.role, moduleKey);
 }

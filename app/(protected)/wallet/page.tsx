@@ -1,5 +1,6 @@
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
+import { protectPage } from '@/lib/with-module-protection'
 import { WalletPageClient } from '@/components/wallet/WalletPageClient'
 import { db as prisma } from '@/lib/db'
 
@@ -9,6 +10,8 @@ export default async function WalletPage() {
     if (!session?.user) {
         redirect('/login')
     }
+
+    if (!await protectPage('WALLET')) return redirect('/dashboard')
 
     const user = await prisma.user.findUnique({
         where: { id: session.user.id as string },

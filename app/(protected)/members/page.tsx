@@ -5,6 +5,7 @@ import { getMembers } from "@/app/actions/get-members"
 import { redirect } from "next/navigation"
 import { UserRole } from "@prisma/client"
 import { getCurrentUserPermissions } from "@/app/actions/user-permissions"
+import { protectPage } from "@/lib/with-module-protection"
 
 export default async function MembersPage() {
     const session = await auth();
@@ -12,6 +13,8 @@ export default async function MembersPage() {
     if (!session?.user) {
         redirect("/")
     }
+
+    if (!await protectPage('MEMBERS')) return redirect('/dashboard')
 
     const { role, memberId } = session.user as { role: UserRole, memberId?: string };
 

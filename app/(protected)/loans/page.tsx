@@ -4,9 +4,14 @@ import { db as prisma } from "@/lib/db"
 import { LoanManagement } from "@/components/LoanManagement"
 
 import { auth } from "@/auth"
+import { protectPage } from "@/lib/with-module-protection"
+import { redirect } from "next/navigation"
 
 export default async function LoansPage() {
     const session = await auth()
+
+    if (!session?.user) redirect('/login')
+    if (!await protectPage('LOANS')) return redirect('/dashboard')
 
     // Fetch critical data
     const [loans, members, products, loanDraft] = await Promise.all([

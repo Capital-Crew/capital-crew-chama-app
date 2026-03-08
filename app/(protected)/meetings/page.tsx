@@ -1,11 +1,13 @@
 import { db as prisma } from "@/lib/db"
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
+import { protectPage } from "@/lib/with-module-protection"
 import { MeetingsHub } from "@/components/meetings/MeetingsHub"
 
 export default async function MeetingsPage() {
     const session = await auth()
     if (!session?.user?.id) redirect("/login")
+    if (!await protectPage('MEETINGS')) return redirect('/dashboard')
 
     // Fetch upcoming SCHEDULED meetings (future dates)
     const upcomingMeetings = await prisma.meeting.findMany({

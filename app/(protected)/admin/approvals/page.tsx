@@ -1,6 +1,7 @@
 
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
+import { protectPage } from '@/lib/with-module-protection'
 import { getPendingApprovals } from '@/app/actions/approval-actions'
 import { ApprovalsDashboard } from '@/components/approvals/ApprovalsDashboard'
 
@@ -10,6 +11,8 @@ export default async function ApprovalsPage() {
     if (!session?.user) {
         redirect('/login')
     }
+
+    if (!await protectPage('APPROVALS')) return redirect('/dashboard')
 
     const requests = await getPendingApprovals()
 

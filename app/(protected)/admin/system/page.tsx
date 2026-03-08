@@ -1,6 +1,8 @@
 import { db as prisma } from "@/lib/db"
 import { SystemAdminModule } from "@/components/SystemAdminModule"
 import { auth } from "@/auth"
+import { protectPage } from "@/lib/with-module-protection"
+import { redirect } from "next/navigation"
 import { getWelfareTypes } from '@/app/welfare-types-actions'
 import { getWelfareRequisitions } from '@/app/welfare-requisition-actions'
 
@@ -15,6 +17,8 @@ export default async function SystemAdminPage() {
             </div>
         );
     }
+
+    if (!await protectPage('ADMIN')) return redirect('/dashboard')
 
     // Strict Role Check
     const user = await prisma.user.findUnique({

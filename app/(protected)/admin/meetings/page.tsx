@@ -1,5 +1,6 @@
 import { db as prisma } from "@/lib/db"
 import { auth } from "@/auth"
+import { protectPage } from "@/lib/with-module-protection"
 import { MeetingsAdminPanel } from "@/components/meetings/MeetingsAdminPanel"
 import { redirect } from "next/navigation"
 import Link from "next/link"
@@ -8,6 +9,7 @@ import { ChevronLeft } from "lucide-react"
 export default async function AdminMeetingsPage() {
     const session = await auth()
     if (!session?.user?.id) redirect("/login")
+    if (!await protectPage('ADMIN')) return redirect('/dashboard')
 
     const user = await prisma.user.findUnique({
         where: { id: session.user.id },

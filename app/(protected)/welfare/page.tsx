@@ -1,5 +1,6 @@
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
+import { protectPage } from '@/lib/with-module-protection'
 import { db as prisma } from '@/lib/db'
 import { getWelfareTypes } from '@/app/welfare-types-actions'
 import { getWelfareRequisitions } from '@/app/welfare-requisition-actions'
@@ -14,6 +15,8 @@ export default async function WelfarePage() {
     if (!session?.user?.id) {
         redirect('/login')
     }
+
+    if (!await protectPage('WELFARE')) return redirect('/dashboard')
 
     // Get user with member details
     const user = await prisma.user.findUnique({
@@ -37,7 +40,7 @@ export default async function WelfarePage() {
 
     // Fetch Data
     const typesRes = await getWelfareTypes(false) // Active only
-    const welfareTypes = typesRes.success ? typesRes.data : []
+    const welfareTypes = typesRes.success ? (typesRes.data || []) : []
 
     // Fetch Claims: "All members can see the list of Pending and Approved claims"
     // So we fetch ALL for everyone.

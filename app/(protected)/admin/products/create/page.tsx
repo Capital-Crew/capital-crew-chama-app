@@ -1,7 +1,14 @@
 import { db as prisma } from "@/lib/db";
 import { LoanProductWizard } from "@/components/products/LoanProductWizard";
+import { auth } from '@/auth'
+import { redirect } from 'next/navigation'
+import { protectPage } from "@/lib/with-module-protection"
 
 export default async function CreateProductPage() {
+    const session = await auth()
+    if (!session?.user) redirect('/login')
+    if (!await protectPage('ADMIN')) return redirect('/dashboard')
+
     const accounts = await prisma.ledgerAccount.findMany({
         where: { isActive: true },
         select: { id: true, name: true, code: true, type: true }

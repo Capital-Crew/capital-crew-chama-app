@@ -1,9 +1,13 @@
 import { DepositForm } from "@/components/DepositForm";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import { protectPage } from "@/lib/with-module-protection"
 
 export default async function DepositPage() {
     const session = await auth();
+
+    if (!session?.user?.id) return redirect('/login')
+    if (!await protectPage('WALLET')) return redirect('/dashboard')
 
     if (!session || !session.user || !session.user.memberId) {
         // If no member ID (e.g. admin without member profile), maybe redirect or show error?

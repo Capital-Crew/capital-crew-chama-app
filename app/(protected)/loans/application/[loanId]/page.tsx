@@ -1,6 +1,7 @@
 import { auth } from "@/auth"
 import { db } from "@/lib/db"
 import { notFound, redirect } from "next/navigation"
+import { protectPage } from "@/lib/with-module-protection"
 import { LoanApplicationForm } from "@/components/loan/LoanApplicationForm" // Correct path
 import { CreditSnapshot, calculateBorrowingPower } from "@/lib/utils/credit-limit"
 import { serializeMembers } from "@/lib/serializers"
@@ -14,6 +15,7 @@ interface PageProps {
 export default async function LoanDraftPage({ params }: PageProps) {
     const session = await auth()
     if (!session?.user) return redirect("/auth/login")
+    if (!await protectPage('LOANS')) return redirect('/dashboard')
 
     // Await params for Next.js 15+
     const { loanId } = await params

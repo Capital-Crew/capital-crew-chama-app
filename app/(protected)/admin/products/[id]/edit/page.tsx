@@ -1,12 +1,14 @@
 import { db as prisma } from "@/lib/db"
 import { auth } from "@/auth"
 import { redirect, notFound } from "next/navigation"
+import { protectPage } from "@/lib/with-module-protection"
 import { LoanProductWizard } from "@/components/products/LoanProductWizard"
 import { LoanProductWizardValues } from "@/lib/schemas/loan-product-schema"
 
 export default async function EditLoanProductPage({ params }: { params: Promise<{ id: string }> }) {
     const session = await auth()
     if (!session?.user) return redirect("/auth/login")
+    if (!await protectPage('ADMIN')) return redirect('/dashboard')
 
     const { id } = await params;
 

@@ -1,8 +1,15 @@
 import React from 'react';
 import { getWorkflowSettings, updateStageSettings } from '@/app/actions/workflow-settings';
 import { WorkflowSettingsClient } from './WorkflowSettingsClient';
+import { auth } from '@/auth'
+import { redirect } from 'next/navigation'
+import { protectPage } from "@/lib/with-module-protection"
 
 export default async function WorkflowSettingsPage() {
+    const session = await auth()
+    if (!session?.user) redirect('/login')
+    if (!await protectPage('ADMIN')) return redirect('/dashboard')
+
     const workflows = await getWorkflowSettings();
 
     return (

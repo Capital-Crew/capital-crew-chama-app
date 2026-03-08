@@ -1,6 +1,7 @@
 import { auth } from "@/auth"
 import { redirect, notFound } from "next/navigation"
 // import { PrismaClient } from "@prisma/client"
+import { protectPage } from "@/lib/with-module-protection"
 import {
     Tabs,
     TabsContent,
@@ -19,6 +20,7 @@ import { db as prisma } from "@/lib/db"
 export default async function ProductDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const session = await auth()
     if (!session?.user) return redirect("/auth/login")
+    if (!await protectPage('ADMIN')) return redirect('/dashboard')
 
     const { id } = await params
     const product = await prisma.loanProduct.findUnique({

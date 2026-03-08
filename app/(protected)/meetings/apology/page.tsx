@@ -1,6 +1,7 @@
 import { db as prisma } from "@/lib/db"
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
+import { protectPage } from "@/lib/with-module-protection"
 import { ApologyForm } from "@/components/meetings/ApologyForm"
 import { ChevronLeft, Info } from "lucide-react"
 import Link from "next/link"
@@ -10,6 +11,7 @@ export default async function MemberApologyPage() {
     if (!session?.user?.id) {
         redirect("/login");
     }
+    if (!await protectPage('MEETINGS')) return redirect('/dashboard');
 
     // 1. Fetch upcoming meetings where deadline hasn't passed (Today + 3 Days)
     const deadlineDate = new Date();

@@ -1,5 +1,6 @@
 import { auth } from '@/auth'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
+import { protectPage } from '@/lib/with-module-protection'
 import { getMemberFullDetail } from "@/app/actions/member-dashboard-actions"
 import { MemberProfileView } from "@/components/member/MemberProfileView"
 import { getCurrentUserPermissions } from "@/app/actions/user-permissions"
@@ -20,6 +21,8 @@ export default async function MemberProfilePage({ params }: PageProps) {
         // Should be protected by middleware but safe check
         return notFound()
     }
+
+    if (!await protectPage('MEMBERS')) return redirect('/dashboard')
 
     const [detail, permRes] = await Promise.all([
         getMemberFullDetail(id),

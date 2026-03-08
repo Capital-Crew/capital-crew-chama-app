@@ -1,17 +1,22 @@
 
 import { getLoanTransactionDetails } from '@/app/actions/loan';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import { GLEntriesTable } from '@/components/loans/GLEntriesTable';
 import { TransactionActionMenu } from '@/components/loans/TransactionActionMenu';
 import { LoanTransaction } from '@/lib/types/loan-transaction';
+import { auth } from "@/auth"
+import { protectPage } from "@/lib/with-module-protection"
 
 interface PageProps {
     params: Promise<{ transactionId: string }>;
 }
 
 export default async function TransactionDetailsPage({ params }: PageProps) {
+    const session = await auth()
+    if (!session?.user) return redirect("/login")
+    if (!await protectPage('LOANS')) return redirect('/dashboard')
     const { transactionId } = await params;
     const transaction = await getLoanTransactionDetails(transactionId);
 

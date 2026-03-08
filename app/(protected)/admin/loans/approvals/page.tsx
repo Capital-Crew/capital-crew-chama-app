@@ -2,12 +2,14 @@
 
 import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
+import { protectPage } from "@/lib/with-module-protection"
 import { getPendingLoans } from '@/app/actions/loan-actions'
 import { LoanApprovalsClient } from './page.client'
 
 export default async function LoanApprovalsPage() {
     const session = await auth()
     if (!session?.user) redirect('/login')
+    if (!await protectPage('APPROVALS')) return redirect('/dashboard')
 
     const pendingLoans = await getPendingLoans()
     const currentUser = {

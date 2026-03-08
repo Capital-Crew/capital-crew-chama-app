@@ -1,6 +1,7 @@
 import { auth } from "@/auth"
 import { db } from "@/lib/db"
 import { redirect } from "next/navigation"
+import { protectPage } from "@/lib/with-module-protection"
 import { LoanApplicationForm } from "@/components/loan/LoanApplicationForm"
 import { calculateBorrowingPower } from "@/lib/utils/credit-limit"
 import { serializeMembers } from "@/lib/serializers"
@@ -8,6 +9,7 @@ import { serializeMembers } from "@/lib/serializers"
 export default async function NewLoanApplicationPage() {
     const session = await auth()
     if (!session?.user) return redirect("/auth/login")
+    if (!await protectPage('LOANS')) return redirect('/dashboard')
 
     // Check for existing LoanDraft
     const loanDraft = await db.loanDraft.findUnique({

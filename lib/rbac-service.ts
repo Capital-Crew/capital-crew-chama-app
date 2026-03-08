@@ -50,9 +50,12 @@ export const getPermissionsForRole = unstable_cache(
  * Check if a role has access to a specific module
  */
 export async function checkPermission(role: UserRole, moduleKey: string): Promise<boolean> {
-    if (role === 'SYSTEM_ADMIN') return true; // Master Key
+    // Safety: SYSTEM_ADMIN always has access to ADMIN and REPORTS_HUB
+    if (role === 'SYSTEM_ADMIN' && (moduleKey === 'ADMIN' || moduleKey === 'REPORTS_HUB')) {
+        return true;
+    }
 
-    // For other roles, strict check
+    // For other roles (and other modules for SYSTEM_ADMIN), strict check
     const permission = await db.rolePermission.findUnique({
         where: {
             role_moduleKey: {

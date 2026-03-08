@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { togglePermission as togglePermissionService } from "@/lib/rbac-service";
 import { withModuleProtection } from "@/lib/with-module-protection";
 import { UserRole } from "@prisma/client";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 /**
  * Fetch the complete Permissions Matrix Data
@@ -42,6 +42,7 @@ export async function togglePermission(role: UserRole, moduleKey: string, canAcc
         await togglePermissionService(role, moduleKey, canAccess);
         revalidatePath('/admin/system');
         revalidatePath('/dashboard'); // revalidate sidebar
+        revalidateTag('rbac-permissions'); // <--- explicitly clear permissions cache
         return { success: true };
     } catch (error) {
         return { error: "Failed to update permission" };

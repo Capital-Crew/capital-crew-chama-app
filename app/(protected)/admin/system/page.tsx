@@ -6,9 +6,19 @@ import { getWelfareRequisitions } from '@/app/welfare-requisition-actions'
 
 export default async function SystemAdminPage() {
     const session = await auth();
+
+    if (!session?.user?.id) {
+        return (
+            <div className="flex flex-col items-center justify-center h-full text-center space-y-4 pt-20">
+                <h1 className="text-2xl font-bold text-red-500">Authentication Required</h1>
+                <p className="text-muted-foreground">Please log in to access system administration.</p>
+            </div>
+        );
+    }
+
     // Strict Role Check
     const user = await prisma.user.findUnique({
-        where: { id: session?.user?.id },
+        where: { id: session.user.id },
         select: { role: true }
     });
 

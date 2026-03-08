@@ -30,15 +30,20 @@ export async function getPermissionsMatrix() {
 
 
 /**
- * Toggle a specific permission - Protected by ADMIN module access
+ * Toggle a specific permission
  */
-export const togglePermission = withModuleProtection('ADMIN', async (role: UserRole, moduleKey: string, canAccess: boolean) => {
+export async function togglePermission(role: UserRole, moduleKey: string, canAccess: boolean) {
+    const session = await auth();
+    if (!session?.user || !['SYSTEM_ADMIN'].includes(session.user.role)) {
+        return { error: "Unauthorized" };
+    }
+
     try {
         await togglePermissionService(role, moduleKey, canAccess);
-        revalidatePath('/admin/access-control');
+        revalidatePath('/admin/system');
         revalidatePath('/dashboard'); // revalidate sidebar
         return { success: true };
     } catch (error) {
         return { error: "Failed to update permission" };
     }
-});
+}

@@ -100,8 +100,9 @@ export async function updateUserPermissions(input: {
             throw new Error('User not found');
         }
 
-        // Only CHAIRPERSON or users with canManageUserRights can update permissions
+        // Only SYSTEM_ADMIN, CHAIRPERSON, or users with canManageUserRights can update permissions
         const hasPermission =
+            currentUser.role === 'SYSTEM_ADMIN' ||
             currentUser.role === 'CHAIRPERSON' ||
             (currentUser.permissions as unknown as UserPermissions)?.canManageUserRights;
 

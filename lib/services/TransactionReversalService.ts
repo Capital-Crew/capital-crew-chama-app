@@ -340,12 +340,14 @@ export class TransactionReversalService {
                         await TransactionReplayService.replayTransactions(loanTx.loanId, undefined, tx)
                         try {
                             revalidatePath(`/loans/${loanTx.loanId}`)
+                        } catch (e) { }
                     }
                 }
 
                 if (memberId) {
                     try {
                         revalidatePath(`/members/${memberId}`)
+                    } catch (e) { }
                 }
 
                 return { success: true }

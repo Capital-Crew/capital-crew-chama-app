@@ -5,7 +5,7 @@ import { updateUserRights } from '@/app/actions/user-rights-actions'
 import { toggleMemberApprovalRight } from '@/app/loan-approval-actions'
 import { updateUserPermissions } from '@/app/actions/user-permissions'
 import { UserRole } from '@prisma/client'
-import { Search, Shield, Edit2, AlertCircle, CheckCircle, XCircle, Key, Lock, Wallet, User as UserIcon, AlertTriangle } from 'lucide-react'
+import { Search, Shield, Edit2, AlertCircle, CheckCircle, XCircle, Key, Lock, Wallet, User as UserIcon, AlertTriangle, FileTextIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { assignUsername } from '@/app/actions/user-actions'
 
@@ -87,9 +87,10 @@ interface User {
 
 interface UserRightsTableProps {
     users: User[]
+    permissions?: any[]
 }
 
-export function UserRightsTable({ users: initialUsers }: UserRightsTableProps) {
+export function UserRightsTable({ users: initialUsers, permissions = [] }: UserRightsTableProps) {
     const router = useRouter()
     const [users, setUsers] = useState(initialUsers)
     const [searchTerm, setSearchTerm] = useState('')
@@ -112,31 +113,41 @@ export function UserRightsTable({ users: initialUsers }: UserRightsTableProps) {
 
     // Permission Definitions
     const permissionDefinitions = [
-        { key: 'canViewAll', label: 'View All Data', description: 'Access to view all members, loans, and financial records' },
-        { key: 'canAddData', label: 'Add Data', description: 'Create new members, loans, and transactions' },
-        { key: 'canApprove', label: 'Approve Loans', description: 'Vote on loan applications and approvals' },
-        { key: 'canManageSettings', label: 'Manage Settings', description: 'Modify SACCO settings and loan products' },
-        { key: 'canViewReports', label: 'View Reports', description: 'Access financial reports and analytics' },
-        { key: 'canViewAudit', label: 'View Audit Logs', description: 'View system audit trail and activity logs' },
-        { key: 'canManageUserRights', label: 'Manage User Rights', description: 'Grant or revoke permissions for other users' },
-        { key: 'canExemptFees', label: 'Exempt Fees', description: 'Waive or reduce fees on loan applications' },
-        { key: 'canReverse', label: 'Reverse Journal Entries', description: 'Void and correct financial journal entries' },
-        { key: 'canEnrollMembers', label: 'Enroll Members', description: 'Register new members and create their wallets' },
-        { key: 'canApproveMember', label: 'Approve Members', description: 'Approve pending members after enrollment' },
-        { key: 'canActivateMember', label: 'Activate Members', description: 'Activate approved members to start using the system' },
-        { key: 'canManageLedger', label: 'General Ledger', description: 'Configure hierarchical COA and accounting periods' },
+        { key: 'canViewAll', label: 'View All Data', description: 'Access to view all members, loans, and financial records', moduleKey: null },
+        { key: 'canAddData', label: 'Add Data', description: 'Create new members, loans, and transactions', moduleKey: null },
+        { key: 'canApprove', label: 'Approve Loans', description: 'Vote on loan applications and approvals', moduleKey: 'APPROVALS' },
+        { key: 'canManageSettings', label: 'Manage Settings', description: 'Modify SACCO settings and loan products', moduleKey: 'ADMIN' },
+        { key: 'canViewReports', label: 'View Reports', description: 'Access financial reports and analytics', moduleKey: 'REPORTS_HUB' },
+        { key: 'canViewAudit', label: 'View Audit Logs', description: 'View system audit trail and activity logs', moduleKey: 'AUDIT' },
+        { key: 'canManageUserRights', label: 'Manage User Rights', description: 'Grant or revoke permissions for other users', moduleKey: 'ADMIN' },
+        { key: 'canExemptFees', label: 'Exempt Fees', description: 'Waive or reduce fees on loan applications', moduleKey: 'LOANS' },
+        { key: 'canReverse', label: 'Reverse Journal Entries', description: 'Void and correct financial journal entries', moduleKey: 'ACCOUNTS' },
+        { key: 'canEnrollMembers', label: 'Enroll Members', description: 'Register new members and create their wallets', moduleKey: 'MEMBERS' },
+        { key: 'canApproveMember', label: 'Approve Members', description: 'Approve pending members after enrollment', moduleKey: 'APPROVALS' },
+        { key: 'canActivateMember', label: 'Activate Members', description: 'Activate approved members to start using the system', moduleKey: 'MEMBERS' },
+        { key: 'canManageLedger', label: 'General Ledger', description: 'Configure hierarchical COA and accounting periods', moduleKey: 'ACCOUNTS' },
         // Granular Reports
-        { key: 'canViewReportLoanDisbursement', label: 'Report: Loan Disbursement', description: 'Access to Loan Disbursement analytical report' },
-        { key: 'canViewReportActivePortfolio', label: 'Report: Active Portfolio', description: 'Access to Active Loan Portfolio report' },
-        { key: 'canViewReportPAR', label: 'Report: PAR / Delinquency', description: 'Access to Delinquency & PAR analytical report' },
-        { key: 'canViewReportTrialBalance', label: 'Report: Trial Balance', description: 'Access to Trial Balance financial report' },
-        { key: 'canViewReportBalanceSheet', label: 'Report: Balance Sheet', description: 'Access to Balance Sheet financial report' },
-        { key: 'canViewReportIncomeStatement', label: 'Report: Income Statement', description: 'Access to Income Statement financial report' },
-        { key: 'canViewReportCashFlow', label: 'Report: Cash Flow', description: 'Access to Cash Flow financial report' },
-        { key: 'canViewReportProductProfitability', label: 'Report: Profitability', description: 'Access to Product Profitability report' },
-        { key: 'canViewReportFeeAnalysis', label: 'Report: Fee Analysis', description: 'Access to Fee Analysis analytical report' },
-        { key: 'canViewReportNetInterestMargin', label: 'Report: Interest Margin', description: 'Access to Net Interest Margin report' }
+        { key: 'canViewReportLoanDisbursement', label: 'Report: Loan Disbursement', description: 'Access to Loan Disbursement analytical report', moduleKey: 'REPORTS_HUB' },
+        { key: 'canViewReportActivePortfolio', label: 'Report: Active Portfolio', description: 'Access to Active Loan Portfolio report', moduleKey: 'REPORTS_HUB' },
+        { key: 'canViewReportPAR', label: 'Report: PAR / Delinquency', description: 'Access to Delinquency & PAR analytical report', moduleKey: 'REPORTS_HUB' },
+        { key: 'canViewReportTrialBalance', label: 'Report: Trial Balance', description: 'Access to Trial Balance financial report', moduleKey: 'REPORTS_HUB' },
+        { key: 'canViewReportBalanceSheet', label: 'Report: Balance Sheet', description: 'Access to Balance Sheet financial report', moduleKey: 'REPORTS_HUB' },
+        { key: 'canViewReportIncomeStatement', label: 'Report: Income Statement', description: 'Access to Income Statement financial report', moduleKey: 'REPORTS_HUB' },
+        { key: 'canViewReportCashFlow', label: 'Report: Cash Flow', description: 'Access to Cash Flow financial report', moduleKey: 'REPORTS_HUB' },
+        { key: 'canViewReportProductProfitability', label: 'Report: Profitability', description: 'Access to Product Profitability report', moduleKey: 'REPORTS_HUB' },
+        { key: 'canViewReportFeeAnalysis', label: 'Report: Fee Analysis', description: 'Access to Fee Analysis analytical report', moduleKey: 'REPORTS_HUB' },
+        { key: 'canViewReportNetInterestMargin', label: 'Report: Interest Margin', description: 'Access to Net Interest Margin report', moduleKey: 'REPORTS_HUB' }
     ];
+
+    const hasModuleAccess = (moduleKey: string | null) => {
+        if (!moduleKey) return true;
+        if (permUser?.role === 'SYSTEM_ADMIN') return true;
+        const rolePerm = permissions?.find(p => p.role === permUser?.role && p.moduleKey === moduleKey);
+        return rolePerm?.canAccess ?? false;
+    };
+
+    const sysDefs = permissionDefinitions.filter(d => !d.key.startsWith('canViewReport') && hasModuleAccess(d.moduleKey));
+    const reportDefs = permissionDefinitions.filter(d => d.key.startsWith('canViewReport') && hasModuleAccess(d.moduleKey));
 
     // Filter Logic
     const filteredUsers = users.filter(user =>
@@ -463,45 +474,51 @@ export function UserRightsTable({ users: initialUsers }: UserRightsTableProps) {
                                     <Shield className="w-3 h-3" /> System Access
                                 </h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {permissionDefinitions.filter(d => !d.key.startsWith('canViewReport')).map((def) => (
-                                        <div key={def.key} className="flex items-start gap-3 p-4 border rounded-xl hover:bg-slate-50 transition-all cursor-pointer" onClick={() => togglePermission(def.key as keyof UserPermissions)}>
-                                            <input
-                                                type="checkbox"
-                                                className="checkbox checkbox-primary mt-1"
-                                                checked={currentPerms[def.key as keyof UserPermissions]}
-                                                readOnly
-                                            />
-                                            <div>
-                                                <h4 className="font-bold text-sm text-slate-700">{def.label}</h4>
-                                                <p className="text-xs text-slate-500 mt-0.5">{def.description}</p>
+                                    {sysDefs.length === 0 ? (
+                                        <div className="col-span-full text-slate-400 text-sm italic py-4">No system permissions available (missing module access).</div>
+                                    ) : (
+                                        sysDefs.map((def) => (
+                                            <div key={def.key} className="flex items-start gap-3 p-4 border rounded-xl hover:bg-slate-50 transition-all cursor-pointer" onClick={() => togglePermission(def.key as keyof UserPermissions)}>
+                                                <input
+                                                    type="checkbox"
+                                                    className="checkbox checkbox-primary mt-1"
+                                                    checked={currentPerms[def.key as keyof UserPermissions]}
+                                                    readOnly
+                                                />
+                                                <div>
+                                                    <h4 className="font-bold text-sm text-slate-700">{def.label}</h4>
+                                                    <p className="text-xs text-slate-500 mt-0.5">{def.description}</p>
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        ))
+                                    )}
                                 </div>
                             </div>
 
-                            {/* Report Permissions */}
-                            <div>
-                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                                    <FileTextIcon className="w-3 h-3 text-[#00c2e0]" /> Granular Report Access
-                                </h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {permissionDefinitions.filter(d => d.key.startsWith('canViewReport')).map((def) => (
-                                        <div key={def.key} className="flex items-start gap-3 p-4 border rounded-xl hover:bg-cyan-50/30 border-slate-200 hover:border-[#00c2e0]/30 transition-all cursor-pointer" onClick={() => togglePermission(def.key as keyof UserPermissions)}>
-                                            <input
-                                                type="checkbox"
-                                                className="checkbox checkbox-primary mt-1"
-                                                checked={currentPerms[def.key as keyof UserPermissions]}
-                                                readOnly
-                                            />
-                                            <div>
-                                                <h4 className="font-bold text-sm text-slate-700">{def.label}</h4>
-                                                <p className="text-xs text-slate-500 mt-0.5">{def.description}</p>
+                            {/* Report Permissions - Completely hidden if no reportDefs */}
+                            {reportDefs.length > 0 && (
+                                <div>
+                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                        <FileTextIcon className="w-3 h-3 text-[#00c2e0]" /> Granular Report Access
+                                    </h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {reportDefs.map((def) => (
+                                            <div key={def.key} className="flex items-start gap-3 p-4 border rounded-xl hover:bg-cyan-50/30 border-slate-200 hover:border-[#00c2e0]/30 transition-all cursor-pointer" onClick={() => togglePermission(def.key as keyof UserPermissions)}>
+                                                <input
+                                                    type="checkbox"
+                                                    className="checkbox checkbox-primary mt-1"
+                                                    checked={currentPerms[def.key as keyof UserPermissions]}
+                                                    readOnly
+                                                />
+                                                <div>
+                                                    <h4 className="font-bold text-sm text-slate-700">{def.label}</h4>
+                                                    <p className="text-xs text-slate-500 mt-0.5">{def.description}</p>
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
 
                         {error && <div className="alert alert-error text-sm mt-4"><span>{error}</span></div>}

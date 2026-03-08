@@ -131,7 +131,9 @@ export function AppSidebar({ user, approvalCount = 0, pendingLoanCount = 0 }: { 
                     <NavItem icon={<HeartHandshake className="w-5 h-5" />} label="Welfare" href="/welfare" active={pathname.startsWith('/welfare')} />
                 )}
 
-                <NavItem icon={<Activity className="w-5 h-5" />} label="Meetings" href="/meetings" active={pathname.startsWith('/meetings')} />
+                {canAccess('MEETINGS') && (
+                    <NavItem icon={<Activity className="w-5 h-5" />} label="Meetings" href="/meetings" active={pathname.startsWith('/meetings')} />
+                )}
 
                 {canAccess('REPORTS_HUB') && (
                     <NavItem icon={<ReportsIcon className="w-5 h-5" />} label="Reports Hub" href="/reports" active={pathname === '/reports'} />

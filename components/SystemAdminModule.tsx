@@ -623,7 +623,7 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
                             Assign specific roles like Treasurer or Secretary to grant elevated privileges.
                         </p>
                     </div>
-                    <UserRightsTable users={users} />
+                    <UserRightsTable users={users} permissions={permissions} />
                 </div>
             )}
 

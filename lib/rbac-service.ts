@@ -12,39 +12,38 @@ export interface Permission {
  * Fetch all permissions for a given role.
  * Cached for performance.
  */
-export const getPermissionsForRole = unstable_cache(
-    async (role: UserRole) => {
-        // 1. Get all system modules
-        const modules = await db.systemModule.findMany({
-            orderBy: { name: 'asc' }
-        });
+export const getPermissionsForRole = async (role: UserRole) => {
+    return unstable_cache(
+        async () => {
+            // 1. Get all system modules
+            const modules = await db.systemModule.findMany({
+                orderBy: { name: 'asc' }
+            });
 
-        // 2. Get existing permissions for role
-        const permissions = await db.rolePermission.findMany({
-            where: { role }
-        });
+            // 2. Get existing permissions for role
+            const permissions = await db.rolePermission.findMany({
+                where: { role }
+            });
 
-        // 3. Merge: Default to FALSE if not found (deny by default)
-        // EXCEPT for SYSTEM_ADMIN who gets explicit TRUE overrides usually, 
-        // but we'll stick to DB state + safety fallback
+            // 3. Merge: Default to FALSE if not found (deny by default)
+            return modules.map(mod => {
+                const perm = permissions.find(p => p.moduleKey === mod.key);
 
-        return modules.map(mod => {
-            const perm = permissions.find(p => p.moduleKey === mod.key);
+                // Safety: SYSTEM_ADMIN always has access to ADMIN and REPORTS_HUB
+                if (role === 'SYSTEM_ADMIN' && (mod.key === 'ADMIN' || mod.key === 'REPORTS_HUB')) {
+                    return { ...mod, canAccess: true };
+                }
 
-            // Safety: SYSTEM_ADMIN always has access to ADMIN and REPORTS_HUB
-            if (role === 'SYSTEM_ADMIN' && (mod.key === 'ADMIN' || mod.key === 'REPORTS_HUB')) {
-                return { ...mod, canAccess: true };
-            }
-
-            return {
-                ...mod,
-                canAccess: perm?.canAccess ?? false // Default deny
-            };
-        });
-    },
-    ['rbac-permissions'],
-    { tags: ['rbac'] }
-);
+                return {
+                    ...mod,
+                    canAccess: perm?.canAccess ?? false // Default deny
+                };
+            });
+        },
+        [`rbac-permissions-${role}`],
+        { tags: ['rbac-permissions', `rbac-${role}`] }
+    )();
+};
 
 /**
  * Check if a role has access to a specific module

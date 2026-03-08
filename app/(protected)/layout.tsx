@@ -46,6 +46,9 @@ export default async function ProtectedLayout({ children }: { children: React.Re
         return acc;
     }, {} as Record<string, boolean>);
 
+    console.log(`[DEBUG] User ID: ${session.user.id}, Cookie Role: ${(session.user as any).role}, Live Role: ${currentRole}`);
+    console.log(`[DEBUG] permissionsMap sent to Client:`, JSON.stringify(permissionsMap));
+
     return (
         <InactivityHandler>
             <RBACProvider initialPermissions={permissionsMap}>

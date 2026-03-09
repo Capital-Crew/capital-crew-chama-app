@@ -38,6 +38,7 @@ export interface LoanPortfolioItem {
     approvedAmount: number;
     category: 'Performing' | 'Substandard' | 'Defaulted' | 'Closed' | 'N/A';
     periodInArrears: number; // Days or period count
+    daysInArrears: number; // For SASRA Risk Buckets
     totalLoanBalance: number;
     principalInArrears: number;
     interestArrears: number;

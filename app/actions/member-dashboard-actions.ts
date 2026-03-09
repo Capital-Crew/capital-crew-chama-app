@@ -288,6 +288,13 @@ export async function getDetailedMemberStats(memberId: string): Promise<{ stats:
 
         const isArrears = overdueItems.length > 0;
 
+        // SASRA: Days since oldest unpaid installment
+        let daysInArrears = 0;
+        if (overdueItems.length > 0) {
+            const oldestDueDate = new Date(overdueItems[0].dueDate);
+            daysInArrears = Math.max(0, Math.floor((now.getTime() - oldestDueDate.getTime()) / (1000 * 60 * 60 * 24)));
+        }
+
         return {
             id: loan.id,
             loanNumber: loan.loanApplicationNumber,
@@ -295,6 +302,7 @@ export async function getDetailedMemberStats(memberId: string): Promise<{ stats:
             approvedAmount: loan.amount,
             category: isArrears ? 'Substandard' : 'Performing',
             periodInArrears: overdueItems.length,
+            daysInArrears,
             totalLoanBalance: realTimeBalance, // Updated to use Ledger Balance
             principalInArrears: overduePrincipal,
             // New Fields
@@ -586,11 +594,19 @@ export async function getLoanPortfolio(memberId: string) {
                     expectedDateVal = overdueItems[0].dueDate || overdueItems[0].date;
                 }
 
+                // 5. SASRA exact days late
+                let daysInArrears = 0;
+                if (overdueItems.length > 0) {
+                    const oldestDueDate = new Date(overdueItems[0].dueDate || overdueItems[0].date);
+                    daysInArrears = Math.max(0, Math.floor((now.getTime() - oldestDueDate.getTime()) / (1000 * 60 * 60 * 24)));
+                }
+
                 return {
                     arrears: arrears,
                     expectedAmount: totalExpected,
                     nextExpectedDate: expectedDateVal,
-                    isOverdue: arrears > 0
+                    isOverdue: arrears > 0,
+                    daysInArrears: daysInArrears
                 };
             })(),
 

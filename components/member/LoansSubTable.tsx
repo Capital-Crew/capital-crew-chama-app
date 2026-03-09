@@ -3,6 +3,7 @@
 import { LoanPortfolioItem } from '@/types/member-dashboard';
 import { formatCurrency } from '@/lib/utils';
 import Link from 'next/link';
+import { getRiskBucket, getRiskBucketColor } from '@/lib/reporting-utils';
 
 interface LoansSubTableProps {
     loans: LoanPortfolioItem[];
@@ -23,6 +24,7 @@ export function LoansSubTable({ loans }: LoansSubTableProps) {
                             <th className="px-4 py-3 font-medium">Loan Product Name</th>
                             <th className="px-4 py-3 font-medium text-right">Approved Amount</th>
                             <th className="px-4 py-3 font-medium">Loans Category</th>
+                            <th className="px-4 py-3 font-medium">Class</th>
                             <th className="px-4 py-3 font-medium text-right text-red-400">Period In Arrears</th>
                             <th className="px-4 py-3 font-medium text-right text-cyan-600">Total loan balance</th>
                             <th className="px-4 py-3 font-medium text-right">Principal in arrears</th>
@@ -46,6 +48,11 @@ export function LoansSubTable({ loans }: LoansSubTableProps) {
                                 <td className="px-4 py-3 text-gray-800">{loan.productName}</td>
                                 <td className="px-4 py-3 text-right">{formatCurrency(loan.approvedAmount)}</td>
                                 <td className="px-4 py-3">{loan.category}</td>
+                                <td className="px-4 py-3">
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getRiskBucketColor(getRiskBucket(loan.daysInArrears))}`}>
+                                        {getRiskBucket(loan.daysInArrears)}
+                                    </span>
+                                </td>
                                 <td className="px-4 py-3 text-right text-red-500 font-medium">{loan.periodInArrears.toFixed(2)}</td>
                                 <td className="px-4 py-3 text-right text-teal-600 font-medium">
                                     <Link href={`/loans/${loan.id}`} className="hover:underline underline-offset-2">

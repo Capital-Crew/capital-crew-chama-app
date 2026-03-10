@@ -13,6 +13,7 @@ import { LoanAppraisalCard } from '../LoanAppraisalCard';
 import { formatCurrency } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { getRiskBucket, getRiskBucketColor } from '@/lib/reporting-utils';
 
 interface MemberProfileViewProps {
     member: any;
@@ -560,9 +561,14 @@ function ResponsiveLoansList({ loans, onLoanClick }: { loans: any[], onLoanClick
                             >
                                 <div className="flex justify-between items-start mb-2">
                                     <div className="font-bold text-slate-800 text-lg">#{loan.loanNumber}</div>
-                                    <div className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${loan.status === 'OVERDUE' ? 'bg-red-100 text-red-700' : 'bg-blue-50 text-blue-600'
-                                        }`}>
-                                        {loan.status || 'Active'}
+                                    <div className="flex flex-col items-end gap-1">
+                                        <div className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${loan.status === 'OVERDUE' ? 'bg-red-100 text-red-700' : 'bg-blue-50 text-blue-600'
+                                            }`}>
+                                            {loan.status || 'Active'}
+                                        </div>
+                                        <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest ${getRiskBucketColor(getRiskBucket(loan.daysInArrears))}`}>
+                                            {getRiskBucket(loan.daysInArrears)}
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="text-sm text-slate-500 mb-4">{loan.productName}</div>
@@ -596,6 +602,7 @@ function ResponsiveLoansList({ loans, onLoanClick }: { loans: any[], onLoanClick
                                     <tr>
                                         <th className="py-3 px-6">Loan No</th>
                                         <th className="py-3 px-6">Product</th>
+                                        <th className="py-3 px-6">Class</th>
                                         <th className="py-3 px-6 text-right">Approved</th>
                                         <th className="py-3 px-6 text-right">Balance</th>
                                         <th className="py-3 px-6 text-right">Next Payment</th>
@@ -610,6 +617,11 @@ function ResponsiveLoansList({ loans, onLoanClick }: { loans: any[], onLoanClick
                                         >
                                             <td className="py-4 px-6 font-bold text-slate-700">{loan.loanNumber}</td>
                                             <td className="py-4 px-6 font-medium text-slate-600">{loan.productName}</td>
+                                            <td className="py-4 px-6">
+                                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest ${getRiskBucketColor(getRiskBucket(loan.daysInArrears))}`}>
+                                                    {getRiskBucket(loan.daysInArrears)}
+                                                </span>
+                                            </td>
                                             <td className="py-4 px-6 text-right text-slate-500">{formatCurrency(loan.approvedAmount)}</td>
                                             <td className="py-4 px-6 text-right">
                                                 <Link

@@ -558,7 +558,14 @@ export async function applyForLoan(prevState: any, formData: FormData) {
             updatedAt: new Date()
         }
 
+        // Fetch existing stats to verify if user changed amount or duration upon resubmission
+        let existingLoanState = null;
         if (loanId) {
+            existingLoanState = await prisma.loan.findUnique({
+                where: { id: loanId },
+                select: { status: true, amount: true, installments: true }
+            })
+
             // UPDATE EXISTING LOAN (Draft or otherwise)
             loan = await prisma.loan.update({
                 where: { id: loanId },
@@ -676,6 +683,26 @@ export async function applyForLoan(prevState: any, formData: FormData) {
 
             // Notifications & Emails (Async)
             if (newStatus === LoanStatus.PENDING_APPROVAL) {
+
+                // If the application was previously submitted, see if we need to send a new email
+                if (existingLoanState && existingLoanState.status !== 'DRAFT') {
+                    const amountChanged = Number(existingLoanState.amount) !== amount;
+                    const installmentsChanged = existingLoanState.installments !== installments;
+
+                    if (amountChanged || installmentsChanged) {
+                        // Details changed! Delete the old email log so a fresh email fires
+                        await prisma.emailNotificationLog.deleteMany({
+                            where: { loanId: loan.id, templateType: 'LOAN_APPROVAL_REQUEST' }
+                        });
+
+                        // Increment tracking version
+                        await prisma.loan.update({
+                            where: { id: loan.id },
+                            data: { submissionVersion: { increment: 1 } }
+                        });
+                    }
+                }
+
                 const { LoanNotificationService } = await import('@/lib/services/LoanNotificationService')
                 // Await email dispatch so Next.js doesn't kill the background promise before it finishes
                 await LoanNotificationService.handleApprovalRequest(loan.id)

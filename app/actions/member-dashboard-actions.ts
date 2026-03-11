@@ -169,7 +169,7 @@ export async function getDetailedMemberStats(memberId: string): Promise<{ stats:
         loansRaw
     ] = await Promise.all([
         WalletService.getWalletBalance(memberId), // Savings (Account 2200)
-        getAccountBalance(memberId, '1200', 'CREDIT'), // Contributions (Account 1200)
+        getAccountBalance(memberId, '3011', 'CREDIT'), // Contributions (Account 3011)
         getAccountBalance(memberId, '2100', 'CREDIT'), // Share Capital
         getAccountBalance(memberId, '3012', 'CREDIT'), // Member Withdrawable Wallet
         getAccountBalance(memberId, '2000', 'CREDIT'), // FOSA Shares
@@ -351,11 +351,11 @@ export async function getDetailedMemberStats(memberId: string): Promise<{ stats:
     const totalArrears = finalPrincipalArrears + finalInterestArrears + loanPenalty;
     const totalDue = totalArrears + nextMonthDue;
 
-    // Calculate Cumulative Contributions (Total Credits to 1200)
+    // Calculate Cumulative Contributions (Total Credits to 3011)
     const cumulativeContributionsRaw = await db.ledgerEntry.aggregate({
         _sum: { creditAmount: true },
         where: {
-            ledgerAccount: { code: '1200' },
+            ledgerAccount: { code: '3011' },
             ledgerTransaction: {
                 referenceId: memberId,
                 referenceType: { in: ['SHARE_CONTRIBUTION', 'OPENING_BALANCE'] },

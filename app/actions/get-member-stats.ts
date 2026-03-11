@@ -59,24 +59,20 @@ export async function getMemberRealtimeStats(memberId: string): Promise<Serializ
 
     // Parallel fetch for speed
     const [
-        shareCapital, // Contributions (1200)
-        walletBalance, // Member Withdrawable Wallet (3012)
-        loans
-    ] = await Promise.all([
-        getLedgerBalance('1200'), // Contributions & Loans
-        getLedgerBalance('3012'), // Member Withdrawable Wallet
-        db.loan.aggregate({
-            _sum: {
-                current_balance: true
-            },
-            where: {
-                memberId: memberId,
-                status: {
-                    in: ['ACTIVE', 'OVERDUE']
-                    // Exclude CLEARED, REJECTED, CANCELLED, PENDING_APPROVAL
+        getLedgerBalance('3011'), // Contributions & Loans
+            getLedgerBalance('3012'), // Member Withdrawable Wallet
+            db.loan.aggregate({
+                _sum: {
+                    current_balance: true
+                },
+                where: {
+                    memberId: memberId,
+                    status: {
+                        in: ['ACTIVE', 'OVERDUE']
+                        // Exclude CLEARED, REJECTED, CANCELLED, PENDING_APPROVAL
+                    }
                 }
-            }
-        })
+            })
     ])
 
     const totalContributions = shareCapital + walletBalance
@@ -98,7 +94,7 @@ export async function getMemberRealtimeStats(memberId: string): Promise<Serializ
         financials: {
             // Individual balances for real-time display
             memberSavings: walletBalance,           // Member Withdrawable Wallet (3012)
-            contributions: shareCapital,             // Share Capital (1200)
+            contributions: shareCapital,             // Share Capital (3011)
             outstandingLoans: cumulativeLoanBalance, // Sum of active loans
 
             // Legacy combined values (kept for backward compatibility)

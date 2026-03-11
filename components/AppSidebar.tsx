@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { HeartHandshake, Activity } from 'lucide-react';
+import { HeartHandshake, Activity, Mail } from 'lucide-react';
 
 import {
     DashboardIcon, MembersIcon, LoansIcon,
@@ -160,6 +160,10 @@ export function AppSidebar({ user, approvalCount = 0, pendingLoanCount = 0 }: { 
 
                         {canAccess('ADMIN') && (
                             <NavItem icon={<Activity className="w-5 h-5" />} label="Meetings Admin" href="/admin/meetings" active={pathname.startsWith('/admin/meetings')} />
+                        )}
+
+                        {canAccess('ADMIN') && (
+                            <NavItem icon={<Mail className="w-5 h-5" />} label="Email Templates" href="/admin/email-templates" active={pathname.startsWith('/admin/email-templates')} />
                         )}
                     </>
                 )}

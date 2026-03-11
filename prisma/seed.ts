@@ -126,6 +126,31 @@ async function main() {
         }
     })
 
+    // 5. Create Default Email Templates
+    await prisma.emailTemplate.upsert({
+        where: { type: 'LOAN_APPROVAL_REQUEST' },
+        update: {},
+        create: {
+            type: 'LOAN_APPROVAL_REQUEST',
+            name: 'Loan Approval Request',
+            subject: 'Action Required: Loan Approval — {{applicant_name}}',
+            body: `A new loan application requires your review.\n\nApplicant: {{applicant_name}}\nLoan ID: {{loan_id}}\nAmount: KES {{loan_amount}}\nTerm: {{loan_term}}\nRate: {{interest_rate}}\n\nReview the full application here:\n{{approval_link}}\n\nA detailed Loan Card PDF is attached to this email.`,
+            isActive: true,
+        }
+    })
+
+    await prisma.emailTemplate.upsert({
+        where: { type: 'LOAN_DISBURSEMENT' },
+        update: {},
+        create: {
+            type: 'LOAN_DISBURSEMENT',
+            name: 'Loan Disbursement Notification',
+            subject: 'Your Loan is Ready for Disbursement — KES {{loan_amount}}',
+            body: `Dear {{applicant_name}},\n\nYour loan of KES {{loan_amount}} has been approved and is ready for disbursement.\n\nExpected disbursement date: {{disbursement_date}}\nRepayment summary: {{repayment_summary}}\n\nNext steps:\n{{next_steps}}\n\nThank you for choosing us.`,
+            isActive: true,
+        }
+    })
+
     console.log('✅ Database seeded successfully!')
     console.log('\n📧 Admin Credentials:')
     console.log('   Email: admin@capitalcrew.com')

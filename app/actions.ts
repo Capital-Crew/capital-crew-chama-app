@@ -675,7 +675,11 @@ export async function applyForLoan(prevState: any, formData: FormData) {
             }
 
             // Notifications & Emails (Async)
-            // ... (Call email service here)
+            if (newStatus === LoanStatus.PENDING_APPROVAL) {
+                const { LoanNotificationService } = await import('@/lib/services/LoanNotificationService')
+                // Non-blocking email dispatch to approvers
+                LoanNotificationService.handleApprovalRequest(loan.id)
+            }
         }
 
         revalidatePath('/loans')
@@ -735,35 +739,6 @@ export async function submitVote(loanId: string, decision: ApprovalStatus, notes
                         loanId: loan.id
                     }
                 })
-
-                // Send Approval Email to Member
-                try {
-                    // Need user email
-                    const user = await prisma.user.findUnique({ where: { memberId: loan.memberId } })
-                    const member = await prisma.member.findUnique({ where: { id: loan.memberId } })
-                    const fullLoan = await prisma.loan.findUnique({
-                        where: { id: loan.id },
-                        include: { loanProduct: true }
-                    })
-
-                    if (user?.email && member && fullLoan) {
-                        const { PdfService } = await import('@/lib/services/PdfService')
-                        const cardPdf = await PdfService.generateAppraisal(fullLoan, member, fullLoan.loanProduct)
-
-                        // Parse schedule from JSON if needed, or pass as is if typed correctly
-                        const schedule = fullLoan.repaymentSchedule as any
-                        const schedulePdf = await PdfService.generateSchedule(schedule, fullLoan.loanApplicationNumber, member.name)
-
-                        await EmailService.sendLoanApproval(
-                            user.email,
-                            member.name,
-                            fullLoan.loanApplicationNumber,
-                            cardPdf,
-                            schedulePdf
-                        )
-                    }
-                } catch (emailError) {
-                }
             }
         }
     }
@@ -793,10 +768,14 @@ export async function disburseLoan(loanId: string) {
     const updatedLoan = await prisma.loan.update({
         where: { id: loanId },
         data: {
+            status: LoanStatus.DISBURSED,
             disbursementDate: new Date(),
             cachedSchedule: null // Invalidate Cache on Disbursement
         }
     })
+
+    const { LoanNotificationService } = await import('@/lib/services/LoanNotificationService')
+    LoanNotificationService.handleDisbursement(loanId)
 }
 
 export async function createLoanProduct(formData: FormData) {

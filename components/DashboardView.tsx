@@ -106,7 +106,8 @@ export function DashboardView({ stats, trends, personalDetail }: Props) {
                         </p>
                     </div>
 
-                    {/* Metrics Grid */}
+                    {/* LIGHTHOUSE FIX 5: Added an sr-only h2 to pass structured hierarchy checks before using h3 in cards */}
+                    <h2 className="sr-only">Key Metrics</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                         <ModernMetricCard
                             icon={<Wallet className="w-5 h-5 md:w-6 md:h-6" />}
@@ -137,7 +138,8 @@ export function DashboardView({ stats, trends, personalDetail }: Props) {
                         />
                     </div>
 
-                    {/* Charts Section */}
+                    {/* LIGHTHOUSE FIX 5: Maintain h2 hierarchy for screen readers before charting section */}
+                    <h2 className="sr-only">Financial Charts</h2>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
                         {/* Trend Chart */}
                         <div className="bg-white p-4 md:p-5 rounded-2xl md:rounded-3xl shadow-sm border border-slate-100">
@@ -162,7 +164,8 @@ export function DashboardView({ stats, trends, personalDetail }: Props) {
                         </div>
                     </div>
 
-                    {/* Top Lists Analysis */}
+                    {/* LIGHTHOUSE FIX 5: Keep heading hierarchy intact for lists */}
+                    <h2 className="sr-only">Member Top Lists</h2>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
                         <TopListCard
                             title="Top Contributors"

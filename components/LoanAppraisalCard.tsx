@@ -13,8 +13,17 @@ import { toast } from '@/lib/toast';
 
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { VotingRecordsModal } from './loan/VotingRecordsModal';
-import { RepaymentModal } from './loans/RepaymentModal';
+import dynamic from 'next/dynamic';
+
+const VotingRecordsModal = dynamic(
+    () => import('./loan/VotingRecordsModal').then(mod => mod.VotingRecordsModal),
+    { ssr: false }
+);
+
+const RepaymentModal = dynamic(
+    () => import('./loans/RepaymentModal').then(mod => mod.RepaymentModal),
+    { ssr: false }
+);
 
 interface LoanAppraisalCardProps {
     loanId: string

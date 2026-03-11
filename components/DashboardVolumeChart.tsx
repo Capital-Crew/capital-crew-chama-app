@@ -15,10 +15,15 @@ interface TrendData {
 // LIGHTHOUSE FIX 1.3: Deferred rendering using IntersectionObserver
 export default function DashboardVolumeChart({ data }: { data: TrendData[] }) {
     const { ref, inView } = useInView({ triggerOnce: true, rootMargin: '200px 0px' })
+    const [mounted, setMounted] = React.useState(false)
+
+    React.useEffect(() => {
+        setMounted(true)
+    }, [])
 
     return (
         <div ref={ref} className="h-[250px] w-full">
-            {!inView ? (
+            {(!inView || !mounted) ? (
                 <div className="h-full w-full bg-slate-100 animate-pulse rounded-xl" />
             ) : (
                 /* LIGHTHOUSE FIX 1.3: Explicit height to prevent forced reflows loop */

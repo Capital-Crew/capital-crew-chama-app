@@ -9,7 +9,13 @@ import Link from 'next/link';
 import { Clock, CheckCircle2, AlertCircle, ChevronDown, ChevronUp, ChevronRight, Receipt, Activity, XCircle, Calendar, MessageSquare } from 'lucide-react';
 import { MemberQuickStats } from './MemberQuickStats';
 import { NextOfKinManager } from './NextOfKinManager';
-import { LoanAppraisalCard } from '../LoanAppraisalCard';
+import dynamic from 'next/dynamic';
+
+const LoanAppraisalCard = dynamic(
+    () => import('../LoanAppraisalCard').then(mod => mod.LoanAppraisalCard),
+    { ssr: false }
+);
+
 import { formatCurrency } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';

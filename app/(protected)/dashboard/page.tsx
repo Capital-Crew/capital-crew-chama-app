@@ -5,8 +5,8 @@ import { getMemberFullDetail } from '@/app/actions/member-dashboard-actions'
 import { MemberDashboard } from '@/components/member/MemberDashboard'
 import { redirect } from 'next/navigation'
 
-// Force dynamic rendering to ensure real-time data
-export const dynamic = 'force-dynamic'
+// Data fetching inside the component will dictate caching semantics
+// Removed force-dynamic to allow bfcache to work with our next.config.ts header
 export const revalidate = 0 // Never cache, always fetch fresh data
 
 export default async function DashboardPage() {

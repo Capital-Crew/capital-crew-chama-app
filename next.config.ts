@@ -5,10 +5,8 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   transpilePackages: ['@react-pdf/renderer'],
-  // LIGHTHOUSE FIX 1.1: Remove legacy polyfills for faster JS parsing
-  experimental: {
-    browsersListForSwc: true,
-  },
+  // LIGHTHOUSE FIX 1.1: Remove legacy polyfills    // Added: Security headers
+  // Note: experimental.browsersListForSwc is invalid in this Next.js version (Turbopack)
   async headers() {
     return [
       {

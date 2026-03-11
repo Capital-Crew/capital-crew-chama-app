@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { HeartHandshake, Menu } from 'lucide-react';
+import { HeartHandshake, Menu, X } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import {
     DashboardIcon, MembersIcon, LoansIcon,
@@ -67,8 +67,14 @@ export function MobileNav({ user, approvalCount = 0 }: { user: { name: string, r
     return (
         <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
-                <button className="md:hidden p-2 -ml-2 text-slate-600 hover:text-slate-900 focus:outline-none">
-                    <Menu className="w-8 h-8" />
+                {/* LIGHTHOUSE FIX 2.1: Add aria labels and control attributes to mobile menu button */}
+                <button
+                    className="md:hidden p-2 -ml-2 text-slate-600 hover:text-slate-900 focus:outline-none"
+                    aria-label={open ? "Close navigation menu" : "Open navigation menu"}
+                    aria-expanded={open}
+                    aria-controls="mobile-navigation"
+                >
+                    {open ? <X className="w-8 h-8" /> : <Menu className="w-8 h-8" />}
                 </button>
             </SheetTrigger>
             <SheetContent side="left" className="p-0 w-80 bg-[#0A192F] border-r border-white/10 text-white flex flex-col h-full">
@@ -81,7 +87,8 @@ export function MobileNav({ user, approvalCount = 0 }: { user: { name: string, r
                     </div>
                 </SheetHeader>
 
-                <nav className="flex-1 overflow-y-auto py-4 space-y-1 scrollbar-hide">
+                {/* LIGHTHOUSE FIX 2.1: Provide matching ID for mobile menu controller */}
+                <nav id="mobile-navigation" aria-hidden={!open} className="flex-1 overflow-y-auto py-4 space-y-1 scrollbar-hide">
                     {canAccess('DASHBOARD') && <NavItem icon={<DashboardIcon />} label="Dashboard" href="/dashboard" active={pathname === '/dashboard'} onClick={() => setOpen(false)} />}
                     {canAccess('APPROVALS') && <NavItem icon={<UserRightsIcon />} label="Approvals" href="/admin/approvals" active={pathname === '/admin/approvals'} badge={approvalCount > 0 ? approvalCount : undefined} onClick={() => setOpen(false)} />}
                     {canAccess('MEMBERS') && <NavItem icon={<MembersIcon />} label="Members" href="/members" active={pathname.startsWith('/members')} onClick={() => setOpen(false)} />}

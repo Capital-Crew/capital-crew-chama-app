@@ -677,8 +677,8 @@ export async function applyForLoan(prevState: any, formData: FormData) {
             // Notifications & Emails (Async)
             if (newStatus === LoanStatus.PENDING_APPROVAL) {
                 const { LoanNotificationService } = await import('@/lib/services/LoanNotificationService')
-                // Non-blocking email dispatch to approvers
-                LoanNotificationService.handleApprovalRequest(loan.id)
+                // Await email dispatch so Next.js doesn't kill the background promise before it finishes
+                await LoanNotificationService.handleApprovalRequest(loan.id)
             }
         }
 
@@ -775,7 +775,7 @@ export async function disburseLoan(loanId: string) {
     })
 
     const { LoanNotificationService } = await import('@/lib/services/LoanNotificationService')
-    LoanNotificationService.handleDisbursement(loanId)
+    await LoanNotificationService.handleDisbursement(loanId)
 }
 
 export async function createLoanProduct(formData: FormData) {

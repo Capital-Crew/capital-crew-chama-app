@@ -3,6 +3,8 @@
 import { db as prisma } from "@/lib/db"
 import { revalidatePath } from "next/cache"
 import { auth } from "@/auth"
+import { withAudit } from "@/lib/with-audit"
+import { AuditLogAction } from "@prisma/client"
 
 export type WelfareTypeFormData = {
     name: string
@@ -24,109 +26,126 @@ export type CustomFieldFormData = {
 // Welfare Types Management
 // ==========================================
 
-export async function createWelfareType(data: WelfareTypeFormData) {
-    try {
-        const welfareType = await prisma.welfareType.create({
-            data: {
-                name: data.name,
-                description: data.description,
-                glAccountId: data.glAccountId,
-                isActive: data.isActive ?? true
-            }
-        })
-
-        // Audit Log
+export const createWelfareType = withAudit(
+    { actionType: AuditLogAction.SETTINGS_UPDATED, domain: 'WELFARE', apiRoute: '/api/welfare/types/create' },
+    async (ctx, data: WelfareTypeFormData) => {
+        ctx.beginStep('Verify Authorization');
         const session = await auth()
-        if (session?.user?.id) {
-            await prisma.auditLog.create({
+        if (!session?.user) {
+            ctx.setErrorCode('UNAUTHORIZED');
+            throw new Error('Unauthorized')
+        }
+        ctx.endStep('Verify Authorization');
+
+        try {
+            ctx.beginStep('Create Welfare Type');
+            const welfareType = await prisma.welfareType.create({
                 data: {
-                    userId: session.user.id,
-                    action: 'WELFARE_TYPE_CREATED' as any,
-                    details: `Created welfare type: ${data.name}`
+                    name: data.name,
+                    description: data.description,
+                    glAccountId: data.glAccountId,
+                    isActive: data.isActive ?? true
                 }
             })
+            ctx.captureAfter(welfareType);
+            ctx.endStep('Create Welfare Type');
+
+            revalidatePath('/welfare')
+            revalidatePath('/admin/system')
+            return { success: true, data: welfareType }
+        } catch (error: any) {
+            ctx.setErrorCode('DATABASE_ERROR');
+            return { success: false, error: error.message }
         }
-
-        revalidatePath('/welfare')
-        revalidatePath('/admin/system')
-        return { success: true, data: welfareType }
-    } catch (error: any) {
-        return { success: false, error: error.message }
     }
-}
+);
 
-export async function updateWelfareType(id: string, data: Partial<WelfareTypeFormData>) {
-    try {
-        const welfareType = await prisma.welfareType.update({
-            where: { id },
-            data: {
-                name: data.name,
-                description: data.description,
-                glAccountId: data.glAccountId,
-                isActive: data.isActive
-            }
-        })
-
-        // Audit Log
+export const updateWelfareType = withAudit(
+    { actionType: AuditLogAction.SETTINGS_UPDATED, domain: 'WELFARE', apiRoute: '/api/welfare/types/update' },
+    async (ctx, id: string, data: Partial<WelfareTypeFormData>) => {
+        ctx.beginStep('Verify Authorization');
         const session = await auth()
-        if (session?.user?.id) {
-            await prisma.auditLog.create({
-                data: {
-                    userId: session.user.id,
-                    action: 'WELFARE_TYPE_UPDATED' as any,
-                    details: `Updated welfare type: ${id}`
-                }
-            })
+        if (!session?.user) {
+            ctx.setErrorCode('UNAUTHORIZED');
+            throw new Error('Unauthorized')
         }
+        ctx.endStep('Verify Authorization');
 
-        revalidatePath('/welfare')
-        revalidatePath('/admin/system')
-        return { success: true, data: welfareType }
-    } catch (error: any) {
-        return { success: false, error: error.message }
-    }
-}
+        try {
+            ctx.beginStep('Fetch Current State');
+            const before = await prisma.welfareType.findUnique({ where: { id } })
+            if (before) ctx.captureBefore('WelfareType', id, before);
+            ctx.endStep('Fetch Current State');
 
-export async function deleteWelfareType(id: string) {
-    try {
-        // Soft delete would be better if there are relations, but schema has cascade on custom fields
-        // Check for requisitions first
-        const requisitionCount = await prisma.welfareRequisition.count({
-            where: { welfareTypeId: id }
-        })
-
-        if (requisitionCount > 0) {
-            // Soft delete by deactivating
-            await prisma.welfareType.update({
+            ctx.beginStep('Update Welfare Type');
+            const welfareType = await prisma.welfareType.update({
                 where: { id },
-                data: { isActive: false }
-            })
-            return { success: true, message: 'Welfare type deactivated (has existing requisitions)' }
-        }
-
-        await prisma.welfareType.delete({
-            where: { id }
-        })
-
-        // Audit Log
-        const session = await auth()
-        if (session?.user?.id) {
-            await prisma.auditLog.create({
                 data: {
-                    userId: session.user.id,
-                    action: 'WELFARE_TYPE_DELETED' as any,
-                    details: `Deleted welfare type: ${id}`
+                    name: data.name,
+                    description: data.description,
+                    glAccountId: data.glAccountId,
+                    isActive: data.isActive
                 }
             })
-        }
+            ctx.captureAfter(welfareType);
+            ctx.endStep('Update Welfare Type');
 
-        revalidatePath('/welfare')
-        revalidatePath('/admin/system')
-        return { success: true, message: 'Welfare type deleted' }
-    } catch (error: any) {
-        return { success: false, error: error.message }
+            revalidatePath('/welfare')
+            revalidatePath('/admin/system')
+            return { success: true, data: welfareType }
+        } catch (error: any) {
+            ctx.setErrorCode('DATABASE_ERROR');
+            return { success: false, error: error.message }
+        }
     }
-}
+);
+
+export const deleteWelfareType = withAudit(
+    { actionType: AuditLogAction.SETTINGS_UPDATED, domain: 'WELFARE', apiRoute: '/api/welfare/types/delete' },
+    async (ctx, id: string) => {
+        ctx.beginStep('Verify Authorization');
+        const session = await auth()
+        if (!session?.user) {
+            ctx.setErrorCode('UNAUTHORIZED');
+            throw new Error('Unauthorized')
+        }
+        ctx.endStep('Verify Authorization');
+
+        try {
+            ctx.beginStep('Check Dependencies');
+            const before = await prisma.welfareType.findUnique({ where: { id } })
+            if (before) ctx.captureBefore('WelfareType', id, before);
+
+            const requisitionCount = await prisma.welfareRequisition.count({
+                where: { welfareTypeId: id }
+            })
+
+            if (requisitionCount > 0) {
+                const updated = await prisma.welfareType.update({
+                    where: { id },
+                    data: { isActive: false }
+                })
+                ctx.captureAfter(updated);
+                ctx.endStep('Check Dependencies');
+                return { success: true, message: 'Welfare type deactivated (has existing requisitions)' }
+            }
+            ctx.endStep('Check Dependencies');
+
+            ctx.beginStep('Delete Welfare Type');
+            await prisma.welfareType.delete({
+                where: { id }
+            })
+            ctx.endStep('Delete Welfare Type');
+
+            revalidatePath('/welfare')
+            revalidatePath('/admin/system')
+            return { success: true, message: 'Welfare type deleted' }
+        } catch (error: any) {
+            ctx.setErrorCode('DATABASE_ERROR');
+            return { success: false, error: error.message }
+        }
+    }
+);
 
 export async function getWelfareTypes(includeInactive = false) {
     try {
@@ -170,8 +189,10 @@ export async function getWelfareTypeById(id: string) {
 // Custom Fields Management
 // ==========================================
 
-export async function addCustomField(data: CustomFieldFormData) {
-    try {
+export const addCustomField = withAudit(
+    { actionType: AuditLogAction.SETTINGS_UPDATED, domain: 'WELFARE', apiRoute: '/api/welfare/fields/add' },
+    async (ctx, data: CustomFieldFormData) => {
+        ctx.beginStep('Create Custom Field');
         const field = await prisma.welfareCustomField.create({
             data: {
                 welfareTypeId: data.welfareTypeId,
@@ -182,16 +203,21 @@ export async function addCustomField(data: CustomFieldFormData) {
                 displayOrder: data.displayOrder ?? 0
             }
         })
+        ctx.captureAfter(field);
+        ctx.endStep('Create Custom Field');
 
         revalidatePath(`/welfare`)
         return { success: true, data: field }
-    } catch (error: any) {
-        return { success: false, error: error.message }
     }
-}
+);
 
-export async function updateCustomField(id: string, data: Partial<CustomFieldFormData>) {
-    try {
+export const updateCustomField = withAudit(
+    { actionType: AuditLogAction.SETTINGS_UPDATED, domain: 'WELFARE', apiRoute: '/api/welfare/fields/update' },
+    async (ctx, id: string, data: Partial<CustomFieldFormData>) => {
+        ctx.beginStep('Update Custom Field');
+        const before = await prisma.welfareCustomField.findUnique({ where: { id } })
+        if (before) ctx.captureBefore('CustomField', id, before);
+
         const field = await prisma.welfareCustomField.update({
             where: { id },
             data: {
@@ -202,13 +228,13 @@ export async function updateCustomField(id: string, data: Partial<CustomFieldFor
                 displayOrder: data.displayOrder
             }
         })
+        ctx.captureAfter(field);
+        ctx.endStep('Update Custom Field');
 
         revalidatePath(`/welfare`)
         return { success: true, data: field }
-    } catch (error: any) {
-        return { success: false, error: error.message }
     }
-}
+);
 
 export async function deleteCustomField(id: string) {
     try {

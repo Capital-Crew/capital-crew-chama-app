@@ -1,35 +1,38 @@
-
 import { NextResponse } from 'next/server'
 import { InterestService } from '@/services/interest-engine'
 import { db as prisma } from '@/lib/db'
 import { handleApiError } from '@/lib/api-utils'
+import { withAudit } from '@/lib/with-audit'
+import { AuditLogAction } from '@prisma/client'
 
 export const dynamic = 'force-dynamic' // Ensure it runs every time
 
 export async function GET(request: Request) {
-    try {
-        // Security: Require Bearer token matching CRON_SECRET
-        const authHeader = request.headers.get('authorization')
-        if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-            return new NextResponse('Unauthorized', { status: 401 })
-        }
+    return withAudit(
+        { actionType: AuditLogAction.INTEREST_ENGINE_RUN, domain: 'SYSTEM', apiRoute: '/api/cron/interest', httpMethod: 'GET' },
+        async (ctx) => {
+            try {
+                ctx.beginStep('Verify Authorization');
+                const authHeader = request.headers.get('authorization')
+                if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+                    ctx.setErrorCode('UNAUTHORIZED');
+                    return new NextResponse('Unauthorized', { status: 401 })
+                }
+                ctx.endStep('Verify Authorization');
 
-        const results = await InterestService.processMonthlyBatch()
+                ctx.beginStep('Execute Interest Engine');
+                const results = await InterestService.processMonthlyBatch()
+                ctx.captureAfter({ results });
+                ctx.endStep('Execute Interest Engine');
 
-        // Log execution for health monitoring
-        await prisma.auditLog.create({
-            data: {
-                userId: 'SYSTEM',
-                action: 'INTEREST_ENGINE_RUN',
-                details: `Cron trigger. Success: ${results.success}, Failed: ${results.failed}`
+                return NextResponse.json({
+                    message: 'Interest Batch Processed',
+                    results
+                })
+            } catch (error) {
+                ctx.setErrorCode('ENGINE_FAILURE');
+                return handleApiError(error, 'Interest Cron GET')
             }
-        })
-
-        return NextResponse.json({
-            message: 'Interest Batch Processed',
-            results
-        })
-    } catch (error) {
-        return handleApiError(error, 'Interest Cron GET')
-    }
+        }
+    )(request as any); // withAudit wrapper takes arguments of the function it wraps
 }

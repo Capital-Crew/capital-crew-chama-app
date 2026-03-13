@@ -3,6 +3,8 @@
 import { revalidatePath } from 'next/cache'
 import { db as prisma } from '@/lib/db'
 import { auth } from '@/auth'
+import { withAudit } from '@/lib/with-audit'
+import { AuditLogAction } from '@prisma/client'
 
 /**
  * Get SACCO settings (create default if not exists)
@@ -32,137 +34,108 @@ export async function getSaccoSettings() {
 /**
  * Update SACCO settings (admin only)
  */
-export async function updateSaccoSettings(formData: FormData) {
-    const session = await auth()
+export const updateSaccoSettings = withAudit(
+    { actionType: AuditLogAction.SETTINGS_UPDATED, domain: 'SYSTEM', apiRoute: '/api/admin/settings' },
+    async (ctx, formData: FormData) => {
+        ctx.beginStep('Verify Authorization');
+        const session = await auth()
 
-    // Check if user is admin
-    if (!session?.user?.role || !['CHAIRPERSON', 'TREASURER', 'SECRETARY', 'SYSTEM_ADMIN'].includes(session.user.role)) {
-        throw new Error('Only admins can update SACCO settings')
-    }
-
-    const loanMultiplier = parseFloat(formData.get('loanMultiplier') as string) || 0
-    const processingFeePercent = parseFloat(formData.get('processingFeePercent') as string) || 0
-    const insuranceFeePercent = parseFloat(formData.get('insuranceFeePercent') as string) || 0
-    const shareCapitalBoost = parseFloat(formData.get('shareCapitalBoost') as string) || 0
-    const penaltyRate = parseFloat(formData.get('penaltyRate') as string) || 0
-    const rescheduleFeePercent = parseFloat(formData.get('rescheduleFeePercent') as string) || 0
-    const refinanceFeePercentage = parseFloat(formData.get('refinanceFeePercentage') as string) || 0
-    const requiredApprovals = parseInt(formData.get('requiredApprovals') as string) || 3
-    const requiredApprovalsReschedule = parseInt(formData.get('requiredApprovalsReschedule') as string) || 3
-    const requiredApprovalsTopUp = parseInt(formData.get('requiredApprovalsTopUp') as string) || 3
-
-    // Welfare Settings
-    const requiredWelfareApprovals = parseInt(formData.get('requiredWelfareApprovals') as string) || 3
-    const welfareMonthlyContribution = parseFloat(formData.get('welfareMonthlyContribution') as string) || 0
-    const welfareCurrentBalance = parseFloat(formData.get('welfareCurrentBalance') as string) || 0
-
-    // Contribution Settings
-    const monthlyContributionAmount = parseFloat(formData.get('monthlyContributionAmount') as string) || 2000
-    const latePaymentPenalty = parseFloat(formData.get('latePaymentPenalty') as string) || 200
-
-    // Meeting Settings
-    const penaltyAbsentAmount = parseFloat(formData.get('penaltyAbsentAmount') as string) || 500
-    const penaltyLateAmount = parseFloat(formData.get('penaltyLateAmount') as string) || 200
-    const meetingFeesGlId = formData.get('meetingFeesGlId') as string || null
-    const meetingReceivableGlId = formData.get('meetingReceivableGlId') as string || null
-
-    // Validate inputs
-    if (loanMultiplier < 0 || processingFeePercent < 0 || insuranceFeePercent < 0 || shareCapitalBoost < 0 || penaltyRate < 0 || rescheduleFeePercent < 0 || refinanceFeePercentage < 0 || welfareMonthlyContribution < 0 || welfareCurrentBalance < 0 || monthlyContributionAmount < 1 || latePaymentPenalty < 0 || penaltyAbsentAmount < 0 || penaltyLateAmount < 0) {
-        throw new Error('All values must be non-negative, and monthly contribution must be at least 1')
-    }
-
-    if (requiredApprovals < 1 || requiredApprovals > 10 || requiredApprovalsReschedule < 1 || requiredApprovalsReschedule > 10 || requiredWelfareApprovals < 1 || requiredWelfareApprovals > 10) {
-        throw new Error('Required approvals must be between 1 and 10')
-    }
-
-    // Get or create settings
-    let settings = await prisma.saccoSettings.findFirst()
-
-    if (settings) {
-        settings = await prisma.saccoSettings.update({
-            where: { id: settings.id },
-            data: {
-                loanMultiplier,
-                processingFeePercent,
-                insuranceFeePercent,
-                shareCapitalBoost,
-                penaltyRate,
-                rescheduleFeePercent,
-                refinanceFeePercentage,
-                requiredApprovals,
-                requiredApprovalsReschedule,
-                requiredApprovalsTopUp,
-                requiredWelfareApprovals,
-                welfareMonthlyContribution,
-                welfareCurrentBalance,
-                monthlyContributionAmount,
-                latePaymentPenalty,
-                penaltyAbsentAmount,
-                penaltyLateAmount,
-                meetingFeesGlId,
-                meetingReceivableGlId
-            }
-        })
-    } else {
-        settings = await prisma.saccoSettings.create({
-            data: {
-                loanMultiplier,
-                processingFeePercent,
-                insuranceFeePercent,
-                shareCapitalBoost,
-                penaltyRate,
-                rescheduleFeePercent,
-                refinanceFeePercentage,
-                requiredApprovals,
-                requiredApprovalsReschedule,
-                requiredApprovalsTopUp,
-                requiredWelfareApprovals,
-                welfareMonthlyContribution,
-                welfareCurrentBalance,
-                monthlyContributionAmount,
-                latePaymentPenalty,
-                penaltyAbsentAmount,
-                penaltyLateAmount,
-                meetingFeesGlId,
-                meetingReceivableGlId
-            }
-        })
-    }
-
-    // Create audit log
-    await prisma.auditLog.create({
-        data: {
-            userId: session.user.id!,
-            action: 'SETTINGS_UPDATED',
-            details: `Updated settings: Mult=${loanMultiplier}, Proc=${processingFeePercent}%, Ins=${insuranceFeePercent}%, Pen=${penaltyRate}%, Welfare=${welfareMonthlyContribution}/mo, WelfareBal=${welfareCurrentBalance}, Contribution=${monthlyContributionAmount}/mo, LatePenalty=${latePaymentPenalty}, MeetingAbsent=${penaltyAbsentAmount}, MeetingLate=${penaltyLateAmount}, MeetingFeesGL=${meetingFeesGlId}, MeetingRecGL=${meetingReceivableGlId}`
+        // Check if user is admin
+        if (!session?.user?.role || !['CHAIRPERSON', 'TREASURER', 'SECRETARY', 'SYSTEM_ADMIN'].includes(session.user.role)) {
+            ctx.setErrorCode('UNAUTHORIZED');
+            throw new Error('Only admins can update SACCO settings')
         }
-    })
+        ctx.endStep('Verify Authorization');
 
-    // Helper to serialize Decimal to numbers
-    const serializeSettings = (s: any) => ({
-        ...s,
-        loanMultiplier: Number(s.loanMultiplier),
-        processingFeePercent: Number(s.processingFeePercent),
-        insuranceFeePercent: Number(s.insuranceFeePercent),
-        shareCapitalBoost: Number(s.shareCapitalBoost),
-        penaltyRate: Number(s.penaltyRate),
-        rescheduleFeePercent: Number(s.rescheduleFeePercent),
-        refinanceFeePercentage: Number(s.refinanceFeePercentage),
-        welfareMonthlyContribution: Number(s.welfareMonthlyContribution),
-        welfareCurrentBalance: Number(s.welfareCurrentBalance),
-        monthlyContributionAmount: Number(s.monthlyContributionAmount || 2000),
-        latePaymentPenalty: Number(s.latePaymentPenalty || 200),
-        penaltyAbsentAmount: Number(s.penaltyAbsentAmount || 500),
-        penaltyLateAmount: Number(s.penaltyLateAmount || 200),
-        meetingFeesGlId: s.meetingFeesGlId,
-        meetingReceivableGlId: s.meetingReceivableGlId
-    })
+        ctx.beginStep('Validate Inputs');
+        const loanMultiplier = parseFloat(formData.get('loanMultiplier') as string) || 0
+        const processingFeePercent = parseFloat(formData.get('processingFeePercent') as string) || 0
+        const insuranceFeePercent = parseFloat(formData.get('insuranceFeePercent') as string) || 0
+        const shareCapitalBoost = parseFloat(formData.get('shareCapitalBoost') as string) || 0
+        const penaltyRate = parseFloat(formData.get('penaltyRate') as string) || 0
+        const rescheduleFeePercent = parseFloat(formData.get('rescheduleFeePercent') as string) || 0
+        const refinanceFeePercentage = parseFloat(formData.get('refinanceFeePercentage') as string) || 0
+        const requiredApprovals = parseInt(formData.get('requiredApprovals') as string) || 3
+        const requiredApprovalsReschedule = parseInt(formData.get('requiredApprovalsReschedule') as string) || 3
+        const requiredApprovalsTopUp = parseInt(formData.get('requiredApprovalsTopUp') as string) || 3
 
-    const serialized = serializeSettings(settings)
+        // Welfare Settings
+        const requiredWelfareApprovals = parseInt(formData.get('requiredWelfareApprovals') as string) || 3
+        const welfareMonthlyContribution = parseFloat(formData.get('welfareMonthlyContribution') as string) || 0
+        const welfareCurrentBalance = parseFloat(formData.get('welfareCurrentBalance') as string) || 0
 
-    revalidatePath('/admin/system')
-    return serialized
-}
+        // Contribution Settings
+        const monthlyContributionAmount = parseFloat(formData.get('monthlyContributionAmount') as string) || 2000
+        const latePaymentPenalty = parseFloat(formData.get('latePaymentPenalty') as string) || 200
+
+        // Meeting Settings
+        const penaltyAbsentAmount = parseFloat(formData.get('penaltyAbsentAmount') as string) || 500
+        const penaltyLateAmount = parseFloat(formData.get('penaltyLateAmount') as string) || 200
+        const meetingFeesGlId = formData.get('meetingFeesGlId') as string || null
+        const meetingReceivableGlId = formData.get('meetingReceivableGlId') as string || null
+
+        // Validate inputs
+        if (loanMultiplier < 0 || processingFeePercent < 0 || insuranceFeePercent < 0 || shareCapitalBoost < 0 || penaltyRate < 0 || rescheduleFeePercent < 0 || refinanceFeePercentage < 0 || welfareMonthlyContribution < 0 || welfareCurrentBalance < 0 || monthlyContributionAmount < 1 || latePaymentPenalty < 0 || penaltyAbsentAmount < 0 || penaltyLateAmount < 0) {
+            ctx.setErrorCode('INVALID_INPUTS');
+            throw new Error('All values must be non-negative, and monthly contribution must be at least 1')
+        }
+
+        if (requiredApprovals < 1 || requiredApprovals > 10 || requiredApprovalsReschedule < 1 || requiredApprovalsReschedule > 10 || requiredWelfareApprovals < 1 || requiredWelfareApprovals > 10) {
+            ctx.setErrorCode('INVALID_APPROVALS');
+            throw new Error('Required approvals must be between 1 and 10')
+        }
+        ctx.endStep('Validate Inputs');
+
+        ctx.beginStep('Update Sacco Settings');
+        // Get or create settings
+        let settings = await prisma.saccoSettings.findFirst()
+        if (settings) {
+            ctx.captureBefore('SaccoSettings', settings.id, settings);
+        }
+
+        const data = {
+            loanMultiplier,
+            processingFeePercent,
+            insuranceFeePercent,
+            shareCapitalBoost,
+            penaltyRate,
+            rescheduleFeePercent,
+            refinanceFeePercentage,
+            requiredApprovals,
+            requiredApprovalsReschedule,
+            requiredApprovalsTopUp,
+            requiredWelfareApprovals,
+            welfareMonthlyContribution,
+            welfareCurrentBalance,
+            monthlyContributionAmount,
+            latePaymentPenalty,
+            penaltyAbsentAmount,
+            penaltyLateAmount,
+            meetingFeesGlId,
+            meetingReceivableGlId
+        };
+
+        if (settings) {
+            settings = await prisma.saccoSettings.update({
+                where: { id: settings.id },
+                data
+            })
+        } else {
+            settings = await prisma.saccoSettings.create({
+                data
+            })
+        }
+        ctx.captureAfter(settings);
+        ctx.endStep('Update Sacco Settings');
+
+        const serialized = serializeSettings(settings)
+        revalidatePath('/admin/system')
+        return serialized
+    }
+);
+
+
+
 
 // Helper for getSaccoSettings
 function serializeSettings(s: any) {

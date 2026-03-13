@@ -1,9 +1,3 @@
-/**
- * User Permissions Management Actions
- * 
- * Server actions for managing user permissions in the settings module.
- */
-
 'use server';
 
 import { auth } from '@/auth';
@@ -11,6 +5,8 @@ import { db } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import type { UserPermissions, UserRole } from '@/lib/types';
+import { AuditLogAction } from '@prisma/client';
+import { withAudit } from '@/lib/with-audit';
 
 // ========================================
 // VALIDATION SCHEMAS
@@ -79,100 +75,95 @@ const UpdatePermissionsSchema = z.object({
 /**
  * Update user permissions
  */
-export async function updateUserPermissions(input: {
-    userId: string;
-    permissions: UserPermissions;
-}) {
-    try {
-        // 1. Authenticate
-        const session = await auth();
-        if (!session?.user?.id) {
-            throw new Error('Unauthorized');
-        }
+export const updateUserPermissions = withAudit(
+    { actionType: AuditLogAction.USER_RIGHTS_UPDATED, domain: 'SECURITY', apiRoute: '/api/admin/permissions/update' },
+    async (ctx, input: {
+        userId: string;
+        permissions: UserPermissions;
+    }) => {
+        try {
+            ctx.beginStep('Verify Authorization');
+            const session = await auth();
+            if (!session?.user?.id) {
+                ctx.setErrorCode('UNAUTHORIZED');
+                throw new Error('Unauthorized');
+            }
 
-        // 2. Check if current user has permission to manage user rights
-        const currentUser = await db.user.findUnique({
-            where: { id: session.user.id },
-            select: { role: true, permissions: true }
-        });
+            const currentUser = await db.user.findUnique({
+                where: { id: session.user.id },
+                select: { role: true, permissions: true }
+            });
 
-        if (!currentUser) {
-            throw new Error('User not found');
-        }
+            if (!currentUser) {
+                ctx.setErrorCode('USER_NOT_FOUND');
+                throw new Error('User not found');
+            }
 
-        // Only SYSTEM_ADMIN, CHAIRPERSON, or users with canManageUserRights can update permissions
-        const hasPermission =
-            currentUser.role === 'SYSTEM_ADMIN' ||
-            currentUser.role === 'CHAIRPERSON' ||
-            (currentUser.permissions as unknown as UserPermissions)?.canManageUserRights;
+            const hasPermission =
+                currentUser.role === 'SYSTEM_ADMIN' ||
+                currentUser.role === 'CHAIRPERSON' ||
+                (currentUser.permissions as unknown as UserPermissions)?.canManageUserRights;
 
-        if (!hasPermission) {
-            throw new Error('You do not have permission to manage user rights');
-        }
+            if (!hasPermission) {
+                ctx.setErrorCode('FORBIDDEN');
+                throw new Error('You do not have permission to manage user rights');
+            }
 
-        // 3. Validate input
-        const validated = UpdatePermissionsSchema.parse(input);
+            const validated = UpdatePermissionsSchema.parse(input);
+            if (validated.userId === session.user.id) {
+                ctx.setErrorCode('SELF_MODIFICATION_RESTRICTED');
+                throw new Error('Security Error: You cannot modify your own permissions. Contact another administrator.');
+            }
+            ctx.endStep('Verify Authorization');
 
-        // SELF-MODIFICATION GUARD: Prevent user from modifying their own permissions
-        if (validated.userId === session.user.id) {
-            throw new Error('Security Error: You cannot modify your own permissions. Contact another administrator.');
-        }
+            ctx.beginStep('Capture Initial State');
+            const targetUser = await db.user.findUnique({
+                where: { id: validated.userId },
+                select: { id: true, email: true, role: true, permissions: true }
+            });
+            if (targetUser) ctx.captureBefore('User', validated.userId, targetUser);
+            ctx.endStep('Capture Initial State');
 
-        // 4. Update user permissions
-        const updatedUser = await db.user.update({
-            where: { id: validated.userId },
-            data: {
-                permissions: validated.permissions as any
-            },
-            include: {
-                member: {
-                    select: {
-                        name: true,
-                        memberNumber: true
+            ctx.beginStep('Update Database');
+            const updatedUser = await db.user.update({
+                where: { id: validated.userId },
+                data: {
+                    permissions: validated.permissions as any
+                },
+                include: {
+                    member: {
+                        select: {
+                            name: true,
+                            memberNumber: true
+                        }
                     }
                 }
+            });
+            ctx.captureAfter(updatedUser);
+            ctx.endStep('Update Database');
+
+            revalidatePath('/admin/system');
+            revalidatePath('/dashboard');
+
+            return {
+                success: true,
+                message: 'Permissions updated successfully',
+                user: updatedUser
+            };
+
+        } catch (error) {
+            ctx.setErrorCode('PERMISSION_UPDATE_FAILED');
+            if (error instanceof z.ZodError) {
+                const checklist = error.issues || [];
+                const message = checklist.length > 0
+                    ? `${checklist[0].path.join('.')}: ${checklist[0].message}`
+                    : 'Invalid Usage (Empty Error List)';
+                throw new Error(`Validation error: ${message}`);
             }
-        });
-
-        // 5. Create audit log
-        await db.auditLog.create({
-            data: {
-                userId: session.user.id,
-                action: 'USER_RIGHTS_UPDATED',
-                details: `Updated permissions for ${updatedUser.member?.name || updatedUser.email}: ${JSON.stringify(validated.permissions)}`
-            }
-        });
-
-        // 6. Revalidate paths
-        revalidatePath('/admin/system');
-        revalidatePath('/dashboard');
-
-        return {
-            success: true,
-            message: 'Permissions updated successfully',
-            user: updatedUser
-        };
-
-    } catch (error) {
-
-        if (error instanceof z.ZodError) {
-            const zodError = error as z.ZodError;
-            const checklist = zodError.issues || [];
-            const message = checklist.length > 0
-                ? `${checklist[0].path.join('.')}: ${checklist[0].message}`
-                : 'Invalid Usage (Empty Error List)';
-
-            // For debugging, returning the whole list
-            throw new Error(`Validation error: ${message}`);
-        }
-
-        if (error instanceof Error) {
             throw error;
         }
-
-        throw new Error('Failed to update permissions');
     }
-}
+);
 
 /**
  * Get all users with their permissions
@@ -215,67 +206,74 @@ export async function getAllUsersWithPermissions() {
 /**
  * Update user role
  */
-export async function updateUserRole(userId: string, role: UserRole) {
-    try {
-        const session = await auth();
-        if (!session?.user?.id) {
-            throw new Error('Unauthorized');
-        }
+export const updateUserRole = withAudit(
+    { actionType: AuditLogAction.USER_RIGHTS_UPDATED, domain: 'SECURITY', apiRoute: '/api/admin/role/update' },
+    async (ctx, userId: string, role: UserRole) => {
+        try {
+            ctx.beginStep('Verify Authorization');
+            const session = await auth();
+            if (!session?.user?.id) {
+                ctx.setErrorCode('UNAUTHORIZED');
+                throw new Error('Unauthorized');
+            }
 
-        // Only CHAIRPERSON can update roles
-        const currentUser = await db.user.findUnique({
-            where: { id: session.user.id },
-            select: { role: true }
-        });
+            const currentUser = await db.user.findUnique({
+                where: { id: session.user.id },
+                select: { role: true }
+            });
 
-        if (currentUser?.role !== 'CHAIRPERSON') {
-            throw new Error('Only the Chairperson can update user roles');
-        }
+            if (currentUser?.role !== 'CHAIRPERSON') {
+                ctx.setErrorCode('FORBIDDEN');
+                throw new Error('Only the Chairperson can update user roles');
+            }
 
-        // SELF-MODIFICATION GUARD: Prevent user from modifying their own role
-        if (userId === session.user.id) {
-            throw new Error('Security Error: You cannot modify your own role. Contact another administrator.');
-        }
+            if (userId === session.user.id) {
+                ctx.setErrorCode('SELF_MODIFICATION_RESTRICTED');
+                throw new Error('Security Error: You cannot modify your own role. Contact another administrator.');
+            }
 
-        // HIERARCHY GUARD: Only CHAIRPERSON can grant CHAIRPERSON role
-        // (Note: Since we already check if requester is CHAIRPERSON above, this is redundant
-        // but explicit logic is safer if the above check is ever relaxed)
-        if (role === 'CHAIRPERSON' && currentUser.role !== 'CHAIRPERSON') {
-            throw new Error('Only the Chairperson can grant the Chairperson role to others');
-        }
+            if (role === 'CHAIRPERSON' && currentUser.role !== 'CHAIRPERSON') {
+                ctx.setErrorCode('FORBIDDEN_GRANT');
+                throw new Error('Only the Chairperson can grant the Chairperson role to others');
+            }
+            ctx.endStep('Verify Authorization');
 
-        const updatedUser = await db.user.update({
-            where: { id: userId },
-            data: { role },
-            include: {
-                member: {
-                    select: {
-                        name: true
+            ctx.beginStep('Capture Initial State');
+            const targetUser = await db.user.findUnique({
+                where: { id: userId },
+                select: { id: true, email: true, role: true }
+            });
+            if (targetUser) ctx.captureBefore('User', userId, targetUser);
+            ctx.endStep('Capture Initial State');
+
+            ctx.beginStep('Update Database');
+            const updatedUser = await db.user.update({
+                where: { id: userId },
+                data: { role },
+                include: {
+                    member: {
+                        select: {
+                            name: true
+                        }
                     }
                 }
-            }
-        });
+            });
+            ctx.captureAfter(updatedUser);
+            ctx.endStep('Update Database');
 
-        // Create audit log
-        await db.auditLog.create({
-            data: {
-                userId: session.user.id,
-                action: 'USER_RIGHTS_UPDATED',
-                details: `Updated role for ${updatedUser.member?.name || updatedUser.email} to ${role}`
-            }
-        });
+            revalidatePath('/admin/system');
 
-        revalidatePath('/admin/system');
+            return {
+                success: true,
+                message: 'Role updated successfully'
+            };
 
-        return {
-            success: true,
-            message: 'Role updated successfully'
-        };
-
-    } catch (error) {
-        throw error instanceof Error ? error : new Error('Failed to update role');
+        } catch (error) {
+            ctx.setErrorCode('ROLE_UPDATE_FAILED');
+            throw error instanceof Error ? error : new Error('Failed to update role');
+        }
     }
-}
+);
 
 /**
  * Get current user's role and permissions

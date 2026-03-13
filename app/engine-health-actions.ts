@@ -5,6 +5,8 @@ import { db } from '@/lib/db'
 import { InterestService } from '@/services/interest-engine'
 import { PenaltyService } from '@/services/penalty-engine'
 import { revalidatePath } from 'next/cache'
+import { AuditLogAction } from '@prisma/client'
+import { withAudit } from '@/lib/with-audit'
 
 const prisma = db
 
@@ -53,92 +55,62 @@ export async function getEngineHealthStatus() {
 /**
  * Manually trigger Interest Engine (Monthly Batch)
  */
-export async function triggerInterestEngine() {
-    const session = await auth()
+export const triggerInterestEngine = withAudit(
+    { actionType: AuditLogAction.INTEREST_ENGINE_RUN, domain: 'SYSTEM', apiRoute: '/api/admin/engine/interest' },
+    async (ctx) => {
+        ctx.beginStep('Verify Authorization');
+        const session = await auth()
 
-    // Strict permission check
-    if (!session?.user || !['CHAIRPERSON', 'TREASURER'].includes(session.user.role)) {
-        throw new Error('Unauthorized: Only Chairperson or Treasurer can trigger engines')
-    }
-
-    try {
-        const results = await InterestService.processMonthlyBatch()
-
-        // Log execution
-        try {
-            await prisma.auditLog.create({
-                data: {
-                    userId: session.user.id!,
-                    action: 'INTEREST_ENGINE_RUN',
-                    details: `Manual trigger by ${session.user.name}. Success: ${results.success}, Failed: ${results.failed}`
-                }
-            })
-        } catch (logError) {
+        if (!session?.user || !['CHAIRPERSON', 'TREASURER'].includes(session.user.role)) {
+            ctx.setErrorCode('FORBIDDEN');
+            throw new Error('Unauthorized: Only Chairperson or Treasurer can trigger engines')
         }
-
-        revalidatePath('/admin/system')
-        return { success: true, results }
-    } catch (error: any) {
+        ctx.endStep('Verify Authorization');
 
         try {
-            await prisma.auditLog.create({
-                data: {
-                    userId: session.user.id!,
-                    action: 'INTEREST_ENGINE_RUN',
-                    details: `Manual trigger FAILED by ${session.user.name}. Error: ${error.message}`
-                }
-            })
-        } catch (logError) {
-        }
+            ctx.beginStep('Execute Interest Engine');
+            const results = await InterestService.processMonthlyBatch()
+            ctx.captureAfter({ results });
+            ctx.endStep('Execute Interest Engine');
 
-        return { success: false, error: error.message }
+            revalidatePath('/admin/system')
+            return { success: true, results }
+        } catch (error: any) {
+            ctx.setErrorCode('ENGINE_FAILURE');
+            return { success: false, error: error.message }
+        }
     }
-}
+);
 
 /**
  * Manually trigger Penalty Engine (Daily Check)
  */
-export async function triggerPenaltyEngine() {
-    const session = await auth()
+export const triggerPenaltyEngine = withAudit(
+    { actionType: AuditLogAction.PENALTY_ENGINE_RUN, domain: 'SYSTEM', apiRoute: '/api/admin/engine/penalty' },
+    async (ctx) => {
+        ctx.beginStep('Verify Authorization');
+        const session = await auth()
 
-    // Strict permission check
-    if (!session?.user || !['CHAIRPERSON', 'TREASURER'].includes(session.user.role)) {
-        throw new Error('Unauthorized: Only Chairperson or Treasurer can trigger engines')
-    }
-
-    try {
-        const results = await PenaltyService.runDailyCheck()
-
-        // Log execution
-        try {
-            await prisma.auditLog.create({
-                data: {
-                    userId: session.user.id!,
-                    action: 'PENALTY_ENGINE_RUN',
-                    details: `Manual trigger by ${session.user.name}. Processed: ${results.processed}, Penalties Applied: ${results.penaltiesApplied}`
-                }
-            })
-        } catch (logError) {
+        if (!session?.user || !['CHAIRPERSON', 'TREASURER'].includes(session.user.role)) {
+            ctx.setErrorCode('FORBIDDEN');
+            throw new Error('Unauthorized: Only Chairperson or Treasurer can trigger engines')
         }
-
-        revalidatePath('/admin/system')
-        return { success: true, results }
-    } catch (error: any) {
+        ctx.endStep('Verify Authorization');
 
         try {
-            await prisma.auditLog.create({
-                data: {
-                    userId: session.user.id!,
-                    action: 'PENALTY_ENGINE_RUN',
-                    details: `Manual trigger FAILED by ${session.user.name}. Error: ${error.message}`
-                }
-            })
-        } catch (logError) {
-        }
+            ctx.beginStep('Execute Penalty Engine');
+            const results = await PenaltyService.runDailyCheck()
+            ctx.captureAfter({ results });
+            ctx.endStep('Execute Penalty Engine');
 
-        return { success: false, error: error.message }
+            revalidatePath('/admin/system')
+            return { success: true, results }
+        } catch (error: any) {
+            ctx.setErrorCode('ENGINE_FAILURE');
+            return { success: false, error: error.message }
+        }
     }
-}
+);
 
 /**
  * Get Engine Execution History

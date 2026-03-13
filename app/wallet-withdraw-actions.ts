@@ -6,8 +6,9 @@ import { AccountingEngine, getMemberWalletBalance } from '@/lib/accounting/Accou
 import { revalidatePath } from 'next/cache'
 import { getSystemMappingsDict } from '@/app/actions/system-accounting'
 import { WalletService } from '@/lib/services/WalletService'
-import { Prisma } from '@prisma/client'
+import { Prisma, AuditLogAction } from '@prisma/client'
 import { z } from 'zod'
+import { withAudit } from '@/lib/with-audit'
 
 const WithdrawSchema = z.object({
     memberId: z.string().cuid().or(z.string().uuid()),
@@ -17,159 +18,137 @@ const WithdrawSchema = z.object({
 
 /**
  * Withdraw Funds
- * 
- * Business Rules:
- * - Can only withdraw from withdrawable balance (Account 2000)
- * - Strict overdraft prevention (amount must not exceed available balance)
- * - Posts via AccountingEngine with proper journal entries
- * - Full audit trail
  */
-export async function withdrawFunds(input: {
-    memberId: string
-    amount: number
-    description: string
-}) {
-    const session = await auth()
-
-    if (!session?.user?.id) {
-        throw new Error('Unauthorized')
-    }
-
-    // Validate inputs
-    const validated = WithdrawSchema.safeParse(input)
-    if (!validated.success) {
-        throw new Error(`Validation Error: ${validated.error.errors.map(e => e.message).join(', ')}`)
-    }
-    const { memberId, amount, description } = validated.data
-
-    // Get member
-    const member = await prisma.member.findUnique({
-        where: { id: input.memberId }
-    })
-
-    if (!member) {
-        throw new Error('Member not found')
-    }
-
-    // Get withdrawable balance from AccountingEngine (source of truth)
-    const withdrawableBalance = await getMemberWalletBalance(memberId)
-
-    // STRICT VALIDATION: Prevent overdraft
-    if (amount > withdrawableBalance) {
-        throw new Error(
-            `Insufficient withdrawable balance. Available: KES ${withdrawableBalance.toLocaleString()}, Requested: KES ${amount.toLocaleString()}`
-        )
-    }
-
-    // Get user for audit
-    const user = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        include: { member: true }
-    })
-
-    // 0. Get system mappings
-    const mappings = await getSystemMappingsDict()
-
-    return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-        // 0a. Resolve Wallet (Atomic)
-        const wallet = await WalletService.createWallet(input.memberId, tx)
-
-        // 0b. Re-Check Balance with Pessimistic Locking (SELECT FOR UPDATE)
-        // This ensures no other transaction can spend this same balance until we commit.
-        const [lockedAccount] = await tx.$queryRaw<{ balance: any }[]>`
-            SELECT "balance" FROM "LedgerAccount"
-            WHERE "id" = ${wallet.glAccountId}
-            FOR UPDATE
-        `
-
-        if (!lockedAccount) {
-            throw new Error('Ledger Account not found during withdrawal lock.')
+export const withdrawFunds = withAudit(
+    { actionType: AuditLogAction.WALLET_TRANSACTION_CREATED, domain: 'FINANCE', apiRoute: '/api/wallet/withdraw' },
+    async (ctx, input: {
+        memberId: string
+        amount: number
+        description: string
+    }) => {
+        ctx.beginStep('Validate Withdrawal Request');
+        const session = await auth()
+        if (!session?.user?.id) {
+            ctx.setErrorCode('UNAUTHORIZED');
+            throw new Error('Unauthorized')
         }
 
-        const currentBalance = Number(lockedAccount.balance)
-
-        if (input.amount > currentBalance) {
-            throw new Error(
-                `Insufficient withdrawable balance. Available: KES ${currentBalance.toLocaleString()}, Requested: KES ${input.amount.toLocaleString()}`
-            )
+        const validated = WithdrawSchema.safeParse(input)
+        if (!validated.success) {
+            ctx.setErrorCode('VALIDATION_ERROR');
+            throw new Error(`Validation Error: ${validated.error.issues.map((e: any) => e.message).join(', ')}`)
         }
+        const { memberId, amount, description } = validated.data
 
-        // 1. Post journal entry via AccountingEngine
-        const journalEntry = await AccountingEngine.postJournalEntry({
-            transactionDate: new Date(),
-            referenceType: 'SAVINGS_WITHDRAWAL',
-            referenceId: input.memberId,
-            description: `Withdrawal - ${member.name}`,
-            notes: input.description,
-            externalReferenceId: `WD-${Date.now()}`,
-            lines: [
-                {
-                    accountId: wallet.glAccountId, // Member Savings (DR - decrease liability)
-                    debitAmount: input.amount,
-                    creditAmount: 0,
-                    description: `${member.name} withdrawal`
-                },
-                {
-                    accountCode: mappings.EVENT_CASH_WITHDRAWAL || mappings.CASH_ON_HAND, // Cash out (CR - decrease asset)
-                    debitAmount: 0,
-                    creditAmount: input.amount,
-                    description: 'Cash paid out'
+        const member = await prisma.member.findUnique({
+            where: { id: memberId }
+        })
+
+        if (!member) {
+            ctx.setErrorCode('MEMBER_NOT_FOUND');
+            throw new Error('Member not found')
+        }
+        ctx.captureBefore('Member', member.id, member);
+
+        const withdrawableBalance = await getMemberWalletBalance(memberId)
+        if (amount > withdrawableBalance) {
+            ctx.setErrorCode('INSUFFICIENT_FUNDS');
+            throw new Error(`Insufficient withdrawable balance`)
+        }
+        ctx.endStep('Validate Withdrawal Request');
+
+        ctx.beginStep('Resolve System Config');
+        const mappings = await getSystemMappingsDict()
+        ctx.endStep('Resolve System Config');
+
+        const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+            ctx.beginStep('Pessimistic Locking and Verification');
+            const wallet = await WalletService.createWallet(memberId, tx)
+            const [lockedAccount] = await tx.$queryRaw<{ balance: any }[]>`
+                SELECT "balance" FROM "LedgerAccount"
+                WHERE "id" = ${wallet.glAccountId}
+                FOR UPDATE
+            `
+
+            if (!lockedAccount) {
+                ctx.setErrorCode('SYSTEM_ERROR');
+                throw new Error('Ledger Account not found during withdrawal lock.')
+            }
+
+            const currentBalance = Number(lockedAccount.balance)
+            if (amount > currentBalance) {
+                ctx.setErrorCode('INSUFFICIENT_FUNDS');
+                throw new Error(`Insufficient balance after lock verification`)
+            }
+            ctx.endStep('Pessimistic Locking and Verification');
+
+            ctx.beginStep('Post Withdrawal Journal Entry');
+            const journalEntry = await AccountingEngine.postJournalEntry({
+                transactionDate: new Date(),
+                referenceType: 'SAVINGS_WITHDRAWAL',
+                referenceId: memberId,
+                description: `Withdrawal - ${member.name}`,
+                notes: description,
+                externalReferenceId: `WD-${Date.now()}`,
+                lines: [
+                    {
+                        accountId: wallet.glAccountId,
+                        debitAmount: amount,
+                        creditAmount: 0,
+                        description: `${member.name} withdrawal`
+                    },
+                    {
+                        accountCode: mappings.EVENT_CASH_WITHDRAWAL || mappings.CASH_ON_HAND,
+                        debitAmount: 0,
+                        creditAmount: amount,
+                        description: 'Cash paid out'
+                    }
+                ],
+                createdBy: session.user.id!,
+                createdByName: session.user.name || 'System'
+            }, tx)
+            ctx.endStep('Post Withdrawal Journal Entry', { jeId: journalEntry.id });
+
+            ctx.beginStep('Record Wallet Transaction snapshot');
+            const walletTx = await tx.walletTransaction.create({
+                data: {
+                    walletId: wallet.id,
+                    type: 'WITHDRAWAL',
+                    amount: new Prisma.Decimal(amount),
+                    description: `Withdrawal: ${description}`,
+                    balanceAfter: new Prisma.Decimal(currentBalance - amount),
+                    immutable: true
                 }
-            ],
-            createdBy: session.user.id!,
-            createdByName: user?.member?.name || user?.name || (session.user.name as string) || 'System'
-        }, tx)
+            })
+            ctx.endStep('Record Wallet Transaction snapshot');
 
-
-        // 2. Create audit log
-        await tx.auditLog.create({
-            data: {
-                userId: session.user.id!,
-                action: 'WALLET_TRANSACTION_CREATED',
-                details: `Withdrawal: ${member.name} - KES ${input.amount} - ${input.description}`
+            return {
+                success: true,
+                journalEntryId: journalEntry.id,
+                newWithdrawableBalance: currentBalance - amount
             }
         })
 
-        // 3. Create Wallet Transaction Record
-        await tx.walletTransaction.create({
-            data: {
-                walletId: wallet.id,
-                type: 'WITHDRAWAL',
-                amount: new Prisma.Decimal(input.amount),
-                description: `Withdrawal: ${input.description}`,
-                balanceAfter: new Prisma.Decimal(currentBalance - input.amount), // Snapshot
-                immutable: true
-            }
-        })
+        const updatedMember = await prisma.member.findUnique({ where: { id: memberId } });
+        if (updatedMember) ctx.captureAfter(updatedMember);
 
         revalidatePath('/wallet')
         revalidatePath('/dashboard')
         revalidatePath('/accounts')
 
-        return {
-            success: true,
-            journalEntryId: journalEntry.id,
-            newWithdrawableBalance: currentBalance - input.amount
-        }
-    })
-}
+        return result;
+    }
+);
 
 /**
  * Get withdrawable balance for a member
- * Server action wrapper to prevent Prisma from running in browser
  */
 export async function getWithdrawableBalance(memberId: string): Promise<number> {
     const session = await auth()
+    if (!session?.user?.id) throw new Error('Unauthorized')
 
-    if (!session?.user?.id) {
-        throw new Error('Unauthorized')
-    }
-
-    // Basic validation for the ID
     const validatedId = z.string().cuid().or(z.string().uuid()).safeParse(memberId)
-    if (!validatedId.success) {
-        throw new Error('Invalid member ID format')
-    }
+    if (!validatedId.success) throw new Error('Invalid member ID format')
 
     return await getMemberWalletBalance(memberId)
 }

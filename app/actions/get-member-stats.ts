@@ -58,21 +58,20 @@ export async function getMemberRealtimeStats(memberId: string): Promise<Serializ
     }
 
     // Parallel fetch for speed
-    const [
+    const [shareCapital, walletBalance, loans] = await Promise.all([
         getLedgerBalance('3011'), // Contributions & Loans
-            getLedgerBalance('3012'), // Member Withdrawable Wallet
-            db.loan.aggregate({
-                _sum: {
-                    current_balance: true
-                },
-                where: {
-                    memberId: memberId,
-                    status: {
-                        in: ['ACTIVE', 'OVERDUE']
-                        // Exclude CLEARED, REJECTED, CANCELLED, PENDING_APPROVAL
-                    }
+        getLedgerBalance('3012'), // Member Withdrawable Wallet
+        db.loan.aggregate({
+            _sum: {
+                current_balance: true
+            },
+            where: {
+                memberId: memberId,
+                status: {
+                    in: ['ACTIVE', 'OVERDUE']
                 }
-            })
+            }
+        })
     ])
 
     const totalContributions = shareCapital + walletBalance
@@ -123,7 +122,7 @@ export async function getAllMemberLoans(memberId: string): Promise<Serialized<Me
         });
 
         // Use the centralized mapper for consistent logic
-        return serializeFinancials(loans.map(loan => mapLoanToTableRow(loan)));
+        return serializeFinancials(loans.map(loan => mapLoanToTableRow(loan as any)));
     } catch (error) {
         return [];
     }

@@ -2,7 +2,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { Prisma } from '@prisma/client'
+import { Prisma, AuditLogAction } from '@prisma/client'
 import { db as prisma } from '../lib/db'
 import { auth } from '@/auth'
 import { WalletService } from '@/lib/services/WalletService'
@@ -15,6 +15,7 @@ import { generateLoanApplicationNumber, generateRepaymentSchedule } from '../lib
 import { calculateMonthlyInstallment } from '@/lib/loan-calculator'
 import { calculateTopUpDetails, validateNetLoan } from '@/lib/topup-calculator'
 import { EmailService } from '@/lib/services/EmailService'
+import { withAudit } from '@/lib/with-audit'
 
 export async function createMember(formData: FormData) {
     const session = await auth()
@@ -235,490 +236,383 @@ export async function createUserAccount(formData: FormData) {
     return result
 }
 
-export async function applyForLoan(prevState: any, formData: FormData) {
-    // SECURITY: Authenticate user session
-    const session = await auth()
-    if (!session?.user) {
-        return { error: 'Unauthorized: You must be logged in to apply for a loan.' }
-    }
-
-    const memberId = formData.get('memberId') as string
-    const loanProductId = formData.get('loanProductId') as string
-    const amountStr = formData.get('amount') as string
-    const amount = amountStr ? parseFloat(amountStr) : 0
-    const contractRef = formData.get('contractRef') as string || ''
-    const installments = parseInt(formData.get('installments') as string) || 12
-    const loanId = formData.get('loanId') as string || null
-
-    const loansToOffset = formData.getAll('loansToOffset') as string[]
-    const submitAction = formData.get('submitAction') as string || 'save'
-
-    const feeExemptionsStr = formData.get('feeExemptions') as string
-    const feeExemptions = feeExemptionsStr ? JSON.parse(feeExemptionsStr) : {}
-
-    // Determine Status
-    // If 'send', status -> PENDING_APPROVAL. If 'save', status -> APPLICATION (Draft)
-    const newStatus = submitAction === 'send' ? LoanStatus.PENDING_APPROVAL : LoanStatus.APPLICATION;
-    const isDraftSave = newStatus === LoanStatus.APPLICATION;
-
-    // Validation
-    if (!memberId) return { error: 'Member ID is required.' }
-
-    // SECURITY: Authorization Check - Ensure user can ONLY apply for loans under their own name
-    // Fetch the logged-in user's details
-    const currentUser = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        select: {
-            memberId: true,
-            role: true,
-            permissions: true
+export const applyForLoan = withAudit(
+    { actionType: AuditLogAction.LOAN_APPLIED, domain: 'LOAN', apiRoute: '/api/loans/apply' },
+    async (ctx, prevState: any, formData: FormData) => {
+        ctx.beginStep('Verify Authentication');
+        const session = await auth()
+        if (!session?.user) {
+            ctx.setErrorCode('UNAUTHORIZED');
+            return { error: 'Unauthorized: You must be logged in to apply for a loan.' }
         }
-    })
+        ctx.endStep('Verify Authentication');
 
-    if (!currentUser) {
-        return { error: 'User account not found.' }
-    }
+        const memberId = formData.get('memberId') as string
+        const loanProductId = formData.get('loanProductId') as string
+        const amountStr = formData.get('amount') as string
+        const amount = amountStr ? parseFloat(amountStr) : 0
+        const contractRef = formData.get('contractRef') as string || ''
+        const installments = parseInt(formData.get('installments') as string) || 12
+        const loanId = formData.get('loanId') as string || null
 
-    // STRICT OWNERSHIP CHECK w/ ADMIN EXCEPTION for SAVING DRAFTS
-    const isOwner = memberId === currentUser.memberId
-    const isAdmin = ['SYSTEM_ADMIN', 'CHAIRPERSON'].includes(currentUser.role)
+        const loansToOffset = formData.getAll('loansToOffset') as string[]
+        const submitAction = formData.get('submitAction') as string || 'save'
 
-    // Verification Logic
-    if (!isOwner) {
-        if (!isAdmin) {
-            return { error: 'Unauthorized: You can only apply for loans under your own name.' }
+        const feeExemptionsStr = formData.get('feeExemptions') as string
+        const feeExemptions = feeExemptionsStr ? JSON.parse(feeExemptionsStr) : {}
+
+        const newStatus = submitAction === 'send' ? LoanStatus.PENDING_APPROVAL : LoanStatus.APPLICATION;
+        const isDraftSave = newStatus === LoanStatus.APPLICATION;
+
+        if (!memberId) {
+            ctx.setErrorCode('MEMBER_ID_REQUIRED');
+            return { error: 'Member ID is required.' }
         }
 
-        // Admin attempted action...
-        if (submitAction === 'send') {
-            return { error: 'Unauthorized: Admins cannot submit applications on behalf of members. You can only save edits to exemptions.' }
+        ctx.beginStep('Authorization Check');
+        const currentUser = await prisma.user.findUnique({
+            where: { id: session.user.id },
+            select: {
+                memberId: true,
+                role: true,
+                permissions: true
+            }
+        })
+
+        if (!currentUser) {
+            ctx.setErrorCode('USER_NOT_FOUND');
+            return { error: 'User account not found.' }
         }
 
-        // If Admin is saving, we MUST ensure they aren't changing critical fields.
-        // We will OVERWRITE the form data with current DB values to be safe, 
-        // effectively ignoring any changes they tried to make to Amount, Product, etc.
+        const isOwner = memberId === currentUser.memberId
+        const isAdmin = ['SYSTEM_ADMIN', 'CHAIRPERSON'].includes(currentUser.role)
+
+        if (!isOwner) {
+            if (!isAdmin) {
+                ctx.setErrorCode('FORBIDDEN');
+                return { error: 'Unauthorized: You can only apply for loans under your own name.' }
+            }
+            if (submitAction === 'send') {
+                ctx.setErrorCode('ADMIN_SUBMIT_FORBIDDEN');
+                return { error: 'Unauthorized: Admins cannot submit applications on behalf of members. You can only save edits to exemptions.' }
+            }
+            if (loanId) {
+                const currentLoan = await prisma.loan.findUnique({ where: { id: loanId } })
+                if (currentLoan) {
+                    if (
+                        Math.abs(Number(currentLoan.amount) - amount) > 0.01 ||
+                        currentLoan.loanProductId !== loanProductId ||
+                        currentLoan.installments !== installments ||
+                        currentLoan.memberId !== memberId
+                    ) {
+                        ctx.setErrorCode('ADMIN_MODIFY_DETAILS_FORBIDDEN');
+                        return { error: 'Admins cannot modify Loan Details (Amount, Product, Installments). Only Exemptions can be edited.' }
+                    }
+                }
+            }
+        }
+        ctx.endStep('Authorization Check');
+
         if (loanId) {
-            const currentLoan = await prisma.loan.findUnique({ where: { id: loanId } })
-            if (currentLoan) {
-                // FORCE revert critical fields to what's in DB
-                // We only allow feeExemptions to proceed from the form data
-                // amount = Number(currentLoan.amount) // This variable is const, can't assign.
-                // We need to mutate the variables used later for DB update.
-                // Actually, the variables 'amount', 'loanProductId', 'memberId', 'installments' are const. 
-                // We can't change them easily here without refactoring.
-                // EASIER: Check if they match. If not, throw error? 
-                // User asked "changes are limited to only loan exemptions".
-                // If we throw error, it's annoying if the form sent them but they didn't change.
-
-                // Let's RE-ASSIGN the variables? They are const. 
-                // I'll need to refactor the variable declarations to let. 
-                // OR checking logic below uses 'amount' etc.
-
-                // Simplest strategy: If Admin, we skip the normal "Validation" and "Calculation" block 
-                // if we are just saving exemptions? 
-                // No, 'applyForLoan' does a full update. 
-
-                // I will THROW if they changed anything important.
-                // Wait, floating point comparison is messy.
-                // BETTER: I will refactor the code to use a 'finalAmount', 'finalProduct' etc.
-                // But that requires changing the whole file. 
-
-                // Strategy: 
-                // If Admin && Save:
-                // 1. Fetch current loan.
-                // 2. Used current loan's values for the update payload, ignoring formData.
-                // 3. ONLY use formData.feeExemptions.
-
-                // But the code below constructs 'commonData' using 'amount', 'memberId' etc.
-                // I can't easily change those.
-                // I will return an error if they try to change them.
-
-                // Actually, for the implementation request "changes are limited to...", 
-                // blocking 'send' is key. For 'save', if I can't overwrite, I'll return strict error.
-                if (
-                    Math.abs(Number(currentLoan.amount) - amount) > 0.01 ||
-                    currentLoan.loanProductId !== loanProductId ||
-                    currentLoan.installments !== installments ||
-                    currentLoan.memberId !== memberId
-                ) {
-                    return { error: 'Admins cannot modify Loan Details (Amount, Product, Installments). Only Exemptions can be edited.' }
-                }
-            }
-        }
-    }
-
-    // Additional check: If updating an existing loan
-    if (loanId) {
-        const existingLoan = await prisma.loan.findUnique({
-            where: { id: loanId },
-            select: { memberId: true }
-        })
-
-        if (!existingLoan) {
-            return { error: 'Loan application not found.' }
-        }
-
-        // Verify ownership match (redundant but safe)
-        if (existingLoan.memberId !== memberId) {
-            // Should verify memberId matches the form's memberId, 
-            // and we already verified form's memberId vs User or Admin logic.
-        }
-    }
-
-    // For Drafts, we allow minimal data. For Submission, we need everything.
-    if (!isDraftSave) {
-        if (!loanProductId) return { error: 'Loan Product is required.' }
-        if (!amount || amount <= 0) return { error: 'Valid amount is required.' }
-
-        // Strict Arrears Check
-        // (Use feeExemptions passed in form)
-        const exemptions = feeExemptions || {}
-        if (!exemptions.defaultCheck) { // Use the parsed exemptions
-            const { checkLoanEligibility } = await import('@/app/actions/loan-eligibility')
-            const eligibility = await checkLoanEligibility(memberId)
-            if (!eligibility.isEligible) {
-                return { error: eligibility.message || 'Application Denied: Outstanding arrears detected.' }
-            }
-        }
-    }
-
-    // Check for existing pending/approved applications (Concurrency Check)
-    if (!isDraftSave) {
-        const existingApplication = await prisma.loan.findFirst({
-            where: {
-                memberId,
-                status: { in: [LoanStatus.PENDING_APPROVAL, LoanStatus.APPROVED] },
-                ...(loanId ? { id: { not: loanId } } : {})
-            }
-        })
-
-        if (existingApplication) {
-            const exemptions = (existingApplication.feeExemptions as any) || {}
-            if (!exemptions.allowConcurrentApplication) {
-                return { error: `You already have an active application (${existingApplication.loanApplicationNumber}).` }
-            }
-        }
-    }
-
-    let product = null;
-    if (loanProductId) {
-        product = await prisma.loanProduct.findUnique({ where: { id: loanProductId } })
-        if (!product && !isDraftSave) return { error: 'Invalid product' }
-
-        // NEW: Validate product has valid interest rate
-        if (product && !isDraftSave) {
-            const interestRate = Number(product.interestRatePerPeriod)
-            if (isNaN(interestRate) || interestRate < 0) {
-                return { error: 'Invalid loan product: Interest rate not configured properly.' }
-            }
-
-            // Validate installments within product limits
-            if (installments < product.minRepaymentTerms || installments > product.maxRepaymentTerms) {
-                return {
-                    error: `Installments must be between ${product.minRepaymentTerms} and ${product.maxRepaymentTerms} months.`
-                }
-            }
-
-            // Validate amount within product limits
-            const amountNum = Number(amount)
-            if (amountNum < Number(product.minPrincipal) || amountNum > Number(product.maxPrincipal)) {
-                return {
-                    error: `Amount must be between KES ${Number(product.minPrincipal).toLocaleString()} and KES ${Number(product.maxPrincipal).toLocaleString()}.`
-                }
-            }
-        }
-    }
-
-    // Calculate Financials (Appraisal)
-    let appraisal = {
-        memberShares: 0,
-        grossQualifyingAmount: 0,
-        processingFee: 0,
-        insuranceFee: 0,
-        shareCapitalDeduction: 0,
-        selectedLoansOffset: 0,
-        totalDeductions: 0,
-        netDisbursementAmount: 0,
-        topUps: [] as any[]
-    };
-
-    if (amount > 0 && product) {
-        const { calculateLoanQualification } = await import('./sacco-settings-actions')
-        try {
-            // We need full calculation even for drafts if data is present to show user info
-            const result = await calculateLoanQualification(
-                memberId,
-                loansToOffset,
-                amount,
-                feeExemptions
-            )
-            appraisal = { ...appraisal, ...result }
-
-            // STRICT LIMIT CHECK
-            // Block application if amount exceeds qualifying limit
-            // We allow override if 'allowOverQC' exemption is set (backend backdoor for admins)
-            if (!isDraftSave && !feeExemptions?.allowOverQC && amount > appraisal.grossQualifyingAmount) {
-                return {
-                    error: `Application Denied: The requested amount (KES ${amount.toLocaleString()}) exceeds your maximum borrowing limit of KES ${appraisal.grossQualifyingAmount.toLocaleString()} based on your savings.`
-                }
-            }
-        } catch (e) {
-        }
-    }
-
-    // Capture top-up details if offsets exist and we are submitting (or saving with valid data)
-    let topUpCalculations: any[] = []
-    if (loansToOffset.length > 0 && !isDraftSave) {
-        // (Top Up Logic - preserved from original but concise)
-        const oldLoans = await prisma.loan.findMany({
-            where: { id: { in: loansToOffset } },
-            include: { transactions: true }
-        })
-        const { processTransactions } = await import('@/lib/statementProcessor')
-        const { addMoney, truncateToDecimals, calculatePercentage } = await import('@/lib/currency')
-        const saccoSettings = await prisma.saccoSettings.findFirst()
-        const refinanceFeePct = Number(saccoSettings?.refinanceFeePercentage || 0)
-
-        for (const oldLoan of oldLoans) {
-            // ... (Same logic as before, abbreviated here for token limit but assuming full logic)
-            const rawTransactions = oldLoan.transactions ? oldLoan.transactions.map((tx: any) => ({
-                ...tx,
-                amount: Number(tx.amount),
-                createdAt: tx.postedAt,
-                type: tx.type
-            })) : [];
-            const mappedTransactions = rawTransactions.map((tx: any) => ({
-                ...tx,
-                type: tx.type === 'LOAN_DISBURSEMENT' || tx.type === 'DISBURSEMENT' ? 'DISBURSEMENT' :
-                    tx.type === 'LOAN_REPAYMENT' || tx.type === 'REPAYMENT' ? 'REPAYMENT' : tx.type
-            }));
-            const rows = processTransactions(mappedTransactions as any[]);
-            const balance = rows.length > 0 ? rows[rows.length - 1].runningBalance : 0;
-            const outstandingBalance = truncateToDecimals(balance);
-            const fee = calculatePercentage(outstandingBalance, refinanceFeePct);
-
-            topUpCalculations.push({
-                loanId: oldLoan.id,
-                loanNumber: oldLoan.loanApplicationNumber,
-                productName: 'Unknown',
-                principalBalance: outstandingBalance,
-                accruedInterest: 0,
-                penalties: 0,
-                refinanceFee: fee,
-                totalOffset: addMoney(outstandingBalance, fee)
-            })
-        }
-    }
-
-    // Generate Repayment Schedule
-    let schedule: any[] = [];
-    if (amount > 0 && product) {
-        const { generateRepaymentSchedule } = await import('../lib/utils')
-        const productForSchedule = {
-            ...product,
-            numberOfRepayments: installments || product.numberOfRepayments
-        }
-        schedule = generateRepaymentSchedule(
-            { amount, applicationDate: new Date() } as any,
-            productForSchedule
-        )
-    }
-
-    const monthlyInstallment = schedule.length > 0 ? schedule[0].total : 0
-
-    // DB Operations
-    try {
-        let loan;
-        const commonData = {
-            memberId,
-            loanProductId: loanProductId || null,
-            amount: amount,
-            applicationDate: new Date(),
-            status: newStatus,
-
-            // Financials
-            memberSharesAtApplication: appraisal.memberShares,
-            grossQualifyingAmount: appraisal.grossQualifyingAmount,
-            processingFee: appraisal.processingFee,
-            insuranceFee: appraisal.insuranceFee,
-            shareCapitalDeduction: appraisal.shareCapitalDeduction,
-            existingLoanOffset: appraisal.selectedLoansOffset,
-            totalDeductions: appraisal.totalDeductions,
-            netDisbursementAmount: appraisal.netDisbursementAmount,
-
-            installments,
-            monthlyInstallment,
-            interestRate: product?.interestRatePerPeriod || 0, // NEW: Copy interest rate from product
-            interestRatePerMonth: product?.interestRatePerPeriod,
-            penaltyRate: product?.defaultPenaltyRate || 0,
-
-            repaymentSchedule: schedule,
-            feeExemptions,
-            loanContract: contractRef,
-            updatedAt: new Date()
-        }
-
-        // Fetch existing stats to verify if user changed amount or duration upon resubmission
-        let existingLoanState = null;
-        if (loanId) {
-            existingLoanState = await prisma.loan.findUnique({
+            const existingLoan = await prisma.loan.findUnique({
                 where: { id: loanId },
-                select: { status: true, amount: true, installments: true }
+                select: { id: true, memberId: true }
             })
-
-            // UPDATE EXISTING LOAN (Draft or otherwise)
-            loan = await prisma.loan.update({
-                where: { id: loanId },
-                data: commonData
-            })
-        } else {
-            // FALLBACK CREATE (Should not happen if using immediate init, but keep for safety)
-            const lastLoan = await prisma.loan.findFirst({
-                orderBy: { loanApplicationNumber: 'desc' },
-                select: { loanApplicationNumber: true }
-            })
-            const { getNextLoanNumber } = require('../lib/utils');
-            const loanApplicationNumber = getNextLoanNumber(lastLoan?.loanApplicationNumber)
-
-            loan = await prisma.loan.create({
-                data: {
-                    loanApplicationNumber,
-                    ...commonData,
-                    approvalVotes: [],
-                    applicationFeePaid: false
-                }
-            })
+            if (!existingLoan) {
+                ctx.setErrorCode('LOAN_NOT_FOUND');
+                return { error: 'Loan application not found.' }
+            }
+            ctx.captureBefore('Loan', loanId, existingLoan);
         }
 
-        // Post-Processing for Submission
+        ctx.beginStep('Validation');
         if (!isDraftSave) {
-            // Create TopUps
-            if (topUpCalculations.length > 0) {
-                // Check if topups already exist? Maybe delete old ones for this loanId first?
-                await prisma.loanTopUp.deleteMany({ where: { newLoanId: loan.id } });
-                await prisma.loanTopUp.createMany({
-                    data: topUpCalculations.map((calc: any) => ({
-                        newLoanId: loan.id,
-                        oldLoanId: calc.loanId,
-                        oldLoanNumber: calc.loanNumber,
-                        productName: calc.productName,
-                        principalBalance: calc.principalBalance,
-                        accruedInterest: calc.accruedInterest,
-                        penalties: calc.penalties,
-                        refinanceFee: calc.refinanceFee,
-                        totalOffset: calc.totalOffset
-                    }))
-                })
+            if (!loanProductId) {
+                ctx.setErrorCode('PRODUCT_REQUIRED');
+                return { error: 'Loan Product is required.' }
+            }
+            if (!amount || amount <= 0) {
+                ctx.setErrorCode('INVALID_AMOUNT');
+                return { error: 'Valid amount is required.' }
             }
 
-            // Journey Event
-            await prisma.loanJourneyEvent.create({
-                data: {
-                    loanId: loan.id,
-                    eventType: 'APPLICATION_SUBMITTED',
-                    description: `Loan application submitted for KES ${amount.toLocaleString()}`,
-                    actorId: memberId,
-                    actorName: 'Applicant',
-                    metadata: {
-                        requestedAmount: amount,
-                        netDisbursementAmount: appraisal.netDisbursementAmount
-                    }
+            const exemptions = feeExemptions || {}
+            if (!exemptions.defaultCheck) {
+                const { checkLoanEligibility } = await import('@/app/actions/loan-eligibility')
+                const eligibility = await checkLoanEligibility(memberId)
+                if (!eligibility.isEligible) {
+                    ctx.setErrorCode('INELIGIBLE');
+                    return { error: eligibility.message || 'Application Denied: Outstanding arrears detected.' }
+                }
+            }
+
+            const existingApplication = await prisma.loan.findFirst({
+                where: {
+                    memberId,
+                    status: { in: [LoanStatus.PENDING_APPROVAL, LoanStatus.APPROVED] },
+                    ...(loanId ? { id: { not: loanId } } : {})
                 }
             })
 
-            // Fix: Create ApprovalRequest for the new loan application
-            // This ensures the approval card appears in the dashboard
-            await prisma.approvalRequest.create({
-                data: {
-                    type: 'LOAN',
-                    referenceId: loan.id,
-                    referenceTable: 'Loan',
-                    requesterId: memberId,
-                    requesterName: commonData.memberId ? (await prisma.member.findUnique({ where: { id: memberId }, select: { name: true } }))?.name || 'Member' : 'Member',
-                    description: `${product?.name || 'Loan'} Application - KES ${amount.toLocaleString()}`,
-                    amount: amount,
-                    status: 'PENDING',
-                    requiredPermission: 'APPROVE_LOANS'
+            if (existingApplication) {
+                const exemptions = (existingApplication.feeExemptions as any) || {}
+                if (!exemptions.allowConcurrentApplication) {
+                    ctx.setErrorCode('CONCURRENT_APPLICATION_FORBIDDEN');
+                    return { error: `You already have an active application (${existingApplication.loanApplicationNumber}).` }
                 }
-            })
-
-            // NEW: Generate Repayment Schedule using ScheduleGeneratorService
-            if (product && amount > 0) {
-                const { ScheduleGeneratorService } = await import('@/lib/services/ScheduleGeneratorService')
-
-                // Delete any existing installments first
-                await prisma.repaymentInstallment.deleteMany({
-                    where: { loanId: loan.id }
-                })
-
-                // Generate new schedule
-                const scheduleItems = ScheduleGeneratorService.generate(
-                    Number(amount),
-                    Number(product.interestRatePerPeriod),
-                    installments,
-                    product.interestType as 'FLAT' | 'DECLINING_BALANCE',
-                    new Date(),
-                    loan.id
-                )
-
-                // Save to database - map to add loanId
-                await prisma.repaymentInstallment.createMany({
-                    data: scheduleItems.map(item => ({
-                        ...item,
-                        loanId: loan.id
-                    }))
-                })
-            }
-
-            // Workflow
-            const { initiateWorkflow } = await import('@/app/actions/workflow-engine')
-
-            // Delete LoanDraft since application is now submitted
-            const session = await auth()
-            if (session?.user?.id) {
-                await prisma.loanDraft.deleteMany({
-                    where: { userId: session.user.id }
-                })
-            }
-
-            // Notifications & Emails (Async)
-            if (newStatus === LoanStatus.PENDING_APPROVAL) {
-
-                // If the application was previously submitted, see if we need to send a new email
-                if (existingLoanState && existingLoanState.status !== 'DRAFT') {
-                    const amountChanged = Number(existingLoanState.amount) !== amount;
-                    const installmentsChanged = existingLoanState.installments !== installments;
-
-                    if (amountChanged || installmentsChanged) {
-                        // Details changed! Delete the old email log so a fresh email fires
-                        await prisma.emailNotificationLog.deleteMany({
-                            where: { loanId: loan.id, templateType: 'LOAN_APPROVAL_REQUEST' }
-                        });
-
-                        // Increment tracking version
-                        await prisma.loan.update({
-                            where: { id: loan.id },
-                            data: { submissionVersion: { increment: 1 } }
-                        });
-                    }
-                }
-
-                const { LoanNotificationService } = await import('@/lib/services/LoanNotificationService')
-                // Await email dispatch so Next.js doesn't kill the background promise before it finishes
-                await LoanNotificationService.handleApprovalRequest(loan.id)
             }
         }
 
-        revalidatePath('/loans')
-        revalidatePath('/dashboard')
-        revalidatePath(`/loans/application/${loan.id}`)
+        let product = null;
+        if (loanProductId) {
+            product = await prisma.loanProduct.findUnique({ where: { id: loanProductId } })
+            if (!product && !isDraftSave) {
+                ctx.setErrorCode('PRODUCT_NOT_FOUND');
+                return { error: 'Invalid product' }
+            }
 
-        return { success: true, loanId: loan.id }
+            if (product && !isDraftSave) {
+                const interestRate = Number(product.interestRatePerPeriod)
+                if (isNaN(interestRate) || interestRate < 0) {
+                    ctx.setErrorCode('INVALID_PRODUCT_CONFIG');
+                    return { error: 'Invalid loan product: Interest rate not configured properly.' }
+                }
+                if (installments < product.minRepaymentTerms || installments > product.maxRepaymentTerms) {
+                    ctx.setErrorCode('INVALID_INSTALLMENTS');
+                    return { error: `Installments must be between ${product.minRepaymentTerms} and ${product.maxRepaymentTerms} months.` }
+                }
+                const amountNum = Number(amount)
+                if (amountNum < Number(product.minPrincipal) || amountNum > Number(product.maxPrincipal)) {
+                    ctx.setErrorCode('INVALID_PRINCIPAL');
+                    return { error: `Amount must be between KES ${Number(product.minPrincipal).toLocaleString()} and KES ${Number(product.maxPrincipal).toLocaleString()}.` }
+                }
+            }
+        }
+        ctx.endStep('Validation');
 
-    } catch (e: any) {
-        return { error: e.message || 'Failed to process loan application' }
+        ctx.beginStep('Appraisal Calculation');
+        let appraisal = {
+            memberShares: 0,
+            grossQualifyingAmount: 0,
+            processingFee: 0,
+            insuranceFee: 0,
+            shareCapitalDeduction: 0,
+            selectedLoansOffset: 0,
+            totalDeductions: 0,
+            netDisbursementAmount: 0,
+            topUps: [] as any[]
+        };
+
+        if (amount > 0 && product) {
+            const { calculateLoanQualification } = await import('./sacco-settings-actions')
+            try {
+                const result = await calculateLoanQualification(memberId, loansToOffset, amount, feeExemptions)
+                appraisal = { ...appraisal, ...result }
+                if (!isDraftSave && !feeExemptions?.allowOverQC && amount > appraisal.grossQualifyingAmount) {
+                    ctx.setErrorCode('LIMIT_EXCEEDED');
+                    return { error: `Application Denied: The requested amount exceeds your maximum borrowing limit.` }
+                }
+            } catch (e) { }
+        }
+        ctx.endStep('Appraisal Calculation');
+
+        ctx.beginStep('Top-Up Calculations');
+        let topUpCalculations: any[] = []
+        if (loansToOffset.length > 0 && !isDraftSave) {
+            const oldLoans = await prisma.loan.findMany({
+                where: { id: { in: loansToOffset } },
+                include: { transactions: true }
+            })
+            const { processTransactions } = await import('@/lib/statementProcessor')
+            const { addMoney, truncateToDecimals, calculatePercentage } = await import('@/lib/currency')
+            const saccoSettings = await prisma.saccoSettings.findFirst()
+            const refinanceFeePct = Number(saccoSettings?.refinanceFeePercentage || 0)
+
+            for (const oldLoan of oldLoans) {
+                const rawTransactions = oldLoan.transactions ? oldLoan.transactions.map((tx: any) => ({
+                    ...tx,
+                    amount: Number(tx.amount),
+                    createdAt: tx.postedAt,
+                    type: tx.type
+                })) : [];
+                const mappedTransactions = rawTransactions.map((tx: any) => ({
+                    ...tx,
+                    type: tx.type === 'LOAN_DISBURSEMENT' || tx.type === 'DISBURSEMENT' ? 'DISBURSEMENT' :
+                        tx.type === 'LOAN_REPAYMENT' || tx.type === 'REPAYMENT' ? 'REPAYMENT' : tx.type
+                }));
+                const rows = processTransactions(mappedTransactions as any[]);
+                const balance = rows.length > 0 ? rows[rows.length - 1].runningBalance : 0;
+                const outstandingBalance = truncateToDecimals(balance);
+                const fee = calculatePercentage(outstandingBalance, refinanceFeePct);
+
+                topUpCalculations.push({
+                    loanId: oldLoan.id,
+                    loanNumber: oldLoan.loanApplicationNumber,
+                    productName: 'Unknown',
+                    principalBalance: outstandingBalance,
+                    accruedInterest: 0,
+                    penalties: 0,
+                    refinanceFee: fee,
+                    totalOffset: addMoney(outstandingBalance, fee)
+                })
+            }
+        }
+        ctx.endStep('Top-Up Calculations');
+
+        ctx.beginStep('Repayment Schedule Generation');
+        let schedule: any[] = [];
+        if (amount > 0 && product) {
+            const { generateRepaymentSchedule } = await import('../lib/utils')
+            const productForSchedule = {
+                ...product,
+                numberOfRepayments: installments || product.numberOfRepayments
+            }
+            schedule = generateRepaymentSchedule({ amount, applicationDate: new Date() } as any, productForSchedule)
+        }
+        const monthlyInstallment = schedule.length > 0 ? schedule[0].total : 0
+        ctx.endStep('Repayment Schedule Generation');
+
+        try {
+            ctx.beginStep('Database Operations');
+            let loan;
+            const commonData = {
+                memberId,
+                loanProductId: loanProductId || null,
+                amount: amount,
+                applicationDate: new Date(),
+                status: newStatus,
+                memberSharesAtApplication: appraisal.memberShares,
+                grossQualifyingAmount: appraisal.grossQualifyingAmount,
+                processingFee: appraisal.processingFee,
+                insuranceFee: appraisal.insuranceFee,
+                shareCapitalDeduction: appraisal.shareCapitalDeduction,
+                existingLoanOffset: appraisal.selectedLoansOffset,
+                totalDeductions: appraisal.totalDeductions,
+                netDisbursementAmount: appraisal.netDisbursementAmount,
+                installments,
+                monthlyInstallment,
+                interestRate: product?.interestRatePerPeriod || 0,
+                interestRatePerMonth: product?.interestRatePerPeriod,
+                penaltyRate: product?.defaultPenaltyRate || 0,
+                repaymentSchedule: schedule,
+                feeExemptions,
+                loanContract: contractRef,
+                updatedAt: new Date()
+            }
+
+            let existingLoanState = null;
+            if (loanId) {
+                existingLoanState = await prisma.loan.findUnique({
+                    where: { id: loanId },
+                    select: { status: true, amount: true, installments: true }
+                })
+                loan = await prisma.loan.update({ where: { id: loanId }, data: commonData })
+            } else {
+                const lastLoan = await prisma.loan.findFirst({
+                    orderBy: { loanApplicationNumber: 'desc' },
+                    select: { loanApplicationNumber: true }
+                })
+                const { getNextLoanNumber } = require('../lib/utils');
+                const loanApplicationNumber = getNextLoanNumber(lastLoan?.loanApplicationNumber)
+                loan = await prisma.loan.create({
+                    data: {
+                        loanApplicationNumber,
+                        ...commonData,
+                        approvalVotes: [],
+                        applicationFeePaid: false
+                    }
+                })
+            }
+
+            if (!isDraftSave) {
+                if (topUpCalculations.length > 0) {
+                    await prisma.loanTopUp.deleteMany({ where: { newLoanId: loan.id } });
+                    await prisma.loanTopUp.createMany({
+                        data: topUpCalculations.map((calc: any) => ({
+                            newLoanId: loan.id,
+                            oldLoanId: calc.loanId,
+                            oldLoanNumber: calc.loanNumber,
+                            productName: calc.productName,
+                            principalBalance: calc.principalBalance,
+                            accruedInterest: calc.accruedInterest,
+                            penalties: calc.penalties,
+                            refinanceFee: calc.refinanceFee,
+                            totalOffset: calc.totalOffset
+                        }))
+                    })
+                }
+
+                await prisma.loanJourneyEvent.create({
+                    data: {
+                        loanId: loan.id,
+                        eventType: 'APPLICATION_SUBMITTED',
+                        description: `Loan application submitted for KES ${amount.toLocaleString()}`,
+                        actorId: memberId,
+                        actorName: 'Applicant',
+                        metadata: {
+                            requestedAmount: amount,
+                            netDisbursementAmount: appraisal.netDisbursementAmount
+                        }
+                    }
+                })
+
+                await prisma.approvalRequest.create({
+                    data: {
+                        type: 'LOAN',
+                        referenceId: loan.id,
+                        referenceTable: 'Loan',
+                        requesterId: memberId,
+                        requesterName: commonData.memberId ? (await prisma.member.findUnique({ where: { id: memberId }, select: { name: true } }))?.name || 'Member' : 'Member',
+                        description: `${product?.name || 'Loan'} Application - KES ${amount.toLocaleString()}`,
+                        amount: amount,
+                        status: 'PENDING',
+                        requiredPermission: 'APPROVE_LOANS'
+                    }
+                })
+
+                if (product && amount > 0) {
+                    const { ScheduleGeneratorService } = await import('@/lib/services/ScheduleGeneratorService')
+                    await prisma.repaymentInstallment.deleteMany({ where: { loanId: loan.id } })
+                    const scheduleItems = ScheduleGeneratorService.generate(
+                        Number(amount), Number(product.interestRatePerPeriod), installments,
+                        product.interestType as 'FLAT' | 'DECLINING_BALANCE', new Date(), loan.id
+                    )
+                    await prisma.repaymentInstallment.createMany({
+                        data: scheduleItems.map(item => ({ ...item, loanId: loan.id }))
+                    })
+                }
+
+                if (session?.user?.id) {
+                    await prisma.loanDraft.deleteMany({ where: { userId: session.user.id } })
+                }
+
+                if (newStatus === LoanStatus.PENDING_APPROVAL) {
+                    if (existingLoanState && existingLoanState.status !== 'DRAFT') {
+                        if (Number(existingLoanState.amount) !== amount || existingLoanState.installments !== installments) {
+                            await prisma.emailNotificationLog.deleteMany({ where: { loanId: loan.id, templateType: 'LOAN_APPROVAL_REQUEST' } });
+                            await prisma.loan.update({ where: { id: loan.id }, data: { submissionVersion: { increment: 1 } } });
+                        }
+                    }
+                    const { LoanNotificationService } = await import('@/lib/services/LoanNotificationService')
+                    await LoanNotificationService.handleApprovalRequest(loan.id)
+                }
+            }
+
+            ctx.captureAfter(loan);
+            ctx.endStep('Database Operations');
+
+            revalidatePath('/loans')
+            revalidatePath('/dashboard')
+            revalidatePath(`/loans/application/${loan.id}`)
+
+            return { success: true, loanId: loan.id }
+
+        } catch (e: any) {
+            ctx.setErrorCode('DATABASE_ERROR');
+            return { error: e.message || 'Failed to process loan application' }
+        }
     }
-}
+);
 
 export async function submitVote(loanId: string, decision: ApprovalStatus, notes: string, userId: string) {
     const session = await auth()
@@ -805,228 +699,263 @@ export async function disburseLoan(loanId: string) {
     await LoanNotificationService.handleDisbursement(loanId)
 }
 
-export async function createLoanProduct(formData: FormData) {
-    const session = await auth()
-    if (!session?.user || !['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER'].includes((session.user as any).role)) {
-        throw new Error('Unauthorized: Only administrators can manage loan products')
-    }
-
-    const name = formData.get('name') as string
-    const principal = parseFloat(formData.get('principal') as string)
-    const rate = parseFloat(formData.get('interestRatePerPeriod') as string)
-    const type = formData.get('interestType') as InterestType
-
-    await prisma.loanProduct.create({
-        data: {
-            name,
-            principal,
-            numberOfRepayments: 12,
-            repaymentEvery: 1,
-            repaymentFrequencyType: RepaymentFrequencyType.MONTHS,
-            interestRatePerPeriod: rate,
-            interestType: type,
-            interestCalculationPeriodType: InterestCalculationPeriodType.SAME_AS_REPAYMENT,
-            amortizationType: AmortizationType.EQUAL_INSTALLMENTS,
-            charges: [],
-            isActive: true
+export const createLoanProduct = withAudit(
+    { actionType: AuditLogAction.SETTINGS_UPDATED, domain: 'SYSTEM', apiRoute: '/api/admin/products' },
+    async (ctx, formData: FormData) => {
+        ctx.beginStep('Verify Authorization');
+        const session = await auth()
+        if (!session?.user || !['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER'].includes((session.user as any).role)) {
+            ctx.setErrorCode('UNAUTHORIZED');
+            throw new Error('Unauthorized: Only administrators can manage loan products')
         }
-    })
-    revalidatePath('/admin/system')
-}
+        ctx.endStep('Verify Authorization');
 
-export async function createChargeTemplate(formData: FormData) {
-    const session = await auth()
-    if (!session?.user || !['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER'].includes((session.user as any).role)) {
-        throw new Error('Unauthorized: Only administrators can manage charge templates')
+        ctx.beginStep('Create Loan Product');
+        const product = await prisma.loanProduct.create({
+            data: {
+                name: formData.get('name') as string,
+                description: formData.get('description') as string,
+                minPrincipal: parseFloat(formData.get('minPrincipal') as string),
+                maxPrincipal: parseFloat(formData.get('maxPrincipal') as string),
+                interestRatePerPeriod: parseFloat(formData.get('interestRate') as string),
+                defaultPenaltyRate: parseFloat(formData.get('penaltyRate') as string),
+                minRepaymentTerms: parseInt(formData.get('minTerms') as string),
+                maxRepaymentTerms: parseInt(formData.get('maxTerms') as string),
+                interestType: InterestType.REDUCING_BALANCE,
+                repaymentFrequency: RepaymentFrequencyType.MONTHLY,
+                amortizationType: AmortizationType.EQUAL_INSTALLMENTS,
+                charges: [],
+                isActive: true
+            }
+        })
+        ctx.captureAfter(product);
+        ctx.endStep('Create Loan Product');
+
+        revalidatePath('/admin/system')
+        return product
     }
+);
 
-    const name = formData.get('name') as string
-    const amount = parseFloat(formData.get('amount') as string)
-
-    await prisma.chargeTemplate.create({
-        data: {
-            name,
-            chargeType: 'FEE',
-            calculationType: 'FIXED',
-            amount,
-            dueDateOffset: 0,
-            isActive: true
+export const createChargeTemplate = withAudit(
+    { actionType: AuditLogAction.SETTINGS_UPDATED, domain: 'SYSTEM', apiRoute: '/api/admin/charges' },
+    async (ctx, formData: FormData) => {
+        ctx.beginStep('Verify Authorization');
+        const session = await auth()
+        if (!session?.user || !['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER'].includes((session.user as any).role)) {
+            ctx.setErrorCode('UNAUTHORIZED');
+            throw new Error('Unauthorized: Only administrators can manage charge templates')
         }
-    })
-    revalidatePath('/admin/system')
-}
+        ctx.endStep('Verify Authorization');
+
+        ctx.beginStep('Create Charge Template');
+        const name = formData.get('name') as string
+        const amount = parseFloat(formData.get('amount') as string)
+
+        const template = await prisma.chargeTemplate.create({
+            data: {
+                name,
+                chargeType: 'FEE',
+                calculationType: 'FIXED',
+                amount,
+                dueDateOffset: 0,
+                isActive: true
+            }
+        })
+        ctx.captureAfter(template);
+        ctx.endStep('Create Charge Template');
+
+        revalidatePath('/admin/system')
+        return template
+    }
+);
 
 // NEW: Workflow Actions
 
 /**
  * Submit a APPLICATION loan for approval
  */
-export async function submitLoanApplication(loanId: string) {
-    const session = await auth()
-    if (!session?.user) return { error: 'Unauthorized' }
-
-    const user = await prisma.user.findUnique({ where: { id: session?.user?.id } }) // Need user for role in logging
-
-    const loan = await prisma.loan.findUnique({
-        where: { id: loanId },
-        include: { member: true, loanProduct: true }
-    })
-
-    if (!loan) return { error: 'Loan not found' }
-    if (loan.status !== 'APPLICATION') return { error: 'Loan is not in APPLICATION status' }
-
-    // Final Eligibility Check before locking
-    const { checkLoanEligibility } = await import('@/app/actions/loan-eligibility')
-    const eligibility = await checkLoanEligibility(loan.memberId)
-    if (!eligibility.isEligible) {
-        return { error: eligibility.message }
-    }
-
-    // Lock and Transition
-    // Increment version if re-submitting (if cancellationCount > 0, we can assume it's a re-submission or version tracks attempts)
-    // Actually, we should just increment version on every submit if it was previously cancelled, or just increment it blindly?
-    // User requirement: "Increment submissionVersion by 1" whenever they click "Submit".
-    // Since DRAFT is the state before submit, submitting moves version up.
-
-    const nextVersion = (loan.submissionVersion || 0) + 1
-
-    await prisma.loan.update({
-        where: { id: loanId },
-        data: {
-            status: 'PENDING_APPROVAL',
-            applicationDate: new Date(), // Reset date to submission time
-            submissionVersion: nextVersion
+export const submitLoanApplication = withAudit(
+    { actionType: AuditLogAction.LOAN_APPLIED, domain: 'LOAN', apiRoute: '/api/loans/submit' },
+    async (ctx, loanId: string) => {
+        ctx.beginStep('Verify Authentication');
+        const session = await auth()
+        if (!session?.user) {
+            ctx.setErrorCode('UNAUTHORIZED');
+            return { error: 'Unauthorized' }
         }
-    })
+        ctx.endStep('Verify Authentication');
 
-    // Create Notification
-    await prisma.notification.create({
-        data: {
-            memberId: loan.memberId,
-            type: NotificationType.APPLICATION_RECEIVED,
-            message: `Application ${loan.loanApplicationNumber} submitted successfully (v${nextVersion}).`,
-            loanId: loan.id
+        ctx.beginStep('Fetch Loan Data');
+        const user = await prisma.user.findUnique({ where: { id: session?.user?.id } })
+
+        const loan = await prisma.loan.findUnique({
+            where: { id: loanId },
+            include: { member: true, loanProduct: true }
+        })
+
+        if (!loan) {
+            ctx.setErrorCode('LOAN_NOT_FOUND');
+            return { error: 'Loan not found' }
         }
-    })
+        if (loan.status !== 'APPLICATION') {
+            ctx.setErrorCode('INVALID_STATUS');
+            return { error: 'Loan is not in APPLICATION status' }
+        }
+        ctx.captureBefore('Loan', loanId, loan);
+        ctx.endStep('Fetch Loan Data');
 
-    // Create Approval Request
-    // Initiate Workflow via Engine
-    try {
-        const { initiateWorkflow } = await import('@/app/actions/workflow-engine')
-        await initiateWorkflow('LOAN', loan.id, loan.memberId)
-    } catch (e) {
-    }
+        ctx.beginStep('Eligibility Check');
+        const { checkLoanEligibility } = await import('@/app/actions/loan-eligibility')
+        const eligibility = await checkLoanEligibility(loan.memberId)
+        if (!eligibility.isEligible) {
+            ctx.setErrorCode('INELIGIBLE');
+            return { error: eligibility.message }
+        }
+        ctx.endStep('Eligibility Check');
 
-    // Create LoanHistory Entry (The Audit Log)
-    await prisma.loanHistory.create({
-        data: {
-            loanId: loan.id,
-            actorName: session.user.name || 'User',
-            actorRole: user?.role || 'MEMBER', // Fetch user role again if needed, or assume MEMBER if owner
-            action: 'SUBMITTED',
-            version: nextVersion,
-            metadata: {
-                amount: Number(loan.amount),
-                net: Number(loan.netDisbursementAmount)
+        ctx.beginStep('Transition Status');
+        const nextVersion = (loan.submissionVersion || 0) + 1
+
+        const updatedLoan = await prisma.loan.update({
+            where: { id: loanId },
+            data: {
+                status: 'PENDING_APPROVAL',
+                applicationDate: new Date(),
+                submissionVersion: nextVersion
             }
-        }
-    })
+        })
+        ctx.captureAfter(updatedLoan);
+        ctx.endStep('Transition Status');
 
-    // Legacy Journey Event (Keep for existing timeline)
-    await prisma.loanJourneyEvent.create({
-        data: {
-            loanId: loan.id,
-            eventType: 'APPLICATION_SUBMITTED',
-            description: `Loan application submitted (v${nextVersion})`,
-            actorId: session.user.id,
-            actorName: session.user.name || 'User',
-            metadata: {
-                version: nextVersion
+        ctx.beginStep('Post-Submission Tasks');
+        await prisma.notification.create({
+            data: {
+                memberId: loan.memberId,
+                type: NotificationType.APPLICATION_RECEIVED,
+                message: `Application ${loan.loanApplicationNumber} submitted successfully (v${nextVersion}).`,
+                loanId: loan.id
             }
-        }
-    })
+        })
 
-    revalidatePath('/loans')
-    revalidatePath(`/loans/${loanId}`)
-    return { success: true }
-}
+        try {
+            const { initiateWorkflow } = await import('@/app/actions/workflow-engine')
+            await initiateWorkflow('LOAN', loan.id, loan.memberId)
+        } catch (e) { }
+
+        await prisma.loanHistory.create({
+            data: {
+                loanId: loan.id,
+                actorName: session.user.name || 'User',
+                actorRole: user?.role || 'MEMBER',
+                action: 'SUBMITTED',
+                version: nextVersion,
+                metadata: {
+                    amount: Number(loan.amount),
+                    net: Number(loan.netDisbursementAmount)
+                }
+            }
+        })
+
+        await prisma.loanJourneyEvent.create({
+            data: {
+                loanId: loan.id,
+                eventType: 'APPLICATION_SUBMITTED',
+                description: `Loan application submitted (v${nextVersion})`,
+                actorId: session.user.id,
+                actorName: session.user.name || 'User',
+                metadata: {
+                    version: nextVersion
+                }
+            }
+        })
+        ctx.endStep('Post-Submission Tasks');
+
+        revalidatePath('/loans')
+        revalidatePath(`/loans/${loanId}`)
+        return { success: true }
+    }
+);
 
 /**
  * Toggle Fee Exemptions (Admin Only, APPLICATION Only)
  */
-export async function toggleFeeExemption(loanId: string, feeType: 'processingFee' | 'insuranceFee', enabled: boolean) {
-    const session = await auth()
+export const toggleFeeExemption = withAudit(
+    { actionType: AuditLogAction.SETTINGS_UPDATED, domain: 'LOAN', apiRoute: '/api/loans/exemptions' },
+    async (ctx, loanId: string, feeType: 'processingFee' | 'insuranceFee', enabled: boolean) => {
+        ctx.beginStep('Verify Authorization');
+        const session = await auth()
+        if (!session?.user) {
+            ctx.setErrorCode('UNAUTHORIZED');
+            return { error: 'Unauthorized' }
+        }
 
-    // Admin Check
-    const user = await prisma.user.findUnique({ where: { id: session?.user?.id } })
-    const isAdmin = user?.role && ['CHAIRPERSON', 'TREASURER', 'SECRETARY', 'SYSTEM_ADMIN'].includes(user.role)
-    if (!isAdmin) return { error: 'Unauthorized' }
+        const user = await prisma.user.findUnique({ where: { id: session.user.id } })
+        const isAdmin = user?.role && ['CHAIRPERSON', 'TREASURER', 'SECRETARY', 'SYSTEM_ADMIN'].includes(user.role)
+        if (!isAdmin) {
+            ctx.setErrorCode('FORBIDDEN');
+            return { error: 'Unauthorized' }
+        }
+        ctx.endStep('Verify Authorization');
 
-    const loan = await prisma.loan.findUnique({ where: { id: loanId } })
-    if (!loan) return { error: 'Loan not found' }
+        ctx.beginStep('Fetch Loan Data');
+        const loan = await prisma.loan.findUnique({ where: { id: loanId } })
+        if (!loan) {
+            ctx.setErrorCode('LOAN_NOT_FOUND');
+            return { error: 'Loan not found' }
+        }
+        if (!['APPLICATION', 'PENDING_APPROVAL'].includes(loan.status)) {
+            ctx.setErrorCode('INVALID_STATUS');
+            return { error: 'Exemptions can only be modified when loan is in APPLICATION or PENDING status.' }
+        }
+        ctx.captureBefore('Loan', loanId, loan);
+        ctx.endStep('Fetch Loan Data');
 
-    // Strict Workflow Rule: Only editable in APPLICATION
-    // Workflow Rule: Editable in APPLICATION or PENDING_APPROVAL (Admin Override)
-    if (!['APPLICATION', 'PENDING_APPROVAL'].includes(loan.status)) return { error: 'Exemptions can only be modified when loan is in APPLICATION or PENDING status.' }
+        ctx.beginStep('Calculate New Fees');
+        let newProcessingFee = Number(loan.processingFee)
+        let newInsuranceFee = Number(loan.insuranceFee)
 
-    // Logic: If Exemption is ENABLED, the Fee becomes 0.
-    // If DISABLED, calculate the original fee from the product.
+        const product = await prisma.loanProduct.findUnique({ where: { id: loan.loanProductId } })
+        if (!product) {
+            ctx.setErrorCode('PRODUCT_NOT_FOUND');
+            return { error: 'Product not found' }
+        }
 
-    let newProcessingFee = Number(loan.processingFee)
-    let newInsuranceFee = Number(loan.insuranceFee)
+        const { calculateLoanQualification } = await import('@/app/sacco-settings-actions')
+        const appraisal = await calculateLoanQualification(loan.memberId, [], Number(loan.amount))
 
-    // We need to fetch the original product rates to recalculate if un-exempting
-    const product = await prisma.loanProduct.findUnique({ where: { id: loan.loanProductId } })
-    if (!product) return { error: 'Product not found' }
+        const rawProcessingFee = appraisal.processingFee
+        const rawInsuranceFee = appraisal.insuranceFee
 
-    // Re-calculate base fees
-    const { calculateLoanQualification } = await import('@/app/sacco-settings-actions')
-    // Re-run calc logic to get raw fees
-    const appraisal = await calculateLoanQualification(loan.memberId, [], Number(loan.amount))
+        if (feeType === 'processingFee') {
+            newProcessingFee = enabled ? 0 : rawProcessingFee
+        } else if (feeType === 'insuranceFee') {
+            newInsuranceFee = enabled ? 0 : rawInsuranceFee
+        }
 
-    const rawProcessingFee = appraisal.processingFee
-    const rawInsuranceFee = appraisal.insuranceFee
+        const shareCapital = Number(loan.shareCapitalDeduction)
+        const existingOffset = Number(loan.existingLoanOffset)
+        const totalDeductions = newProcessingFee + newInsuranceFee + shareCapital + existingOffset
+        const netDisbursement = Math.max(0, Number(loan.amount) - totalDeductions)
+        ctx.endStep('Calculate New Fees');
 
-    if (feeType === 'processingFee') {
-        newProcessingFee = enabled ? 0 : rawProcessingFee
-    } else if (feeType === 'insuranceFee') {
-        newInsuranceFee = enabled ? 0 : rawInsuranceFee
-    }
-
-    // Update Loan with new fees
-    // Recalculate Totals
-    const shareCapital = Number(loan.shareCapitalDeduction)
-    const existingOffset = Number(loan.existingLoanOffset)
-    const topUpFee = 0 // Simplify for now or recalculate if stored
-    const totalDeductions = newProcessingFee + newInsuranceFee + shareCapital + existingOffset + topUpFee
-    const netDisbursement = Math.max(0, Number(loan.amount) - totalDeductions)
-
-    // Update DB
-    await prisma.loan.update({
-        where: { id: loanId },
-        data: {
-            processingFee: newProcessingFee,
-            insuranceFee: newInsuranceFee,
-            totalDeductions,
-            netDisbursementAmount: netDisbursement,
-
-            // Store Exemption Flag in Json
-            feeExemptions: {
-                ...(loan.feeExemptions as object),
-                [feeType]: enabled // true = exempted (0 fee)
+        ctx.beginStep('Update Loan');
+        const updatedLoan = await prisma.loan.update({
+            where: { id: loanId },
+            data: {
+                processingFee: newProcessingFee,
+                insuranceFee: newInsuranceFee,
+                totalDeductions,
+                netDisbursementAmount: netDisbursement,
+                feeExemptions: {
+                    ...(loan.feeExemptions as object),
+                    [feeType]: enabled
+                }
             }
-        }
-    })
+        })
+        ctx.captureAfter(updatedLoan);
+        ctx.endStep('Update Loan');
 
-    // Log Action
-    await prisma.auditLog.create({
-        data: {
-            userId: session!.user!.id!,
-            action: 'FEE_EXEMPTION_CHANGED',
-            details: `Updated ${feeType} exemption to ${enabled} for Loan ${loan.loanApplicationNumber} (Draft)`
-        }
-    })
-
-    revalidatePath(`/loans/${loanId}`)
-    return { success: true }
-}
+        revalidatePath(`/loans/${loanId}`)
+        return { success: true }
+    }
+);

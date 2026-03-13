@@ -3,10 +3,11 @@
 import { revalidatePath } from 'next/cache'
 import { db as prisma } from '@/lib/db'
 import { auth } from '@/auth'
-import { Prisma, EntityType, ApprovalAction, LoanStatus } from '@prisma/client'
+import { Prisma, EntityType, ApprovalAction, LoanStatus, AuditLogAction } from '@prisma/client'
+import { withAudit } from '@/lib/with-audit'
 
 /**
- * Universal Workflow Transition Handler
+ * Universal Workflow Workflow Transition Handler
  * @param entityType 'LOAN' | 'MEMBER' | 'EXPENSE'
  * @param entityId ID of the entity
  * @param action 'SEND' | 'CANCEL'
@@ -40,154 +41,182 @@ export async function handleWorkflowTransition(
     }
 }
 
-async function handleLoanTransition(loanId: string, action: 'SEND' | 'CANCEL', actorId: string, actorName: string) {
-    const loan = await prisma.loan.findUnique({ where: { id: loanId } })
-    if (!loan) return { error: 'Loan not found' }
+export const handleLoanTransition = withAudit(
+    { actionType: AuditLogAction.LOAN_STATUS_CHANGED, domain: 'LOAN', apiRoute: '/api/workflow/loan' },
+    async (ctx, loanId: string, action: 'SEND' | 'CANCEL', actorId: string, actorName: string) => {
+        ctx.beginStep('Retrieve Loan Record');
+        const loan = await prisma.loan.findUnique({ where: { id: loanId } })
+        if (!loan) {
+            ctx.setErrorCode('LOAN_NOT_FOUND');
+            throw new Error('Loan not found')
+        }
+        ctx.captureBefore('Loan', loan.id, loan);
+        ctx.endStep('Retrieve Loan Record');
 
-    // SEND REQUEST (Application -> Pending)
-    if (action === 'SEND') {
-        if (loan.status !== 'APPLICATION') {
-            return { error: 'Loan must be in APPLICATION stage to send.' }
+        // SEND REQUEST (Application -> Pending)
+        if (action === 'SEND') {
+            ctx.beginStep('Validate Loan Status');
+            if (loan.status !== 'APPLICATION') {
+                ctx.setErrorCode('INVALID_STATUS');
+                throw new Error('Loan must be in APPLICATION stage to send.')
+            }
+            ctx.endStep('Validate Loan Status');
+
+            const nextVersion = (loan.submissionVersion || 0) + 1
+
+            const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+                ctx.beginStep('Update Loan Status');
+                // Update Loan
+                await tx.loan.update({
+                    where: { id: loanId },
+                    data: {
+                        status: 'PENDING_APPROVAL',
+                        applicationDate: new Date(),
+                        submissionVersion: nextVersion
+                    }
+                })
+                ctx.endStep('Update Loan Status');
+
+                ctx.beginStep('Create/Update Approval Request');
+                // Ensure ApprovalRequest exists
+                const loanWithDetails = await tx.loan.findUnique({
+                    where: { id: loanId },
+                    include: {
+                        member: { select: { id: true, name: true, memberNumber: true } },
+                        loanProduct: { select: { name: true } }
+                    }
+                })
+
+                if (loanWithDetails) {
+                    const existingReq = await tx.approvalRequest.findFirst({
+                        where: { referenceId: loanId, type: 'LOAN' }
+                    })
+
+                    const description = `${loanWithDetails.loanProduct?.name || 'Loan'} - ${loanWithDetails.member.name} (${loanWithDetails.member.memberNumber})`
+
+                    if (existingReq) {
+                        await tx.approvalRequest.update({
+                            where: { id: existingReq.id },
+                            data: {
+                                status: 'PENDING',
+                                description,
+                                amount: loanWithDetails.amount,
+                                requesterName: loanWithDetails.member.name
+                            }
+                        })
+                    } else {
+                        await tx.approvalRequest.create({
+                            data: {
+                                type: 'LOAN',
+                                referenceId: loanId,
+                                referenceTable: 'Loan',
+                                requesterId: loanWithDetails.memberId,
+                                requesterName: loanWithDetails.member.name,
+                                description,
+                                amount: loanWithDetails.amount,
+                                status: 'PENDING',
+                                requiredPermission: 'APPROVE_LOANS'
+                            }
+                        })
+                    }
+                }
+                ctx.endStep('Create/Update Approval Request');
+
+                ctx.beginStep('Log Approval History');
+                // Log History
+                await tx.approvalHistory.create({
+                    data: {
+                        entityType: 'LOAN',
+                        entityId: loanId,
+                        actorUsername: actorName,
+                        actorId: actorId,
+                        action: 'SUBMITTED',
+                        metadata: { version: nextVersion, amount: loan.amount } as any
+                    }
+                })
+                ctx.endStep('Log Approval History');
+
+                ctx.beginStep('Send Notification');
+                // Create Notification
+                await tx.notification.create({
+                    data: {
+                        memberId: loan.memberId,
+                        type: 'SYSTEM_UPDATE',
+                        message: `Loan Application ${loan.loanApplicationNumber} submitted.`,
+                        loanId: loanId
+                    }
+                })
+                ctx.endStep('Send Notification');
+
+                return { success: true }
+            })
+
+            const updatedLoan = await prisma.loan.findUnique({ where: { id: loanId } });
+            if (updatedLoan) ctx.captureAfter(updatedLoan);
+
+            revalidatePath('/loans')
+            revalidatePath(`/loans/${loanId}`)
+            return result
         }
 
-        // Validate Eligibility (Reuse existing logic or simplified check)
-        // ideally: const eligibility = await checkLoanEligibility(loan.memberId)
+        // CANCEL REQUEST (Pending/Application -> Application/Cancelled)
+        if (action === 'CANCEL') {
+            ctx.beginStep('Validate Cancellation');
+            if (!['APPLICATION', 'PENDING_APPROVAL'].includes(loan.status)) {
+                ctx.setErrorCode('INVALID_STATUS');
+                throw new Error('Cannot cancel a processed loan.')
+            }
+            ctx.endStep('Validate Cancellation');
 
-        const nextVersion = (loan.submissionVersion || 0) + 1
+            const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+                ctx.beginStep('Revert Loan Status');
+                // Revert Status to APPLICATION (Editable)
+                await tx.loan.update({
+                    where: { id: loanId },
+                    data: {
+                        status: 'APPLICATION', // Back to Draft
+                        approvalVotes: [],
+                        cancellationCount: { increment: 1 }
+                    }
+                })
+                ctx.endStep('Revert Loan Status');
 
-        await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-            // Update Loan
-            await tx.loan.update({
-                where: { id: loanId },
-                data: {
-                    status: 'PENDING_APPROVAL',
-                    applicationDate: new Date(),
-                    submissionVersion: nextVersion
-                }
-            })
-
-            // Ensure ApprovalRequest exists
-            const loanWithDetails = await tx.loan.findUnique({
-                where: { id: loanId },
-                include: {
-                    member: { select: { id: true, name: true, memberNumber: true } },
-                    loanProduct: { select: { name: true } }
-                }
-            })
-
-            if (loanWithDetails) {
+                ctx.beginStep('Remove Approval Request');
+                // Remove from approval queue
                 const existingReq = await tx.approvalRequest.findFirst({
                     where: { referenceId: loanId, type: 'LOAN' }
                 })
-
-                const description = `${loanWithDetails.loanProduct?.name || 'Loan'} - ${loanWithDetails.member.name} (${loanWithDetails.member.memberNumber})`
-
                 if (existingReq) {
-                    await tx.approvalRequest.update({
-                        where: { id: existingReq.id },
-                        data: {
-                            status: 'PENDING',
-                            description,
-                            amount: loanWithDetails.amount,
-                            requesterName: loanWithDetails.member.name
-                        }
-                    })
-                } else {
-                    await tx.approvalRequest.create({
-                        data: {
-                            type: 'LOAN',
-                            referenceId: loanId,
-                            referenceTable: 'Loan',
-                            requesterId: loanWithDetails.memberId,
-                            requesterName: loanWithDetails.member.name,
-                            description,
-                            amount: loanWithDetails.amount,
-                            status: 'PENDING',
-                            requiredPermission: 'APPROVE_LOANS'
-                        }
-                    })
+                    await tx.approvalRequest.delete({ where: { id: existingReq.id } })
                 }
-            }
+                ctx.endStep('Remove Approval Request');
 
+                ctx.beginStep('Log Approval History');
+                // Log History
+                await tx.approvalHistory.create({
+                    data: {
+                        entityType: 'LOAN',
+                        entityId: loanId,
+                        actorUsername: actorName,
+                        actorId: actorId,
+                        action: 'CANCELLED',
+                        metadata: { fromStatus: loan.status } as any
+                    }
+                })
+                ctx.endStep('Log Approval History');
 
-
-            // Log History
-            await tx.approvalHistory.create({
-                data: {
-                    entityType: 'LOAN',
-                    entityId: loanId,
-                    actorUsername: actorName,
-                    actorId: actorId,
-                    action: 'SUBMITTED',
-                    metadata: { version: nextVersion, amount: loan.amount }
-                }
+                return { success: true }
             })
 
-            // Create Notification
-            await tx.notification.create({
-                data: {
-                    memberId: loan.memberId, // Notify the member themselves? Or admins?
-                    // Usually this notifies ADMINS. For now, system log.
-                    type: 'SYSTEM_UPDATE',
-                    message: `Loan Application ${loan.loanApplicationNumber} submitted.`,
-                    loanId: loanId
-                }
-            })
-        })
+            const updatedLoan = await prisma.loan.findUnique({ where: { id: loanId } });
+            if (updatedLoan) ctx.captureAfter(updatedLoan);
 
-        revalidatePath('/loans')
-        revalidatePath(`/loans/${loanId}`)
-        return { success: true }
-    }
-
-    // CANCEL REQUEST (Pending/Application -> Application/Cancelled)
-    if (action === 'CANCEL') {
-        // Allow cancelling even if Draft (just to log it) or Pending
-        // If Draft, it just stays Draft but maybe clears fields? 
-        // User request: "Cancel Request" usually withdraws a PENDING one back to DRAFT (Application).
-
-        if (!['APPLICATION', 'PENDING_APPROVAL'].includes(loan.status)) {
-            return { error: 'Cannot cancel a processed loan.' }
+            revalidatePath('/loans')
+            revalidatePath(`/loans/${loanId}`)
+            return result
         }
-
-        await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-            // Revert Status to APPLICATION (Editable)
-            await tx.loan.update({
-                where: { id: loanId },
-                data: {
-                    status: 'APPLICATION', // Back to Draft
-                    // Start fresh approval votes
-                    approvalVotes: [],
-                    cancellationCount: { increment: 1 }
-                }
-            })
-
-            // Remove from approval queue
-            const existingReq = await tx.approvalRequest.findFirst({
-                where: { referenceId: loanId, type: 'LOAN' }
-            })
-            if (existingReq) {
-                await tx.approvalRequest.delete({ where: { id: existingReq.id } })
-            }
-
-            // Log History
-            await tx.approvalHistory.create({
-                data: {
-                    entityType: 'LOAN',
-                    entityId: loanId,
-                    actorUsername: actorName,
-                    actorId: actorId,
-                    action: 'CANCELLED',
-                    metadata: { fromStatus: loan.status }
-                }
-            })
-        })
-
-        revalidatePath('/loans')
-        revalidatePath(`/loans/${loanId}`)
-        return { success: true }
     }
-}
+)
 
 /**
  * Fetch Approval History
@@ -199,3 +228,5 @@ export async function getApprovalHistory(entityType: EntityType, entityId: strin
     })
     return history
 }
+
+

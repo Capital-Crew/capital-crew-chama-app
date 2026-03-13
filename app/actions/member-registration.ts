@@ -1,12 +1,11 @@
-
 'use server'
 
 import { db as prisma } from '@/lib/db'
-import { Prisma } from '@prisma/client'
+import { Prisma, AuditLogAction } from '@prisma/client'
 import { auth } from '@/auth'
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
-// import { generateRandomString } from '@/lib/utils'
+import { withAudit } from '@/lib/with-audit'
 
 // Validation Schema
 const registrationSchema = z.object({
@@ -28,138 +27,136 @@ export type RegistrationResult = {
 
 /**
  * Atomic Member Registration
- * 1. Calculates next Member Number
- * 2. Generates unique Wallet ID
- * 3. Creates Member and Wallet in single transaction
  */
-export async function createMemberWithWallet(formData: FormData): Promise<RegistrationResult> {
-    const session = await auth()
-    if (!session?.user?.id) {
-        return { success: false, error: "Unauthorized" }
-    }
-
-    // Restrict to Admins
-    if (!['CHAIRPERSON', 'TREASURER', 'SECRETARY', 'SYSTEM_ADMIN'].includes((session.user as any).role)) {
-        return { success: false, error: "Unauthorized: Only Admins can register members" }
-    }
-
-
-    const rawData = {
-        firstName: formData.get('firstName'),
-        lastName: formData.get('lastName'),
-        mobile: formData.get('mobile'),
-        email: formData.get('email'),
-        nationalId: formData.get('nationalId'),
-        branchId: formData.get('branchId') || undefined
-    }
-
-    const validated = registrationSchema.safeParse(rawData)
-    if (!validated.success) {
-        return { success: false, error: validated.error.issues[0].message }
-    }
-
-    const { firstName, lastName, mobile, email, nationalId, branchId } = validated.data
-
-    try {
-        // 1. Get Liability Account (2000)
-        const liabilityAccount = await prisma.ledgerAccount.findUnique({
-            where: { code: '2000' } // Strict 5-Ledger Rule
-        })
-
-        if (!liabilityAccount) {
-            throw new Error("System Configuration Error: Liability Account (2000) not found.")
+export const createMemberWithWallet = withAudit(
+    { actionType: AuditLogAction.MEMBER_ADDED, domain: 'MEMBERSHIP', apiRoute: '/api/membership/register' },
+    async (ctx, formData: FormData): Promise<RegistrationResult> => {
+        ctx.beginStep('Verify Authorization');
+        const session = await auth()
+        if (!session?.user?.id) {
+            ctx.setErrorCode('UNAUTHORIZED');
+            return { success: false, error: "Unauthorized" }
         }
 
-        const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-            // 2. Generate Next Member Number (Locking would be ideal, but for now simple Max+1)
-            const stats = await tx.member.aggregate({
-                _max: { memberNumber: true }
+        if (!['CHAIRPERSON', 'TREASURER', 'SECRETARY', 'SYSTEM_ADMIN'].includes((session.user as any).role)) {
+            ctx.setErrorCode('FORBIDDEN');
+            return { success: false, error: "Unauthorized: Only Admins can register members" }
+        }
+
+        ctx.beginStep('Validate Input Data');
+        const rawData = {
+            firstName: formData.get('firstName'),
+            lastName: formData.get('lastName'),
+            mobile: formData.get('mobile'),
+            email: formData.get('email'),
+            nationalId: formData.get('nationalId'),
+            branchId: formData.get('branchId') || undefined
+        }
+
+        const validated = registrationSchema.safeParse(rawData)
+        if (!validated.success) {
+            ctx.setErrorCode('VALIDATION_ERROR');
+            return { success: false, error: validated.error.issues[0].message }
+        }
+        const { firstName, lastName, mobile, email, nationalId, branchId } = validated.data
+        ctx.endStep('Validate Input Data');
+
+        try {
+            ctx.beginStep('Resolve System Configuration');
+            const liabilityAccount = await prisma.ledgerAccount.findUnique({
+                where: { code: '2000' }
             })
-            const nextMemberNumber = (stats._max.memberNumber || 0) + 1
 
-            // 3. Generate Unique Wallet ID using cryptographically secure random bytes (P4.2)
-            let uniqueWalletId = ''
-            let isUnique = false
-            let attempts = 0
-
-            while (!isUnique && attempts < 5) {
-                const { randomBytes } = await import('crypto')
-                uniqueWalletId = `WAL-${randomBytes(4).toString('hex').toUpperCase()}`
-
-                const existing = await tx.wallet.findUnique({
-                    where: { accountRef: uniqueWalletId }
-                })
-                if (!existing) isUnique = true
-                attempts++
+            if (!liabilityAccount) {
+                ctx.setErrorCode('SYSTEM_CONFIG_ERROR');
+                throw new Error("System Configuration Error: Liability Account (2000) not found.")
             }
+            ctx.endStep('Resolve System Configuration');
 
+            const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+                ctx.beginStep('Generate Member Number');
+                const stats = await tx.member.aggregate({
+                    _max: { memberNumber: true }
+                })
+                const nextMemberNumber = (stats._max.memberNumber || 0) + 1
+                ctx.endStep('Generate Member Number', { memberNumber: nextMemberNumber });
 
-            if (!isUnique) throw new Error("Failed to generate unique Wallet ID. Please try again.")
+                ctx.beginStep('Generate Unique Wallet ID');
+                let uniqueWalletId = ''
+                let isUnique = false
+                let attempts = 0
 
-            // 4. Create Member
-            const member = await tx.member.create({
-                data: {
-                    memberNumber: nextMemberNumber,
-                    name: `${firstName} ${lastName}`,
-                    contact: mobile,
-                    status: 'PENDING',
-                    createdBy: session.user.id,
-                    branchId: branchId,
-                    // 1:1 Relations
-                    details: {
-                        create: {
-                            firstName,
-                            lastName,
-                            // mobile removed - not in MemberDetail schema
-                        }
-                    },
-                    contactInfo: {
-                        create: {
-                            mobile,
-                            email: email || undefined
-                        }
-                    },
-                    identifiers: {
-                        create: {
-                            type: 'NATIONAL_ID',
-                            value: nationalId
+                while (!isUnique && attempts < 5) {
+                    const { randomBytes } = await import('crypto')
+                    uniqueWalletId = `WAL-${randomBytes(4).toString('hex').toUpperCase()}`
+
+                    const existing = await tx.wallet.findUnique({
+                        where: { accountRef: uniqueWalletId }
+                    })
+                    if (!existing) isUnique = true
+                    attempts++
+                }
+
+                if (!isUnique) {
+                    ctx.setErrorCode('WALLET_ID_COLLISION');
+                    throw new Error("Failed to generate unique Wallet ID. Please try again.")
+                }
+                ctx.endStep('Generate Unique Wallet ID', { walletId: uniqueWalletId });
+
+                ctx.beginStep('Create Member Record');
+                const member = await tx.member.create({
+                    data: {
+                        memberNumber: nextMemberNumber,
+                        name: `${firstName} ${lastName}`,
+                        contact: mobile,
+                        status: 'PENDING',
+                        createdBy: session.user.id,
+                        branchId: branchId,
+                        details: {
+                            create: { firstName, lastName }
+                        },
+                        contactInfo: {
+                            create: {
+                                mobile,
+                                email: email || undefined
+                            }
+                        },
+                        identifiers: {
+                            create: {
+                                type: 'NATIONAL_ID',
+                                value: nationalId
+                            }
                         }
                     }
-                }
+                })
+                ctx.endStep('Create Member Record');
+
+                ctx.beginStep('Create Wallet Record');
+                const wallet = await tx.wallet.create({
+                    data: {
+                        memberId: member.id,
+                        accountRef: uniqueWalletId,
+                        glAccountId: liabilityAccount.id,
+                        status: 'ACTIVE',
+                        currency: 'KES'
+                    }
+                })
+                ctx.endStep('Create Wallet Record');
+
+                return { member, wallet }
             })
 
-            // 5. Create Wallet
-            const wallet = await tx.wallet.create({
-                data: {
-                    memberId: member.id,
-                    accountRef: uniqueWalletId, // usage as ID
-                    glAccountId: liabilityAccount.id,
-                    status: 'ACTIVE',
-                    currency: 'KES'
-                }
-            })
-
-            // 6. Audit Log
-            await tx.auditLog.create({
-                data: {
-                    userId: session.user.id!,
-                    action: 'MEMBER_ADDED',
-                    details: `Created Member #${nextMemberNumber} (${member.name}) with Wallet ${uniqueWalletId}`
-                }
-            })
-
-            return { member, wallet }
-        })
-
-        revalidatePath('/dashboard/members')
-        return {
-            success: true,
-            data: result.member,
-            memberNumber: result.member.memberNumber,
-            walletId: result.wallet.accountRef
+            ctx.captureAfter(result.member);
+            revalidatePath('/dashboard/members')
+            return {
+                success: true,
+                data: result.member,
+                memberNumber: result.member.memberNumber,
+                walletId: result.wallet.accountRef
+            }
+        } catch (error: any) {
+            ctx.setErrorCode('REGISTRATION_FAILED');
+            return { success: false, error: error.message || "Registration failed." }
         }
-
-    } catch (error: any) {
-        return { success: false, error: error.message || "Registration failed." }
     }
-}
+);

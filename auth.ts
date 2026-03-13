@@ -20,12 +20,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     await prisma.auditLog.create({
                         data: {
                             userId: user.id,
-                            action: 'USER_LOGIN', // Using string literal as fallback until server restart
-                            details: 'User logged in',
-                            summary: 'User Login',
-                            severity: 'INFO',
+                            action: 'USER_LOGIN', // Matches schema enum
+                            actionType: 'USER_LOGIN',
+                            domain: 'AUTH',
                             context: 'AUTH',
-                            ipAddress: 'Unknown',
+                            summary: `User logged in: ${user.email}`,
+                            severity: 'INFO',
+                            severityLevel: 'INFO',
+                            status: 'SUCCESS',
                             timestamp: new Date(),
                         }
                     })

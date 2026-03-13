@@ -4,146 +4,156 @@ import { db as prisma } from "@/lib/db"
 import { auth } from '@/auth'
 import { AccountingEngine } from "@/lib/accounting/AccountingEngine"
 import { revalidatePath } from "next/cache"
-import { ReferenceType } from "@prisma/client"
+import { ReferenceType, AuditLogAction } from "@prisma/client"
+import { withAudit } from "@/lib/with-audit"
 
-export async function assignTransactionToMember(transactionId: string, memberId: string) {
-    const session = await auth()
-    if (!session?.user || !['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER'].includes(session.user.role)) {
-        return { success: false, error: "Unauthorized: Access Restricted" }
-    }
-
-    try {
-        const transaction = await prisma.transaction.findUnique({
-            where: { id: transactionId }
-        });
-
-        if (!transaction) {
-            return { success: false, error: "Transaction not found" };
+export const assignTransactionToMember = withAudit(
+    { actionType: AuditLogAction.MPESA_RECONCILED, domain: 'MPESA', apiRoute: '/api/admin/mpesa/reconcile' },
+    async (ctx, transactionId: string, memberId: string) => {
+        ctx.beginStep('Verify Authorization');
+        const session = await auth()
+        if (!session?.user || !['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER'].includes(session.user.role)) {
+            ctx.setErrorCode('UNAUTHORIZED');
+            return { success: false, error: "Unauthorized: Access Restricted" }
         }
+        ctx.endStep('Verify Authorization');
 
-        if (transaction.memberId) {
-            return { success: false, error: "Transaction is already assigned to a member" };
-        }
+        try {
+            ctx.beginStep('Fetch Transaction and Member');
+            const transaction = await prisma.transaction.findUnique({
+                where: { id: transactionId }
+            });
 
-        const member = await prisma.member.findUnique({
-            where: { id: memberId },
-            include: { wallet: true }
-        });
-
-        if (!member) {
-            return { success: false, error: "Member not found" };
-        }
-
-        // 1. Link Member to Transaction
-        await prisma.transaction.update({
-            where: { id: transactionId },
-            data: { memberId: member.id }
-        });
-
-        // 2. Check and Post Ledger Entry
-        // We check if a ledger entry already exists for this transaction reference
-        const existingLedger = await prisma.ledgerTransaction.findFirst({
-            where: {
-                referenceId: transaction.id // Assuming we use transaction ID as reference
+            if (!transaction) {
+                ctx.setErrorCode('TRANSACTION_NOT_FOUND');
+                return { success: false, error: "Transaction not found" };
             }
-        });
 
-        // To be safe, let's check both ID and Receipt
-        const existingLedgerByReceipt = transaction.mpesaReceiptNumber ? await prisma.ledgerTransaction.findFirst({
-            where: { referenceId: transaction.mpesaReceiptNumber }
-        }) : null;
+            if (transaction.memberId) {
+                ctx.setErrorCode('ALREADY_ASSIGNED');
+                return { success: false, error: "Transaction is already assigned to a member" };
+            }
 
-        if (existingLedger || existingLedgerByReceipt) {
-            // Ledger entry exists, just linking was enough.
-            revalidatePath('/admin/system');
-            return { success: true, message: "Transaction linked. Ledger entry already existed." };
-        }
+            const member = await prisma.member.findUnique({
+                where: { id: memberId },
+                include: { wallet: true }
+            });
 
-        // 3. Post Missing Ledger Entry
-        // Need to ensure wallet exists
-        let wallet = member.wallet;
+            if (!member) {
+                ctx.setErrorCode('MEMBER_NOT_FOUND');
+                return { success: false, error: "Member not found" };
+            }
+            ctx.captureBefore('Transaction', transactionId, transaction);
+            ctx.endStep('Fetch Transaction and Member');
 
-        // Fetch System Asset Account for Cash Deposit and Member Liability Account
-        const [assetAccountMap, liabilityAccountMap] = await Promise.all([
-            prisma.systemAccountingMapping.findUnique({
-                where: { type: 'EVENT_CASH_DEPOSIT' },
-                include: { account: true }
-            }),
-            prisma.systemAccountingMapping.findUnique({
-                where: { type: 'MEMBER_WALLET' },
-                include: { account: true }
-            })
-        ]);
+            // 1. Link Member to Transaction
+            ctx.beginStep('Update Transaction');
+            await prisma.transaction.update({
+                where: { id: transactionId },
+                data: { memberId: member.id }
+            });
+            ctx.endStep('Update Transaction');
 
-        if (!assetAccountMap?.account) {
-            return { success: false, error: "System Asset Account (EVENT_CASH_DEPOSIT) not configured." };
-        }
-
-        if (!liabilityAccountMap?.account) {
-            return { success: false, error: "Member Liability Account (MEMBER_WALLET) not configured." };
-        }
-
-        if (!wallet) {
-            // Need a unique accountRef. Use Member Number as base
-            wallet = await prisma.wallet.create({
-                data: {
-                    memberId: member.id,
-                    status: 'ACTIVE',
-                    glAccountId: liabilityAccountMap.account.id,
-                    accountRef: `WALLET_${member.memberNumber}`
+            // 2. Check and Post Ledger Entry
+            ctx.beginStep('Post Ledger Entry');
+            const existingLedger = await prisma.ledgerTransaction.findFirst({
+                where: {
+                    referenceId: transaction.id
                 }
             });
-        }
 
-        // Credit User Wallet (Liability), Debit System Asset (Asset)
-        const description = `Manual Reconciliation: Deposit (${member.memberNumber})`;
+            const existingLedgerByReceipt = transaction.mpesaReceiptNumber ? await prisma.ledgerTransaction.findFirst({
+                where: { referenceId: transaction.mpesaReceiptNumber }
+            }) : null;
 
-        await AccountingEngine.postJournalEntry({
-            description,
-            transactionDate: transaction.createdAt,
-            referenceType: ReferenceType.SAVINGS_DEPOSIT,
-            referenceId: transaction.id,
-            createdBy: "ADMIN",
-            createdByName: "Manual Reconciliation",
-            externalReferenceId: transaction.mpesaReceiptNumber || transaction.checkoutRequestId,
-            lines: [
-                {
-                    accountId: assetAccountMap.account.id, // Dr Cash/Bank Asset
-                    debitAmount: Number(transaction.amount),
-                    creditAmount: 0,
-                    description: `Cash Deposit (Reconciled)`
-                },
-                {
-                    accountId: wallet.glAccountId, // Cr Specific Member Wallet Liability
-                    debitAmount: 0,
-                    creditAmount: Number(transaction.amount),
-                    description: `Credit to Wallet (${member.memberNumber})`
-                }
-            ]
-        });
-
-        // We no longer manually update wallet.balance as it is derived or removed. 
-        // If we need to track this transaction specifically for the wallet, we should check if postJournalEntry creates a WalletTransaction
-        // AccountingEngine usually handles this if configured, or we might need to manually create a WalletTransaction.
-        // Assuming postJournalEntry handles GL, but we might want a visible WalletTransaction record?
-        // Checking schema: WalletTransaction links to Wallet. 
-
-        // Let's create a WalletTransaction record for visibility in the user's statement
-        await prisma.walletTransaction.create({
-            data: {
-                walletId: wallet.id,
-                type: 'DEPOSIT', // Assuming this enum exists or similar
-                amount: Number(transaction.amount),
-                balanceAfter: 0, // Legacy/Display field, maybe calculate from GL or fetch? Leaving 0 if not critical or fetch sum.
-                description: `Deposit via M-Pesa (${transaction.mpesaReceiptNumber || 'Reconciled'})`,
-                immutable: true
+            if (existingLedger || existingLedgerByReceipt) {
+                revalidatePath('/admin/system');
+                ctx.endStep('Post Ledger Entry', { exists: true });
+                return { success: true, message: "Transaction linked. Ledger entry already existed." };
             }
-        });
 
-        revalidatePath('/admin/system');
-        return { success: true, message: "Transaction linked and wallet credited successfully." };
+            let wallet = member.wallet;
+            const [assetAccountMap, liabilityAccountMap] = await Promise.all([
+                prisma.systemAccountingMapping.findUnique({
+                    where: { type: 'EVENT_CASH_DEPOSIT' },
+                    include: { account: true }
+                }),
+                prisma.systemAccountingMapping.findUnique({
+                    where: { type: 'MEMBER_WALLET' },
+                    include: { account: true }
+                })
+            ]);
 
-    } catch (error: any) {
-        return { success: false, error: error.message || "Failed to reconcile transaction" };
+            if (!assetAccountMap?.account) {
+                ctx.setErrorCode('ASSET_ACCOUNT_NOT_CONFIGURED');
+                return { success: false, error: "System Asset Account (EVENT_CASH_DEPOSIT) not configured." };
+            }
+
+            if (!liabilityAccountMap?.account) {
+                ctx.setErrorCode('LIABILITY_ACCOUNT_NOT_CONFIGURED');
+                return { success: false, error: "Member Liability Account (MEMBER_WALLET) not configured." };
+            }
+
+            if (!wallet) {
+                wallet = await prisma.wallet.create({
+                    data: {
+                        memberId: member.id,
+                        status: 'ACTIVE',
+                        glAccountId: liabilityAccountMap.account.id,
+                        accountRef: `WALLET_${member.memberNumber}`
+                    }
+                });
+            }
+
+            const description = `Manual Reconciliation: Deposit (${member.memberNumber})`;
+
+            await AccountingEngine.postJournalEntry({
+                description,
+                transactionDate: transaction.createdAt,
+                referenceType: ReferenceType.SAVINGS_DEPOSIT,
+                referenceId: transaction.id,
+                createdBy: session.user.id!,
+                createdByName: session.user.name || "Manual Reconciliation",
+                externalReferenceId: transaction.mpesaReceiptNumber || transaction.checkoutRequestId,
+                lines: [
+                    {
+                        accountId: assetAccountMap.account.id,
+                        debitAmount: Number(transaction.amount),
+                        creditAmount: 0,
+                        description: `Cash Deposit (Reconciled)`
+                    },
+                    {
+                        accountId: wallet.glAccountId,
+                        debitAmount: 0,
+                        creditAmount: Number(transaction.amount),
+                        description: `Credit to Wallet (${member.memberNumber})`
+                    }
+                ]
+            });
+            ctx.endStep('Post Ledger Entry');
+
+            ctx.beginStep('Create Wallet Transaction');
+            await prisma.walletTransaction.create({
+                data: {
+                    walletId: wallet.id,
+                    type: 'DEPOSIT',
+                    amount: Number(transaction.amount),
+                    balanceAfter: 0,
+                    description: `Deposit via M-Pesa (${transaction.mpesaReceiptNumber || 'Reconciled'})`,
+                    immutable: true
+                }
+            });
+            ctx.endStep('Create Wallet Transaction');
+
+            const updatedTransaction = await prisma.transaction.findUnique({ where: { id: transactionId } });
+            if (updatedTransaction) ctx.captureAfter(updatedTransaction);
+
+            revalidatePath('/admin/system');
+            return { success: true, message: "Transaction linked and wallet credited successfully." };
+
+        } catch (error: any) {
+            ctx.setErrorCode('RECONCILIATION_FAILED');
+            return { success: false, error: error.message || "Failed to reconcile transaction" };
+        }
     }
-}
+);

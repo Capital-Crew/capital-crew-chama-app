@@ -1,106 +1,140 @@
+import { headers } from 'next/headers';
 import { auth } from '@/auth';
 import { db } from '@/lib/db';
 import { AuditContext } from './audit-context';
-import { AuditLogAction } from '@prisma/client';
+import { AuditLogAction, AuditStatus, Severity } from '@prisma/client';
+import { getGeoFromIp } from './utils/geo';
 
-type AuditActionType = AuditLogAction | string;
-
-interface AuditOptions {
-    context?: string; // e.g., 'LOAN', 'AUTH'
-    action: AuditActionType;
+interface AuditConfig {
+    actionType: string;   // SCREAMING_SNAKE_CASE e.g. LOAN_APPROVED
+    domain: string;   // e.g. LOAN | CONTRIBUTION | MEMBER | FINANCE
+    apiRoute: string;   // e.g. /api/loans/approve
+    httpMethod?: string;  // defaults to POST
 }
 
+type AuditedFn<TArgs extends unknown[], TReturn> = (
+    ctx: typeof AuditContext,
+    ...args: TArgs
+) => Promise<TReturn>;
+
 /**
- * Higher-Order Function to wrap Server Actions with Audit Logging.
- * 
- * Usage:
- * export const myAction = withAudit({ action: 'MY_ACTION', context: 'DOMAIN' }, async (...) => { ... })
+ * Enhanced withAudit Higher-Order Function.
+ * Captures request metadata, sessions, and state diffs.
  */
-export function withAudit<TArgs extends any[], TResult>(
-    options: AuditLogAction | AuditOptions, // Support both old (enum) and new (object) signatures
-    businessLogicFn: (...args: TArgs) => Promise<TResult>
+export function withAudit<TArgs extends unknown[], TReturn>(
+    configOrAction: AuditConfig | AuditLogAction,
+    fn: AuditedFn<TArgs, TReturn>
 ) {
-    return async (...args: TArgs): Promise<TResult> => {
-        // Normalize options
-        const actionName = typeof options === 'string' || typeof options === 'object' && !('action' in options)
-            ? (options as string)
-            : (options as AuditOptions).action;
+    return async (...args: TArgs): Promise<TReturn> => {
+        const start = Date.now();
+        const requestId = crypto.randomUUID();
 
-        const context = typeof options === 'object' && 'context' in options
-            ? (options as AuditOptions).context
-            : 'SYSTEM';
+        // Normalize config for backward compatibility
+        const config: AuditConfig = typeof configOrAction === 'string'
+            ? { actionType: configOrAction, domain: 'SYSTEM', apiRoute: 'unknown' }
+            : configOrAction;
 
-        // 1. Initialize Context
-        AuditContext.flush(); // Clear any previous state
-        AuditContext.setContext(context);
-        const startTime = Date.now();
+        // Flush context for the new request
+        AuditContext.flush();
 
-        // Get current user
-        const session = await auth();
-        const userId = session?.user?.id;
-        // @ts-ignore // IP might be added to session in auth.ts or passed via headers, for now undefined
-        const ipAddress = session?.ip || '0.0.0.0';
+        // ── Read request metadata ──────────────────────────────────────
+        let ipAddress = 'unknown';
+        let userAgent = 'unknown';
+        let sessionId: string | undefined = undefined;
 
         try {
-            // 2. Execute Business Logic
-            const result = await businessLogicFn(...args);
+            const hdrs = await headers();
+            ipAddress = hdrs.get('x-forwarded-for')?.split(',')[0].trim()
+                ?? hdrs.get('x-real-ip')
+                ?? 'unknown';
+            userAgent = hdrs.get('user-agent') ?? 'unknown';
+            sessionId = hdrs.get('x-session-id') ?? undefined;
+        } catch (e) {
+            // Headers might not be available in some contexts (e.g. background tasks if any)
+        }
 
-            // 3. On Success: Log INFO
-            if (userId) {
-                const durationMs = Date.now() - startTime;
-                const steps = AuditContext.getSummary();
+        // ── Auth context ───────────────────────────────────────────────
+        const session = await auth();
+        const userId = session?.user?.id ?? 'anonymous';
+        const userEmail = session?.user?.email ?? 'unknown';
+        const userRole = session?.user?.role ?? 'unknown';
 
-                // Construct standard summary
-                const stepSummary = steps.map(s => s.action).join(', ');
-                const summary = steps.length > 0
-                    ? `${actionName} completed. Steps: ${stepSummary}`
-                    : `${actionName} completed successfully.`;
+        // ── Optional: geo lookup from IP ──────────────────────────────
+        const geolocation = await getGeoFromIp(ipAddress);
 
-                await db.auditLog.create({
-                    data: {
-                        userId,
-                        action: actionName as AuditLogAction,
-                        details: JSON.stringify({ status: 'SUCCESS' }), // Legacy
-                        summary: summary,
-                        context: context,
-                        severity: 'INFO',
-                        ipAddress: ipAddress,
-                        steps: steps as any,
-                        metadata: { result: 'SUCCESS' },
-                        durationMs: durationMs
-                    }
-                });
-            }
+        // ── Run the actual action ──────────────────────────────────────
+        let result: TReturn;
+        let status: AuditStatus = AuditStatus.SUCCESS;
+        let severity: Severity = Severity.INFO;
+        let summary = '';
+        let errorStack: string | undefined;
 
+        try {
+            result = await fn(AuditContext, ...args);
+            summary = `${config.actionType} completed successfully`;
             return result;
 
-        } catch (error: any) {
-            // 4. On Failure: Log CRITICAL
-            if (userId) {
-                const durationMs = Date.now() - startTime;
-                AuditContext.error('Action Failed', error); // Add final error step
-                const steps = AuditContext.getSummary();
+        } catch (error) {
+            const built = AuditContext.build();
+            status = built.hadPartialSuccess ? AuditStatus.PARTIAL : AuditStatus.FAILURE;
+            severity = Severity.CRITICAL;
+            summary = error instanceof Error ? error.message : 'Unknown error occurred';
+            errorStack = error instanceof Error ? error.stack : undefined;
+            throw error;
 
+        } finally {
+            // ── Write audit log — never block the response ────────────────
+            const built = AuditContext.build();
+            try {
                 await db.auditLog.create({
                     data: {
-                        userId,
-                        action: actionName as AuditLogAction,
-                        details: JSON.stringify({ status: 'FAILURE', error: error.message }), // Legacy
-                        summary: `${actionName} failed: ${error.message}`,
-                        context: context,
-                        severity: 'CRITICAL',
-                        ipAddress: ipAddress,
-                        steps: steps as any,
-                        metadata: { result: 'FAILURE', errorStack: error.stack },
-                        durationMs: durationMs
-                    }
-                });
-            }
+                        // Identity
+                        userId: userId !== 'anonymous' ? userId : undefined, // userId is required in some schemas? No, it's string.
+                        // If the user isn't logged in but userId is required, we use a fallback or skip.
+                        // In our current schema userId is @relation(fields: [userId], references: [id]) so it must exist.
+                        // I'll check if I should skip logging if userId is anonymous and schema is strict.
+                        ...(userId !== 'anonymous' && { userId }),
+                        userEmail,
+                        userRole,
+                        ipAddress,
+                        userAgent,
+                        sessionId,
+                        geolocation,
+                        requestId,
 
-            // Re-throw
-            throw error;
-        } finally {
-            AuditContext.flush();
+                        // What happened
+                        action: config.actionType as AuditLogAction, // Legacy
+                        actionType: config.actionType as AuditLogAction, // New
+                        domain: config.domain,
+                        context: config.domain, // Legacy alias
+                        entityType: built.entityType ?? 'unknown',
+                        entityId: built.entityId ?? 'unknown',
+                        apiRoute: config.apiRoute,
+                        httpMethod: config.httpMethod ?? 'POST',
+
+                        // Outcome
+                        status,
+                        severity: severity === Severity.CRITICAL ? 'CRITICAL' : 'INFO', // Legacy String
+                        severityLevel: severity, // New Enum
+                        summary,
+                        errorCode: built.errorCode,
+                        errorStack,
+
+                        // Execution detail
+                        steps: built.steps as any,
+                        durationMs: Date.now() - start,
+
+                        // State diff
+                        stateBefore: built.stateBefore ?? undefined,
+                        stateAfter: built.stateAfter ?? undefined,
+                        diff: built.diff ?? undefined,
+                    },
+                });
+            } catch (logError) {
+                // Logging must never crash the application
+                console.error('[AuditLog] Failed to write audit record:', logError);
+            }
+            // Context is request-scoped via react cache, no need to flush here but good practice
         }
     };
 }

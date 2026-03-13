@@ -124,6 +124,7 @@ enum AuditLogAction {
   PRODUCT_CREATED
   PRODUCT_UPDATED
   MEMBER_ADDED
+  MEMBER_STATUS_CHANGED
   DASHBOARD_VIEWED
   REPORT_DOWNLOADED
   USER_RIGHTS_UPDATED
@@ -142,6 +143,9 @@ enum AuditLogAction {
   EXPENSE_REQUESTED
   EXPENSE_APPROVED
   EXPENSE_REJECTED
+  MPESA_RECONCILED
+  LOAN_ADJUSTED
+
   EXPENSE_PAID
 
   // Ledger Management actions
@@ -167,6 +171,18 @@ enum AuditLogAction {
   MEETING_REPORT_SUBMITTED
   MEETING_ATTENDANCE_PROCESSED
   MEETING_CREATED
+}
+
+enum AuditStatus {
+  SUCCESS
+  FAILURE
+  PARTIAL
+}
+
+enum Severity {
+  INFO
+  WARN
+  CRITICAL
 }
 
 enum WalletTransactionType {
@@ -1208,23 +1224,60 @@ model Notification {
 model AuditLog {
   id        String         @id @default(cuid())
   timestamp DateTime       @default(now())
+  createdAt DateTime       @default(now())
   userId    String
   user      User           @relation(fields: [userId], references: [id])
-  action    AuditLogAction
-  details   String?   // Made optional for legacy compatibility
+  
+  // Identity enrichment
+  userEmail   String?       // Nullable for legacy logs
+  userRole    String?       // Nullable for legacy logs
+  ipAddress   String?       // Existing
+  userAgent   String?       // Nullable for legacy logs
+  sessionId   String?       // Existing field in logic but maybe not in DB? No, it was missing.
+  geolocation String?       
 
-  // Smart Summary Fields
-  summary     String?  // Human-readable summary
-  context     String?  // Business domain (e.g., "LOAN", "AUTH")
-  severity    String?  // "INFO", "WARNING", "CRITICAL"
-  ipAddress   String?  // User IP
-  steps       Json?    // Detailed technical steps
-  snapshot    Json?    // Entity final state
-  metadata    Json?    // Context snapshot
-  durationMs  Int?     // Execution time
+  // What happened
+  action      AuditLogAction // Existing
+  actionType  AuditLogAction? // New field for upgraded tracking
+  domain      String?       // New (was context)
+  details     String?       // Existing
+  summary     String?       // Existing
+  context     String?       // Existing alias for domain
+  
+  // Entity tracking
+  entityType  String?       @default("unknown")
+  entityId    String?       @default("unknown")
+
+  // Request tracking
+  requestId   String?
+  apiRoute    String?
+  httpMethod  String?       @default("POST")
+
+  // Outcome
+  status      AuditStatus?  @default(SUCCESS)
+  severity    String?       // Existing String field
+  severityLevel Severity?   @default(INFO)
+  errorCode   String?
+  errorStack  String?
+  durationMs  Int?          // Existing
+
+  // Execution detail
+  steps       Json?         // Existing
+  snapshot    Json?         // Existing
+  metadata    Json?         // Existing
+
+  // State diff
+  stateBefore Json?
+  stateAfter  Json?
+  diff        Json?
 
   @@index([timestamp])
   @@index([userId])
+  @@index([entityId, entityType])
+  @@index([action])
+  @@index([sessionId])
+  @@index([requestId])
+  @@index([createdAt])
   @@index([context])
   @@index([severity])
 }

@@ -170,6 +170,9 @@ export class ContributionsService {
             });
 
             return contribTx;
+        }, {
+            maxWait: 5000,
+            timeout: 20000
         });
     }
 

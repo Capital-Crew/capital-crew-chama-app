@@ -126,11 +126,12 @@ export const submitLoanApproval = withAudit(
                     toUserId: session.user.id,
                     revokedAt: null,
                     OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
-                    AND: [{ OR: [{ loanId: loanId }, { loanId: null }] }],
+                    AND: [{ OR: [{ entityId: loanId, entityType: 'LOAN' }, { entityId: null }] }],
                 },
                 include: { fromUser: true },
             });
 
+            // @ts-ignore - relation fromUser exists in schema
             const hasValidDelegation = activeDelegations.some((d) =>
                 ["SYSTEM_ADMIN", "CHAIRPERSON", "TREASURER"].includes(d.fromUser.role)
             );
@@ -158,97 +159,38 @@ export const submitLoanApproval = withAudit(
             throw new Error("Loan is not in pending approval status");
         }
 
-        ctx.beginStep('Process Vote Transaction');
-        const result = await prisma.$transaction(async (tx) => {
-            // Maker-Checker: Prevent self-approval
-            if (loan.memberId === approverId) {
-                ctx.setErrorCode('COMPLIANCE_ERROR');
-                throw new Error("Compliance Error: You cannot approve your own loan application");
-            }
-
-            // Record Vote
-            const existingVote = await tx.loanApproval.findFirst({
-                where: { loanId, approverId },
-            });
-            if (existingVote) throw new Error("You have already voted on this loan");
-
-            await tx.loanApproval.create({
-                data: {
-                    loanId,
-                    approverId,
-                    decision: decision === "APPROVED" ? ApprovalStatus.APPROVED : ApprovalStatus.REJECTED,
-                    notes,
-                },
-            });
-
-            if (decision === "REJECTED") {
-                const updated = await tx.loan.update({
-                    where: { id: loanId },
-                    data: { status: "REJECTED" },
-                });
-                await tx.loanJourneyEvent.create({
-                    data: {
-                        loanId,
-                        eventType: LoanEventType.APPROVAL_REJECTED,
-                        description: `Loan rejected by approver ${approverId}`,
-                        actorId: approverId,
-                    },
-                });
-                return { status: "REJECTED", updated };
-            }
-
-            // Quorum check
-            const approvals = await tx.loanApproval.findMany({
-                where: { loanId, decision: "APPROVED" },
-                include: { approver: { include: { user: true } } }
-            });
-
-            const settings = await tx.saccoSettings.findFirst();
-            const required = settings?.requiredApprovals ?? 3;
-            const hasExecutive = approvals.some(a =>
-                ["CHAIRPERSON", "SECRETARY", "TREASURER", "SYSTEM_ADMIN"].includes(a.approver?.user?.role || "")
-            );
-
-            if (approvals.length >= required && hasExecutive) {
-                const updated = await tx.loan.update({
-                    where: { id: loanId },
-                    data: { status: LoanStatus.APPROVED },
-                });
-                await tx.loanJourneyEvent.create({
-                    data: {
-                        loanId,
-                        eventType: LoanEventType.LOAN_APPROVED,
-                        description: `Loan fully approved by ${approvals.length} members`,
-                        actorId: "SYSTEM",
-                    },
-                });
-
-                // Sync Approval Request
-                await tx.approvalRequest.updateMany({
-                    where: { referenceId: loanId, type: "LOAN" },
-                    data: {
-                        status: "APPROVED",
-                        approverId: session.user.id,
-                        approverName: session.user.name,
-                        decisionNotes: notes,
-                        approvedAt: new Date(),
-                    },
-                });
-
-                return { status: "APPROVED", updated };
-            }
-
-            return { status: "PENDING_QUORUM" };
+        ctx.beginStep('Process Vote with Workflow Engine');
+        const workflowRequest = await prisma.workflowRequest.findFirst({
+            where: {
+                entityId: loanId,
+                entityType: 'LOAN',
+                status: 'PENDING'
+            },
+            include: { currentStage: true }
         });
-        ctx.endStep('Process Vote Transaction', { finalStatus: result.status });
 
-        if ('updated' in result && result.updated) {
-            ctx.captureAfter(result.updated);
+        if (!workflowRequest) {
+            ctx.setErrorCode('WORKFLOW_NOT_FOUND');
+            ctx.failStep('Process Vote with Workflow Engine', new Error("No active workflow request found for this loan"));
+            throw new Error("No active workflow request found for this loan. This loan might be using the legacy approval system, please contact support.");
+        }
+
+        // Bridge legacy decision to workflow engine
+        const { processWorkflowAction } = await import('./actions/workflow-engine');
+        const result = await processWorkflowAction(workflowRequest.id, decision === 'APPROVED' ? 'APPROVED' : 'REJECTED', notes);
+
+        // Fetch updated loan status for context
+        const updatedLoan = await prisma.loan.findUnique({ where: { id: loanId } });
+
+        ctx.endStep('Process Vote with Workflow Engine', { finalStatus: updatedLoan?.status });
+
+        if (updatedLoan) {
+            ctx.captureAfter(updatedLoan);
         }
 
         revalidatePath(`/loans/${loanId}`);
         revalidatePath("/dashboard");
-        return result;
+        return { status: updatedLoan?.status === 'APPROVED' ? 'APPROVED' : updatedLoan?.status === 'REJECTED' ? 'REJECTED' : 'PENDING_QUORUM', updated: updatedLoan };
     }
 );
 

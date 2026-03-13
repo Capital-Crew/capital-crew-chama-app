@@ -6,7 +6,6 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
 } from "@/components/ui/dialog"
 import {
     Table,
@@ -18,7 +17,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
-import { CheckCircle2, XCircle, Users, Clock, AlertCircle } from 'lucide-react'
+import { CheckCircle2, XCircle, Users, AlertCircle } from 'lucide-react'
 
 interface Approval {
     id: string
@@ -32,6 +31,7 @@ interface Approval {
     decision: string
     notes?: string
     timestamp: Date | string
+    version?: number
 }
 
 interface VotingRecordsModalProps {
@@ -39,32 +39,33 @@ interface VotingRecordsModalProps {
     onOpenChange: (open: boolean) => void
     approvals: Approval[]
     requiredApprovals: number
+    currentVersion?: number
 }
 
-export function VotingRecordsModal({ isOpen, onOpenChange, approvals, requiredApprovals }: VotingRecordsModalProps) {
-    // Calculate Stats
-    const totalVotes = approvals.length
-    const approvedCount = approvals.filter(a => a.decision === 'APPROVED').length
-    const rejectedCount = approvals.filter(a => a.decision === 'REJECTED').length
-    const pendingCount = Math.max(0, requiredApprovals - approvedCount)
+export function VotingRecordsModal({ isOpen, onOpenChange, approvals, requiredApprovals, currentVersion }: VotingRecordsModalProps) {
+    // Calculate Stats - For current version only
+    const currentApprovals = approvals.filter(a => !currentVersion || a.version === currentVersion)
+    const totalVotes = currentApprovals.length
+    const approvedCount = currentApprovals.filter(a => a.decision === 'APPROVED').length
+    const rejectedCount = currentApprovals.filter(a => a.decision === 'REJECTED').length
 
     const stats = [
         {
-            label: 'Total Voters',
+            label: 'Active Voters',
             value: totalVotes,
             icon: Users,
             color: 'bg-blue-50 text-blue-700',
             borderColor: 'border-blue-200'
         },
         {
-            label: 'Approved',
+            label: 'Approved (v)',
             value: approvedCount,
             icon: CheckCircle2,
             color: 'bg-green-50 text-green-700',
             borderColor: 'border-green-200'
         },
         {
-            label: 'Rejected',
+            label: 'Rejected (v)',
             value: rejectedCount,
             icon: XCircle,
             color: 'bg-red-50 text-red-700',
@@ -73,7 +74,7 @@ export function VotingRecordsModal({ isOpen, onOpenChange, approvals, requiredAp
         {
             label: 'Required',
             value: `${approvedCount}/${requiredApprovals}`,
-            icon: AlertCircle, // Or Gauge/Target
+            icon: AlertCircle,
             color: 'bg-slate-50 text-slate-700',
             borderColor: 'border-slate-200'
         }
@@ -85,7 +86,7 @@ export function VotingRecordsModal({ isOpen, onOpenChange, approvals, requiredAp
                 <DialogHeader className="p-6 pb-4 border-b border-slate-100">
                     <DialogTitle className="text-xl font-black text-slate-800 flex items-center gap-2">
                         <Users className="w-5 h-5 text-slate-500" />
-                        Voting Records
+                        Voting Records {currentVersion && <span className="text-sm font-normal text-slate-400 font-mono">(Version {currentVersion})</span>}
                     </DialogTitle>
                 </DialogHeader>
 
@@ -126,46 +127,64 @@ export function VotingRecordsModal({ isOpen, onOpenChange, approvals, requiredAp
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    approvals.map((approval) => (
-                                        <TableRow key={approval.id} className="hover:bg-slate-50/50">
-                                            <TableCell className="text-center">
-                                                {approval.decision === 'APPROVED' ? (
-                                                    <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center mx-auto text-green-600">
-                                                        <CheckCircle2 className="w-5 h-5" />
+                                    // Sort by version (desc) then timestamp (desc)
+                                    [...approvals].sort((a, b) => {
+                                        const vA = a.version || 1
+                                        const vB = b.version || 1
+                                        if (vA !== vB) return vB - vA
+                                        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+                                    }).map((approval) => {
+                                        const isOldVersion = currentVersion && approval.version !== currentVersion;
+                                        return (
+                                            <TableRow key={approval.id} className={`hover:bg-slate-50/50 ${isOldVersion ? 'opacity-60 grayscale-[0.5]' : ''}`}>
+                                                <TableCell className="text-center">
+                                                    {approval.decision === 'APPROVED' ? (
+                                                        <div className={`w-8 h-8 rounded-full ${isOldVersion ? 'bg-slate-100 text-slate-400' : 'bg-green-100 text-green-600'} flex items-center justify-center mx-auto`}>
+                                                            <CheckCircle2 className="w-5 h-5" />
+                                                        </div>
+                                                    ) : (
+                                                        <div className={`w-8 h-8 rounded-full ${isOldVersion ? 'bg-slate-100 text-slate-400' : 'bg-red-100 text-red-600'} flex items-center justify-center mx-auto`}>
+                                                            <XCircle className="w-5 h-5" />
+                                                        </div>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="font-medium">
+                                                    <div className="flex flex-col">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-slate-900">{approval.approver.name}</span>
+                                                            {isOldVersion && (
+                                                                <Badge variant="secondary" className="text-[9px] h-4 px-1 bg-amber-50 text-amber-700 border-amber-200 uppercase font-black">
+                                                                    Old Version (v{approval.version || 1})
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                        <span className="text-xs text-slate-400">Member #{approval.approver.memberNumber}</span>
                                                     </div>
-                                                ) : (
-                                                    <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center mx-auto text-red-600">
-                                                        <XCircle className="w-5 h-5" />
-                                                    </div>
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="font-medium">
-                                                <div className="flex flex-col">
-                                                    <span className="text-slate-900">{approval.approver.name}</span>
-                                                    <span className="text-xs text-slate-400">Member #{approval.approver.memberNumber}</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge variant="outline" className="text-[10px] font-bold text-slate-500 bg-slate-50 border-slate-200">
-                                                    {approval.approver.user?.role?.replace('_', ' ') || 'MEMBER'}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge className={`uppercase font-bold ${approval.decision === 'APPROVED'
-                                                        ? 'bg-green-100 text-green-700 hover:bg-green-200 shadow-none'
-                                                        : 'bg-red-100 text-red-700 hover:bg-red-200 shadow-none'
-                                                    }`}>
-                                                    {approval.decision}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell className="text-right text-slate-500 text-xs font-medium tabular-nums">
-                                                {new Date(approval.timestamp).toLocaleString(undefined, {
-                                                    dateStyle: 'medium',
-                                                    timeStyle: 'short'
-                                                })}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge variant="outline" className="text-[10px] font-bold text-slate-500 bg-slate-50 border-slate-200">
+                                                        {approval.approver.user?.role?.replace('_', ' ') || 'MEMBER'}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge className={`uppercase font-bold shadow-none ${isOldVersion
+                                                        ? 'bg-slate-100 text-slate-500'
+                                                        : approval.decision === 'APPROVED'
+                                                            ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                                            : 'bg-red-100 text-red-700 hover:bg-red-200'
+                                                        }`}>
+                                                        {approval.decision}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-right text-slate-500 text-xs font-medium tabular-nums">
+                                                    {new Date(approval.timestamp).toLocaleString(undefined, {
+                                                        dateStyle: 'medium',
+                                                        timeStyle: 'short'
+                                                    })}
+                                                </TableCell>
+                                            </TableRow>
+                                        )
+                                    })
                                 )}
                             </TableBody>
                         </Table>

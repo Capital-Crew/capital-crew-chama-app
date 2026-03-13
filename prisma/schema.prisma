@@ -1609,6 +1609,7 @@ model LoanApproval {
   decision   ApprovalStatus
   notes      String?
   timestamp  DateTime       @default(now())
+  version    Int            @default(1)
 
   @@index([loanId])
   @@index([approverId])
@@ -2181,6 +2182,8 @@ model ApprovalRequest {
   decisionNotes  String?
   approvedAt     DateTime?
 
+  version        Int      @default(1)
+
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -2332,6 +2335,8 @@ model WorkflowRequest {
 
   // History
   actions        WorkflowAction[]
+
+  version        Int                @default(1)
 
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt

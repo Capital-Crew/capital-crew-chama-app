@@ -59,13 +59,13 @@ export function withAudit<TArgs extends unknown[], TReturn>(
         const userEmail = session?.user?.email ?? 'unknown';
         const userRole = session?.user?.role ?? 'unknown';
 
-        // ── Optional: geo lookup from IP ──────────────────────────────
-        const geolocation = await getGeoFromIp(ipAddress);
+        // ── Optional: geo lookup from IP (Concurrent) ─────────────────
+        const geoPromise = getGeoFromIp(ipAddress);
 
         // ── Run the actual action ──────────────────────────────────────
         let result: TReturn;
-        let status: AuditStatus = AuditStatus.SUCCESS;
-        let severity: Severity = Severity.INFO;
+        let status: any = 'SUCCESS';
+        let severity: any = 'INFO';
         let summary = '';
         let errorStack: string | undefined;
 
@@ -75,17 +75,18 @@ export function withAudit<TArgs extends unknown[], TReturn>(
             return result;
 
         } catch (error) {
-            const built = AuditContext.build();
-            status = built.hadPartialSuccess ? AuditStatus.PARTIAL : AuditStatus.FAILURE;
-            severity = Severity.CRITICAL;
+            const errorAudit = AuditContext.build();
+            status = errorAudit.hadPartialSuccess ? 'PARTIAL' : 'FAILURE';
+            severity = 'CRITICAL';
             summary = error instanceof Error ? error.message : 'Unknown error occurred';
             errorStack = error instanceof Error ? error.stack : undefined;
             throw error;
 
         } finally {
             // ── Write audit log — never block the response ────────────────
-            const built = AuditContext.build();
+            const finalBuild = AuditContext.build();
             try {
+                const geolocation = await geoPromise;
                 await db.auditLog.create({
                     data: {
                         // Identity
@@ -99,31 +100,31 @@ export function withAudit<TArgs extends unknown[], TReturn>(
                         requestId,
 
                         // What happened
-                        action: config.actionType as AuditLogAction, // Legacy
-                        actionType: config.actionType as AuditLogAction, // New
+                        action: config.actionType as any, // Legacy
+                        actionType: config.actionType as any, // New
                         domain: config.domain,
                         context: config.domain, // Legacy alias
-                        entityType: built.entityType ?? 'unknown',
-                        entityId: built.entityId ?? 'unknown',
+                        entityType: finalBuild.entityType ?? 'unknown',
+                        entityId: finalBuild.entityId ?? 'unknown',
                         apiRoute: config.apiRoute,
                         httpMethod: config.httpMethod ?? 'POST',
 
                         // Outcome
                         status,
-                        severity: severity === Severity.CRITICAL ? 'CRITICAL' : 'INFO', // Legacy String
+                        severity: severity === 'CRITICAL' ? 'CRITICAL' : 'INFO', // Legacy String
                         severityLevel: severity, // New Enum
                         summary,
-                        errorCode: built.errorCode,
+                        errorCode: finalBuild.errorCode,
                         errorStack,
 
                         // Execution detail
-                        steps: built.steps as any,
+                        steps: finalBuild.steps as any,
                         durationMs: Date.now() - start,
 
                         // State diff
-                        stateBefore: (built.stateBefore as any) ?? undefined,
-                        stateAfter: (built.stateAfter as any) ?? undefined,
-                        diff: (built.diff as any) ?? undefined,
+                        stateBefore: (finalBuild.stateBefore as any) ?? undefined,
+                        stateAfter: (finalBuild.stateAfter as any) ?? undefined,
+                        diff: (finalBuild.diff as any) ?? undefined,
                     },
                 });
             } catch (logError) {

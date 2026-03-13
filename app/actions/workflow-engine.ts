@@ -16,7 +16,7 @@ function hasRole(userRole: string, requiredRole: string) {
 /**
  * Initiate a workflow for a new Entity (e.g. Loan Application)
  */
-export async function initiateWorkflow(entityType: EntityType, entityId: string, requesterId: string) {
+export async function initiateWorkflow(entityType: EntityType, entityId: string, requesterId: string, version: number = 1) {
     // 1. Find Active Workflow Definition for this Type
     let definition = await prisma.workflowDefinition.findUnique({
         where: { entityType },
@@ -64,7 +64,8 @@ export async function initiateWorkflow(entityType: EntityType, entityId: string,
             entityType,
             entityId,
             requesterId,
-            status: WorkflowStatus.PENDING
+            status: WorkflowStatus.PENDING,
+            version
         }
     })
 
@@ -125,7 +126,6 @@ export async function processWorkflowAction(requestId: string, action: ApprovalA
                 notes
             }
         })
-
         if (action === 'REJECTED') {
             // Immediate Rejection
             await tx.workflowRequest.update({
@@ -140,8 +140,29 @@ export async function processWorkflowAction(requestId: string, action: ApprovalA
                     data: { status: 'REJECTED' }
                 })
             }
+        }
 
-        } else if (action === 'APPROVED') {
+        // UNIFICATION: Create a LoanApproval record if this is a loan
+        if (request.entityType === 'LOAN') {
+            const userWithMember = await tx.user.findUnique({
+                where: { id: user.id },
+                include: { member: true }
+            })
+
+            if (userWithMember?.member) {
+                await tx.loanApproval.create({
+                    data: {
+                        loanId: request.entityId,
+                        approverId: userWithMember.member.id,
+                        decision: action === 'APPROVED' ? 'APPROVED' : 'REJECTED',
+                        notes: notes || `Action via workflow stage: ${request.currentStage?.name}`,
+                        version: request.version || 1
+                    }
+                })
+            }
+        }
+
+        if (action === 'APPROVED') {
             // CHECK VOTES
             const approvalCount = await tx.workflowAction.count({
                 where: {

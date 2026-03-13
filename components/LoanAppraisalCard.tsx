@@ -77,11 +77,13 @@ interface LoanData {
         decision: string
         notes?: string
         timestamp: Date
+        version?: number
     }>
 
     approvalsCount: number
     currentUserHasApproved: boolean
     approvalsRequired: number
+    submissionVersion: number
 
     journeyEvents: any[]
 
@@ -601,6 +603,7 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                     onOpenChange={setShowVotingRecords}
                     approvals={loan.approvals || []}
                     requiredApprovals={loan.approvalsRequired || 3}
+                    currentVersion={loan.submissionVersion}
                 />
             )}
 

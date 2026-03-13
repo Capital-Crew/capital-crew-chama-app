@@ -316,12 +316,20 @@ export const applyForLoan = withAudit(
         if (loanId) {
             const existingLoan = await prisma.loan.findUnique({
                 where: { id: loanId },
-                select: { id: true, memberId: true }
+                select: { id: true, memberId: true, status: true, submissionVersion: true }
             })
             if (!existingLoan) {
                 ctx.setErrorCode('LOAN_NOT_FOUND');
                 return { error: 'Loan application not found.' }
             }
+
+            // [LOCKED STATE ENFORCEMENT]
+            // Prevent editing while pending approval, unless it's a specific admin override or the action is a cancellation
+            if (existingLoan.status === 'PENDING_APPROVAL') {
+                ctx.setErrorCode('LOAN_LOCKED');
+                return { error: 'This loan application is currently locked for editing as it is pending approval. Please cancel the current approval request if you need to make changes.' }
+            }
+
             ctx.captureBefore('Loan', loanId, existingLoan);
         }
 
@@ -839,7 +847,7 @@ export const submitLoanApplication = withAudit(
 
         try {
             const { initiateWorkflow } = await import('@/app/actions/workflow-engine')
-            await initiateWorkflow('LOAN', loan.id, loan.memberId)
+            await initiateWorkflow('LOAN', loan.id, loan.memberId, nextVersion)
         } catch (e) { }
 
         await prisma.loanHistory.create({

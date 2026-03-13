@@ -10,6 +10,8 @@ export type AuditLogFilter = {
     action?: AuditLogAction
     actorName?: string
     searchTerm?: string
+    domain?: string
+    status?: string
 }
 
 export type AuditLogResponse = {
@@ -25,10 +27,7 @@ export type AuditLogResponse = {
 }
 
 /**
- * Fetch paginated audit logs with filtering
- */
-/**
- * Fetch paginated audit logs with filtering (LIGHTWEIGHT)
+ * Fetch paginated audit logs with filtering (HIGH RICHNESS)
  */
 export async function getAuditLogs(
     page: number = 1,
@@ -42,7 +41,7 @@ export async function getAuditLogs(
         throw new Error("Unauthorized: Access Restricted to System Administrator")
     }
 
-    const { startDate, endDate, action, actorName, searchTerm } = filters
+    const { startDate, endDate, action, actorName, searchTerm, domain, status } = filters
 
     // Build Base Query
     const where: Prisma.AuditLogWhereInput = {
@@ -50,6 +49,8 @@ export async function getAuditLogs(
             startDate ? { timestamp: { gte: new Date(startDate) } } : {},
             endDate ? { timestamp: { lte: new Date(endDate) } } : {},
             action ? { action: action } : {},
+            domain ? { domain: domain } : {}, // New: Domain filter
+            status ? { status: status as any } : {}, // New: Status filter
             actorName ? {
                 user: {
                     name: { contains: actorName, mode: 'insensitive' }
@@ -58,8 +59,9 @@ export async function getAuditLogs(
             searchTerm ? {
                 OR: [
                     { details: { contains: searchTerm, mode: 'insensitive' } },
+                    { summary: { contains: searchTerm, mode: 'insensitive' } },
                     { user: { name: { contains: searchTerm, mode: 'insensitive' } } },
-                    { user: { name: { contains: searchTerm, mode: 'insensitive' } } }
+                    { requestId: { contains: searchTerm, mode: 'insensitive' } }
                 ]
             } : {}
         ]
@@ -81,7 +83,6 @@ export async function getAuditLogs(
             prisma.auditLog.count({ where }),
         ])
 
-
         return {
             logs,
             total,
@@ -91,9 +92,10 @@ export async function getAuditLogs(
                 totalToday: 0,
                 totalThisMonth: 0,
                 criticalAlerts: 0
-            } // Placeholder - fetched separately
+            } // Fetched separately by getAuditStats
         }
     } catch (error) {
+        console.error("[getAuditLogs] Error:", error);
         throw new Error("Failed to retrieve audit trail data")
     }
 }
@@ -121,11 +123,12 @@ export async function getAuditStats() {
             })
         ])
 
-        // Mock critical alerts
+        // Critical Alerts: Reversed transactions, Settings changes, and Failed actions
         const criticalFilter: Prisma.AuditLogWhereInput = {
             OR: [
                 { action: AuditLogAction.WALLET_TRANSACTION_REVERSED },
-                { action: AuditLogAction.SETTINGS_UPDATED }
+                { action: AuditLogAction.SETTINGS_UPDATED },
+                { status: 'FAILURE' }
             ]
         }
         const criticalAlerts = await prisma.auditLog.count({ where: criticalFilter })
@@ -138,23 +141,24 @@ export async function getAuditStats() {
 }
 
 /**
- * Export all matching logs (for CSV)
+ * Export all matching logs (for CSV) with full metadata
  */
 export async function exportAuditLogs(filters: AuditLogFilter = {}) {
     const session = await auth()
 
-    // Strict Access Control - System Admin Only
     if (!session?.user || !['SYSTEM_ADMIN', 'CHAIRPERSON'].includes(session.user.role)) {
         throw new Error("Unauthorized: Access Restricted to System Administrator")
     }
 
-    const { startDate, endDate, action, actorName, searchTerm } = filters
+    const { startDate, endDate, action, actorName, searchTerm, domain, status } = filters
 
     const where: Prisma.AuditLogWhereInput = {
         AND: [
             startDate ? { timestamp: { gte: new Date(startDate) } } : {},
             endDate ? { timestamp: { lte: new Date(endDate) } } : {},
             action ? { action: action } : {},
+            domain ? { domain: domain } : {},
+            status ? { status: status as any } : {},
             actorName ? {
                 user: {
                     name: { contains: actorName, mode: 'insensitive' }
@@ -163,6 +167,7 @@ export async function exportAuditLogs(filters: AuditLogFilter = {}) {
             searchTerm ? {
                 OR: [
                     { details: { contains: searchTerm, mode: 'insensitive' } },
+                    { summary: { contains: searchTerm, mode: 'insensitive' } },
                     { user: { name: { contains: searchTerm, mode: 'insensitive' } } }
                 ]
             } : {}
@@ -172,9 +177,9 @@ export async function exportAuditLogs(filters: AuditLogFilter = {}) {
     return prisma.auditLog.findMany({
         where,
         include: {
-            user: { select: { name: true, email: true } }
+            user: { select: { name: true, email: true, role: true } }
         },
         orderBy: { timestamp: 'desc' },
-        take: 1000 // reasonable limit for export
+        take: 2000 // reasonable limit for export
     })
 }

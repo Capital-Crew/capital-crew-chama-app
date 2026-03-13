@@ -89,11 +89,7 @@ export function withAudit<TArgs extends unknown[], TReturn>(
                 await db.auditLog.create({
                     data: {
                         // Identity
-                        userId: userId !== 'anonymous' ? userId : undefined, // userId is required in some schemas? No, it's string.
-                        // If the user isn't logged in but userId is required, we use a fallback or skip.
-                        // In our current schema userId is @relation(fields: [userId], references: [id]) so it must exist.
-                        // I'll check if I should skip logging if userId is anonymous and schema is strict.
-                        ...(userId !== 'anonymous' && { userId }),
+                        ...(userId !== 'anonymous' ? { userId } : {}),
                         userEmail,
                         userRole,
                         ipAddress,
@@ -125,9 +121,9 @@ export function withAudit<TArgs extends unknown[], TReturn>(
                         durationMs: Date.now() - start,
 
                         // State diff
-                        stateBefore: built.stateBefore ?? undefined,
-                        stateAfter: built.stateAfter ?? undefined,
-                        diff: built.diff ?? undefined,
+                        stateBefore: (built.stateBefore as any) ?? undefined,
+                        stateAfter: (built.stateAfter as any) ?? undefined,
+                        diff: (built.diff as any) ?? undefined,
                     },
                 });
             } catch (logError) {

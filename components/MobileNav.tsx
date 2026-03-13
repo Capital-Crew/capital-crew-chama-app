@@ -101,6 +101,15 @@ export function MobileNav({ user, approvalCount = 0 }: { user: { name: string, r
                             <div className="mt-6 mb-3 px-8 pt-6 border-t border-white/10">
                                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-2">Administration</p>
                             </div>
+                            {["SYSTEM_ADMIN", "CHAIRPERSON"].includes(user.role) && (
+                                <NavItem
+                                    icon={<UserRightsIcon />}
+                                    label="User Rights Mgmt"
+                                    href="/admin/user-rights"
+                                    active={pathname === '/admin/user-rights'}
+                                    onClick={() => setOpen(false)}
+                                />
+                            )}
                             {canAccess('ACCOUNTS') && <NavItem icon={<FileTextIcon />} label="Chart of Accounts" href="/accounts" active={pathname === '/accounts'} onClick={() => setOpen(false)} />}
                             {canAccess('ADMIN') && <NavItem icon={<SettingsIcon />} label="System Admin" href="/admin/system" active={pathname === '/admin/system'} onClick={() => setOpen(false)} />}
 

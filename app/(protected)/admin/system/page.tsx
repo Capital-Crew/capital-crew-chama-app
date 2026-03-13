@@ -36,7 +36,7 @@ export default async function SystemAdminPage() {
         );
     }
 
-    const [products, members, welfareTypesRes, welfareReqsRes, expenseAccounts, users, modules, permissions, apologies] = await Promise.all([
+    const [products, members, welfareTypesRes, welfareReqsRes, expenseAccounts, apologies] = await Promise.all([
         prisma.loanProduct.findMany({
             // Fetch ALL products so we can toggle active state, not just active ones
             orderBy: { name: 'asc' }
@@ -61,29 +61,6 @@ export default async function SystemAdminPage() {
             },
             orderBy: { code: 'asc' }
         }),
-        prisma.user.findMany({
-            select: {
-                id: true,
-                name: true,
-                username: true,
-                email: true,
-                role: true,
-                permissions: true,
-                member: {
-                    select: {
-                        memberNumber: true,
-                        canApproveLoan: true,
-                        wallet: {
-                            select: { id: true, accountRef: true }
-                        }
-                    }
-                }
-            },
-            orderBy: { name: 'asc' },
-            where: { email: { not: 'admin@capitalcrew.co.ke' } }
-        }),
-        prisma.systemModule.findMany({ orderBy: { key: 'asc' } }),
-        prisma.rolePermission.findMany(),
         prisma.apology.findMany({
             include: {
                 meeting: { select: { title: true, date: true } },
@@ -98,8 +75,8 @@ export default async function SystemAdminPage() {
         })
     ])
 
-    const welfareTypes = welfareTypesRes.success ? welfareTypesRes.data : []
-    const requisitions = welfareReqsRes.success ? welfareReqsRes.data : []
+    const welfareTypes: any[] = welfareTypesRes?.success ? (welfareTypesRes.data || []) : []
+    const requisitions: any[] = welfareReqsRes?.success ? (welfareReqsRes.data || []) : []
 
     const serializedProducts = products.map((p: any) => ({
         ...p,
@@ -144,9 +121,6 @@ export default async function SystemAdminPage() {
                 welfareTypes={serializedWelfareTypes}
                 welfareRequisitions={serializedRequisitions}
                 expenseAccounts={serializedExpenseAccounts}
-                users={users}
-                modules={modules}
-                permissions={permissions}
                 apologies={apologies as any}
             />
         </div>

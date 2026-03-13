@@ -16,6 +16,7 @@ async function main() {
         { key: 'ACCOUNTS', name: 'Chart of Accounts', description: 'Manage financial accounts and ledgers.' },
         { key: 'REPORTS_HUB', name: 'Reports Hub', description: 'Access to financial insights and analytical reports.' },
         { key: 'ADMIN', name: 'System Admin', description: 'Configure system settings and roles.' },
+        { key: 'USER_RIGHTS', name: 'User Rights Mgmt', description: 'Manage system access levels, SACCO settings, and advanced access control.' },
         { key: 'AUDIT', name: 'Audit Trail', description: 'View system audit logs.' },
     ]
 
@@ -42,7 +43,12 @@ async function main() {
 
     for (const role of officerRoles) {
         console.log(`\n👮 Seeding permissions for ${role}...`)
-        for (const moduleKey of officerModules) {
+        // Chairperson gets extra access to User Rights Mgmt
+        const currentOfficerModules = role === 'CHAIRPERSON'
+            ? [...officerModules, 'USER_RIGHTS']
+            : officerModules;
+
+        for (const moduleKey of currentOfficerModules) {
             await prisma.rolePermission.upsert({
                 where: {
                     role_moduleKey: {
@@ -85,7 +91,7 @@ async function main() {
 
     // System Admin gets everything
     console.log('\n👑 Seeding permissions for SYSTEM_ADMIN...')
-    const allModules = [...officerModules, 'ADMIN']
+    const allModules = [...officerModules, 'ADMIN', 'USER_RIGHTS']
     for (const moduleKey of allModules) {
         await prisma.rolePermission.upsert({
             where: {

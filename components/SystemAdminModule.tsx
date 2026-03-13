@@ -8,8 +8,8 @@ import { PlusCircleIcon } from '@/components/icons';
 import { createLoanProduct } from '@/app/actions';
 import { getSaccoSettings, updateSaccoSettings } from '@/app/sacco-settings-actions';
 import { toggleMemberApprovalRight } from '@/app/loan-approval-actions';
+import { LoanManagement } from '@/components/LoanManagement';
 import { toggleLoanProductStatus } from '@/app/actions/loan-product';
-import { PermissionControlPanel } from '@/components/PermissionControlPanel';
 import { EngineHealthDashboard } from '@/components/EngineHealthDashboard';
 import { LoanAdjustmentModal } from '@/components/admin/LoanAdjustmentModal';
 import { postLoanAdjustment } from '@/app/actions/loan-adjustment-actions';
@@ -18,8 +18,6 @@ import { toast } from 'sonner';
 import { WelfareTypeManager } from '@/components/welfare/WelfareTypeManager'
 import { AdminRequisitionList } from '@/components/welfare/AdminRequisitionList'
 import { NotificationSettings } from '@/components/admin/NotificationSettings'
-import { UserRightsTable } from '@/components/admin/UserRightsTable'
-import { PermissionsMatrix } from '@/components/admin/PermissionsMatrix'
 import { MobileDrawer } from '@/components/ui/MobileDrawer';
 import { BookOpen, ExternalLink, MessageSquareText } from 'lucide-react';
 import { MeetingApologyManager } from '@/components/meetings/MeetingApologyManager';
@@ -47,60 +45,7 @@ interface SettingsProps {
 export function SystemAdminModule({ products, members = [], welfareTypes = [], welfareRequisitions = [], expenseAccounts = [], users = [], modules = [], permissions = [], apologies = [] }: SettingsProps) {
     const [activeTab, setActiveTab] = useState('products');
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [saccoSettings, setSaccoSettings] = useState<any>(null);
-    const [settingsForm, setSettingsForm] = useState({
-        loanMultiplier: 3.0,
-        processingFeePercent: 2.0,
-        insuranceFeePercent: 1.0,
-        shareCapitalBoost: 500,
-        penaltyRate: 5.0,
-        requiredApprovals: 3,
-        requiredWelfareApprovals: 3,
-        welfareMonthlyContribution: 0,
-        welfareCurrentBalance: 0,
-        monthlyContributionAmount: 2000,
-        latePaymentPenalty: 200,
-        penaltyAbsentAmount: 500,
-        penaltyLateAmount: 200,
-        meetingFeesGlId: '',
-        meetingReceivableGlId: ''
-    });
-
     const [isAdjustmentModalOpen, setIsAdjustmentModalOpen] = useState(false);
-
-    // Load SACCO settings
-    useEffect(() => {
-        if (activeTab === 'sacco') {
-            getSaccoSettings().then(settings => {
-                setSaccoSettings(settings);
-                setSettingsForm({
-                    loanMultiplier: Number(settings.loanMultiplier),
-                    processingFeePercent: Number(settings.processingFeePercent),
-                    insuranceFeePercent: Number(settings.insuranceFeePercent),
-                    shareCapitalBoost: Number(settings.shareCapitalBoost),
-                    penaltyRate: Number(settings.penaltyRate) || 5.0,
-                    requiredApprovals: Number(settings.requiredApprovals) || 3,
-                    requiredWelfareApprovals: Number(settings.requiredWelfareApprovals) || 3,
-                    welfareMonthlyContribution: Number(settings.welfareMonthlyContribution) || 0,
-                    welfareCurrentBalance: Number(settings.welfareCurrentBalance) || 0,
-                    monthlyContributionAmount: Number(settings.monthlyContributionAmount) || 2000,
-                    latePaymentPenalty: Number(settings.latePaymentPenalty) || 200,
-                    penaltyAbsentAmount: Number(settings.penaltyAbsentAmount) || 500,
-                    penaltyLateAmount: Number(settings.penaltyLateAmount) || 200,
-                    meetingFeesGlId: settings.meetingFeesGlId || '',
-                    meetingReceivableGlId: settings.meetingReceivableGlId || ''
-                });
-            });
-        }
-    }, [activeTab]);
-
-    const handleSaccoSettingsSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        const formData = new FormData(e.currentTarget);
-        await updateSaccoSettings(formData);
-        const updated = await getSaccoSettings();
-        setSaccoSettings(updated);
-    };
 
     const handleToggleApprovalRight = async (memberId: string) => {
         await toggleMemberApprovalRight(memberId);
@@ -124,14 +69,11 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
     };
 
     const tabs = [
-        { id: 'access', label: 'Access Control', icon: Shield },
         { id: 'engines', label: 'Engine Health', icon: TrendingUp },
         { id: 'products', label: 'Loan Products', icon: Package },
         { id: 'adjustments', label: 'Loan Adjustments', icon: Scale },
-        { id: 'sacco', label: 'SACCO Settings', icon: Settings },
         { id: 'welfare', label: 'Welfare', icon: HeartHandshake },
         { id: 'notifications', label: 'Notifications', icon: Mail },
-        { id: 'rights', label: 'User Rights', icon: Shield },
         { id: 'apologies', label: 'Meeting Apologies', icon: MessageSquareText }
     ];
 
@@ -312,274 +254,6 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
                 </div>
             )}
 
-            {/* SACCO Settings Tab */}
-            {activeTab === 'sacco' && (
-                <div className="space-y-6">
-                    <div>
-                        <h2 className="text-2xl font-bold text-slate-900">SACCO Configuration</h2>
-                        <p className="text-slate-600 mt-1">Fine-tune financial parameters and approval workflows</p>
-                    </div>
-
-                    {saccoSettings && (
-                        <form onSubmit={handleSaccoSettingsSubmit} className="space-y-6">
-                            {/* Financial Settings Card */}
-                            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                                <div className="bg-gradient-to-r from-emerald-50 to-teal-50 px-6 py-4 border-b border-slate-200">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-white rounded-lg shadow-sm">
-                                            <DollarSign className="w-5 h-5 text-emerald-600" />
-                                        </div>
-                                        <div>
-                                            <h3 className="text-lg font-bold text-slate-900">Financial Settings</h3>
-                                            <p className="text-sm text-slate-600">Configure fees and loan parameters</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="p-6">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                        <div className="space-y-2">
-                                            <label className="block text-sm font-semibold text-slate-700">Loan Limit Multiplier</label>
-                                            <input
-                                                name="loanMultiplier"
-                                                type="number"
-                                                step="0.1"
-                                                defaultValue={settingsForm.loanMultiplier}
-                                                className="w-full bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 rounded-xl px-4 py-3 text-sm font-medium transition-all outline-none"
-                                            />
-                                            <p className="text-xs text-slate-500">Max loan = Contributions × Multiplier</p>
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <label className="block text-sm font-semibold text-slate-700">Application Fee (%)</label>
-                                            <input
-                                                name="processingFeePercent"
-                                                type="number"
-                                                step="0.1"
-                                                defaultValue={settingsForm.processingFeePercent}
-                                                className="w-full bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 rounded-xl px-4 py-3 text-sm font-medium transition-all outline-none"
-                                            />
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <label className="block text-sm font-semibold text-slate-700">Top-up Fee (%)</label>
-                                            <input
-                                                name="refinanceFeePercentage"
-                                                type="number"
-                                                step="0.1"
-                                                defaultValue={saccoSettings.refinanceFeePercentage || 5.0}
-                                                className="w-full bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 rounded-xl px-4 py-3 text-sm font-medium transition-all outline-none"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Approval Workflow Card */}
-                            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                                <div className="bg-gradient-to-r from-purple-50 to-pink-50 px-6 py-4 border-b border-slate-200">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-white rounded-lg shadow-sm">
-                                            <Users className="w-5 h-5 text-purple-600" />
-                                        </div>
-                                        <div>
-                                            <h3 className="text-lg font-bold text-slate-900">Approval Workflow</h3>
-                                            <p className="text-sm text-slate-600">Set required votes for loan actions</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="p-6">
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                        <div className="space-y-2">
-                                            <label className="block text-sm font-semibold text-slate-700">Votes for New Loan</label>
-                                            <input
-                                                name="requiredApprovals"
-                                                type="number"
-                                                min="1"
-                                                max="10"
-                                                defaultValue={settingsForm.requiredApprovals}
-                                                className="w-full bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 rounded-xl px-4 py-3 text-sm font-medium transition-all outline-none"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Welfare Settings Card */}
-                            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                                <div className="bg-gradient-to-r from-pink-50 to-rose-50 px-6 py-4 border-b border-slate-200">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-white rounded-lg shadow-sm">
-                                            {/* Ideally import HeartHandshake or similar */}
-                                            <Shield className="w-5 h-5 text-pink-600" />
-                                        </div>
-                                        <div>
-                                            <h3 className="text-lg font-bold text-slate-900">Welfare Configuration</h3>
-                                            <p className="text-sm text-slate-600">Fund management and approval rules</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="p-6">
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                        <div className="space-y-2">
-                                            <label className="block text-sm font-semibold text-slate-700">Monthly Contribution (KES)</label>
-                                            <input
-                                                name="welfareMonthlyContribution"
-                                                type="number"
-                                                step="0.01"
-                                                defaultValue={settingsForm.welfareMonthlyContribution}
-                                                className="w-full bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 rounded-xl px-4 py-3 text-sm font-medium transition-all outline-none"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="block text-sm font-semibold text-slate-700">Welfare Fund Balance (Seed)</label>
-                                            <input
-                                                name="welfareCurrentBalance"
-                                                type="number"
-                                                step="0.01"
-                                                defaultValue={settingsForm.welfareCurrentBalance}
-                                                className="w-full bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 rounded-xl px-4 py-3 text-sm font-medium transition-all outline-none"
-                                            />
-                                            <p className="text-xs text-slate-500">Initial balance setting (use cautiously)</p>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="block text-sm font-semibold text-slate-700">Votes for Approval</label>
-                                            <input
-                                                name="requiredWelfareApprovals"
-                                                type="number"
-                                                min="1"
-                                                defaultValue={settingsForm.requiredWelfareApprovals}
-                                                className="w-full bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 rounded-xl px-4 py-3 text-sm font-medium transition-all outline-none"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Contribution Settings Card */}
-                            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                                <div className="bg-gradient-to-r from-blue-50 to-cyan-50 px-6 py-4 border-b border-slate-200">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-white rounded-lg shadow-sm">
-                                            <TrendingUp className="w-5 h-5 text-blue-600" />
-                                        </div>
-                                        <div>
-                                            <h3 className="text-lg font-bold text-slate-900">Contribution Settings</h3>
-                                            <p className="text-sm text-slate-600">Monthly contribution requirements and penalties</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="p-6">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-2">
-                                            <label className="block text-sm font-semibold text-slate-700">Monthly Contribution Amount (KES)</label>
-                                            <input
-                                                name="monthlyContributionAmount"
-                                                type="number"
-                                                step="0.01"
-                                                defaultValue={settingsForm.monthlyContributionAmount}
-                                                className="w-full bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 rounded-xl px-4 py-3 text-sm font-medium transition-all outline-none"
-                                            />
-                                            <p className="text-xs text-slate-500">Required contribution per member per month</p>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="block text-sm font-semibold text-slate-700">Late Payment Penalty (KES)</label>
-                                            <input
-                                                name="latePaymentPenalty"
-                                                type="number"
-                                                step="0.01"
-                                                defaultValue={settingsForm.latePaymentPenalty}
-                                                className="w-full bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 rounded-xl px-4 py-3 text-sm font-medium transition-all outline-none"
-                                            />
-                                            <p className="text-xs text-slate-500">Penalty applied when contribution is missed</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Meeting & Penalty Settings Card */}
-                            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                                <div className="bg-gradient-to-r from-teal-50 to-emerald-50 px-6 py-4 border-b border-slate-200">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-white rounded-lg shadow-sm">
-                                            <Scale className="w-5 h-5 text-teal-600" />
-                                        </div>
-                                        <div>
-                                            <h3 className="text-lg font-bold text-slate-900">Meeting & Penalty Configuration</h3>
-                                            <p className="text-sm text-slate-600">Set penalty rates and income account allocation</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="p-6">
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                        <div className="space-y-2">
-                                            <label className="block text-sm font-semibold text-slate-700">Absent Penalty (KES)</label>
-                                            <input
-                                                name="penaltyAbsentAmount"
-                                                type="number"
-                                                step="0.01"
-                                                defaultValue={settingsForm.penaltyAbsentAmount}
-                                                className="w-full bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 rounded-xl px-4 py-3 text-sm font-medium transition-all outline-none"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="block text-sm font-semibold text-slate-700">Late Penalty (KES)</label>
-                                            <input
-                                                name="penaltyLateAmount"
-                                                type="number"
-                                                step="0.01"
-                                                defaultValue={settingsForm.penaltyLateAmount}
-                                                className="w-full bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 rounded-xl px-4 py-3 text-sm font-medium transition-all outline-none"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="block text-sm font-semibold text-slate-700">Income Ledger for Fees</label>
-                                            <select
-                                                name="meetingFeesGlId"
-                                                defaultValue={settingsForm.meetingFeesGlId}
-                                                className="w-full bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 rounded-xl px-4 py-3 text-sm font-medium transition-all outline-none"
-                                            >
-                                                <option value="">Select an Account</option>
-                                                {expenseAccounts?.filter((acc: any) => acc.type === 'REVENUE' || acc.type === 'INCOME').map((acc: any) => (
-                                                    <option key={acc.id} value={acc.id}>
-                                                        {acc.code} - {acc.name}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            <p className="text-xs text-slate-500">GL account where meeting penalties will be credited (Revenue)</p>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="block text-sm font-semibold text-slate-700">Receivable Ledger for Fees</label>
-                                            <select
-                                                name="meetingReceivableGlId"
-                                                defaultValue={settingsForm.meetingReceivableGlId}
-                                                className="w-full bg-slate-50 border-2 border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200 rounded-xl px-4 py-3 text-sm font-medium transition-all outline-none"
-                                            >
-                                                <option value="">Select an Account</option>
-                                                {expenseAccounts?.filter((acc: any) => acc.type === 'ASSET' || acc.type === 'RECEIVABLE').map((acc: any) => (
-                                                    <option key={acc.id} value={acc.id}>
-                                                        {acc.code} - {acc.name}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            <p className="text-xs text-slate-500">Asset account where unpaid meeting penalties will be tracked (Receivable)</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Submit Button */}
-                            <button
-                                type="submit"
-                                className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 text-white py-4 rounded-xl font-bold shadow-lg shadow-cyan-500/30 hover:shadow-xl hover:shadow-cyan-500/40 transition-all duration-200 flex items-center justify-center gap-2"
-                            >
-                                <CheckCircle className="w-5 h-5" />
-                                Save Configuration
-                            </button>
-                        </form>
-                    )}
-                </div>
-            )}
-
             {/* Welfare Tab */}
             {activeTab === 'welfare' && (
                 <div className="space-y-6">
@@ -608,40 +282,6 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
                         <p className="text-slate-600 mt-1">Manage email alerts and mailing lists</p>
                     </div>
                     <NotificationSettings />
-                </div>
-            )}
-
-
-
-            {/* User Rights Tab */}
-            {activeTab === 'rights' && (
-                <div className="space-y-6">
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-6">
-                        <h2 className="text-xl font-bold text-slate-800 mb-2">User Rights Management</h2>
-                        <p className="text-slate-500 text-sm">
-                            Manage access levels and permissions for all system users.
-                            Assign specific roles like Treasurer or Secretary to grant elevated privileges.
-                        </p>
-                    </div>
-                    <UserRightsTable users={users} permissions={permissions} />
-                </div>
-            )}
-
-            {/* Meeting Apologies Tab */}
-            {activeTab === 'apologies' && (
-                <div className="space-y-6">
-                    <MeetingApologyManager apologies={apologies} />
-                </div>
-            )}
-
-            {/* Access Control Tab */}
-            {activeTab === 'access' && (
-                <div className="space-y-6">
-                    <div>
-                        <h2 className="text-2xl font-bold text-slate-900">Access Control</h2>
-                        <p className="text-slate-600 mt-1">Configure module access permissions for each role.</p>
-                    </div>
-                    <PermissionsMatrix modules={modules} initialPermissions={permissions} />
                 </div>
             )}
 

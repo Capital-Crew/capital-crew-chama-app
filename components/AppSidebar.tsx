@@ -140,11 +140,15 @@ export function AppSidebar({ user, approvalCount = 0, pendingLoanCount = 0 }: { 
                 )}
 
                 {/* Admin Section - Dynamic Rendering */}
-                {(canAccess('ACCOUNTS') || canAccess('ADMIN') || canAccess('AUDIT')) && (
+                {(canAccess('ACCOUNTS') || canAccess('ADMIN') || canAccess('AUDIT') || ["SYSTEM_ADMIN", "CHAIRPERSON"].includes(user.role)) && (
                     <>
                         <div className="mt-8 mb-3 px-8 pt-6 border-t border-white/10">
                             <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-2">Administration</p>
                         </div>
+
+                        {["SYSTEM_ADMIN", "CHAIRPERSON"].includes(user.role) && (
+                            <NavItem icon={<UserRightsIcon className="w-5 h-5" />} label="User Rights Mgmt" href="/admin/user-rights" active={pathname === '/admin/user-rights'} />
+                        )}
 
                         {canAccess('ACCOUNTS') && (
                             <NavItem icon={<FileTextIcon className="w-5 h-5" />} label="Chart of Accounts" href="/accounts" active={pathname === '/accounts'} />

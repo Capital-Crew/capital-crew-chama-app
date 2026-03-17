@@ -482,7 +482,7 @@ export const applyForLoan = withAudit(
 
         try {
             ctx.beginStep('Database Operations');
-            let loan;
+            let loan: any;
             const commonData = {
                 memberId,
                 loanProductId: loanProductId || null,
@@ -599,8 +599,22 @@ export const applyForLoan = withAudit(
                         if (Number(existingLoanState.amount) !== amount || existingLoanState.installments !== installments) {
                             await prisma.emailNotificationLog.deleteMany({ where: { loanId: loan.id, templateType: 'LOAN_APPROVAL_REQUEST' } });
                             await prisma.loan.update({ where: { id: loan.id }, data: { submissionVersion: { increment: 1 } } });
+                            // Re-fetch to get new version
+                            const updated = await prisma.loan.findUnique({ where: { id: loan.id } });
+                            if (updated) loan = updated as any;
                         }
                     }
+
+                    // [UNIFIED WORKFLOW] Initiate workflow request
+                    try {
+                        const { initiateWorkflow } = await import('@/app/actions/workflow-engine');
+                        await initiateWorkflow('LOAN', loan.id, loan.memberId, (loan as any).submissionVersion || 1);
+                    } catch (workflowErr) {
+                        console.error('[WORKFLOW_INIT_FAILURE]:', workflowErr);
+                        // We don't throw here as the loan is already updated to PENDING_APPROVAL.
+                        // The submitLoanApproval action has auto-repair to fix this later if needed.
+                    }
+
                     const { LoanNotificationService } = await import('@/lib/services/LoanNotificationService')
                     await LoanNotificationService.handleApprovalRequest(loan.id)
                 }
@@ -848,7 +862,9 @@ export const submitLoanApplication = withAudit(
         try {
             const { initiateWorkflow } = await import('@/app/actions/workflow-engine')
             await initiateWorkflow('LOAN', loan.id, loan.memberId, nextVersion)
-        } catch (e) { }
+        } catch (e) {
+            console.error('[WORKFLOW_INIT_ERROR]:', e)
+        }
 
         await prisma.loanHistory.create({
             data: {

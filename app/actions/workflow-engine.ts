@@ -6,11 +6,51 @@ import { EntityType, ApprovalAction, WorkflowStatus, UserRole, Prisma } from "@p
 import { revalidatePath } from "next/cache"
 
 // Helper to check role hierarchy or specific permission
-// For now, simple Role check
 function hasRole(userRole: string, requiredRole: string) {
     if (userRole === 'SYSTEM_ADMIN') return true
     if (userRole === requiredRole) return true
     return false
+}
+
+async function checkWorkflowPermission(user: any, request: any): Promise<boolean> {
+    const requiredRole = request.currentStage.requiredRole;
+
+    // 1. Basic Role Check
+    if (hasRole(user.role, requiredRole)) return true;
+
+    // Special: For Loan Workflows, any "High Authority" role can approve
+    const highAuthorityRoles = ['CHAIRPERSON', 'TREASURER', 'SECRETARY'];
+    if (request.entityType === 'LOAN' && highAuthorityRoles.includes(user.role)) {
+        return true;
+    }
+
+    // 2. Granular Permissions Check
+    const userPermissions = user.permissions;
+    if (userPermissions) {
+        if (Array.isArray(userPermissions)) {
+            if (userPermissions.includes("APPROVE_LOANS") || userPermissions.includes("ALL")) return true;
+        } else if (typeof userPermissions === "object") {
+            const p = userPermissions as any;
+            if (p["APPROVE_LOANS"] === true || p["canApprove"] === true || p["ALL"] === true) return true;
+        }
+    }
+
+    // 3. Delegated Authority Check
+    const activeDelegations = await prisma.approvalDelegation.findMany({
+        where: {
+            toUserId: user.id,
+            revokedAt: null,
+            OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+            AND: [{ OR: [{ entityId: request.entityId, entityType: request.entityType }, { entityId: null }] }],
+        },
+        include: { fromUser: true },
+    });
+
+    const hasValidDelegation = activeDelegations.some((d) =>
+        hasRole(d.fromUser.role, requiredRole)
+    );
+
+    return hasValidDelegation;
 }
 
 /**
@@ -56,6 +96,23 @@ export async function initiateWorkflow(entityType: EntityType, entityId: string,
 
     const firstStage = definition.stages[0]
 
+    // 2. Resolve Requester ID (if memberId provided instead of userId)
+    let actualRequesterId = requesterId
+    if (entityType === 'LOAN') {
+        const user = await prisma.user.findFirst({
+            where: {
+                OR: [
+                    { id: requesterId },
+                    { memberId: requesterId }
+                ]
+            },
+            select: { id: true }
+        })
+        if (user) {
+            actualRequesterId = user.id
+        }
+    }
+
     // 2. Create the Request
     const request = await prisma.workflowRequest.create({
         data: {
@@ -63,7 +120,7 @@ export async function initiateWorkflow(entityType: EntityType, entityId: string,
             currentStageId: firstStage.id,
             entityType,
             entityId,
-            requesterId,
+            requesterId: actualRequesterId,
             status: WorkflowStatus.PENDING,
             version
         }
@@ -96,8 +153,8 @@ export async function processWorkflowAction(requestId: string, action: ApprovalA
     if (!request.currentStage) throw new Error("System Error: Request has no current stage")
 
     // 2. Permission Check
-    // Does user have the required role for this stage?
-    if (!hasRole(user.role, request.currentStage.requiredRole)) {
+    const isAuthorized = await checkWorkflowPermission(user, request);
+    if (!isAuthorized) {
         throw new Error(`Unauthorized: You need to be a ${request.currentStage.requiredRole} to perform this action.`)
     }
 
@@ -271,16 +328,23 @@ export async function createDefaultLoanWorkflow() {
     const existing = await prisma.workflowDefinition.findUnique({ where: { entityType: EntityType.LOAN } })
     if (existing) return existing
 
+    const settings = await prisma.saccoSettings.findFirst()
+    const requiredVotes = settings?.requiredApprovals || 1
+
     const wf = await prisma.workflowDefinition.create({
         data: {
             entityType: EntityType.LOAN,
             name: "Standard Loan Approval",
-            description: "Default 3-stage loan approval process",
+            description: "Default loan approval process requiring authorized signature",
             stages: {
                 create: [
-                    { stepNumber: 1, name: "Clerk Review", requiredRole: 'SECRETARY' },
-                    { stepNumber: 2, name: "Credit Committee", requiredRole: 'TREASURER', minVotesRequired: 2 }, // Defaulting to 2 for demo purposes
-                    { stepNumber: 3, name: "Chairperson Approval", requiredRole: 'CHAIRPERSON', isFinal: true }
+                    {
+                        stepNumber: 1,
+                        name: "Committee Approval",
+                        requiredRole: 'TREASURER', // Primary role, but checkWorkflowPermission allows Chair/Sec too
+                        minVotesRequired: requiredVotes,
+                        isFinal: true
+                    }
                 ]
             }
         }

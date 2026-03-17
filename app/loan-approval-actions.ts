@@ -160,7 +160,7 @@ export const submitLoanApproval = withAudit(
         }
 
         ctx.beginStep('Process Vote with Workflow Engine');
-        const workflowRequest = await prisma.workflowRequest.findFirst({
+        let workflowRequest = await prisma.workflowRequest.findFirst({
             where: {
                 entityId: loanId,
                 entityType: 'LOAN',
@@ -170,9 +170,34 @@ export const submitLoanApproval = withAudit(
         });
 
         if (!workflowRequest) {
+            // [AUTO-REPAIR] If no workflow request exists but loan is PENDING_APPROVAL, initiate it now.
+            // This handles legacy loans and any failed triggers during submission.
+            ctx.beginStep('Repair Missing Workflow Request');
+            try {
+                const { initiateWorkflow } = await import('./actions/workflow-engine');
+                await initiateWorkflow('LOAN', loanId, loan.memberId, loan.submissionVersion || 1);
+
+                // Re-fetch the newly created request
+                workflowRequest = await prisma.workflowRequest.findFirst({
+                    where: {
+                        entityId: loanId,
+                        entityType: 'LOAN',
+                        status: 'PENDING'
+                    },
+                    include: { currentStage: true }
+                });
+                ctx.endStep('Repair Missing Workflow Request', { repaired: !!workflowRequest });
+            } catch (repairError: any) {
+                ctx.failStep('Repair Missing Workflow Request', repairError);
+                ctx.setErrorCode('WORKFLOW_REPAIR_FAILED');
+                throw new Error(`Failed to initiate workflow for this loan: ${repairError.message}`);
+            }
+        }
+
+        if (!workflowRequest) {
             ctx.setErrorCode('WORKFLOW_NOT_FOUND');
             ctx.failStep('Process Vote with Workflow Engine', new Error("No active workflow request found for this loan"));
-            throw new Error("No active workflow request found for this loan. This loan might be using the legacy approval system, please contact support.");
+            throw new Error("No active workflow request found for this loan. This loan might be using the legacy approval system or the workflow engine failed to initialize.");
         }
 
         // Bridge legacy decision to workflow engine

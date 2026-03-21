@@ -84,7 +84,7 @@ export function AppSidebar({ user, approvalCount = 0, pendingLoanCount = 0 }: { 
                     </h1>
                 </div>
                 <p className="pl-10 text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] opacity-80">
-                    Governance OS
+                    SHG
                 </p>
             </div>
 

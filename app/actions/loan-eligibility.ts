@@ -19,7 +19,30 @@ export type EligibilityResult = {
  */
 export async function checkLoanEligibility(memberId: string): Promise<EligibilityResult> {
     try {
-        // 1. Fetch Active Loans
+        let totalArrears = 0
+        const breakdown: { loanNumber: string, arrears: number }[] = []
+
+        // 1. Check Member Contribution & Penalty Arrears
+        const member = await db.member.findUnique({
+            where: { id: memberId },
+            select: { contributionArrears: true, penaltyArrears: true }
+        })
+
+        if (member) {
+            const contributionArrears = Number(member.contributionArrears || 0)
+            const penaltyArrears = Number(member.penaltyArrears || 0)
+            const memberArrears = contributionArrears + penaltyArrears
+
+            if (memberArrears > 0) {
+                totalArrears += memberArrears
+                breakdown.push({
+                    loanNumber: 'Monthly Contributions & Penalties',
+                    arrears: memberArrears
+                })
+            }
+        }
+
+        // 2. Fetch Active Loans
         const activeLoans = await db.loan.findMany({
             where: {
                 memberId,
@@ -32,12 +55,9 @@ export async function checkLoanEligibility(memberId: string): Promise<Eligibilit
             }
         })
 
-        if (activeLoans.length === 0) {
+        if (activeLoans.length === 0 && totalArrears === 0) {
             return { isEligible: true, totalArrears: 0 }
         }
-
-        let totalArrears = 0
-        const breakdown: { loanNumber: string, arrears: number }[] = []
 
         const now = new Date()
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())

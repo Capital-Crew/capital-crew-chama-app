@@ -9,9 +9,6 @@ const prisma = db
 
 export class PenaltyService {
 
-    // Configuration
-    private static GRACE_PERIOD_DAYS = 3
-
     /**
      * Daily Job to check and apply penalties
      */
@@ -45,13 +42,7 @@ export class PenaltyService {
 
         for (const item of overdueItems) {
             try {
-                // 2. Check Grace Period
-                const daysOverdue = differenceInDays(today, item.dueDate)
-                if (daysOverdue <= this.GRACE_PERIOD_DAYS) {
-                    // Still in grace period
-                    continue
-                }
-
+                // No Grace Period: Penalties apply immediately via the daily check
                 await this.applyPenalty(item)
                 results.penaltiesApplied++
             } catch (error: any) {

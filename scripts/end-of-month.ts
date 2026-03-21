@@ -48,21 +48,37 @@ async function main() {
         const totalPaid = Number(contributions._sum.amount || 0)
         const shortfall = monthlyDue - totalPaid
 
-        if (shortfall > 0) {
-            console.log(`Member ${member.memberNumber} (${member.name}): Shortfall ${shortfall}`)
+        // To support overpayment carry-forwards, we use negative `contributionArrears`.
+        // A surplus is represented by a negative balance in `contributionArrears`.
+        let penaltyToApply = 0
 
-            // Add to arrears
+        if (shortfall > 0) {
+            const currentArrears = Number(member.contributionArrears || 0)
+            const surplusAvailable = currentArrears < 0 ? Math.abs(currentArrears) : 0
+            const effectiveShortfall = Math.max(0, shortfall - surplusAvailable)
+
+            if (effectiveShortfall > 0) {
+                console.log(`Member ${member.memberNumber} (${member.name}): Effective Shortfall ${effectiveShortfall} (Buffer used: ${Math.min(shortfall, surplusAvailable)})`)
+                penaltyToApply = penaltyAmount
+            } else {
+                console.log(`Member ${member.memberNumber} (${member.name}): Shortfall ${shortfall} fully covered by surplus buffer.`)
+            }
+        } else if (shortfall < 0) {
+            console.log(`Member ${member.memberNumber} (${member.name}): Overpayment of ${Math.abs(shortfall)}. Adding to buffer.`)
+        } else {
+            // Unnecessary to log for every user exactly on time, but left to be cautious.
+            console.log(`Member ${member.memberNumber} (${member.name}): Exact payment made.`)
+        }
+
+        // Apply any generated shortfall/surplus to the running arrears total unconditionally
+        if (shortfall !== 0 || penaltyToApply > 0) {
             await prisma.member.update({
                 where: { id: member.id },
                 data: {
                     contributionArrears: { increment: shortfall },
-                    penaltyArrears: { increment: penaltyAmount }
+                    ...(penaltyToApply > 0 && { penaltyArrears: { increment: penaltyToApply } })
                 }
             })
-
-            // Optional: Create a Penalty Charge Record (Income/Receivable)
-            // For now, simpler implementation just updates the tracking fields.
-            // If we wanted strictly double-entry, we'd add a Receivable transaction here.
         }
     }
 

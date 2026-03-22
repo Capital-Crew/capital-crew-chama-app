@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { Clock, CheckCircle2, AlertCircle, ChevronDown, ChevronUp, ChevronRight, Receipt, Activity, XCircle, Calendar, MessageSquare } from 'lucide-react';
 import { MemberQuickStats } from './MemberQuickStats';
 import { NextOfKinManager } from './NextOfKinManager';
+import { PremiumTabs } from '../shared/PremiumTabs';
 import dynamic from 'next/dynamic';
 
 const LoanAppraisalCard = dynamic(
@@ -242,32 +243,18 @@ export function MemberProfileView({
                 </div>
             )}
 
-            {}
-            <div className="hidden md:flex items-center border-b border-slate-100 bg-white sticky top-0 z-10 px-8">
-                <TabButton
-                    isActive={activeTab === 'loans'}
-                    onClick={() => setActiveTab('loans')}
-                    label="Loans History"
-                />
-                <TabButton
-                    isActive={activeTab === 'contributions'}
-                    onClick={() => setActiveTab('contributions')}
-                    label="Contributions"
-                />
-                <TabButton
-                    isActive={activeTab === 'kin'}
-                    onClick={() => setActiveTab('kin')}
-                    label="Next of Kin"
-                />
-                <TabButton
-                    isActive={activeTab === 'fines'}
-                    onClick={() => setActiveTab('fines')}
-                    label="Meeting Fines"
-                />
-                <TabButton
-                    isActive={activeTab === 'attendance'}
-                    onClick={() => setActiveTab('attendance')}
-                    label="Meeting History"
+            {/* Tab Navigation (Desktop) */}
+            <div className="hidden md:flex bg-white border-b border-slate-100 sticky top-0 z-10 px-8 py-2">
+                <PremiumTabs 
+                    tabs={[
+                        { id: 'loans', label: 'Loans History', icon: Clock },
+                        { id: 'contributions', label: 'Contributions', icon: Receipt },
+                        { id: 'kin', label: 'Next of Kin', icon: Activity },
+                        { id: 'fines', label: 'Meeting Fines', icon: AlertCircle },
+                        { id: 'attendance', label: 'Meeting History', icon: Calendar }
+                    ]}
+                    activeTab={activeTab}
+                    onChange={(id) => setActiveTab(id as any)}
                 />
             </div>
 

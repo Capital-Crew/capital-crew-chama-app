@@ -21,6 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar'
 import { Textarea } from '@/components/ui/textarea'
 import { Plus, Check, Loader2, CalendarIcon, FileText, Banknote, User, AlertCircle, RefreshCw, Upload, Download, Eye, X, Clock, CheckCircle, XCircle } from 'lucide-react'
+import { PremiumTabs } from '../shared/PremiumTabs'
 import { toast } from '@/lib/toast'
 import { createExpenseRequest, approveExpense, submitExpenseSurrender, approveReimbursementClaim, sendExpenseForApproval, cancelExpenseApproval, voteOnExpenseApproval, getExpenseWorkflowStatus } from '@/app/actions/expenses'
 import { processBulkPayout, BulkPayoutItem } from '@/app/actions/bulk-payouts'
@@ -270,34 +271,51 @@ export function ExpensesTab({ expenses, accounts, categories, members, currentUs
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <div className="flex items-center gap-4">
-                    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-[520px]">
-                        <TabsList>
-                            <TabsTrigger value="draft" className="gap-1">
-                                Draft
-                                {draftExpenses.length > 0 && <span className="bg-slate-500 text-white text-[10px] rounded-full px-1.5">{draftExpenses.length}</span>}
-                            </TabsTrigger>
-                            <TabsTrigger value="pending" className="gap-1">
-                                Pending Approval
-                                {pendingExpenses.length > 0 && <span className="bg-yellow-500 text-white text-[10px] rounded-full px-1.5">{pendingExpenses.length}</span>}
-                            </TabsTrigger>
-                            <TabsTrigger value="active">Active (Imprest)</TabsTrigger>
-                            <TabsTrigger value="history">History</TabsTrigger>
-                        </TabsList>
-                    </Tabs>
-                </div>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                <PremiumTabs 
+                    tabs={[
+                        { 
+                            id: 'draft', 
+                            label: 'Draft', 
+                            count: draftExpenses.length > 0 ? draftExpenses.length : undefined 
+                        },
+                        { 
+                            id: 'pending', 
+                            label: 'Pending Approval', 
+                            count: pendingExpenses.length > 0 ? pendingExpenses.length : undefined 
+                        },
+                        { id: 'active', label: 'Active (Imprest)' },
+                        { id: 'history', label: 'History' }
+                    ]}
+                    activeTab={activeTab}
+                    onChange={(id) => setActiveTab(id as any)}
+                />
+
                 <div className="flex gap-2">
                     {isOfficial && (
-                        <Button variant="outline" onClick={() => setIsBulkOpen(true)} className="gap-2">
+                        <Button 
+                            variant="secondary" 
+                            onClick={() => setIsBulkOpen(true)} 
+                            className="gap-2 bg-slate-100 hover:bg-slate-200 text-slate-800 border-none rounded-xl font-bold"
+                        >
                             <Banknote className="w-4 h-4" />
                             Bulk Payout
                         </Button>
                     )}
-                    <Button onClick={() => setIsCreateOpen(true)} className="gap-2 bg-blue-600 hover:bg-blue-700 text-white">
+                    <Button 
+                        onClick={() => setIsCreateOpen(true)} 
+                        className="gap-2 bg-brand hover:opacity-90 text-white rounded-xl shadow-md border-none font-bold"
+                    >
                         <Plus className="w-4 h-4" />
                         New Request
                     </Button>
+                    <button 
+                        onClick={onRefresh}
+                        className="p-2.5 text-slate-400 hover:text-cyan-500 hover:bg-cyan-50 rounded-xl transition-colors"
+                        title="Refresh Data"
+                    >
+                        <RefreshCw className={cn("w-5 h-5", isPending && "animate-spin")} />
+                    </button>
                 </div>
             </div>
 

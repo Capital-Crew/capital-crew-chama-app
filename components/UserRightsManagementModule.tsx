@@ -6,6 +6,7 @@ import { UserRightsTable } from '@/components/admin/UserRightsTable';
 import { PermissionsMatrix } from '@/components/admin/PermissionsMatrix';
 import { Settings, DollarSign, Users, Shield, CheckCircle, TrendingUp, Scale } from 'lucide-react';
 import { toast } from 'sonner';
+import { PremiumTabs } from './shared/PremiumTabs';
 
 interface SettingsProps {
     users?: any[];
@@ -94,26 +95,17 @@ export function UserRightsManagementModule({ users = [], modules = [], permissio
                 </div>
             </div>
 
-            {}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-2 mb-8 sticky top-4 z-40 backdrop-blur-md bg-white/90">
-                <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0">
-                    {tabs.map((tab) => {
-                        const Icon = tab.icon;
-                        return (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
-                                className={`flex-none flex items-center justify-center gap-2 md:gap-3 px-4 md:px-6 py-3 md:py-4 rounded-xl font-bold text-sm md:text-base transition-all duration-200 whitespace-nowrap ${activeTab === tab.id
-                                    ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg shadow-indigo-500/25 ring-1 ring-white/20'
-                                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
-                                    }`}
-                            >
-                                <Icon className="w-4 h-4 md:w-5 md:h-5" />
-                                <span>{tab.label}</span>
-                            </button>
-                        );
-                    })}
-                </div>
+            {/* Tab Navigation */}
+            <div className="bg-white border border-slate-200 rounded-3xl p-2 shadow-sm inline-block mb-8 sticky top-4 z-40 backdrop-blur-md bg-white/90">
+                <PremiumTabs 
+                    tabs={[
+                        { id: 'rights', label: 'User Rights', icon: Shield },
+                        { id: 'sacco', label: 'SACCO Settings', icon: Settings },
+                        { id: 'access', label: 'Access Control', icon: Shield }
+                    ]}
+                    activeTab={activeTab}
+                    onChange={setActiveTab}
+                />
             </div>
 
             {}

@@ -21,6 +21,7 @@ import { NotificationSettings } from '@/components/admin/NotificationSettings'
 import { MobileDrawer } from '@/components/ui/MobileDrawer';
 import { BookOpen, ExternalLink, MessageSquareText } from 'lucide-react';
 import { MeetingApologyManager } from '@/components/meetings/MeetingApologyManager';
+import { PremiumTabs } from './shared/PremiumTabs';
 
 
 interface Member {
@@ -97,25 +98,13 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
             </div>
 
             {}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-2 mb-8 sticky top-4 z-40 backdrop-blur-md bg-white/90">
-                <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0">
-                    {tabs.map((tab) => {
-                        const Icon = tab.icon;
-                        return (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
-                                className={`flex-none flex items-center justify-center gap-2 md:gap-3 px-4 md:px-6 py-3 md:py-4 rounded-xl font-bold text-sm md:text-base transition-all duration-200 whitespace-nowrap ${activeTab === tab.id
-                                    ? 'bg-gradient-to-r from-cyan-500 to-indigo-500 text-white shadow-lg shadow-cyan-500/25 ring-1 ring-white/20'
-                                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
-                                    }`}
-                            >
-                                <Icon className="w-4 h-4 md:w-5 md:h-5" />
-                                <span>{tab.label}</span>
-                            </button>
-                        );
-                    })}
-                </div>
+            {/* Tab Navigation */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-2 mb-8 sticky top-4 z-40 backdrop-blur-md bg-white/90 inline-block overflow-x-auto max-w-full">
+                <PremiumTabs 
+                    tabs={tabs}
+                    activeTab={activeTab}
+                    onChange={setActiveTab}
+                />
             </div>
 
             {}

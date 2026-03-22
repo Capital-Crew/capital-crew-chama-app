@@ -57,6 +57,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { PremiumTabs, TabOption } from './shared/PremiumTabs'
 import { Badge } from '@/components/ui/badge'
 import { toast } from '@/lib/toast'
 import { cn } from '@/lib/utils'
@@ -497,38 +498,19 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
             {}
             <div className="bg-white rounded-2xl p-2 md:p-3 shadow-sm border border-slate-200 sticky top-4 z-20">
                 <div className="flex overflow-x-auto no-scrollbar gap-1 md:gap-2 snap-x">
-                    {[
-                        { id: 'coa', label: 'Dashboard', shortLabel: 'Dashboard', icon: ListIcon },
-                        { id: 'hierarchy', label: 'Hierarchy', shortLabel: 'Tree', icon: Layers },
-                        { id: 'journal', label: 'Journal', shortLabel: 'Journal', icon: HistoryIcon },
-                        { id: 'periods', label: 'Periods', shortLabel: 'Periods', icon: CalendarIcon },
-                        { id: 'transfers', label: 'Transfers', shortLabel: 'Transfers', icon: ArrowLeftRightIcon },
-                        ...(userAuth?.role !== 'Member' ? [{ id: 'config', label: 'Settings', shortLabel: 'Settings', icon: Settings }] : [])
-                    ].map(tab => {
-                        const isActive = activeTab === tab.id;
-                        return (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id as Tab)}
-                                className={`
-                                    relative flex items-center justify-center gap-2 px-4 py-2.5 md:px-6 md:py-3 rounded-xl text-sm font-bold transition-all duration-300 snap-center shrink-0
-                                    ${isActive 
-                                        ? 'bg-slate-900 text-white shadow-md' 
-                                        : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
-                                    }
-                                `}
-                            >
-                                <tab.icon className={`w-4 h-4 transition-colors ${isActive ? 'text-cyan-400' : 'text-slate-400'}`} />
-                                <span className="whitespace-nowrap hidden md:inline">{tab.label}</span>
-                                <span className="whitespace-nowrap md:hidden">{tab.shortLabel}</span>
-                                
-                                {}
-                                {isActive && (
-                                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-8 h-1 bg-cyan-400 rounded-t-full shadow-[0_-2px_8px_rgba(34,211,238,0.8)]" />
-                                )}
-                            </button>
-                        );
-                    })}
+                <PremiumTabs 
+                    tabs={[
+                        { id: 'coa', label: 'Dashboard', icon: ListIcon },
+                        { id: 'hierarchy', label: 'Hierarchy', icon: Layers },
+                        { id: 'journal', label: 'Journal', icon: HistoryIcon },
+                        { id: 'periods', label: 'Periods', icon: CalendarIcon },
+                        { id: 'transfers', label: 'Transfers', icon: ArrowLeftRightIcon },
+                        ...(userAuth?.role !== 'Member' ? [{ id: 'config', label: 'Settings', icon: Settings }] : [])
+                    ]}
+                    activeTab={activeTab}
+                    onChange={(id) => setActiveTab(id as Tab)}
+                    className="flex-nowrap overflow-x-auto scrollbar-none"
+                />
                 </div>
             </div>
 

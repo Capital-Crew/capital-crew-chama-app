@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { addContribution, addPenaltyPayment, addLoanRepayment, getActiveLoansByMember } from '@/app/wallet-add-funds-actions'
 import { CoinsIcon, AlertCircleIcon, TrendingUpIcon, CheckCircleIcon, LoaderIcon } from 'lucide-react'
+import { PremiumTabs } from '../shared/PremiumTabs'
 
 type DepositType = 'share' | 'penalty' | 'loan'
 
@@ -185,33 +186,17 @@ export function AddFundsModule({ memberId, userRole }: { memberId: string; userR
             <h2 className="text-2xl font-black text-slate-900 mb-6 uppercase">Add Funds</h2>
 
             {}
+            {/* Tab Navigation */}
             <div className="border-b border-slate-200 mb-6">
-                <div className="flex gap-4">
-                    <button
-                        onClick={() => setActiveTab('share')}
-                        className={`px-4 py-3 text-sm font-bold uppercase tracking-wider border-b-2 transition-colors ${activeTab === 'share' ? 'border-cyan-500 text-cyan-600' : 'border-transparent text-slate-400 hover:text-slate-600'
-                            }`}
-                    >
-                        <CoinsIcon className="w-4 h-4 inline mr-2" />
-                        Contributions
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('penalty')}
-                        className={`px-4 py-3 text-sm font-bold uppercase tracking-wider border-b-2 transition-colors ${activeTab === 'penalty' ? 'border-cyan-500 text-cyan-600' : 'border-transparent text-slate-400 hover:text-slate-600'
-                            }`}
-                    >
-                        <AlertCircleIcon className="w-4 h-4 inline mr-2" />
-                        Penalty & Fines
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('loan')}
-                        className={`px-4 py-3 text-sm font-bold uppercase tracking-wider border-b-2 transition-colors ${activeTab === 'loan' ? 'border-cyan-500 text-cyan-600' : 'border-transparent text-slate-400 hover:text-slate-600'
-                            }`}
-                    >
-                        <TrendingUpIcon className="w-4 h-4 inline mr-2" />
-                        Loan Repayment
-                    </button>
-                </div>
+                <PremiumTabs 
+                    tabs={[
+                        { id: 'share', label: 'Contributions', icon: CoinsIcon },
+                        { id: 'penalty', label: 'Penalty & Fines', icon: AlertCircleIcon },
+                        { id: 'loan', label: 'Loan Repayment', icon: TrendingUpIcon }
+                    ]}
+                    activeTab={activeTab}
+                    onChange={(id) => setActiveTab(id as DepositType)}
+                />
             </div>
 
             {}

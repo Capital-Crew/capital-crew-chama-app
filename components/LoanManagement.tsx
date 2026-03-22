@@ -23,6 +23,7 @@ import { BarChart3Icon } from 'lucide-react';
 import { LoanReportsModal } from './loans/LoanReportsModal';
 import { SearchableSelect } from './ui/searchable-select';
 import { FilterIcon, UserIcon, PackageIcon, XIcon, SearchIcon } from 'lucide-react';
+import { PremiumTabs, TabOption } from './shared/PremiumTabs';
 // import { LoansPortfolioSummary } from './loans/LoansPortfolioSummary';
 
 interface LoanManagementProps {
@@ -205,37 +206,18 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
             {}
 
             {}
-            <div id="loans-list" className="bg-gradient-to-r from-slate-50 to-slate-100 rounded-2xl p-2 shadow-inner overflow-x-auto scrollbar-none">
-                <div className="flex gap-2 min-w-max">
-                    <TabButton
-                        label="Drafts"
-                        fullLabel="Drafts / Returned"
-                        active={activeTab === 'application'}
-                        onClick={() => setActiveTab('application')}
-                        count={drafts.length}
-                    />
-                    <TabButton
-                        label="Pending"
-                        fullLabel="Pending Approvals"
-                        active={activeTab === 'approvals'}
-                        onClick={() => setActiveTab('approvals')}
-                        count={pendingApprovals.length}
-                    />
-                    <TabButton
-                        label="Approved"
-                        fullLabel="Approved Loans"
-                        active={activeTab === 'approved'}
-                        onClick={() => setActiveTab('approved')}
-                        count={approvedLoans.length}
-                    />
-                    <TabButton
-                        label="Disbursed"
-                        fullLabel="Loans Disbursed"
-                        active={activeTab === 'disbursed'}
-                        onClick={() => setActiveTab('disbursed')}
-                        count={disbursedLoans.length}
-                    />
-                </div>
+            {/* Tab Navigation */}
+            <div className="bg-white border border-slate-200 rounded-3xl p-2 shadow-sm inline-block">
+                <PremiumTabs 
+                    tabs={[
+                        { id: 'application', label: 'Drafts', badge: drafts.length },
+                        { id: 'approvals', label: 'Pending', badge: pendingApprovals.length },
+                        { id: 'approved', label: 'Approved', badge: approvedLoans.length },
+                        { id: 'disbursed', label: 'Disbursed', badge: disbursedLoans.length }
+                    ]}
+                    activeTab={activeTab}
+                    onChange={(id) => setActiveTab(id as any)}
+                />
             </div>
 
             {}
@@ -432,16 +414,3 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
         </div >
     );
 }
-
-const TabButton: React.FC<{ label: string, fullLabel: string, active: boolean, onClick: () => void, count?: number }> = ({ label, fullLabel, active, onClick, count }) => (
-    <button
-        onClick={onClick}
-        className={`flex-1 px-4 md:px-6 py-3 md:py-4 text-xs md:text-sm font-black uppercase tracking-wider rounded-xl transition-all whitespace-nowrap ${active ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
-    >
-        <div className="flex items-center justify-center gap-2">
-            <span className="md:hidden">{label}</span>
-            <span className="hidden md:inline">{fullLabel}</span>
-            {count !== undefined && count > 0 && <span className={`px-2 py-0.5 md:py-1 rounded-full text-[10px] md:text-xs font-black ${active ? 'bg-white/20' : 'bg-cyan-500/10 text-cyan-600'}`}>{count}</span>}
-        </div>
-    </button>
-);

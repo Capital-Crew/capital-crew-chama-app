@@ -76,3 +76,28 @@ textarea {
 ::-ms-clear {
   display: none !important;
 }
+
+/* Custom UI Utility Classes */
+.bg-brand {
+    background-color: #00C2E0;
+}
+
+.text-body {
+    color: #6B7280;
+}
+
+.text-heading {
+    color: #111827;
+}
+
+.rounded-base {
+    border-radius: 12px;
+}
+
+.bg-neutral-secondary-soft {
+    background-color: #F3F4F6;
+}
+
+.text-fg-disabled {
+    color: #9CA3AF;
+}

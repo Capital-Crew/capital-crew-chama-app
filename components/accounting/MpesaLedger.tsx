@@ -9,7 +9,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { PremiumTabs } from '../shared/PremiumTabs'
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -353,267 +353,262 @@ export function MpesaLedger({ members = [] }: MpesaLedgerProps) {
                 </div>
             </div>
 
-            <Tabs defaultValue="pending" className="space-y-4" onValueChange={setActiveTab}>
-                <TabsList className="flex flex-col md:grid md:grid-cols-3 w-full h-auto p-1 bg-slate-100 rounded-xl gap-1 md:gap-0">
-                    <TabsTrigger
-                        value="pending"
-                        className="w-full h-12 rounded-lg font-bold data-[state=active]:bg-orange-500 data-[state=active]:text-white transition-all text-slate-500 hover:text-orange-600 justify-start px-4 md:justify-center"
-                    >
-                        Pending Actions ({pendingTx.length})
-                    </TabsTrigger>
-                    <TabsTrigger
-                        value="completed"
-                        className="w-full h-12 rounded-lg font-bold data-[state=active]:bg-green-500 data-[state=active]:text-white transition-all text-slate-500 hover:text-green-600 justify-start px-4 md:justify-center"
-                    >
-                        Successful ({completedTx.length})
-                    </TabsTrigger>
-                    <TabsTrigger
-                        value="failed"
-                        className="w-full h-12 rounded-lg font-bold data-[state=active]:bg-red-500 data-[state=active]:text-white transition-all text-slate-500 hover:text-red-600 justify-start px-4 md:justify-center"
-                    >
-                        Failed / Cancelled
-                    </TabsTrigger>
-                </TabsList>
+            {/* Tab Navigation */}
+            <div className="bg-white border border-slate-200 rounded-3xl p-2 shadow-sm inline-block">
+                <PremiumTabs 
+                    tabs={[
+                        { id: 'pending', label: 'Pending Actions', badge: pendingTx.length, icon: AlertTriangle },
+                        { id: 'completed', label: 'Successful', badge: completedTx.length, icon: CheckCircle },
+                        { id: 'failed', label: 'Failed / Cancelled', badge: failedTx.length, icon: XCircle }
+                    ]}
+                    activeTab={activeTab}
+                    onChange={setActiveTab}
+                />
+            </div>
 
-                <TabsContent value="pending" className="space-y-4">
-                    {pendingTx.length > 0 && (
-                        <div className="flex justify-end mb-2">
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={handleCheckAllStatus}
-                                disabled={checkingAll}
-                                className="border-orange-200 text-orange-700 hover:bg-orange-50"
-                            >
-                                {checkingAll ? <RefreshCw className="mr-2 h-3 w-3 animate-spin" /> : <RefreshCw className="mr-2 h-3 w-3" />}
-                                Check Status for All
-                            </Button>
-                        </div>
-                    )}
-                    <div className="rounded-md border hidden md:block">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Date</TableHead>
-                                    <TableHead>Member</TableHead>
-                                    <TableHead>Phone</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="text-right">Amount</TableHead>
-                                    <TableHead>Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {pendingTx.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={6} className="h-24 text-center">No pending transactions.</TableCell>
-                                    </TableRow>
-                                ) : (
-                                    pendingTx.map((tx) => (
-                                        <TableRow key={tx.id}>
-                                            <TableCell>{new Date(tx.date).toLocaleDateString()} {new Date(tx.date).toLocaleTimeString()}</TableCell>
-                                            <TableCell>{tx.memberName}</TableCell>
-                                            <TableCell>{tx.phoneNumber}</TableCell>
-                                            <TableCell><Badge variant="outline" className="text-orange-600 border-orange-200">Pending</Badge></TableCell>
-                                            <TableCell className="text-right font-bold">KES {tx.amount.toLocaleString()}</TableCell>
-                                            <TableCell className="flex gap-2">
-                                                <Button
-                                                    variant="default"
-                                                    size="sm"
-                                                    className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
-                                                    onClick={() => handleCheckStatus(tx)}
-                                                    disabled={checkingStatusId === tx.id || checkingAll}
-                                                >
-                                                    {checkingStatusId === tx.id ? (
-                                                        <RefreshCw className="mr-2 h-3 w-3 animate-spin" />
-                                                    ) : (
-                                                        <RefreshCw className="mr-2 h-3 w-3" />
-                                                    )}
-                                                    Check
-                                                </Button>
-
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="text-slate-500 hover:text-slate-900"
-                                                    onClick={() => handleOpenManualResolve(tx)}
-                                                    title="Manually Enter M-Pesa Code"
-                                                >
-                                                    <Edit2 className="w-4 h-4" />
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-
-                    {}
-                    <div className="space-y-3 md:hidden">
-                        {pendingTx.length === 0 ? (
-                            <div className="text-center py-8 text-slate-500">No pending transactions.</div>
-                        ) : (
-                            pendingTx.map((tx) => (
-                                <div key={tx.id} onClick={() => setViewingTransaction(tx)} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm active:scale-[0.98] transition-all">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <div>
-                                            <div className="font-bold text-slate-900">{tx.memberName}</div>
-                                            <div className="text-xs text-slate-500">{new Date(tx.date).toLocaleDateString()}</div>
-                                        </div>
-                                        <Badge variant="outline" className="text-orange-600 border-orange-200 bg-orange-50">Pending</Badge>
-                                    </div>
-                                    <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-100">
-                                        <div className="font-mono text-xs text-slate-500">{tx.phoneNumber}</div>
-                                        <div className="font-black text-slate-900">KES {tx.amount.toLocaleString()}</div>
-                                    </div>
-                                </div>
-                            ))
+            <div className="mt-6">
+                {activeTab === 'pending' && (
+                    <div className="space-y-4">
+                        {pendingTx.length > 0 && (
+                            <div className="flex justify-end mb-2">
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={handleCheckAllStatus}
+                                    disabled={checkingAll}
+                                    className="border-orange-200 text-orange-700 hover:bg-orange-50"
+                                >
+                                    {checkingAll ? <RefreshCw className="mr-2 h-3 w-3 animate-spin" /> : <RefreshCw className="mr-2 h-3 w-3" />}
+                                    Check Status for All
+                                </Button>
+                            </div>
                         )}
-                    </div>
-                </TabsContent>
-
-                <TabsContent value="completed" className="space-y-4">
-                    <div className="rounded-md border hidden md:block">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Date</TableHead>
-                                    <TableHead>Member</TableHead>
-                                    <TableHead>Phone</TableHead>
-                                    <TableHead>Receipt</TableHead>
-                                    <TableHead className="text-right">Amount</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead>Action</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {completedTx.length === 0 ? (
+                        <div className="rounded-md border hidden md:block">
+                            <Table>
+                                <TableHeader>
                                     <TableRow>
-                                        <TableCell colSpan={7} className="h-24 text-center">No successful transactions found.</TableCell>
+                                        <TableHead>Date</TableHead>
+                                        <TableHead>Member</TableHead>
+                                        <TableHead>Phone</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead className="text-right">Amount</TableHead>
+                                        <TableHead>Actions</TableHead>
                                     </TableRow>
-                                ) : (
-                                    completedTx.map((tx) => (
-                                        <TableRow key={tx.id} className={!tx.memberId ? "bg-orange-50/50" : ""}>
-                                            <TableCell>{new Date(tx.date).toLocaleDateString()} {new Date(tx.date).toLocaleTimeString()}</TableCell>
-                                            <TableCell>
-                                                {tx.memberName !== 'Unknown' ? tx.memberName : <span className="text-orange-600 font-bold italic">Unassigned</span>}
-                                            </TableCell>
-                                            <TableCell>{tx.phoneNumber}</TableCell>
-                                            <TableCell className="font-mono text-xs">{tx.receipt}</TableCell>
-                                            <TableCell className="text-right font-bold">KES {tx.amount.toLocaleString()}</TableCell>
-                                            <TableCell><Badge className="bg-green-500">Success</Badge></TableCell>
-                                            <TableCell className="flex gap-2">
-                                                {!tx.memberId && (
-                                                    <Button size="sm" variant="outline" className="text-orange-600 border-orange-200 hover:bg-orange-50" onClick={() => handleOpenReconcile(tx)}>
-                                                        <UserPlus className="w-4 h-4 mr-1" /> Assign Use
+                                </TableHeader>
+                                <TableBody>
+                                    {pendingTx.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={6} className="h-24 text-center">No pending transactions.</TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        pendingTx.map((tx) => (
+                                            <TableRow key={tx.id}>
+                                                <TableCell>{new Date(tx.date).toLocaleDateString()} {new Date(tx.date).toLocaleTimeString()}</TableCell>
+                                                <TableCell>{tx.memberName}</TableCell>
+                                                <TableCell>{tx.phoneNumber}</TableCell>
+                                                <TableCell><Badge variant="outline" className="text-orange-600 border-orange-200">Pending</Badge></TableCell>
+                                                <TableCell className="text-right font-bold">KES {tx.amount.toLocaleString()}</TableCell>
+                                                <TableCell className="flex gap-2">
+                                                    <Button
+                                                        variant="default"
+                                                        size="sm"
+                                                        className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                                                        onClick={() => handleCheckStatus(tx)}
+                                                        disabled={checkingStatusId === tx.id || checkingAll}
+                                                    >
+                                                        {checkingStatusId === tx.id ? (
+                                                            <RefreshCw className="mr-2 h-3 w-3 animate-spin" />
+                                                        ) : (
+                                                            <RefreshCw className="mr-2 h-3 w-3" />
+                                                        )}
+                                                        Check
                                                     </Button>
-                                                )}
-                                                <Button size="sm" variant="ghost" onClick={() => handleViewLedger(tx)} title="View Ledger Entries">
-                                                    <FileText className="w-4 h-4 text-slate-500" />
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
 
-                    {}
-                    <div className="space-y-3 md:hidden">
-                        {completedTx.length === 0 ? (
-                            <div className="text-center py-8 text-slate-500">No successful transactions found.</div>
-                        ) : (
-                            completedTx.map((tx) => (
-                                <div key={tx.id} onClick={() => setViewingTransaction(tx)} className={`bg-white border border-slate-200 rounded-xl p-4 shadow-sm active:scale-[0.98] transition-all ${!tx.memberId ? 'border-l-4 border-l-orange-400' : ''}`}>
-                                    <div className="flex justify-between items-start mb-2">
-                                        <div>
-                                            <div className="font-bold text-slate-900">{tx.memberName !== 'Unknown' ? tx.memberName : 'Unassigned Member'}</div>
-                                            <div className="text-xs text-slate-500">{new Date(tx.date).toLocaleDateString()}</div>
-                                        </div>
-                                        <Badge className="bg-green-500 h-5 text-[10px]">Success</Badge>
-                                    </div>
-                                    <div className="flex justify-between items-end mt-2">
-                                        <div>
-                                            <div className="text-[10px] text-slate-400 uppercase font-bold">Receipt</div>
-                                            <div className="font-mono text-xs text-slate-600 font-bold">{tx.receipt}</div>
-                                        </div>
-                                        <div className="font-black text-slate-900 text-lg">KES {tx.amount.toLocaleString()}</div>
-                                    </div>
-                                    {!tx.memberId && (
-                                        <div className="mt-3 pt-2 border-t border-slate-100 flex justify-end">
-                                            <span className="text-xs text-orange-600 font-bold flex items-center"><UserPlus className="w-3 h-3 mr-1" /> Tap to Assign</span>
-                                        </div>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="text-slate-500 hover:text-slate-900"
+                                                        onClick={() => handleOpenManualResolve(tx)}
+                                                        title="Manually Enter M-Pesa Code"
+                                                    >
+                                                        <Edit2 className="w-4 h-4" />
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
                                     )}
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </TabsContent>
+                                </TableBody>
+                            </Table>
+                        </div>
 
-                <TabsContent value="failed" className="space-y-4">
-                    <div className="rounded-md border hidden md:block">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Date</TableHead>
-                                    <TableHead>Member</TableHead>
-                                    <TableHead>Phone</TableHead>
-                                    <TableHead>Failure Reason</TableHead>
-                                    <TableHead className="text-right">Amount</TableHead>
-                                    <TableHead>Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {failedTx.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={6} className="h-24 text-center">No failed transactions found.</TableCell>
-                                    </TableRow>
-                                ) : (
-                                    failedTx.map((tx) => (
-                                        <TableRow key={tx.id}>
-                                            <TableCell>{new Date(tx.date).toLocaleDateString()} {new Date(tx.date).toLocaleTimeString()}</TableCell>
-                                            <TableCell>{tx.memberName}</TableCell>
-                                            <TableCell>{tx.phoneNumber}</TableCell>
-                                            <TableCell className="text-red-500 font-medium">{tx.failureReason}</TableCell>
-                                            <TableCell className="text-right font-bold">KES {tx.amount.toLocaleString()}</TableCell>
-                                            <TableCell>
-                                                <Button variant="outline" size="sm" onClick={() => handleOpenRetry(tx)}>Retry</Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-
-                    {}
-                    <div className="space-y-3 md:hidden">
-                        {failedTx.length === 0 ? (
-                            <div className="text-center py-8 text-slate-500">No failed transactions found.</div>
-                        ) : (
-                            failedTx.map((tx) => (
-                                <div key={tx.id} onClick={() => setViewingTransaction(tx)} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm active:scale-[0.98] transition-all">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <div>
-                                            <div className="font-bold text-slate-900">{tx.memberName}</div>
-                                            <div className="text-xs text-slate-500">{new Date(tx.date).toLocaleDateString()}</div>
+                        <div className="space-y-3 md:hidden">
+                            {pendingTx.length === 0 ? (
+                                <div className="text-center py-8 text-slate-500">No pending transactions.</div>
+                            ) : (
+                                pendingTx.map((tx) => (
+                                    <div key={tx.id} onClick={() => setViewingTransaction(tx)} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm active:scale-[0.98] transition-all">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div>
+                                                <div className="font-bold text-slate-900">{tx.memberName}</div>
+                                                <div className="text-xs text-slate-500">{new Date(tx.date).toLocaleDateString()}</div>
+                                            </div>
+                                            <Badge variant="outline" className="text-orange-600 border-orange-200 bg-orange-50">Pending</Badge>
                                         </div>
-                                        <Badge variant="destructive" className="h-5 text-[10px]">Failed</Badge>
+                                        <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-100">
+                                            <div className="font-mono text-xs text-slate-500">{tx.phoneNumber}</div>
+                                            <div className="font-black text-slate-900">KES {tx.amount.toLocaleString()}</div>
+                                        </div>
                                     </div>
-                                    <div className="bg-red-50 p-2 rounded text-xs text-red-600 font-medium mb-3 mt-1">
-                                        {tx.failureReason}
-                                    </div>
-                                    <div className="flex justify-between items-center pt-2 border-t border-slate-100">
-                                        <div className="font-mono text-xs text-slate-500">{tx.phoneNumber}</div>
-                                        <div className="font-black text-slate-900">KES {tx.amount.toLocaleString()}</div>
-                                    </div>
-                                </div>
-                            ))
-                        )}
+                                ))
+                            )}
+                        </div>
                     </div>
-                </TabsContent>
-            </Tabs>
+                )}
+
+                {activeTab === 'completed' && (
+                    <div className="space-y-4">
+                        <div className="rounded-md border hidden md:block">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Date</TableHead>
+                                        <TableHead>Member</TableHead>
+                                        <TableHead>Phone</TableHead>
+                                        <TableHead>Receipt</TableHead>
+                                        <TableHead className="text-right">Amount</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead>Action</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {completedTx.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={7} className="h-24 text-center">No successful transactions found.</TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        completedTx.map((tx) => (
+                                            <TableRow key={tx.id} className={!tx.memberId ? "bg-orange-50/50" : ""}>
+                                                <TableCell>{new Date(tx.date).toLocaleDateString()} {new Date(tx.date).toLocaleTimeString()}</TableCell>
+                                                <TableCell>
+                                                    {tx.memberName !== 'Unknown' ? tx.memberName : <span className="text-orange-600 font-bold italic">Unassigned</span>}
+                                                </TableCell>
+                                                <TableCell>{tx.phoneNumber}</TableCell>
+                                                <TableCell className="font-mono text-xs">{tx.receipt}</TableCell>
+                                                <TableCell className="text-right font-bold">KES {tx.amount.toLocaleString()}</TableCell>
+                                                <TableCell><Badge className="bg-green-500">Success</Badge></TableCell>
+                                                <TableCell className="flex gap-2">
+                                                    {!tx.memberId && (
+                                                        <Button size="sm" variant="outline" className="text-orange-600 border-orange-200 hover:bg-orange-50" onClick={() => handleOpenReconcile(tx)}>
+                                                            <UserPlus className="w-4 h-4 mr-1" /> Assign User
+                                                        </Button>
+                                                    )}
+                                                    <Button size="sm" variant="ghost" onClick={() => handleViewLedger(tx)} title="View Ledger Entries">
+                                                        <FileText className="w-4 h-4 text-slate-500" />
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
+
+                        <div className="space-y-3 md:hidden">
+                            {completedTx.length === 0 ? (
+                                <div className="text-center py-8 text-slate-500">No successful transactions found.</div>
+                            ) : (
+                                completedTx.map((tx) => (
+                                    <div key={tx.id} onClick={() => setViewingTransaction(tx)} className={`bg-white border border-slate-200 rounded-xl p-4 shadow-sm active:scale-[0.98] transition-all ${!tx.memberId ? 'border-l-4 border-l-orange-400' : ''}`}>
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div>
+                                                <div className="font-bold text-slate-900">{tx.memberName !== 'Unknown' ? tx.memberName : 'Unassigned Member'}</div>
+                                                <div className="text-xs text-slate-500">{new Date(tx.date).toLocaleDateString()}</div>
+                                            </div>
+                                            <Badge className="bg-green-500 h-5 text-[10px]">Success</Badge>
+                                        </div>
+                                        <div className="flex justify-between items-end mt-2">
+                                            <div>
+                                                <div className="text-[10px] text-slate-400 uppercase font-bold">Receipt</div>
+                                                <div className="font-mono text-xs text-slate-600 font-bold">{tx.receipt}</div>
+                                            </div>
+                                            <div className="font-black text-slate-900 text-lg">KES {tx.amount.toLocaleString()}</div>
+                                        </div>
+                                        {!tx.memberId && (
+                                            <div className="mt-3 pt-2 border-t border-slate-100 flex justify-end">
+                                                <span className="text-xs text-orange-600 font-bold flex items-center"><UserPlus className="w-3 h-3 mr-1" /> Tap to Assign</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'failed' && (
+                    <div className="space-y-4">
+                        <div className="rounded-md border hidden md:block">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Date</TableHead>
+                                        <TableHead>Member</TableHead>
+                                        <TableHead>Phone</TableHead>
+                                        <TableHead>Failure Reason</TableHead>
+                                        <TableHead className="text-right">Amount</TableHead>
+                                        <TableHead>Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {failedTx.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={6} className="h-24 text-center">No failed transactions found.</TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        failedTx.map((tx) => (
+                                            <TableRow key={tx.id}>
+                                                <TableCell>{new Date(tx.date).toLocaleDateString()} {new Date(tx.date).toLocaleTimeString()}</TableCell>
+                                                <TableCell>{tx.memberName}</TableCell>
+                                                <TableCell>{tx.phoneNumber}</TableCell>
+                                                <TableCell className="text-red-500 font-medium">{tx.failureReason}</TableCell>
+                                                <TableCell className="text-right font-bold">KES {tx.amount.toLocaleString()}</TableCell>
+                                                <TableCell>
+                                                    <Button variant="outline" size="sm" onClick={() => handleOpenRetry(tx)}>Retry</Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
+
+                        <div className="space-y-3 md:hidden">
+                            {failedTx.length === 0 ? (
+                                <div className="text-center py-8 text-slate-500">No failed transactions found.</div>
+                            ) : (
+                                failedTx.map((tx) => (
+                                    <div key={tx.id} onClick={() => setViewingTransaction(tx)} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm active:scale-[0.98] transition-all">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div>
+                                                <div className="font-bold text-slate-900">{tx.memberName}</div>
+                                                <div className="text-xs text-slate-500">{new Date(tx.date).toLocaleDateString()}</div>
+                                            </div>
+                                            <Badge variant="destructive" className="h-5 text-[10px]">Failed</Badge>
+                                        </div>
+                                        <div className="bg-red-50 p-2 rounded text-xs text-red-600 font-medium mb-3 mt-1">
+                                            {tx.failureReason}
+                                        </div>
+                                        <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+                                            <div className="font-mono text-xs text-slate-500">{tx.phoneNumber}</div>
+                                            <div className="font-black text-slate-900">KES {tx.amount.toLocaleString()}</div>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
 
             {}
             <Dialog open={isRetryOpen} onOpenChange={setIsRetryOpen}>

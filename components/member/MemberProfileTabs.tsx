@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { PremiumTabs } from '../shared/PremiumTabs'
 import LoansTab from './tabs/LoansTab' // This import will be removed or renamed if LoansTab is no longer used for the 'loans' tab
 import ContributionsTab from './tabs/ContributionsTab'
 import StatementsTab from './tabs/StatementsTab'
@@ -38,23 +39,13 @@ export default function MemberProfileTabs({
     return (
         <div className="bg-white border border-gray-200 rounded-lg shadow-sm min-h-[600px]">
             {}
-            <div className="border-b border-gray-200 px-6 pt-2">
-                <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-                    {tabs.map((tab) => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id as any)}
-                            className={`
-                                whitespace-nowrap py-4 px-1 border-b-2 font-semibold text-sm transition-all
-                                ${activeTab === tab.id
-                                    ? 'border-teal-500 text-teal-600'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}
-                            `}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
-                </nav>
+            {/* Tab Navigation */}
+            <div className="border-b border-gray-200 px-6 py-2">
+                <PremiumTabs 
+                    tabs={tabs}
+                    activeTab={activeTab}
+                    onChange={(id) => setActiveTab(id as any)}
+                />
             </div>
 
             {}

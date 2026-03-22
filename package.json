@@ -71,10 +71,5 @@
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
-  },
-  "browserslist": [
-    "defaults",
-    "not ie 11",
-    "chrome >= 90"
-  ]
+  }
 }

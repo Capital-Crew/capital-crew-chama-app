@@ -24,7 +24,7 @@ export default async function AccountsPage() {
     })
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-base-200">
             <AccountsModule members={members} />
         </div>
     )

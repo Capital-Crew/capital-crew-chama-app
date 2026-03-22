@@ -90,7 +90,7 @@ export default async function WelfarePage() {
                             />
 
                             <div className="space-y-6">
-                                <div className="bg-slate-50 p-6 rounded-lg border">
+                                <div className="bg-base-100 p-6 rounded-lg border">
                                     <h3 className="font-semibold mb-2">How it works</h3>
                                     <ul className="list-disc list-inside space-y-2 text-sm text-slate-600">
                                         <li>Select the beneficiary member.</li>
@@ -107,7 +107,7 @@ export default async function WelfarePage() {
             ) : (
                 <div className="space-y-6">
                     {}
-                    <div className="bg-slate-50 p-4 rounded-lg border">
+                    <div className="bg-base-100 p-4 rounded-lg border">
                         <p className="text-sm text-slate-600">
                             Below is the list of all welfare claims. For new requests, please contact the Welfare Committee.
                         </p>

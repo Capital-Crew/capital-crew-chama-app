@@ -74,12 +74,12 @@ export function AppSidebar({ user, approvalCount = 0, pendingLoanCount = 0 }: { 
     const { canAccess } = useModuleAccess();
 
     return (
-        <aside className="hidden md:flex w-80 h-screen fixed inset-y-0 left-0 z-40 bg-[#0A192F] border-r border-white/10 shadow-2xl flex-col font-sans selection:bg-[#00c2e0] selection:text-white">
+        <aside className="hidden md:flex w-80 h-screen fixed inset-y-0 left-0 z-40 bg-[#0F172A] border-r border-white/10 shadow-2xl flex-col font-sans selection:bg-[#00c2e0] selection:text-white">
             {}
             <div className="pt-10 pb-8 px-8">
                 <div className="flex items-center gap-2 mb-2">
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#00c2e0] to-[#00ffcc] flex-shrink-0" />
-                    <h1 className="text-2xl font-black italic tracking-tighter text-white">
+                    <h1 className="text-xl font-black italic tracking-tighter text-white">
                         CAPITAL<span className="text-[#00c2e0]">CREW</span>
                     </h1>
                 </div>

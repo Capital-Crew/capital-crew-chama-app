@@ -72,7 +72,7 @@ export function DashboardView({ stats, trends, personalDetail, ledgerKPIs }: Pro
     }
 
     return (
-        <div className="min-h-screen bg-slate-50/50">
+        <div className="min-h-screen bg-base-200">
             {}
             <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 md:px-8 py-3 md:py-4 flex items-center justify-end">
                 <div className="flex gap-2 md:gap-3">

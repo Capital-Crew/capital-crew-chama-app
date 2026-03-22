@@ -92,7 +92,7 @@ export default async function MemberLegacyProfilePage({ params }: PageProps) {
     };
 
     return (
-        <div className="w-full px-4 md:px-8 py-8 space-y-8 bg-slate-50 min-h-screen">
+        <div className="w-full px-4 md:px-8 py-8 space-y-8 bg-base-200 min-h-screen">
             {}
             <div>
                 <h1 className="text-2xl font-bold text-slate-800 tracking-tight">

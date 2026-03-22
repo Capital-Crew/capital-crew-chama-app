@@ -52,7 +52,7 @@ export default function DashboardVolumeChart({ data }: { data: TrendData[] }) {
                         <Bar
                             dataKey="contributions"
                             name="Inflow (Contributions)"
-                            fill="#06b6d4"
+                            fill="#00c2e0"
                             radius={[4, 4, 0, 0]}
                             barSize={16}
                         />

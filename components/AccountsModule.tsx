@@ -69,7 +69,7 @@ const formatType = (type: string) => {
     ).join(' ')
 }
 
-type Tab = 'coa' | 'hierarchy' | 'periods' | 'journal' | 'ledger' | 'config' | 'expenses' | 'transfers' | 'mpesa'
+type Tab = 'coa' | 'hierarchy' | 'periods' | 'journal' | 'ledger' | 'config' | 'transfers' | 'mpesa'
 
 
 type MappingWithAccount = {
@@ -126,11 +126,6 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
     const [mappings, setMappings] = useState<MappingWithAccount[]>([])
     const [accounts, setAccounts] = useState<AccountOption[]>([])
 
-    // Expenses State
-    const [expenses, setExpenses] = useState<any[]>([])
-    const [expenseCategories, setExpenseCategories] = useState<any[]>([])
-    const [membersList, setMembersList] = useState<any[]>([])
-
     // Transfers State
     const [transfers, setTransfers] = useState<{ pending: any[], history: any[] }>({ pending: [], history: [] })
 
@@ -183,17 +178,6 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                 ])
                 setMappings(mappingsData)
                 setAccounts(accountsData)
-            } else if (activeTab === 'expenses') {
-                const [expData, accData, catData, memData] = await Promise.all([
-                    getExpenses(),
-                    getStrictGLAccounts(),
-                    getExpenseCategories(),
-                    getMembers()
-                ])
-                setExpenses(expData)
-                setChartOfAccounts(accData)
-                setExpenseCategories(catData)
-                setMembersList(memData)
             } else if (activeTab === 'transfers') {
                 const data = await getTransferRequests()
                 setTransfers(data)
@@ -519,7 +503,6 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                         { id: 'journal', label: 'Journal', shortLabel: 'Journal', icon: HistoryIcon },
                         { id: 'periods', label: 'Periods', shortLabel: 'Periods', icon: CalendarIcon },
                         { id: 'transfers', label: 'Transfers', shortLabel: 'Transfers', icon: ArrowLeftRightIcon },
-                        { id: 'expenses', label: 'Expenses', shortLabel: 'Expenses', icon: FileTextIcon },
                         ...(userAuth?.role !== 'Member' ? [{ id: 'config', label: 'Settings', shortLabel: 'Settings', icon: Settings }] : [])
                     ].map(tab => {
                         const isActive = activeTab === tab.id;

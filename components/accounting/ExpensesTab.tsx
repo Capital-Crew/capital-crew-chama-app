@@ -62,8 +62,8 @@ export function ExpensesTab({ expenses, accounts, categories, members, currentUs
         expenseAccountId: '',
         subCategoryId: '',
         date: new Date(),
-        type: 'OPERATIONAL' as ExpenseType,
-        recipientId: ''
+        type: (isOfficial ? 'OPERATIONAL' : 'CLAIM') as ExpenseType,
+        recipientId: isOfficial ? '' : currentUserId
     })
 
     // Form State for Surrender
@@ -512,12 +512,19 @@ export function ExpensesTab({ expenses, accounts, categories, members, currentUs
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
                             <Label>Expense Type</Label>
-                            <Select value={formData.type} onValueChange={(v: ExpenseType) => setFormData({ ...formData, type: v, recipientId: v === 'CLAIM' ? currentUserId : '' })}>
+                            <Select 
+                                value={formData.type} 
+                                onValueChange={(v: ExpenseType) => setFormData({ 
+                                    ...formData, 
+                                    type: v, 
+                                    recipientId: (!isOfficial || v === 'CLAIM' || v === 'IMPREST') && !formData.recipientId ? currentUserId : formData.recipientId 
+                                })}
+                            >
                                 <SelectTrigger>
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="OPERATIONAL">Operational (Vendor/Direct)</SelectItem>
+                                    {isOfficial && <SelectItem value="OPERATIONAL">Operational (Vendor/Direct)</SelectItem>}
                                     <SelectItem value="IMPREST">Imprest (Advance)</SelectItem>
                                     <SelectItem value="CLAIM">Reimbursement Claim</SelectItem>
                                 </SelectContent>
@@ -527,7 +534,11 @@ export function ExpensesTab({ expenses, accounts, categories, members, currentUs
                         {(formData.type === 'IMPREST' || formData.type === 'CLAIM') && (
                             <div className="space-y-2">
                                 <Label>Recipient / Requester</Label>
-                                <Select value={formData.recipientId} onValueChange={(v) => setFormData({ ...formData, recipientId: v })}>
+                                <Select 
+                                    value={formData.recipientId} 
+                                    onValueChange={(v) => setFormData({ ...formData, recipientId: v })}
+                                    disabled={!isOfficial}
+                                >
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select Member" />
                                     </SelectTrigger>
@@ -537,6 +548,7 @@ export function ExpensesTab({ expenses, accounts, categories, members, currentUs
                                         ))}
                                     </SelectContent>
                                 </Select>
+                                {!isOfficial && <p className="text-[10px] text-slate-500 italic mt-1 px-1">🔒 Access restricted: Members can only submit claims for themselves.</p>}
                             </div>
                         )}
 

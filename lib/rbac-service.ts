@@ -30,7 +30,8 @@ export const getPermissionsForRole = async (role: UserRole) => {
                 const perm = permissions.find(p => p.moduleKey === mod.key);
 
                 // Safety: SYSTEM_ADMIN always has access to ADMIN and REPORTS_HUB
-                if (role === 'SYSTEM_ADMIN' && (mod.key === 'ADMIN' || mod.key === 'REPORTS_HUB')) {
+                // Global Access: EXPENSES is open to all for transparency
+                if ((role === 'SYSTEM_ADMIN' && (mod.key === 'ADMIN' || mod.key === 'REPORTS_HUB')) || mod.key === 'EXPENSES') {
                     return { ...mod, canAccess: true };
                 }
 
@@ -50,7 +51,8 @@ export const getPermissionsForRole = async (role: UserRole) => {
  */
 export async function checkPermission(role: UserRole, moduleKey: string): Promise<boolean> {
     // Safety: SYSTEM_ADMIN always has access to ADMIN and REPORTS_HUB
-    if (role === 'SYSTEM_ADMIN' && (moduleKey === 'ADMIN' || moduleKey === 'REPORTS_HUB')) {
+    // Global Access: EXPENSES is open to all for transparency
+    if ((role === 'SYSTEM_ADMIN' && (moduleKey === 'ADMIN' || moduleKey === 'REPORTS_HUB')) || moduleKey === 'EXPENSES') {
         return true;
     }
 

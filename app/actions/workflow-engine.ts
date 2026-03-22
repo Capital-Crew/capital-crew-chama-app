@@ -220,18 +220,27 @@ export async function processWorkflowAction(requestId: string, action: ApprovalA
         }
 
         if (action === 'APPROVED') {
-            // CHECK VOTES
-            const approvalCount = await tx.workflowAction.count({
+            // CHECK VOTES AND ADMIN QUORUM
+            const approvedActions = await tx.workflowAction.findMany({
                 where: {
                     requestId,
                     stageId: request.currentStage!.id,
                     action: 'APPROVED'
-                }
+                },
+                include: { actor: { select: { role: true } } }
             })
 
+            const approvalCount = approvedActions.length;
             const minVotes = request.currentStage!.minVotesRequired || 1
 
-            if (approvalCount >= minVotes) {
+            // NEW ADMIN CHECK
+            let adminVoted = true; // Default true for non-loan entities
+            if (request.entityType === 'LOAN') {
+                const adminRoles = ['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER', 'SECRETARY'];
+                adminVoted = approvedActions.some(a => adminRoles.includes(a.actor.role));
+            }
+
+            if (approvalCount >= minVotes && adminVoted) {
                 // THRESHOLD MET: Move to Next Stage
                 const currentStep = request.currentStage!.stepNumber
                 const allStages = request.workflow.stages // Ordered asc

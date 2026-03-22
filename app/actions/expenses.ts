@@ -1,3 +1,5 @@
+'use server'
+
 import { auth } from '@/auth'
 import { db } from '@/lib/db'
 import { ApprovalStatus, AuditLogAction, ExpenseStatus, ExpenseType } from '@prisma/client'

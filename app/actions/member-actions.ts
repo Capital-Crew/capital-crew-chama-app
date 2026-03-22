@@ -1,3 +1,5 @@
+'use server'
+
 import { auth } from '@/auth'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'

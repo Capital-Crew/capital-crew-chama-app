@@ -31,6 +31,7 @@ export class ExpenseService {
             data: {
                 description: data.description,
                 requestedAmount: data.amount,
+                amount: data.amount,
                 date: data.date,
                 expenseAccountId: data.expenseAccountId,
                 subCategoryId: data.subCategoryId || null,
@@ -82,7 +83,7 @@ export class ExpenseService {
             creditAccountId = wallet.glAccountId
             isWalletTransaction = true
         } else {
-            creditAccountId = await this.getPaymentSourceAccountId(mappings, tx)
+            creditAccountId = (await this.getPaymentSourceAccountId(mappings, tx)) || null
         }
 
         if (!creditAccountId) {
@@ -122,6 +123,7 @@ export class ExpenseService {
                     walletId: wallet.id,
                     type: expense.type === ExpenseType.IMPREST ? 'IMPREST_ADVANCE' : 'EXPENSE_PAYOUT',
                     amount: approvedAmount,
+                    description: `CASH ADVANCE: ${expense.description}`,
                     balanceAfter: 0,
                     immutable: true
                 }

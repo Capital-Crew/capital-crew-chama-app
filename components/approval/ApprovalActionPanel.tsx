@@ -39,7 +39,7 @@ export function ApprovalActionPanel({ status, entityType, entityId, canEdit }: A
 
     return (
         <div className="flex items-center gap-2">
-            {/* SEND REQUEST (Only in APPLICATION stage) */}
+            {}
             {status === 'APPLICATION' && canEdit && (
                 <button
                     onClick={() => onTransition('SEND')}
@@ -51,7 +51,7 @@ export function ApprovalActionPanel({ status, entityType, entityId, canEdit }: A
                 </button>
             )}
 
-            {/* CANCEL REQUEST (Only in PENDING stage) */}
+            {}
             {status === 'PENDING_APPROVAL' && canEdit && (
                 <button
                     onClick={() => onTransition('CANCEL')}
@@ -63,7 +63,7 @@ export function ApprovalActionPanel({ status, entityType, entityId, canEdit }: A
                 </button>
             )}
 
-            {/* DELEGATE (Always Visible) */}
+            {}
             <button
                 onClick={() => setDelegationOpen(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg text-xs font-bold uppercase hover:bg-blue-100 transition-all"
@@ -72,7 +72,7 @@ export function ApprovalActionPanel({ status, entityType, entityId, canEdit }: A
                 Delegate
             </button>
 
-            {/* HISTORY (Always Visible) */}
+            {}
             <button
                 onClick={() => setHistoryOpen(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold uppercase hover:bg-slate-200 transition-all"

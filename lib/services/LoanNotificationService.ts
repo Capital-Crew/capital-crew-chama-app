@@ -16,10 +16,8 @@ export class LoanNotificationService {
         variables: Record<string, string>,
         attachments: any[] = []
     ) {
-        console.log(`[LoanNotificationService] dispatchNotification: ${templateType} to ${recipients.length} recipients`)
 
         if (!recipients || recipients.length === 0) {
-            console.warn(`[LoanNotificationService] No recipients — skipping ${templateType}`)
             return
         }
 
@@ -31,10 +29,10 @@ export class LoanNotificationService {
                 }
             })
             if (existingLog) {
-                console.log(`[LoanNotificationService] Already sent ${templateType} for loan ${loanId} — skipping dedup`)
                 return
             }
         } catch (err) {
+            // TODO: replace with structured logger
             console.error(`[LoanNotificationService] Dedup check failed:`, err)
             // Don't block on dedup failure — proceed with sending
         }
@@ -44,12 +42,12 @@ export class LoanNotificationService {
         try {
             template = await db.emailTemplate.findUnique({ where: { type: templateType } })
         } catch (err) {
+            // TODO: replace with structured logger
             console.error(`[LoanNotificationService] Could not fetch template '${templateType}':`, err)
             return
         }
 
         if (!template || !template.isActive) {
-            console.warn(`[LoanNotificationService] Template '${templateType}' not found or inactive`)
             return
         }
 
@@ -62,8 +60,8 @@ export class LoanNotificationService {
         let success = false
         try {
             success = await EmailService.sendEmail(recipients, subject, htmlBody, attachments)
-            console.log(`[LoanNotificationService] Email send result: ${success ? 'SUCCESS' : 'FAILED'}`)
         } catch (err) {
+            // TODO: replace with structured logger
             console.error(`[LoanNotificationService] sendEmail threw:`, err)
         }
 
@@ -79,6 +77,7 @@ export class LoanNotificationService {
                 }
             })
         } catch (err) {
+            // TODO: replace with structured logger
             console.error(`[LoanNotificationService] Could not write EmailNotificationLog:`, err)
         }
     }
@@ -88,14 +87,12 @@ export class LoanNotificationService {
      * Sends to all users who have loan approval rights
      */
     static async handleApprovalRequest(loanId: string) {
-        console.log(`[LoanNotificationService] handleApprovalRequest for loan ${loanId}`)
         try {
             const loan = await db.loan.findUnique({
                 where: { id: loanId },
                 include: { member: true, loanProduct: true }
             })
             if (!loan || !loan.member) {
-                console.warn(`[LoanNotificationService] Loan ${loanId} or member not found`)
                 return
             }
 
@@ -107,10 +104,8 @@ export class LoanNotificationService {
                 .map(u => u.email)
                 .filter((e): e is string => Boolean(e))
 
-            console.log(`[LoanNotificationService] Found ${approverEmails.length} approver(s):`, approverEmails)
 
             if (approverEmails.length === 0) {
-                console.warn(`[LoanNotificationService] No approvers found — skipping approval email`)
                 return
             }
 
@@ -136,6 +131,7 @@ export class LoanNotificationService {
                     contentType: 'application/pdf'
                 }]
             } catch (pdfErr) {
+                // TODO: replace with structured logger
                 console.error(`[LoanNotificationService] PDF generation failed (sending without attachment):`, pdfErr)
             }
 
@@ -147,6 +143,7 @@ export class LoanNotificationService {
                 pdfAttachments
             )
         } catch (err) {
+            // TODO: replace with structured logger
             console.error(`[LoanNotificationService] handleApprovalRequest error:`, err)
         }
     }
@@ -156,7 +153,6 @@ export class LoanNotificationService {
      * Sends to the loan applicant
      */
     static async handleDisbursement(loanId: string, nextStepsText: string = '') {
-        console.log(`[LoanNotificationService] handleDisbursement for loan ${loanId}`)
         try {
             const loan = await db.loan.findUnique({
                 where: { id: loanId },
@@ -164,13 +160,11 @@ export class LoanNotificationService {
             })
 
             if (!loan || !loan.member) {
-                console.warn(`[LoanNotificationService] Loan ${loanId} or member not found`)
                 return
             }
 
             const applicantUser = await db.user.findUnique({ where: { memberId: loan.memberId } })
             if (!applicantUser?.email) {
-                console.warn(`[LoanNotificationService] No user email for member ${loan.memberId}`)
                 return
             }
 
@@ -203,6 +197,7 @@ export class LoanNotificationService {
                 []
             )
         } catch (err) {
+            // TODO: replace with structured logger
             console.error(`[LoanNotificationService] handleDisbursement error:`, err)
         }
     }

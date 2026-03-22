@@ -2,7 +2,7 @@
 
 import { auth } from '@/auth'
 import { db } from '@/lib/db'
-import { BatchPaymentStatus, AuditLogAction } from '@prisma/client'
+import { BatchPaymentStatus } from '@prisma/client'
 import { Decimal } from 'decimal.js'
 import { serializeFinancials, Serialized } from "@/lib/safe-serialization"
 import { revalidatePath } from 'next/cache'

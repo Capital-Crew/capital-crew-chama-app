@@ -46,6 +46,7 @@ export async function POST(req: Request) {
                         phoneNumber: account || payload.phone_number || 'Unknown'
                     });
                 } catch (error: any) {
+                    // TODO: Log error to monitoring service (CRITICAL: Payment received but processing failed)
                     // Still return success to IntaSend as the payment was received
                 }
             }
@@ -54,6 +55,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: true });
 
     } catch (error) {
+        // TODO: Log error to monitoring service
         return NextResponse.json({ error: 'Webhook Handler Failed' }, { status: 500 });
     }
 }

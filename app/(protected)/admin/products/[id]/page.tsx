@@ -34,7 +34,7 @@ export default async function ProductDetailsPage({ params }: { params: Promise<{
 
     return (
         <div className="max-w-6xl mx-auto py-8 space-y-8">
-            {/* Header */}
+            {}
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                     <div className="flex items-center gap-2 mb-2">

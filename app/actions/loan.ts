@@ -17,12 +17,8 @@ import { auth } from '@/auth'
 import { LoanService } from '@/services/loan-service'
 import { revalidatePath } from 'next/cache'
 import { db } from '@/lib/db'
-import { serializeLoan } from '@/lib/serializers'
 import { AccountingService } from '@/lib/services/AccountingService'
 
-// ========================================
-// REPAYMENT ACTION
-// ========================================
 
 import { serializeFinancials, Serialized } from "@/lib/safe-serialization"
 // ... existing imports ...
@@ -76,9 +72,6 @@ export async function addLoanRepayment(input: {
     return serializeFinancials(result)
 }
 
-// ========================================
-// GET ACTIVE LOANS ACTION
-// ========================================
 
 export async function getActiveLoansByMember(memberId: string): Promise<Serialized<any>> {
     // 1. Authenticate
@@ -91,9 +84,6 @@ export async function getActiveLoansByMember(memberId: string): Promise<Serializ
     return serializeFinancials(await LoanService.getActiveLoansByMember(memberId))
 }
 
-// ========================================
-// GET LOAN DETAILS ACTION
-// ========================================
 
 export async function getLoanDetails(loanId: string): Promise<Serialized<any>> {
     const loan = await db.loan.findUnique({
@@ -124,9 +114,6 @@ export async function getLoanDetails(loanId: string): Promise<Serialized<any>> {
 }
 
 
-// ========================================
-// OPERATIONAL METRICS ACTION
-// ========================================
 
 export async function getOperationalMetricsReport(startDate: string, endDate: string): Promise<Serialized<any>> {
     // 1. Authenticate
@@ -145,9 +132,6 @@ export async function getOperationalMetricsReport(startDate: string, endDate: st
     return serializeFinancials(metrics)
 }
 
-// ========================================
-// GET LOAN TRANSACTION DETAILS ACTION
-// ========================================
 
 export async function getLoanTransactionDetails(transactionId: string): Promise<Serialized<any>> {
     const transaction = await db.loanTransaction.findUnique({

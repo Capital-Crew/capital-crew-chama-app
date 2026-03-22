@@ -11,9 +11,6 @@ import {
     LineChart,
 } from "lucide-react"
 
-// ──────────────────────────────────────────
-// Types
-// ──────────────────────────────────────────
 
 export interface Report {
     id: string
@@ -60,9 +57,6 @@ export interface ColorClasses {
     hover: string
 }
 
-// ──────────────────────────────────────────
-// Icon Map (avoids passing React components in config)
-// ──────────────────────────────────────────
 
 export const ICON_MAP = {
     FileText,
@@ -77,9 +71,6 @@ export const ICON_MAP = {
     LineChart,
 } as const
 
-// ──────────────────────────────────────────
-// Color Utility
-// ──────────────────────────────────────────
 
 export function getColorClasses(color: ReportColor): ColorClasses {
     const map: Record<ReportColor, ColorClasses> = {
@@ -147,9 +138,6 @@ export function getColorClasses(color: ReportColor): ColorClasses {
     return map[color] || map.blue
 }
 
-// ──────────────────────────────────────────
-// Report Definitions
-// ──────────────────────────────────────────
 
 export const REPORTS: Report[] = [
     // ── Loan Reports ──
@@ -325,9 +313,6 @@ export const REPORTS: Report[] = [
     },
 ]
 
-// ──────────────────────────────────────────
-// Category Labels
-// ──────────────────────────────────────────
 
 export const CATEGORY_LABELS: Record<Report['category'], string> = {
     loan: 'Loan Reports',

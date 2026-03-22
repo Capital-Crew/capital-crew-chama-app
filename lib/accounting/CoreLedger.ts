@@ -79,10 +79,6 @@ export class CoreLedger {
                 }
             })
 
-            // B. Update Account Balances (Cached Aggregate)
-            // We iterate strictly to avoid deadlocks? 
-            // Better: Just fire updates. Row-level locks in Postgres handles safety if we assume short transactions.
-            // For rigorous safety with high concurrency, we might want to sort account IDs first.
 
             // Sort lines by account ID to prevent deadlocks (A->B vs B->A)
             const sortedLines = [...input.lines].sort((a, b) => a.accountId.localeCompare(b.accountId))
@@ -90,11 +86,6 @@ export class CoreLedger {
             for (const line of sortedLines) {
                 const netChange = line.credit - line.debit // Standard accounting: Credit +, Debit - (for Liability/Equity/Revenue)
 
-                // However, we need to respect account types for "Natural Balance" if we want "Balance" to mean "Positive Value"?
-                // NO. The user requested: "SELECT SUM(credit - debit)". 
-                // So Balance = Total Credits - Total Debits.
-                // This means Assets will be negative (Debits > Credits). Liabilities will be positive.
-                // WE MUST STICK TO THIS RAW DEFINITION for consistency.
 
                 // Using atomic operations (increment/decrement)
                 // Note: BigInt support in Prisma increment is standard.

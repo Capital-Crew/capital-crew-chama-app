@@ -5,8 +5,6 @@ import { auth } from "@/auth"
 import { AdjustmentCategory } from "@/lib/types"
 import { revalidatePath } from "next/cache"
 import { SystemAccountType, Prisma, AuditLogAction } from "@prisma/client"
-import { getLoanOutstandingBalance } from "@/lib/accounting/AccountingEngine"
-import { LoanBalanceService } from "@/lib/services/LoanBalanceService"
 import { withAudit } from "@/lib/with-audit"
 
 export async function searchLoans(query: string) {
@@ -95,8 +93,8 @@ export async function searchLoans(query: string) {
             outstandingBalance: finalBalance.toString(),
             member: loan.member,
             loanProduct: {
-                name: loan.loanProduct.name,
-                productName: loan.loanProduct.name
+                name: loan.loanProduct?.name || 'Standard Loan',
+                productName: loan.loanProduct?.name || 'Standard Loan'
             }
         }
     })

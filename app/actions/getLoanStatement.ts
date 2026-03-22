@@ -33,9 +33,6 @@ export async function getLoanStatement(loanId: string) {
     throw new Error('Loan not found')
   }
 
-  // Fetch LoanTransaction entries (Source of Truth for Loan Activity)
-  // CRITICAL: Fetch ALL transactions, including reversed ones. Do NOT filter by isReversed.
-  // We include the reversed transaction itself AND the reversal transaction.
   const loanTransactions = await prisma.loanTransaction.findMany({
     where: {
       loanId: loanId

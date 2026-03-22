@@ -20,7 +20,7 @@ export default function MemberFactBox({ stats, isNavigable = false, className = 
         <div className={`bg-white shadow-sm border border-gray-200 rounded-lg p-4 w-full border-l-4 border-l-teal-500 ${className}`}>
             <h2 className="text-gray-800 font-bold mb-4">Member Statistics FactBox</h2>
 
-            {/* Member Details Section */}
+            {}
             <div className="mb-6">
                 <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Member Details</h3>
 
@@ -57,7 +57,7 @@ export default function MemberFactBox({ stats, isNavigable = false, className = 
                 </div>
             </div>
 
-            {/* Financial Statistics Section */}
+            {}
             <div>
                 <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Financial Statistics</h3>
 

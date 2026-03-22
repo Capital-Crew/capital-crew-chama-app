@@ -47,9 +47,6 @@ export default async function LoanDraftPage({ params }: PageProps) {
     const canEditDetails = isOwner
     const canEditExemptions = isOwner || isAdmin
 
-    // Check Status - Redirect if not Draft/Application
-    // Actually, maybe we want to view it in read-only if pending? 
-    // But for now, this page is for EDITING.
     if (loan.status !== 'APPLICATION' && loan.status !== 'DRAFT') { // DRAFT added to enum
         // If pending, maybe redirect to a view page? 
         // For now, redirect to main loans list

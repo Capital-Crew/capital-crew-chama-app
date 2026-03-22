@@ -54,9 +54,6 @@ export class BalanceChecker {
         const totalDebits = Number(result._sum.debitAmount || 0)
         const totalCredits = Number(result._sum.creditAmount || 0)
 
-        // Balance calculation based on account type
-        // Assets: Debit increases, Credit decreases → Balance = Debits - Credits
-        // Liabilities/Income: Credit increases, Debit decreases → Balance = Credits - Debits
         let balance = 0
         if (account.type === 'ASSET') {
             balance = totalDebits - totalCredits

@@ -58,19 +58,7 @@ export class TransactionReplayService {
                 return { installmentsUpdated: 0, transactionsReplayed: 0 }
             }
 
-            // 2. Initialize In-Memory Installment State
-            // We map them to a mutable structure to track paid amounts during the replay
-            // If fromDate is provided, we technically only need to reset those after fromDate,
-            // BUT to be safe and simple (and since we need to know the state of previous ones to know where to apply payment),
-            // we usually replay EVERYTHING from the start, OR we assume previous ones are correct.
-            // However, "Waterfalling" implies if I overpaid previous, it spills to next.
-            // If we start from middle, we assume "remaining balance" is correct?
-            // Safer approach: Reset EVERYTHING if possible, or Reset from Date.
-            // If we only "replay" from Date, we must ensure we don't zero out previous history if we aren't re-processing previous transactions.
 
-            // To support `fromDate` correctly without re-fetching all history, we would need the cumulative "carry over" from previous.
-            // But usually `replayTransactions` is called with undefined `fromDate` for full consistency.
-            // If `fromDate` is used, we assume previous structure is frozen.
 
             let installmentsState = allInstallments.map(inst => {
                 // Should we reset?
@@ -177,9 +165,6 @@ export class TransactionReplayService {
                     }
                 }
 
-                // 5. Update Transaction Record (One Query per Tx)
-                // Only if allocation changed? Or always safety? 
-                // Always safety to ensure consistency.
                 await prisma.loanTransaction.update({
                     where: { id: txn.id },
                     data: {
@@ -197,9 +182,6 @@ export class TransactionReplayService {
             // We only update those that were modified/reset
             const modifiedInstallments = installmentsState.filter(i => i.wasModified)
 
-            // Prisma doesn't support bulk update with different values easily.
-            // So we use Promise.all with individual updates.
-            // This is still much faster than doing it inside the transaction loop.
             await Promise.all(modifiedInstallments.map(inst =>
                 prisma.repaymentInstallment.update({
                     where: { id: inst.id },
@@ -282,9 +264,6 @@ export class TransactionReplayService {
                 }
             })
 
-            // 2. Replay all transactions from this date forward
-            // This ensures the back-dated payment is processed in chronological order
-            // Pass 'tx' to ensure it sees the newly created transaction!
             await this.replayTransactions(loanId, paymentDate, tx)
         })
     }

@@ -108,12 +108,12 @@ export function DelegationPanel({ isOpen, onClose }: DelegationPanelProps) {
 
     return (
         <div className="fixed inset-0 z-[60] flex justify-end">
-            {/* Backdrop */}
+            {}
             <div className="absolute inset-0 bg-slate-900/20 backdrop-blur-sm" onClick={onClose} />
 
-            {/* Panel */}
+            {}
             <div className="relative w-full max-w-2xl bg-white shadow-2xl h-full flex flex-col animate-in slide-in-from-right duration-300">
-                {/* Header */}
+                {}
                 <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-slate-50 to-white">
                     <div>
                         <h3 className="font-bold text-xl text-slate-800">Approval Delegations</h3>
@@ -124,7 +124,7 @@ export function DelegationPanel({ isOpen, onClose }: DelegationPanelProps) {
                     </button>
                 </div>
 
-                {/* Content */}
+                {}
                 <div className="flex-1 overflow-y-auto p-6">
                     {loading ? (
                         <div className="flex justify-center py-12">
@@ -132,7 +132,7 @@ export function DelegationPanel({ isOpen, onClose }: DelegationPanelProps) {
                         </div>
                     ) : (
                         <div className="space-y-6">
-                            {/* Create New Delegation Button */}
+                            {}
                             {!showCreateForm && (
                                 <button
                                     onClick={() => setShowCreateForm(true)}
@@ -143,7 +143,7 @@ export function DelegationPanel({ isOpen, onClose }: DelegationPanelProps) {
                                 </button>
                             )}
 
-                            {/* Create Form */}
+                            {}
                             {showCreateForm && (
                                 <form onSubmit={handleCreateDelegation} className="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-4">
                                     <h4 className="font-bold text-slate-700">New Delegation</h4>
@@ -208,7 +208,7 @@ export function DelegationPanel({ isOpen, onClose }: DelegationPanelProps) {
                                 </form>
                             )}
 
-                            {/* Delegations I've Given */}
+                            {}
                             <div>
                                 <h4 className="font-bold text-slate-700 mb-3 flex items-center gap-2">
                                     <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
@@ -250,7 +250,7 @@ export function DelegationPanel({ isOpen, onClose }: DelegationPanelProps) {
                                 )}
                             </div>
 
-                            {/* Delegations I've Received */}
+                            {}
                             <div>
                                 <h4 className="font-bold text-slate-700 mb-3 flex items-center gap-2">
                                     <span className="w-2 h-2 bg-green-500 rounded-full"></span>

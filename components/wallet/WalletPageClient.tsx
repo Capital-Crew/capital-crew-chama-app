@@ -17,7 +17,7 @@ export function WalletPageClient({ memberId, userRole }: { memberId: string; use
 
     return (
         <div className="max-w-[1600px] mx-auto space-y-8">
-            {/* Page Header */}
+            {}
             <div>
                 <h1 className="text-4xl font-black text-slate-900 uppercase italic tracking-tighter">
                     My <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-cyan-600">Wallet</span>
@@ -26,12 +26,12 @@ export function WalletPageClient({ memberId, userRole }: { memberId: string; use
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                {/* LEFT COLUMN: Overview & History (60%) */}
+                {}
                 <div className="lg:col-span-7 space-y-8">
-                    {/* Dashboard Cards */}
+                    {}
                     <WalletDashboard key={`dash-${refreshKey}`} memberId={memberId} />
 
-                    {/* Transaction History Section */}
+                    {}
                     <div>
                         <div className="flex items-center justify-between mb-4 px-1">
                             <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
@@ -43,10 +43,10 @@ export function WalletPageClient({ memberId, userRole }: { memberId: string; use
                     </div>
                 </div>
 
-                {/* RIGHT COLUMN: Actions Panel (40%) - Sticky on Desktop */}
+                {}
                 <div className="lg:col-span-5 sticky top-6">
                     <div className="bg-white/50 backdrop-blur-xl border border-white/40 shadow-xl shadow-slate-200/50 rounded-3xl overflow-hidden relative">
-                        {/* Decorative background element for the panel */}
+                        {}
                         <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl -z-10"></div>
                         <div className="absolute bottom-0 left-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-3xl -z-10"></div>
 

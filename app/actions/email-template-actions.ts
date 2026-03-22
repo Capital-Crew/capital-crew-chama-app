@@ -59,14 +59,14 @@ export async function toggleEmailTemplate(id: string, isActive: boolean) {
 export async function previewEmailTemplate(type: string, templateBody: string, templateSubject: string) {
     await requireSystemAdmin()
 
-    // Sample dummy data
+    // Sample dummy data for preview visualization
     const sampleData: Record<string, string> = {
-        applicant_name: "John Doe",
-        loan_id: "LN-2025-001",
+        applicant_name: "[Applicant Name]",
+        loan_id: "LN-XXXX-YYY",
         loan_amount: "50,000",
         loan_term: "12 months",
         interest_rate: "2% per month",
-        approval_link: "http://localhost:3000/admin/loans/LN-2025-001",
+        approval_link: `${process.env.APP_URL || 'https://capitalcrew.com'}/admin/loans/LN-XXXX-YYY`,
         disbursement_date: new Date().toLocaleDateString(),
         repayment_summary: "KES 4,500 due by next month",
         next_steps: "Review the repayment schedule and sign the final contract."

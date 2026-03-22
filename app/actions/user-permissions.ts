@@ -8,9 +8,6 @@ import type { UserPermissions, UserRole } from '@/lib/types';
 import { AuditLogAction } from '@prisma/client';
 import { withAudit } from '@/lib/with-audit';
 
-// ========================================
-// VALIDATION SCHEMAS
-// ========================================
 
 // Default permissions object
 const defaultPermissions: UserPermissions = {
@@ -68,9 +65,6 @@ const UpdatePermissionsSchema = z.object({
     })
 });
 
-// ========================================
-// ACTIONS
-// ========================================
 
 /**
  * Update user permissions

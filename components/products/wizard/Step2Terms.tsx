@@ -12,7 +12,7 @@ export function Step2Terms() {
                 <CardDescription>Define the borrowing limits and repayment schedule.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-                {/* Principal Limits */}
+                {}
                 <div className="space-y-4 border-b border-slate-100 pb-4">
                     <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Principal Amounts</h4>
                     <div className="grid grid-cols-3 gap-4">
@@ -34,7 +34,7 @@ export function Step2Terms() {
                     </div>
                 </div>
 
-                {/* Repayment Terms */}
+                {}
                 <div className="space-y-4 border-b border-slate-100 pb-4">
                     <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Repayment Period</h4>
                     <div className="grid grid-cols-3 gap-4">
@@ -56,7 +56,7 @@ export function Step2Terms() {
                     </div>
                 </div>
 
-                {/* Frequency */}
+                {}
                 <div className="space-y-4">
                     <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Repayment Frequency</h4>
                     <div className="grid grid-cols-2 gap-4">

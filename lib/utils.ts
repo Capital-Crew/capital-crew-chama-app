@@ -84,10 +84,6 @@ export const addFrequencyOffset = (date: Date, every: number, type: RepaymentFre
 };
 
 export const generateLoanApplicationNumber = (loans: Loan[]): string => {
-    // Deprecated? No, let's just keep strict logic here or update it.
-    // User wants LN001.
-    // This function took an array.
-    // Let's create a new one to be safe: generateSequentialLoanNumber
     return "";
 };
 

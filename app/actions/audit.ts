@@ -95,6 +95,7 @@ export async function getAuditLogs(
             } // Fetched separately by getAuditStats
         }
     } catch (error) {
+        // TODO: Log error to monitoring service
         console.error("[getAuditLogs] Error:", error);
         throw new Error("Failed to retrieve audit trail data")
     }

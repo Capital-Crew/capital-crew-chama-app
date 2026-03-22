@@ -26,7 +26,7 @@ export function GlassCard({ children, className, gradient = false, ...props }: G
             )}
             {...props}
         >
-            {/* Optional subtle noise texture overlay could go here */}
+            {}
             {children}
         </motion.div>
     )

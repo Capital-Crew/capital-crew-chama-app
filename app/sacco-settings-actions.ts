@@ -326,9 +326,6 @@ export async function calculateLoanQualification(memberId: string, loansToOffset
     // Total deductions includes both fees AND loan offsets
     const totalDeductions = addMoney(feeDeductions, selectedLoansOffset)
 
-    // Net disbursement amount calculation:
-    // Use the SAME baseAmount we used for fee calculations
-    // Subtract all deductions (fees + offsets)
     const netDisbursementAmount = Math.max(0, subtractMoney(baseAmount, totalDeductions))
 
     return {

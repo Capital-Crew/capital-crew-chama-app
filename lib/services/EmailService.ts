@@ -42,6 +42,7 @@ export class EmailService {
 
             return true
         } catch (error) {
+            // TODO: replace with structured logger
             console.error('Email send failed:', error)
             return false
         }

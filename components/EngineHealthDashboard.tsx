@@ -148,7 +148,7 @@ export function EngineHealthDashboard() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Interest Engine */}
+                {}
                 <Card>
                     <CardHeader>
                         <div className="flex items-center justify-between">
@@ -204,7 +204,7 @@ export function EngineHealthDashboard() {
                     </CardContent>
                 </Card>
 
-                {/* Penalty Engine */}
+                {}
                 <Card>
                     <CardHeader>
                         <div className="flex items-center justify-between">
@@ -247,7 +247,7 @@ export function EngineHealthDashboard() {
                 </Card>
             </div>
 
-            {/* Execution History */}
+            {}
             <Card>
                 <CardHeader>
                     <CardTitle className="text-lg">Recent Executions</CardTitle>

@@ -142,16 +142,16 @@ export function WalletDashboard({ memberId }: { memberId: string }) {
     return (
         <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* CONTRIBUTIONS CARD */}
+                {}
                 <button
                     onClick={() => openTransactionHistory('share')}
                     className="group relative overflow-hidden rounded-3xl p-6 text-left transition-all hover:scale-[1.02] shadow-xl hover:shadow-2xl hover:shadow-cyan-500/20"
                 >
-                    {/* Background Gradients */}
+                    {}
                     <div className="absolute inset-0 bg-gradient-to-br from-cyan-600 to-blue-700"></div>
                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl transform translate-x-10 -translate-y-10 group-hover:bg-white/20 transition-all"></div>
 
-                    {/* Content */}
+                    {}
                     <div className="relative text-white">
                         <div className="flex items-center justify-between mb-8">
                             <div className="p-3 bg-white/10 rounded-2xl backdrop-blur-sm border border-white/10">
@@ -174,13 +174,13 @@ export function WalletDashboard({ memberId }: { memberId: string }) {
                     </div>
                 </button>
 
-                {/* AVAILABLE BALANCE CARD */}
+                {}
                 <div className="group relative overflow-hidden rounded-3xl p-6 shadow-xl hover:shadow-2xl hover:shadow-emerald-500/10 transition-all bg-white border border-slate-100">
-                    {/* Background Accents */}
+                    {}
                     <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-full blur-2xl opacity-50 -mr-10 -mt-10 pointer-events-none"></div>
                     <div className="absolute bottom-0 left-0 w-24 h-24 bg-teal-50 rounded-full blur-xl opacity-50 -ml-10 -mb-10 pointer-events-none"></div>
 
-                    {/* Content */}
+                    {}
                     <div className="relative h-full flex flex-col justify-between">
                         <div className="flex items-start justify-between mb-6">
                             <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-100">
@@ -211,11 +211,11 @@ export function WalletDashboard({ memberId }: { memberId: string }) {
                 </div>
             </div>
 
-            {/* Transaction History Modal */}
+            {}
             {showModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
-                        {/* Header */}
+                        {}
                         <div className="flex items-center justify-between p-6 border-b border-slate-200">
                             <h2 className="text-2xl font-black text-slate-900">
                                 {modalType === 'share' ? 'Contributions History' : 'Balance History'}
@@ -237,7 +237,7 @@ export function WalletDashboard({ memberId }: { memberId: string }) {
                             </div>
                         </div>
 
-                        {/* Transaction List */}
+                        {}
                         <div className="p-6 overflow-y-auto max-h-[60vh]">
                             {loadingTransactions ? (
                                 <div className="text-center py-8 text-slate-500">Loading transactions...</div>
@@ -293,7 +293,7 @@ export function WalletDashboard({ memberId }: { memberId: string }) {
                 </div>
             )}
 
-            {/* Cash Deposit Modal */}
+            {}
             {showDepositModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-3xl max-w-md w-full">

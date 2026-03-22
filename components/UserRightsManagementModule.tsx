@@ -78,7 +78,7 @@ export function UserRightsManagementModule({ users = [], modules = [], permissio
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-cyan-50/30">
-            {/* Header */}
+            {}
             <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 to-purple-700 text-white px-8 py-12 rounded-2xl shadow-xl mb-8">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
                 <div className="absolute bottom-0 left-0 w-48 h-48 bg-black/10 rounded-full blur-2xl -ml-10 -mb-10 pointer-events-none"></div>
@@ -94,7 +94,7 @@ export function UserRightsManagementModule({ users = [], modules = [], permissio
                 </div>
             </div>
 
-            {/* Tab Navigation */}
+            {}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-2 mb-8 sticky top-4 z-40 backdrop-blur-md bg-white/90">
                 <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0">
                     {tabs.map((tab) => {
@@ -116,9 +116,9 @@ export function UserRightsManagementModule({ users = [], modules = [], permissio
                 </div>
             </div>
 
-            {/* Content Area */}
+            {}
             <div className="space-y-6">
-                {/* User Rights Tab */}
+                {}
                 {activeTab === 'rights' && (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-6">
@@ -132,7 +132,7 @@ export function UserRightsManagementModule({ users = [], modules = [], permissio
                     </div>
                 )}
 
-                {/* SACCO Settings Tab */}
+                {}
                 {activeTab === 'sacco' && (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <div>
@@ -142,7 +142,7 @@ export function UserRightsManagementModule({ users = [], modules = [], permissio
 
                         {saccoSettings ? (
                             <form onSubmit={handleSaccoSettingsSubmit} className="space-y-6">
-                                {/* Financial Settings */}
+                                {}
                                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                                     <div className="bg-gradient-to-r from-emerald-50 to-teal-50 px-6 py-4 border-b border-slate-200">
                                         <div className="flex items-center gap-3">
@@ -191,7 +191,7 @@ export function UserRightsManagementModule({ users = [], modules = [], permissio
                                     </div>
                                 </div>
 
-                                {/* Approval Workflow */}
+                                {}
                                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                                     <div className="bg-gradient-to-r from-purple-50 to-pink-50 px-6 py-4 border-b border-slate-200">
                                         <div className="flex items-center gap-3">
@@ -231,7 +231,7 @@ export function UserRightsManagementModule({ users = [], modules = [], permissio
                                     </div>
                                 </div>
 
-                                {/* Contribution & Penalties */}
+                                {}
                                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                                     <div className="bg-gradient-to-r from-blue-50 to-cyan-50 px-6 py-4 border-b border-slate-200">
                                         <div className="flex items-center gap-3">
@@ -280,7 +280,7 @@ export function UserRightsManagementModule({ users = [], modules = [], permissio
                                     </div>
                                 </div>
 
-                                {/* Ledger Mapping */}
+                                {}
                                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                                     <div className="bg-gradient-to-r from-slate-50 to-indigo-50 px-6 py-4 border-b border-slate-200">
                                         <div className="flex items-center gap-3">
@@ -344,7 +344,7 @@ export function UserRightsManagementModule({ users = [], modules = [], permissio
                     </div>
                 )}
 
-                {/* Access Control Tab */}
+                {}
                 {activeTab === 'access' && (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <div>

@@ -76,10 +76,7 @@ export async function togglePermission(role: UserRole, moduleKey: string, canAcc
         throw new Error("Cannot remove Admin access from System Admin");
     }
 
-    /* 
-     * Using upsert allows us to handle "permissions that describe defaults" 
-     * or handle scenarios where the row doesn't exist yet (default deny).
-     */
+    
     await db.rolePermission.upsert({
         where: {
             role_moduleKey: {

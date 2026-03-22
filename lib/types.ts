@@ -35,7 +35,8 @@ export enum AdjustmentCategory {
     BOUNCED_CHEQUE = 'BOUNCED_CHEQUE',
     RECOVERY_COST = 'RECOVERY_COST',
     SYSTEM_CORRECTION = 'SYSTEM_CORRECTION',
-    WAIVER = 'WAIVER'
+    WAIVER = 'WAIVER',
+    INTEREST = 'INTEREST'
 }
 
 // JSON Types (Not managed by Prisma tables directly in this consolidation)

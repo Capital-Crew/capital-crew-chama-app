@@ -48,8 +48,5 @@ export async function updateProductMapping(
 }
 
 export async function initializeProductMappings(productId: string) {
-    // Optional: Pre-fill with reasonable defaults if possible, 
-    // or just leave empty for manual assignment. 
-    // For now, we'll leave it empty.
     return { success: true, message: 'Initialization not required' }
 }

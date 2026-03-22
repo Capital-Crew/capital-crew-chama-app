@@ -246,11 +246,6 @@ export class CalculationAuditBatch {
     async flush() {
         // In production, send to logging service
         if (process.env.NODE_ENV === 'development') {
-            console.log('Calculation Audit Batch:', {
-                batchId: this.batchId,
-                totalCalculations: this.logs.length,
-                logs: this.logs
-            });
         }
 
         // TODO: Send to logging service

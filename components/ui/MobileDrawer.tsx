@@ -28,7 +28,7 @@ export function MobileDrawer({ isOpen, onClose, title, children }: MobileDrawerP
         <AnimatePresence>
             {isOpen && (
                 <>
-                    {/* Backdrop */}
+                    {}
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -37,7 +37,7 @@ export function MobileDrawer({ isOpen, onClose, title, children }: MobileDrawerP
                         className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 md:hidden"
                     />
 
-                    {/* Drawer */}
+                    {}
                     <motion.div
                         initial={{ y: '100%' }}
                         animate={{ y: 0 }}
@@ -45,12 +45,12 @@ export function MobileDrawer({ isOpen, onClose, title, children }: MobileDrawerP
                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
                         className="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl z-50 md:hidden flex flex-col max-h-[90vh] shadow-2xl"
                     >
-                        {/* Handle for dragging (visual only for now) */}
+                        {}
                         <div className="flex justify-center pt-3 pb-1" onClick={onClose}>
                             <div className="w-12 h-1.5 bg-slate-200 rounded-full" />
                         </div>
 
-                        {/* Header */}
+                        {}
                         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
                             <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">{title}</h3>
                             <button
@@ -61,7 +61,7 @@ export function MobileDrawer({ isOpen, onClose, title, children }: MobileDrawerP
                             </button>
                         </div>
 
-                        {/* Content */}
+                        {}
                         <div className="flex-1 overflow-y-auto p-6">
                             {children}
                         </div>

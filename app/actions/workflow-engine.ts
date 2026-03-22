@@ -298,9 +298,6 @@ export async function getPendingWorkflowActions() {
     const user = await prisma.user.findUnique({ where: { id: session.user.id } })
     if (!user) return []
 
-    // Find requests where:
-    // 1. Status is PENDING
-    // 2. Current Stage requires user's role
 
     // Note: Prisma doesn't support advanced filtering on related fields in `findMany` easily for "My Role OR Admin",
     // We fetch checks.

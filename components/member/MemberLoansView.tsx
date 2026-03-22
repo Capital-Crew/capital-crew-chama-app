@@ -17,7 +17,7 @@ export default function MemberLoansView({ loans }: MemberLoansViewProps) {
 
     return (
         <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-            {/* Header matching LoanManagement style */}
+            {}
             <div className="flex border-b border-gray-200">
                 <div className="px-6 py-4 border-b-2 border-cyan-500 text-cyan-500 font-bold text-sm uppercase tracking-wide">
                     My Loans

@@ -12,7 +12,7 @@ export function Step3Engine() {
                 <CardDescription>Configure how interest and penalties are calculated.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-                {/* Interest Engine */}
+                {}
                 <div className="space-y-4 border-b border-slate-100 pb-4">
                     <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Interest Engine</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -58,7 +58,7 @@ export function Step3Engine() {
                     </div>
                 </div>
 
-                {/* Penalty Engine */}
+                {}
                 <div className="space-y-4">
                     <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Penalty Engine</h4>
                     <div className="grid grid-cols-2 gap-4">

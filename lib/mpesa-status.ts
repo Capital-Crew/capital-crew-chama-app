@@ -24,14 +24,10 @@ export async function checkTransactionStatus(checkoutRequestId: string): Promise
     const PASSKEY = process.env.MPESA_PASSKEY;
     const SHORTCODE = process.env.MPESA_SHORTCODE || "174379";
 
-    // MOCK FAILSAFE: In dev/test, if we can't connect, let's assume success for workflow testing
-    // if the ID starts with specific test prefixes or if we decide to force it.
-    // Ideally we check env.NODE_ENV
 
     // If missing envs, we can't do real check.
     if (!BASE_URL || !PASSKEY) {
         if (process.env.NODE_ENV !== 'production') {
-            console.warn("⚠️ Missing M-Pesa Envs. Defaulting to MOCK SUCCESS for dev/testing.");
         }
         return {
             status: 'COMPLETED',
@@ -39,7 +35,6 @@ export async function checkTransactionStatus(checkoutRequestId: string): Promise
         };
     }
 
-    console.log(`Checking status for ${checkoutRequestId}...`);
 
     try {
         const token = await getAccessToken();
@@ -67,7 +62,6 @@ export async function checkTransactionStatus(checkoutRequestId: string): Promise
         );
 
         const data = response.data as MpesaQueryResponse;
-        console.log("M-Pesa Query Response:", JSON.stringify(data, null, 2));
 
         if (data.ResponseCode !== "0") {
             // Request failed at API level
@@ -87,13 +81,13 @@ export async function checkTransactionStatus(checkoutRequestId: string): Promise
         }
 
     } catch (error: any) {
+        // TODO: Log error to monitoring service
         console.error("M-Pesa Query Error:", error.message);
 
         // --- MOCK SERVER COMPATIBILITY ---
         const isLocalMock = (BASE_URL || "").includes('localhost') || (BASE_URL || "").includes('127.0.0.1');
         if (isLocalMock) {
             if (process.env.NODE_ENV !== 'production') {
-                console.warn("⚠️ MOCK MODE DETECTED: Simulating Success Response for Local Dev.");
             }
             return {
                 status: 'COMPLETED',
@@ -103,6 +97,7 @@ export async function checkTransactionStatus(checkoutRequestId: string): Promise
         // ---------------------------------
 
         if (error.response) {
+            // TODO: Log error to monitoring service
             console.error("Query Error Data:", JSON.stringify(error.response.data, null, 2));
             const errorCode = error.response.data?.errorCode;
             if (errorCode === '500.001.1001') {

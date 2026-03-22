@@ -49,12 +49,6 @@ export class SafetyNet {
         const mismatches = []
 
         for (const account of accounts) {
-            // Calculate actual balance from entries
-            // CoreLedger stores Balance as (Sum Credits - Sum Debits) universally?
-            // Actually CoreLedger logic was:
-            // Debit/Credit affect balance based on `increment: credit - debit`.
-            // So Balance = Sum(Credit - Debit) = TotalCredit - TotalDebit.
-            // This is the "Net Credit" convention.
 
             const entries = await prisma.ledgerEntry.aggregate({
                 where: { ledgerAccountId: account.id },

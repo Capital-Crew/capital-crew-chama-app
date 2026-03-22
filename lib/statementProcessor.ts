@@ -96,17 +96,9 @@ export function processTransactions(transactions: WalletTransaction[]): Statemen
                 if (parts.length > 0) displayDescription = parts.join(', ');
             }
         } else {
-            // Unknown type fallback
-            // Assume Debit or just log warning? 
-            // Logic in existing code:
             displayDescription = `UNKNOWN: ${type} - ${tx.description}`;
         }
 
-        // --- REVERSAL HANDLING ---
-        // We follow strict accounting: Original Tx + Reversal Tx = 0 Net Effect.
-        // We do NOT void the original transaction's amount, so we see history.
-        // We ensure REVERSAL type is treated as the opposite of what it reverses.
-        // Assumption: Typically reversing Repayments (Credit) -> So Reversal is Debit.
 
         let effectiveAmount = toDecimal(0);
 

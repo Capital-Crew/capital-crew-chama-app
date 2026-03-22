@@ -90,13 +90,13 @@ export function TransferRequestForm({ onSuccess }: { onSuccess?: () => void }) {
 
     return (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 py-4">
-            {/* Source & Destination Block */}
+            {}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start relative">
 
-                {/* Connector Line (Desktop) */}
+                {}
                 <div className="absolute top-12 left-0 right-0 h-px bg-slate-200 hidden md:block z-0" />
 
-                {/* Arrow Indicator - Absolute Centered */}
+                {}
                 <div className="absolute left-1/2 top-12 -translate-x-1/2 -translate-y-1/2 z-10 flex justify-center pointer-events-none">
                     <div className="bg-slate-50 p-1.5 rounded-full border border-slate-200 text-slate-400">
                         <ArrowRightIcon className="w-4 h-4 hidden md:block" />
@@ -104,7 +104,7 @@ export function TransferRequestForm({ onSuccess }: { onSuccess?: () => void }) {
                     </div>
                 </div>
 
-                {/* Source Account */}
+                {}
                 <div className="relative z-0 space-y-2">
                     <Label className="text-xs font-bold uppercase text-slate-500">Source Account</Label>
                     <Select onValueChange={(val) => setValue('sourceAccountId', val)}>
@@ -134,7 +134,7 @@ export function TransferRequestForm({ onSuccess }: { onSuccess?: () => void }) {
                     )}
                 </div>
 
-                {/* Destination Account */}
+                {}
                 <div className="relative z-0 space-y-2">
                     <Label className="text-xs font-bold uppercase text-slate-500">Destination Account</Label>
                     <Select onValueChange={(val) => setValue('destinationAccountId', val)}>

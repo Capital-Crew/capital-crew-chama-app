@@ -43,7 +43,7 @@ export function ThemeToggle() {
 
     return (
         <div className="space-y-6">
-            {/* Back Button */}
+            {}
             <Button
                 variant="outline"
                 onClick={() => router.push('/dashboard')}
@@ -53,7 +53,7 @@ export function ThemeToggle() {
                 Back to Dashboard
             </Button>
 
-            {/* Theme Cards */}
+            {}
             <div className="grid max-w-3xl grid-cols-1 gap-6 sm:grid-cols-3">
                 {themes.map((themeOption) => {
                     const Icon = themeOption.icon
@@ -71,7 +71,7 @@ export function ThemeToggle() {
                                     : "border-slate-200 lemon:border-yellow-300 hover:border-yellow-300 bg-white lemon:bg-yellow-50"
                             )}
                         >
-                            {/* Icon */}
+                            {}
                             <div className={cn(
                                 "rounded-full p-4 transition-colors",
                                 isActive
@@ -81,7 +81,7 @@ export function ThemeToggle() {
                                 <Icon className="h-8 w-8" />
                             </div>
 
-                            {/* Theme Name */}
+                            {}
                             <div className="text-center">
                                 <h3 className={cn(
                                     "font-bold text-lg",
@@ -96,7 +96,7 @@ export function ThemeToggle() {
                                 </p>
                             </div>
 
-                            {/* Active Indicator */}
+                            {}
                             {isActive && (
                                 <div className="absolute -top-2 -right-2 bg-yellow-500 rounded-full p-1.5 shadow-lg">
                                     <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -109,7 +109,7 @@ export function ThemeToggle() {
                 })}
             </div>
 
-            {/* Current Theme Display */}
+            {}
             <div className="mt-8 p-4 bg-slate-100 lemon:bg-yellow-100 rounded-xl border border-slate-200 lemon:border-yellow-300">
                 <p className="text-sm text-slate-600 lemon:text-yellow-800">
                     <span className="font-bold">Active theme:</span> {theme || 'system'}

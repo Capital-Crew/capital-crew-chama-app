@@ -10,15 +10,9 @@
 import { EventStoreService, type DomainEvent } from '@/services/event-store-service'
 import type { DomainEventType } from '@prisma/client'
 
-// ========================================
-// TYPES
-// ========================================
 
 export type EventHandler = (event: DomainEvent & { id: string; timestamp: Date }) => Promise<void>
 
-// ========================================
-// EVENT BUS
-// ========================================
 
 class EventBusClass {
     private handlers = new Map<DomainEventType, EventHandler[]>()

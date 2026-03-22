@@ -37,9 +37,6 @@ function auditLog(userId: string, details: string, summary: string) {
     })
 }
 
-// ──────────────────────────────────────────
-// Filter Options (members + products for dropdowns)
-// ──────────────────────────────────────────
 export async function getFilterOptionsAction() {
     const session = await auth()
     if (!session?.user) throw new Error("Unauthorized")
@@ -50,9 +47,6 @@ export async function getFilterOptionsAction() {
     return safeSerialize({ members, products })
 }
 
-// ──────────────────────────────────────────
-// Report 1: Loan Disbursement
-// ──────────────────────────────────────────
 export async function getLoanDisbursementReportAction(
     startDate: Date, endDate: Date,
     filters?: { productId?: string; memberId?: string; status?: string }
@@ -64,9 +58,6 @@ export async function getLoanDisbursementReportAction(
     return safeSerialize(data)
 }
 
-// ──────────────────────────────────────────
-// Report 2: Active Loan Portfolio
-// ──────────────────────────────────────────
 export async function getActiveLoanPortfolioAction(asOfDate?: Date, filters?: { productId?: string; status?: string }) {
     const session = await auth()
     if (!session?.user) throw new Error("Unauthorized")
@@ -75,9 +66,6 @@ export async function getActiveLoanPortfolioAction(asOfDate?: Date, filters?: { 
     return safeSerialize(data)
 }
 
-// ──────────────────────────────────────────
-// Report 3: PAR / Delinquency
-// ──────────────────────────────────────────
 export async function getPARReportAction(asOfDate?: Date) {
     const session = await auth()
     if (!session?.user) throw new Error("Unauthorized")
@@ -86,9 +74,6 @@ export async function getPARReportAction(asOfDate?: Date) {
     return safeSerialize(data)
 }
 
-// ──────────────────────────────────────────
-// Report 4: Trial Balance
-// ──────────────────────────────────────────
 export async function getTrialBalanceAction(asOfDate?: Date) {
     const session = await auth()
     if (!session?.user) throw new Error("Unauthorized")
@@ -97,9 +82,6 @@ export async function getTrialBalanceAction(asOfDate?: Date) {
     return safeSerialize(data)
 }
 
-// ──────────────────────────────────────────
-// Report 5: Balance Sheet
-// ──────────────────────────────────────────
 export async function getBalanceSheetAction(asOfDate?: Date) {
     const session = await auth()
     if (!session?.user) throw new Error("Unauthorized")
@@ -108,9 +90,6 @@ export async function getBalanceSheetAction(asOfDate?: Date) {
     return safeSerialize(data)
 }
 
-// ──────────────────────────────────────────
-// Report 6: Income Statement
-// ──────────────────────────────────────────
 export async function getIncomeStatementAction(asOfDate?: Date) {
     const session = await auth()
     if (!session?.user) throw new Error("Unauthorized")
@@ -119,9 +98,6 @@ export async function getIncomeStatementAction(asOfDate?: Date) {
     return safeSerialize(data)
 }
 
-// ──────────────────────────────────────────
-// Report 7: Cash Flow Statement
-// ──────────────────────────────────────────
 export async function getCashFlowAction(startDate: Date, endDate: Date) {
     const session = await auth()
     if (!session?.user) throw new Error("Unauthorized")
@@ -130,9 +106,6 @@ export async function getCashFlowAction(startDate: Date, endDate: Date) {
     return safeSerialize(data)
 }
 
-// ──────────────────────────────────────────
-// Report 8: Product Profitability
-// ──────────────────────────────────────────
 export async function getProductProfitabilityAction(startDate: Date, endDate: Date) {
     const session = await auth()
     if (!session?.user) throw new Error("Unauthorized")
@@ -141,9 +114,6 @@ export async function getProductProfitabilityAction(startDate: Date, endDate: Da
     return safeSerialize(data)
 }
 
-// ──────────────────────────────────────────
-// Report 9: Fee Analysis
-// ──────────────────────────────────────────
 export async function getFeeAnalysisAction(startDate: Date, endDate: Date) {
     const session = await auth()
     if (!session?.user) throw new Error("Unauthorized")
@@ -152,9 +122,6 @@ export async function getFeeAnalysisAction(startDate: Date, endDate: Date) {
     return safeSerialize(data)
 }
 
-// ──────────────────────────────────────────
-// Report 10: Net Interest Margin
-// ──────────────────────────────────────────
 export async function getNetInterestMarginAction(startDate: Date, endDate: Date) {
     const session = await auth()
     if (!session?.user) throw new Error("Unauthorized")
@@ -163,9 +130,6 @@ export async function getNetInterestMarginAction(startDate: Date, endDate: Date)
     return safeSerialize(data)
 }
 
-// ──────────────────────────────────────────
-// Legacy (kept for backward compat)
-// ──────────────────────────────────────────
 export async function getOperationalReportAction(startDate: Date, endDate: Date) {
     const session = await auth()
     if (!session?.user) throw new Error("Unauthorized")

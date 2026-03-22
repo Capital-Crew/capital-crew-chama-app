@@ -88,7 +88,7 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
 
     return (
         <div className="space-y-6 font-sans">
-            {/* Header / Filter - Horizontal Scroll */}
+            {}
             <div className="flex items-center gap-3 overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide">
                 {['ALL', 'LOAN', 'MEMBER', 'EXPENSE'].map(f => (
                     <button
@@ -106,7 +106,7 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
                 ))}
             </div>
 
-            {/* Grid */}
+            {}
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
                 {visibleRequests.length === 0 ? (
                     <div className="col-span-full py-12 md:py-20 text-center bg-white/50 rounded-3xl border border-dashed border-slate-200">
@@ -130,7 +130,7 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
                                 className="group bg-white border border-slate-100 hover:border-[#00c2e0]/30 cursor-pointer transition-all duration-300 hover:shadow-xl shadow-sm rounded-2xl overflow-hidden flex flex-col"
                             >
                                 <div className="p-5 flex-1 relative">
-                                    {/* Type Badge */}
+                                    {}
                                     <div className="absolute top-5 right-5">
                                         <span className={cn(
                                             "px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider bg-slate-50 text-slate-500",
@@ -142,7 +142,7 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
                                         </span>
                                     </div>
 
-                                    {/* Main Content */}
+                                    {}
                                     <div className="flex items-start gap-4">
                                         <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-md bg-gradient-to-br ${gradient} text-white flex-shrink-0`}>
                                             <Icon className="w-6 h-6" />
@@ -156,7 +156,7 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
                                                 {req.description || `Request regarding ${req.referenceTable}`}
                                             </p>
 
-                                            {/* Entity Details Snapshot */}
+                                            {}
                                             {req.entityDetails && req.type === 'LOAN' && (
                                                 <div className="mt-3 space-y-2 bg-slate-50/80 rounded-lg p-3 border border-slate-100">
                                                     <div className="flex items-center justify-between text-xs">
@@ -214,7 +214,7 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
                                                 </div>
                                             )}
 
-                                            {/* Fallback for requests without entity details */}
+                                            {}
                                             {!req.entityDetails && req.amount && (
                                                 <div className="mt-2 flex items-baseline gap-1">
                                                     <span className="text-lg font-black text-slate-900">
@@ -231,7 +231,7 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
                                     </div>
                                 </div>
 
-                                {/* Actions Footer */}
+                                {}
                                 <div className="p-3 bg-slate-50/80 border-t border-slate-100 flex gap-2">
                                     {canAction ? (
                                         <>
@@ -264,7 +264,7 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
                 )}
             </div>
 
-            {/* DYNAMIC MODALS (Unchanged logic, just wrappers) */}
+            {}
             {selectedRequest && selectedRequest.type === 'LOAN' && (
                 <LoanAppraisalCard
                     loanId={selectedRequest.referenceId}
@@ -283,7 +283,7 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
                 />
             )}
 
-            {/* Fallback for others */}
+            {}
             {selectedRequest && !['LOAN', 'MEMBER'].includes(selectedRequest.type) && (
                 <DivWrapper onClose={handleClose}>
                     <div className="p-8 text-center bg-white rounded-3xl w-full max-w-sm mx-auto">

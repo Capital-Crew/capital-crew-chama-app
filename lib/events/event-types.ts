@@ -7,9 +7,6 @@
 
 import type { AggregateType, DomainEventType } from '@prisma/client'
 
-// ========================================
-// EVENT METADATA TYPES
-// ========================================
 
 // Loan Events
 export interface LoanAppliedMetadata {
@@ -78,9 +75,6 @@ export interface MemberRegisteredMetadata {
     name: string
 }
 
-// ========================================
-// HELPER TYPES
-// ========================================
 
 export type EventMetadata<T extends DomainEventType> =
     T extends 'LOAN_APPLIED' ? LoanAppliedMetadata :
@@ -93,9 +87,6 @@ export type EventMetadata<T extends DomainEventType> =
     T extends 'MEMBER_REGISTERED' ? MemberRegisteredMetadata :
     Record<string, any>
 
-// ========================================
-// EVENT FACTORY HELPERS
-// ========================================
 
 export class Events {
     /**

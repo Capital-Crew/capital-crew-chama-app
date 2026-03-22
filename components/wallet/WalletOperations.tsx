@@ -129,10 +129,6 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
                         feesBalance: fresh.feesBalance
                     } : null)
 
-                    // Re-calculate allocation if amount was entered (rare race condition, but safe)
-                    // We don't have access to current 'repaymentAmount' in this closure easily without dep change
-                    // But typically user hasn't typed much in <100ms. 
-                    // However, if we want to be safe, we can just let the next render handle manual updates
                 }
             } catch (err) {
             }
@@ -279,7 +275,7 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
 
     return (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            {/* Main Tabs with Better Visual Separation */}
+            {}
             <div className="flex border-b-2 border-slate-300">
                 <button
                     onClick={() => { setActiveMainTab('deposits'); setMessage(null) }}
@@ -291,7 +287,7 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
                     <ArrowDownIcon className={`w-4 h-4 ${activeMainTab === 'deposits' ? 'animate-bounce' : ''}`} />
                     Deposits
                 </button>
-                <div className="w-px bg-slate-300" /> {/* Vertical separator */}
+                <div className="w-px bg-slate-300" /> {}
                 <button
                     onClick={() => { setActiveMainTab('repayments'); setMessage(null) }}
                     className={`flex-1 py-4 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all relative
@@ -302,7 +298,7 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
                     <TrendingUpIcon className={`w-4 h-4 ${activeMainTab === 'repayments' ? 'animate-bounce' : ''}`} />
                     Repay Loan
                 </button>
-                <div className="w-px bg-slate-300" /> {/* Vertical separator */}
+                <div className="w-px bg-slate-300" /> {}
                 <button
                     onClick={() => { setActiveMainTab('withdrawals'); setMessage(null) }}
                     className={`flex-1 py-4 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all relative
@@ -316,7 +312,7 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
             </div>
 
             <div className="p-4">
-                {/* Global Message */}
+                {}
                 {message && (
                     <div className={`p-4 rounded-xl mb-6 flex items-center gap-3 animate-in fade-in slide-in-from-top-2 ${message.type === 'success' ? 'bg-green-50 border border-green-200 text-green-800' : 'bg-red-50 border border-red-200 text-red-800'
                         }`}>
@@ -325,7 +321,7 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
                     </div>
                 )}
 
-                {/* CONTENT: Deposits */}
+                {}
                 {activeMainTab === 'deposits' && (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
                         <Tabs value={activeSubTab} onValueChange={setActiveSubTab} className="w-full">
@@ -341,7 +337,7 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
                                 </TabsTrigger>
                             </TabsList>
 
-                            {/* M-Pesa Form */}
+                            {}
                             <TabsContent value="mpesa">
                                 <form onSubmit={handleMpesaDeposit} className="space-y-4">
                                     <div className="p-4 bg-green-50 border border-green-200 rounded-xl mb-4">
@@ -380,7 +376,7 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
                                 </form>
                             </TabsContent>
 
-                            {/* Share Form */}
+                            {}
                             <TabsContent value="share">
                                 <div className="space-y-6">
                                     <div className="flex items-center gap-3 p-4 bg-cyan-50 border border-cyan-200 rounded-xl">
@@ -411,7 +407,7 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
                                 </div>
                             </TabsContent>
 
-                            {/* Penalty Form */}
+                            {}
                             <TabsContent value="penalty">
                                 <div className="space-y-6">
                                     <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
@@ -445,7 +441,7 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
                     </div>
                 )}
 
-                {/* CONTENT: Repayments */}
+                {}
                 {activeMainTab === 'repayments' && (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
                         <div className="space-y-6">
@@ -547,7 +543,7 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
                     </div>
                 )}
 
-                {/* CONTENT: Withdrawals */}
+                {}
                 {activeMainTab === 'withdrawals' && (
                     <div className="max-w-xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-300">
                         <div className="bg-teal-50 border border-teal-100 rounded-2xl p-6 mb-6 flex items-center justify-between">

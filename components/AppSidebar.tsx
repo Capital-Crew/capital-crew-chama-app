@@ -34,7 +34,7 @@ const NavItem: React.FC<NavItemProps> = ({ icon, label, href, active, hidden, ba
             `}
         >
             <div className="flex items-center gap-4 relative z-10">
-                {/* Icon Container */}
+                {}
                 <div className={`
                     p-2 rounded-xl transition-all duration-300
                     ${active ? 'bg-white/20 text-white' : 'bg-transparent text-slate-500 group-hover:text-[#00c2e0] group-hover:bg-white/10'}
@@ -45,7 +45,7 @@ const NavItem: React.FC<NavItemProps> = ({ icon, label, href, active, hidden, ba
                     }
                 </div>
 
-                {/* Label */}
+                {}
                 <span className={`
                     font-bold text-xs tracking-wider uppercase
                     ${active ? 'text-white' : 'font-semibold'}
@@ -54,7 +54,7 @@ const NavItem: React.FC<NavItemProps> = ({ icon, label, href, active, hidden, ba
                 </span>
             </div>
 
-            {/* Badge */}
+            {}
             {badge ? (
                 <span className={`
                     flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-black shadow-sm
@@ -64,7 +64,7 @@ const NavItem: React.FC<NavItemProps> = ({ icon, label, href, active, hidden, ba
                 </span>
             ) : null}
 
-            {/* Active Indicator Bar (Optional, if we want a line on the left instead of full pill) - keeping pill for "young" look */}
+            {}
         </Link>
     );
 };
@@ -75,7 +75,7 @@ export function AppSidebar({ user, approvalCount = 0, pendingLoanCount = 0 }: { 
 
     return (
         <aside className="hidden md:flex w-80 h-screen fixed inset-y-0 left-0 z-40 bg-[#0A192F] border-r border-white/10 shadow-2xl flex-col font-sans selection:bg-[#00c2e0] selection:text-white">
-            {/* Header / Brand */}
+            {}
             <div className="pt-10 pb-8 px-8">
                 <div className="flex items-center gap-2 mb-2">
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#00c2e0] to-[#00ffcc] flex-shrink-0" />
@@ -88,7 +88,7 @@ export function AppSidebar({ user, approvalCount = 0, pendingLoanCount = 0 }: { 
                 </p>
             </div>
 
-            {/* Navigation */}
+            {}
             <nav className="flex-1 overflow-y-auto py-4 space-y-2 scrollbar-hide">
                 <div className="px-8 pb-3 pt-2">
                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-2">Main Menu</p>
@@ -139,7 +139,7 @@ export function AppSidebar({ user, approvalCount = 0, pendingLoanCount = 0 }: { 
                     <NavItem icon={<ReportsIcon className="w-5 h-5" />} label="Reports Hub" href="/reports" active={pathname === '/reports'} />
                 )}
 
-                {/* Admin Section - Dynamic Rendering */}
+                {}
                 {(canAccess('ACCOUNTS') || canAccess('ADMIN') || canAccess('AUDIT') || ["SYSTEM_ADMIN", "CHAIRPERSON"].includes(user.role)) && (
                     <>
                         <div className="mt-8 mb-3 px-8 pt-6 border-t border-white/10">
@@ -173,7 +173,7 @@ export function AppSidebar({ user, approvalCount = 0, pendingLoanCount = 0 }: { 
                 )}
             </nav>
 
-            {/* User Profile / Footer */}
+            {}
             <div className="p-6 mt-auto">
                 <Link
                     href={user.memberId ? `/members/${user.memberId}` : '#'}

@@ -47,7 +47,7 @@ export function WelfareHistory({ requisitions }: WelfareHistoryProps) {
                 <CardDescription>View status of your welfare applications</CardDescription>
             </CardHeader>
             <CardContent className="p-0 md:p-6">
-                {/* Desktop View */}
+                {}
                 <div className="hidden md:block">
                     <Table>
                         <TableHeader>
@@ -84,7 +84,7 @@ export function WelfareHistory({ requisitions }: WelfareHistoryProps) {
                     </Table>
                 </div>
 
-                {/* Mobile View */}
+                {}
                 <div className="md:hidden">
                     {requisitions.length === 0 ? (
                         <div className="p-8 text-center text-muted-foreground">
@@ -146,7 +146,7 @@ export function WelfareHistory({ requisitions }: WelfareHistoryProps) {
                                                                 <span className="font-medium text-slate-500">Date:</span>
                                                                 <span className="text-slate-700">{format(new Date(req.createdAt), 'dd MMM yyyy, HH:mm')}</span>
                                                             </div>
-                                                            {/* Add more details here if available in req object */}
+                                                            {}
                                                         </div>
                                                     </div>
                                                 </motion.div>

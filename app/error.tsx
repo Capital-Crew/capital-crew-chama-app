@@ -18,9 +18,6 @@ export default function GlobalError({
     useEffect(() => {
 
         // TODO: Send to monitoring service (Sentry, LogRocket, etc.)
-        // Example:
-        //   Sentry.captureException(error)
-        //   LogRocket.captureException(error)
     }, [error])
 
     const handleCopyDigest = async () => {
@@ -37,13 +34,13 @@ export default function GlobalError({
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 via-white to-orange-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 p-4">
             <div className="w-full max-w-lg">
-                {/* Card */}
+                {}
                 <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-red-100 dark:border-red-900/30 overflow-hidden">
-                    {/* Red accent bar */}
+                    {}
                     <div className="h-1.5 bg-gradient-to-r from-red-500 via-orange-500 to-red-400" />
 
                     <div className="p-8 space-y-6">
-                        {/* Icon + Title */}
+                        {}
                         <div className="flex flex-col items-center text-center space-y-3">
                             <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-950/50 flex items-center justify-center ring-4 ring-red-50 dark:ring-red-950/20">
                                 <AlertTriangle className="w-8 h-8 text-red-600 dark:text-red-400" />
@@ -58,7 +55,7 @@ export default function GlobalError({
                             </p>
                         </div>
 
-                        {/* Digest Code */}
+                        {}
                         {error.digest && (
                             <div className="bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-xl p-4 space-y-2">
                                 <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -86,7 +83,7 @@ export default function GlobalError({
                             </div>
                         )}
 
-                        {/* Dev-only stack trace */}
+                        {}
                         {isDev && error.stack && (
                             <details className="group">
                                 <summary className="text-xs font-medium text-gray-400 cursor-pointer hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
@@ -98,7 +95,7 @@ export default function GlobalError({
                             </details>
                         )}
 
-                        {/* Actions */}
+                        {}
                         <div className="flex flex-col sm:flex-row gap-3">
                             <button
                                 onClick={reset}
@@ -117,7 +114,7 @@ export default function GlobalError({
                     </div>
                 </div>
 
-                {/* Footer hint */}
+                {}
                 <p className="text-center text-xs text-gray-400 dark:text-gray-600 mt-4">
                     If this keeps happening, please contact your system administrator.
                 </p>

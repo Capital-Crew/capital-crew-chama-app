@@ -22,7 +22,7 @@ export function MembersList({ members, selectedId, onSelect, searchQuery, onSear
 
     return (
         <div className="flex flex-col h-full bg-slate-50/50">
-            {/* Search Header */}
+            {}
             <div className="p-4 sticky top-0 bg-white/80 backdrop-blur-md border-b border-slate-100 z-10">
                 <div className="relative group">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-cyan-500 transition-colors" />
@@ -39,7 +39,7 @@ export function MembersList({ members, selectedId, onSelect, searchQuery, onSear
                 </div>
             </div>
 
-            {/* Scrollable List */}
+            {}
             <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 hover:scrollbar-thumb-slate-300">
                 {filteredMembers.length === 0 ? (
                     <div className="py-12 text-center px-4">

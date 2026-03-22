@@ -42,9 +42,6 @@ export class DisbursementService {
                 throw new Error(`Missing LOAN_PORTFOLIO mapping for product: ${loan.loanProduct.name}`)
             }
 
-            // 4. Post to Ledger
-            // Debit: Loan Portfolio (Asset +)
-            // Credit: Member Wallet (Liability +)
             const amountCents = BigInt(Math.round(Number(loan.amount) * 100))
 
             const ledgerTxId = await CoreLedger.postTransaction({

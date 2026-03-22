@@ -132,9 +132,6 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
     const getActiveData = () => {
         switch (activeTab) {
             case 'application': return otherApplications; // Only show non-drafts here? Or separate drafts?
-            // Actually, we want to show Drafts specially at the top, then other "Application" status items (like Rejected/Cancelled history) in the list?
-            // The user requested "In the section called DRAFTS /RETURNED".
-            // So we can show DraftsList component, and then the table for others.
             case 'approvals': return pendingApprovals;
             case 'approved': return approvedLoans;
             case 'disbursed': return disbursedLoans;
@@ -205,9 +202,9 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
                 </div>
             </div>
 
-            {/* Portfolio Summary Removed */}
+            {}
 
-            {/* Scrollable Tabs */}
+            {}
             <div id="loans-list" className="bg-gradient-to-r from-slate-50 to-slate-100 rounded-2xl p-2 shadow-inner overflow-x-auto scrollbar-none">
                 <div className="flex gap-2 min-w-max">
                     <TabButton
@@ -241,11 +238,11 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
                 </div>
             </div>
 
-            {/* DRAFTS SECTION - Separated for Admin/Chairperson */}
+            {}
             {
                 activeTab === 'application' && (
                     <div className="mb-6 space-y-8">
-                        {/* MY DRAFTS */}
+                        {}
                         {(() => {
                             const myDrafts = drafts.filter(d => d.memberId === currentMemberId);
                             if (myDrafts.length > 0) {
@@ -267,7 +264,7 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
                             return null;
                         })()}
 
-                        {/* MEMBER DRAFTS (Admin/Chair only) */}
+                        {}
                         {(() => {
                             const isAdmin = ['SYSTEM_ADMIN', 'CHAIRPERSON'].includes(userRole);
                             if (isAdmin) {
@@ -292,13 +289,13 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
                             return null;
                         })()}
 
-                        {/* Fallback for regular members if they have no drafts but filter returned them (should be covered by myDrafts above) */}
-                        {/* The original code just rendered all filtered drafts. Now strictly separated. */}
+                        {}
+                        {}
                     </div>
                 )
             }
 
-            {/* Mobile: Card List */}
+            {}
             <div className="md:hidden space-y-3">
                 {getActiveData().map(l => (
                     <div
@@ -338,7 +335,7 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
                 ))}
             </div>
 
-            {/* Filters for Disbursed Tab */}
+            {}
             {activeTab === 'disbursed' && (
                 <div className="bg-white border-2 border-slate-100 rounded-3xl p-6 shadow-sm animate-in fade-in slide-in-from-top-4 duration-300">
                     <div className="flex flex-col md:flex-row gap-6 items-end">
@@ -382,7 +379,7 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
                 </div>
             )}
 
-            {/* Desktop: Table */}
+            {}
             <div className="hidden md:block bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
                 <table className="w-full text-left text-xs">
                     <thead className="bg-slate-50 text-slate-400 font-black uppercase tracking-widest text-[10px]">
@@ -414,7 +411,7 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
                 </table>
             </div>
 
-            {/* Desktop Modal Removed - Using Page Flow */}
+            {}
 
             {
                 selectedLoanId && (

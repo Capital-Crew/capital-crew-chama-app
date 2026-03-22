@@ -106,7 +106,7 @@ export default async function WelfarePage() {
                 </Tabs>
             ) : (
                 <div className="space-y-6">
-                    {/* Member View - Only History/Claims */}
+                    {}
                     <div className="bg-slate-50 p-4 rounded-lg border">
                         <p className="text-sm text-slate-600">
                             Below is the list of all welfare claims. For new requests, please contact the Welfare Committee.

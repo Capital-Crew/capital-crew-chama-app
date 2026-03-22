@@ -29,11 +29,6 @@ export async function POST(
             return NextResponse.json({ error: 'Loan not found' }, { status: 404 })
         }
 
-        // Guard: Ownership
-        // Only the loan owner (linked user) can cancel? Or admin too?
-        // User request says: "Only the Loan Owner can trigger this."
-        // We need to verify session.user.id matches loan.member.user or similar.
-        // Let's assume session.user.memberId is available or check via User table.
         const user = await prisma.user.findUnique({
             where: { id: session.user.id },
             include: { member: true }
@@ -61,14 +56,6 @@ export async function POST(
                 }
             })
 
-            // 2. Archive/Invalidate Approval Request?
-            // If using ApprovalRequest model (from previous steps), we should probably mark it as CANCELLED too.
-            // Checking Step 590: We created `ApprovalRequest` entries.
-            // Let's check schema for ApprovalRequest. It was used in actions but I don't see it in the schema dump I viewed?
-            // Actually, in schema dump (Step 618), I don't see `ApprovalRequest` model.
-            // Wait, I saw it being used in `app/actions.ts` (Step 590): `await prisma.approvalRequest.create(...)`.
-            // This means `ApprovalRequest` DOES exist in the schema but was cut off in the view (Step 618 showed up to line 700).
-            // I should update it if it exists.
             try {
                 // Attempt to update pending approval request
                 // Delete the pending approval request

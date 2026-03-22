@@ -92,7 +92,7 @@ export function LoanApprovalsClient({ initialLoans, currentUser }: LoanApprovals
                 </div>
             )}
 
-            {/* Full Appraisal Modal */}
+            {}
             {selectedLoanId && (
                 <LoanAppraisalCard
                     loanId={selectedLoanId}
@@ -106,7 +106,7 @@ export function LoanApprovalsClient({ initialLoans, currentUser }: LoanApprovals
                 />
             )}
 
-            {/* Quick Reject Dialog */}
+            {}
             <Dialog open={!!rejectLoanId} onOpenChange={(open) => !open && setRejectLoanId(null)}>
                 <DialogContent>
                     <DialogHeader>

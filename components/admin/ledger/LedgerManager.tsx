@@ -265,7 +265,7 @@ export function LedgerManager() {
                 </div>
             ) : (
                 <>
-                    {/* Pending Approvals Banner */}
+                    {}
                     {pendingLedgers.length > 0 && (
                         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 shadow-sm">
                             <div className="flex items-center gap-2 mb-4">
@@ -391,7 +391,7 @@ export function LedgerManager() {
                     )
                     }
 
-                    {/* Modals */}
+                    {}
                     {
                         isLedgerModalOpen && (
                             <LedgerForm

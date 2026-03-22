@@ -169,7 +169,7 @@ export function ReportsDashboard() {
     return (
         <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950">
 
-            {/* ── Header ── */}
+            {}
             <div className="sticky top-0 z-30 backdrop-blur-xl bg-white/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 px-4 md:px-6 py-4 md:py-5">
                 <div className="max-w-7xl mx-auto">
                     <h1 className="text-xl md:text-2xl font-black uppercase tracking-tight text-slate-900 dark:text-white">
@@ -181,7 +181,7 @@ export function ReportsDashboard() {
                 </div>
             </div>
 
-            {/* ── Card Grid ── */}
+            {}
             <div className="px-4 md:px-6 py-5 md:py-8 max-w-7xl mx-auto space-y-8">
                 {grouped.map(({ category, label, reports }) => (
                     <section key={category} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -224,7 +224,7 @@ export function ReportsDashboard() {
                 ))}
             </div>
 
-            {/* ── Modals ── */}
+            {}
             {selectedReport && (
                 <>
                     <FilterModal

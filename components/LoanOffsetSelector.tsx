@@ -136,7 +136,7 @@ export function LoanOffsetSelector({
                         </p>
                     ) : (
                         <>
-                            {/* Select All Button */}
+                            {}
                             <button
                                 type="button"
                                 onClick={toggleAll}
@@ -152,7 +152,7 @@ export function LoanOffsetSelector({
                                 )}
                             </button>
 
-                            {/* Loan List */}
+                            {}
                             {activeLoans.map(loan => (
                                 <label
                                     key={loan.id}

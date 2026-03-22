@@ -129,6 +129,7 @@ export function withAudit<TArgs extends unknown[], TReturn>(
                 });
             } catch (logError) {
                 // Logging must never crash the application
+                // TODO: replace with structured logger
                 console.error('[AuditLog] Failed to write audit record:', logError);
             }
             // Context is request-scoped via react cache, no need to flush here but good practice

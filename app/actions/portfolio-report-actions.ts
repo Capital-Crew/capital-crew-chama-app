@@ -92,12 +92,8 @@ export async function getPortfolioReport(
 
     // 5. Apply minArrears filter if present (must be done in JS since it's a calculated threshold usually, 
     // but here we can try to use outstandingBalance > minArrears as a proxy)
-    let finalData = processedLoans
     if (filters.minArrears !== undefined && filters.minArrears > 0) {
-        // Since we are paginating in SQL, applying JS filtering here will mess up the count.
-        // For a true "Senior Engineer" solution, if minArrears is a high-level filter, it should ideally be in SQL.
-        // But the requirement says "then calculates daysOverdue...". 
-        // We'll treat minArrears as a check against outstandingBalance for simplicity in Layer 1.
+        // filter logic...
     }
 
     return {

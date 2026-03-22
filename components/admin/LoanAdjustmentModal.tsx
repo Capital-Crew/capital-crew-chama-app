@@ -144,7 +144,7 @@ export function LoanAdjustmentModal({
                 </DialogHeader>
 
                 <div className="space-y-6">
-                    {/* Info Banner */}
+                    {}
                     <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-3">
                         <AlertCircle className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
                         <p className="text-sm text-blue-900 font-medium">
@@ -153,7 +153,7 @@ export function LoanAdjustmentModal({
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        {/* Loan ID Search - Only show if no initial loan locked */}
+                        {}
                         {!initialLoanId && (
                             <div className="space-y-3">
                                 <label htmlFor="search" className="text-sm font-bold text-slate-700">
@@ -168,7 +168,7 @@ export function LoanAdjustmentModal({
                                     className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-900 focus:outline-none focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/10 transition-all font-medium"
                                 />
 
-                                {/* Search Results */}
+                                {}
                                 {searchInput && (
                                     <div className="space-y-3">
                                         <label className="text-sm font-bold text-slate-700">
@@ -215,7 +215,7 @@ export function LoanAdjustmentModal({
                             </div>
                         )}
 
-                        {/* Selected Loan Info */}
+                        {}
                         {activeLoan && (
                             <div className="bg-gradient-to-br from-slate-50 to-blue-50/50 border border-slate-200 rounded-xl p-5 relative overflow-hidden">
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
@@ -239,7 +239,7 @@ export function LoanAdjustmentModal({
                             </div>
                         )}
 
-                        {/* Adjustment Type Toggle */}
+                        {}
                         <div className="space-y-3">
                             <label className="text-sm font-bold text-slate-700">Adjustment Type</label>
                             <div className="flex gap-4 p-1 bg-slate-100 rounded-xl">
@@ -268,7 +268,7 @@ export function LoanAdjustmentModal({
                             </div>
                         </div>
 
-                        {/* Category Selection */}
+                        {}
                         <div className="space-y-3">
                             <label className="text-sm font-bold text-slate-700">
                                 Category
@@ -294,7 +294,7 @@ export function LoanAdjustmentModal({
                             ) : null}
                         </div>
 
-                        {/* Amount Input */}
+                        {}
                         <div className="space-y-3">
                             <label htmlFor="amount" className="text-sm font-bold text-slate-700">
                                 Amount ({currency})
@@ -316,7 +316,7 @@ export function LoanAdjustmentModal({
                             </div>
                         </div>
 
-                        {/* Balance Preview */}
+                        {}
                         {amount && activeLoan && (
                             <div className="bg-slate-900 rounded-xl p-5 text-white shadow-lg overflow-hidden relative">
                                 <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/20 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
@@ -342,7 +342,7 @@ export function LoanAdjustmentModal({
                             </div>
                         )}
 
-                        {/* Statement Description */}
+                        {}
                         <div className="space-y-3">
                             <div className="flex items-start justify-between">
                                 <div>
@@ -367,7 +367,7 @@ export function LoanAdjustmentModal({
                             />
                         </div>
 
-                        {/* Actions */}
+                        {}
                         <div className="flex gap-4 pt-2">
                             <button
                                 type="button"

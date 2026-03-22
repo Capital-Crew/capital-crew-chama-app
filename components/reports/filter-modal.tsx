@@ -104,7 +104,7 @@ export function FilterModal({ open, onOpenChange, report, onPreview, loading, er
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-md rounded-2xl border-0 shadow-2xl p-0 overflow-hidden max-h-[85vh] flex flex-col">
-                {/* ── Colored Header ── */}
+                {}
                 <div className={`px-6 pt-6 pb-4 ${colors.bg} border-b ${colors.border} flex-shrink-0`}>
                     <DialogHeader className="gap-0">
                         <div className="flex items-center gap-3 mb-2">
@@ -123,9 +123,9 @@ export function FilterModal({ open, onOpenChange, report, onPreview, loading, er
                     </DialogHeader>
                 </div>
 
-                {/* ── Filter Body ── */}
+                {}
                 <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
-                    {/* Date Range */}
+                    {}
                     {needsDateRange && (
                         <div className="grid grid-cols-2 gap-3">
                             <DatePickerField label="From" value={startDate} onChange={setStartDate} />
@@ -133,12 +133,12 @@ export function FilterModal({ open, onOpenChange, report, onPreview, loading, er
                         </div>
                     )}
 
-                    {/* As-of Date */}
+                    {}
                     {needsAsOfDate && (
                         <DatePickerField label="As of Date" value={asOfDate} onChange={setAsOfDate} />
                     )}
 
-                    {/* Member Selector */}
+                    {}
                     {needsMember && (
                         <div className="space-y-1.5">
                             <span className={labelClass}>Member</span>
@@ -148,7 +148,7 @@ export function FilterModal({ open, onOpenChange, report, onPreview, loading, er
                                 </div>
                             ) : (
                                 <div className="space-y-2">
-                                    {/* Search input */}
+                                    {}
                                     <div className="relative">
                                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
                                         <input
@@ -159,7 +159,7 @@ export function FilterModal({ open, onOpenChange, report, onPreview, loading, er
                                             className={`${inputClass} pl-9`}
                                         />
                                     </div>
-                                    {/* Selected member badge */}
+                                    {}
                                     {selectedMember && (
                                         <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 rounded-lg px-3 py-1.5">
                                             <span className="text-xs font-medium text-slate-700 dark:text-slate-300 flex-1">
@@ -173,7 +173,7 @@ export function FilterModal({ open, onOpenChange, report, onPreview, loading, er
                                             </button>
                                         </div>
                                     )}
-                                    {/* Member dropdown list */}
+                                    {}
                                     {memberSearch && !memberId && (
                                         <div className="max-h-36 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 divide-y divide-slate-100 dark:divide-slate-700">
                                             {filteredMembers.length === 0 ? (
@@ -196,7 +196,7 @@ export function FilterModal({ open, onOpenChange, report, onPreview, loading, er
                         </div>
                     )}
 
-                    {/* Product Selector */}
+                    {}
                     {needsProduct && (
                         <label className="block space-y-1.5">
                             <span className={labelClass}>Loan Product</span>
@@ -215,7 +215,7 @@ export function FilterModal({ open, onOpenChange, report, onPreview, loading, er
                         </label>
                     )}
 
-                    {/* Status Selector */}
+                    {}
                     {needsStatus && (
                         <label className="block space-y-1.5">
                             <span className={labelClass}>Loan Status</span>
@@ -227,7 +227,7 @@ export function FilterModal({ open, onOpenChange, report, onPreview, loading, er
                         </label>
                     )}
 
-                    {/* Error */}
+                    {}
                     {error && (
                         <div className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-xl px-3 py-2">
                             {error}
@@ -235,7 +235,7 @@ export function FilterModal({ open, onOpenChange, report, onPreview, loading, er
                     )}
                 </div>
 
-                {/* ── Footer ── */}
+                {}
                 <DialogFooter className="px-6 pb-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex-row gap-2 flex-shrink-0">
                     <button
                         onClick={() => onOpenChange(false)}

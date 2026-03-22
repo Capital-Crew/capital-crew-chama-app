@@ -22,7 +22,7 @@ export function RepaymentSchedulePrint({ scheduleData }: Props) {
 
     return (
         <div className="print-container">
-            {/* Print Button - Hidden when printing */}
+            {}
             <div className="no-print mb-4 flex justify-end gap-2">
                 <button
                     onClick={handlePrint}
@@ -32,9 +32,9 @@ export function RepaymentSchedulePrint({ scheduleData }: Props) {
                 </button>
             </div>
 
-            {/* Printable Content */}
+            {}
             <div className="schedule-document bg-white p-8">
-                {/* Header */}
+                {}
                 <div className="flex justify-between items-start mb-6 pb-4 border-b-2 border-gray-800">
                     <div>
                         <h1 className="text-xl font-bold">Loan Repayment Schedule</h1>
@@ -48,9 +48,9 @@ export function RepaymentSchedulePrint({ scheduleData }: Props) {
                     </div>
                 </div>
 
-                {/* Details Section */}
+                {}
                 <div className="grid grid-cols-2 gap-8 mb-6">
-                    {/* Left Column - Loan Details */}
+                    {}
                     <div className="space-y-2">
                         <DetailRow
                             label="Loan Number"
@@ -78,7 +78,7 @@ export function RepaymentSchedulePrint({ scheduleData }: Props) {
                         />
                     </div>
 
-                    {/* Right Column - Member Details */}
+                    {}
                     <div className="space-y-2">
                         <DetailRow
                             label="Member No"
@@ -103,7 +103,7 @@ export function RepaymentSchedulePrint({ scheduleData }: Props) {
                     </div>
                 </div>
 
-                {/* Amortization Table */}
+                {}
                 <table className="w-full border-collapse">
                     <thead>
                         <tr className="bg-gray-100">
@@ -174,7 +174,7 @@ export function RepaymentSchedulePrint({ scheduleData }: Props) {
                 </table>
             </div>
 
-            {/* Print Styles */}
+            {}
             <style jsx global>{`
                 @media print {
                     .no-print {

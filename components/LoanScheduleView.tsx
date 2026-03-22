@@ -81,23 +81,23 @@ export function LoanScheduleView({ loanId }: { loanId: string }) {
 
     return (
         <div className="p-4 md:p-6 space-y-6">
-            {/* Summary Cards */}
+            {}
             <div>
                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Payment Summary</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* Monthly Payment */}
+                    {}
                     <div className="bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg">
                         <div className="text-xs font-bold uppercase tracking-wider opacity-80 mb-2">Monthly Payment</div>
                         <div className="text-3xl font-black">{formatCurrency(schedule.summary.monthlyPaymentAmount)}</div>
                     </div>
 
-                    {/* Total Interest */}
+                    {}
                     <div className="bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl p-6 text-white shadow-lg">
                         <div className="text-xs font-bold uppercase tracking-wider opacity-80 mb-2">Total Interest</div>
                         <div className="text-3xl font-black">{formatCurrency(schedule.summary.totalInterest)}</div>
                     </div>
 
-                    {/* Total Payable */}
+                    {}
                     <div className="bg-gradient-to-br from-purple-500 to-violet-600 rounded-2xl p-6 text-white shadow-lg">
                         <div className="text-xs font-bold uppercase tracking-wider opacity-80 mb-2">Total Payable</div>
                         <div className="text-3xl font-black">{formatCurrency(schedule.summary.totalPayable)}</div>
@@ -105,13 +105,13 @@ export function LoanScheduleView({ loanId }: { loanId: string }) {
                 </div>
             </div>
 
-            {/* Payment Schedule Responsive View */}
+            {}
             <div>
                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">
                     Repayment Schedule ({schedule.schedule.length} months)
                 </h3>
 
-                {/* Mobile: Stacked Cards */}
+                {}
                 <div className="md:hidden space-y-3">
                     {schedule.schedule.map((item, index) => (
                         <div key={item.monthNo} className={`p-4 rounded-xl border ${index === schedule.schedule.length - 1 ? 'bg-green-50 border-green-100' : 'bg-slate-50 border-slate-100'
@@ -140,7 +140,7 @@ export function LoanScheduleView({ loanId }: { loanId: string }) {
                         </div>
                     ))}
 
-                    {/* Mobile Totals Card */}
+                    {}
                     <div className="bg-slate-800 text-white p-4 rounded-xl shadow-lg mt-4">
                         <h4 className="text-xs font-black uppercase tracking-widest mb-3 opacity-90">Schedule Totals</h4>
                         <div className="space-y-2 text-sm">
@@ -160,7 +160,7 @@ export function LoanScheduleView({ loanId }: { loanId: string }) {
                     </div>
                 </div>
 
-                {/* Desktop: Standard Table */}
+                {}
                 <div className="hidden md:block bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
                     <div className="overflow-x-auto">
                         <table className="w-full">
@@ -220,7 +220,7 @@ export function LoanScheduleView({ loanId }: { loanId: string }) {
                 </div>
             </div>
 
-            {/* Information Notice */}
+            {}
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
                 <p className="text-xs text-blue-800">
                     <strong>Note:</strong> This schedule shows the planned repayment structure. Actual payments may vary based on early settlements, penalties, or payment arrangements.

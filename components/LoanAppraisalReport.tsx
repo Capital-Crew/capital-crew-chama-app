@@ -94,7 +94,7 @@ export function LoanAppraisalReport({
 
     return (
         <div className="max-w-6xl mx-auto bg-white">
-            {/* Print Button - Hidden on Print */}
+            {}
             <div className="flex justify-end mb-4 print:hidden">
                 <button
                     onClick={handlePrint}
@@ -105,7 +105,7 @@ export function LoanAppraisalReport({
                 </button>
             </div>
 
-            {/* Mobile: Prominent Monthly Repayment Card */}
+            {}
             <div className="lg:hidden mb-6 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl p-4 sm:p-6 text-white shadow-xl">
                 <p className="text-xs font-bold uppercase tracking-wider opacity-90 mb-2">
                     Monthly Repayment
@@ -125,10 +125,10 @@ export function LoanAppraisalReport({
                 </div>
             </div>
 
-            {/* Main Report Container */}
+            {}
             <div className="border-2 border-slate-900 p-4 lg:p-8 bg-white">
 
-                {/* 1. HEADER SECTION */}
+                {}
                 <div className="text-center mb-8 pb-4 border-b-2 border-slate-900">
                     <h1 className="text-2xl lg:text-3xl font-black uppercase tracking-wider mb-3 text-slate-900">
                         {organizationName}
@@ -140,10 +140,10 @@ export function LoanAppraisalReport({
                     </div>
                 </div>
 
-                {/* 2. KEY INFORMATION GRID (Responsive) */}
+                {}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 mb-8 pb-8 border-b-2 border-slate-300">
 
-                    {/* LEFT COLUMN - Loan Details */}
+                    {}
                     <div className="space-y-4">
                         <h3 className="font-black text-sm uppercase text-slate-700 mb-4 pb-2 border-b-2 border-slate-400">
                             Loan Details
@@ -182,7 +182,7 @@ export function LoanAppraisalReport({
                         </div>
                     </div>
 
-                    {/* RIGHT COLUMN - Deposits Analysis */}
+                    {}
                     <div className="space-y-4">
                         <h3 className="font-black text-sm uppercase text-slate-700 mb-4 pb-2 border-b-2 border-slate-400">
                             Deposits Analysis
@@ -229,10 +229,10 @@ export function LoanAppraisalReport({
                     </div>
                 </div>
 
-                {/* EXEMPTIONS SECTION - Positioned below loan details */}
-                {/* This will be passed from LoanAppraisalCard */}
+                {}
+                {}
 
-                {/* 3. LOAN TERMS BAR (Desktop Only - Mobile has card at top) */}
+                {}
                 <div className="hidden lg:block bg-gradient-to-r from-blue-600 to-blue-700 text-white p-5 mb-8 rounded-lg shadow-lg">
                     <div className="grid grid-cols-3 gap-8 text-center">
                         <div>
@@ -250,13 +250,13 @@ export function LoanAppraisalReport({
                     </div>
                 </div>
 
-                {/* 4. TOP-UP INFORMATION TABLE */}
+                {}
                 {topUpItems.length > 0 && (
                     <div className="mb-8">
                         <h3 className="font-black text-sm uppercase text-slate-700 mb-3 pb-2 border-b-2 border-slate-400">
                             Top-Up Information
                         </h3>
-                        {/* Horizontal scroll wrapper for mobile */}
+                        {}
                         <div className="overflow-x-auto -mx-2 px-2 lg:mx-0 lg:px-0">
                             <div className="border-2 border-slate-900 min-w-[640px] lg:min-w-0">
                                 <table className="w-full text-xs sm:text-sm">
@@ -283,7 +283,7 @@ export function LoanAppraisalReport({
                                                 <td className="px-2 sm:px-3 py-2 sm:py-3 text-right font-black text-orange-600 whitespace-nowrap">{formatCurrency(item.totalTopUp)}</td>
                                             </tr>
                                         ))}
-                                        {/* TOTALS ROW */}
+                                        {}
                                         <tr className="bg-slate-200 font-black">
                                             <td colSpan={2} className="px-2 sm:px-3 py-2 sm:py-3 border-r border-slate-400 uppercase text-xs">TOTALS</td>
                                             <td className="px-2 sm:px-3 py-2 sm:py-3 border-r border-slate-400 text-right whitespace-nowrap">
@@ -309,10 +309,10 @@ export function LoanAppraisalReport({
                     </div>
                 )}
 
-                {/* 5. QUALIFICATION & FEES SECTION (Responsive) */}
+                {}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-                    {/* PANEL A - Qualification Criteria */}
+                    {}
                     <div className="border-2 border-slate-400 rounded-lg p-5 bg-slate-50">
                         <h3 className="font-black text-sm uppercase text-slate-700 mb-4 pb-2 border-b-2 border-slate-400">
                             Qualification Criteria
@@ -329,7 +329,7 @@ export function LoanAppraisalReport({
                         </div>
                     </div>
 
-                    {/* PANEL B - Disbursement Reconciliation */}
+                    {}
                     <div className="border-2 border-slate-900 rounded-lg overflow-hidden">
                         <div className="bg-slate-900 text-white px-2 sm:px-4 py-2 font-black uppercase text-xs sm:text-sm flex justify-between items-center gap-2">
                             <span className="truncate">Disbursement Reconciliation</span>
@@ -337,20 +337,20 @@ export function LoanAppraisalReport({
                         </div>
                         <table className="w-full text-xs sm:text-sm">
                             <tbody className="divide-y divide-slate-200">
-                                {/* Approved Amount */}
+                                {}
                                 <tr className="bg-green-50">
                                     <td className="px-2 sm:px-4 py-2 sm:py-3 font-bold text-slate-700">Approved Loan Amount</td>
                                     <td className="px-2 sm:px-4 py-2 sm:py-3 font-black text-right text-green-700 whitespace-nowrap">{formatCurrency(approvedAmount)}</td>
                                 </tr>
 
-                                {/* Deductions Header */}
+                                {}
                                 <tr className="bg-slate-50">
                                     <td colSpan={2} className="px-2 sm:px-4 py-2 text-xs font-black uppercase text-slate-500 tracking-wider">
                                         Less: Deductions
                                     </td>
                                 </tr>
 
-                                {/* Fees */}
+                                {}
                                 <tr>
                                     <td className="px-2 sm:px-4 py-2 text-slate-600 pl-6 sm:pl-8 relative">
                                         <span className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 w-2 h-0.5 bg-slate-300"></span>
@@ -377,7 +377,7 @@ export function LoanAppraisalReport({
                                     </tr>
                                 )}
 
-                                {/* Top Up Fees (Aggregated) */}
+                                {}
                                 {topUpItems.reduce((acc, item) => acc + item.refinanceFee, 0) > 0 && (
                                     <tr>
                                         <td className="px-2 sm:px-4 py-2 text-slate-600 pl-6 sm:pl-8 relative">
@@ -390,7 +390,7 @@ export function LoanAppraisalReport({
                                     </tr>
                                 )}
 
-                                {/* Top Ups / Offsets (Net of Fee) */}
+                                {}
                                 {topUpItems.map((item, idx) => (
                                     <tr key={idx}>
                                         <td className="px-2 sm:px-4 py-2 text-slate-600 pl-6 sm:pl-8 relative">
@@ -403,13 +403,13 @@ export function LoanAppraisalReport({
                                     </tr>
                                 ))}
 
-                                {/* Total Deductions Summary */}
+                                {}
                                 <tr className="bg-slate-50 font-bold">
                                     <td className="px-2 sm:px-4 py-2 text-slate-600 text-right uppercase text-xs tracking-wider">Total Deductions</td>
                                     <td className="px-2 sm:px-4 py-2 text-right text-red-700 whitespace-nowrap">({formatCurrency(totalDeductions)})</td>
                                 </tr>
 
-                                {/* Net Disbursement */}
+                                {}
                                 <tr className="bg-blue-50 border-t-2 border-blue-200">
                                     <td className="px-2 sm:px-4 py-3 sm:py-4 font-black text-blue-900 uppercase tracking-wide text-xs sm:text-sm">Net Disbursement</td>
                                     <td className="px-2 sm:px-4 py-3 sm:py-4 font-black text-right text-lg sm:text-2xl text-blue-600 whitespace-nowrap">{formatCurrency(netDisbursed)}</td>
@@ -422,7 +422,7 @@ export function LoanAppraisalReport({
 
             </div>
 
-            {/* Print Styles */}
+            {}
             <style jsx global>{`
                 @media print {
                     body {

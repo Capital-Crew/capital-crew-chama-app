@@ -17,9 +17,6 @@ export type WelfareRequisitionFormData = {
     customFieldData: Record<string, any>
 }
 
-// ==========================================
-// Requisition Management
-// ==========================================
 
 export const createWelfareRequisition = withAudit(
     { actionType: AuditLogAction.WELFARE_REQUISITION_CREATED, domain: 'WELFARE', apiRoute: '/api/welfare/requisitions/create' },
@@ -206,9 +203,6 @@ export async function cancelWelfareRequisition(id: string) {
     }
 }
 
-// ==========================================
-// Approval Workflow
-// ==========================================
 
 export const submitWelfareApproval = withAudit(
     { actionType: AuditLogAction.WELFARE_STATUS_CHANGED, domain: 'WELFARE', apiRoute: '/api/welfare/requisitions/approve' },
@@ -332,14 +326,7 @@ export const submitWelfareApproval = withAudit(
     }
 );
 
-// ==========================================
-// Disbursement
-// ==========================================
 
-// ... (imports need to be updated at top of file, doing that in a separate block if needed, but I can't do two ranges).
-// Wait, I need to add the import first. I'll do that in a separate step or try to include it if it's near the top.
-// The file is 439 lines long. Imports are at line 1-8.
-// I will split this into two edits: Imports, then the function.
 export const disburseWelfare = withAudit(
     { actionType: AuditLogAction.WELFARE_DISBURSED, domain: 'WELFARE', apiRoute: '/api/welfare/requisitions/disburse' },
     async (ctx, requisitionId: string) => {

@@ -93,7 +93,7 @@ export default async function MemberLegacyProfilePage({ params }: PageProps) {
 
     return (
         <div className="w-full px-4 md:px-8 py-8 space-y-8 bg-slate-50 min-h-screen">
-            {/* Header */}
+            {}
             <div>
                 <h1 className="text-2xl font-bold text-slate-800 tracking-tight">
                     {member.memberNumber} · {member.name.toUpperCase()}
@@ -101,7 +101,7 @@ export default async function MemberLegacyProfilePage({ params }: PageProps) {
                 <p className="text-slate-500 text-sm mt-1">Legacy Dashboard View</p>
             </div>
 
-            {/* Section A: General Stats */}
+            {}
             <section>
                 <h2 className="text-lg font-semibold text-slate-700 mb-3 border-l-4 border-sky-600 pl-3">
                     General Statistics
@@ -109,7 +109,7 @@ export default async function MemberLegacyProfilePage({ params }: PageProps) {
                 <MemberStatsGrid stats={stats} />
             </section>
 
-            {/* Section B: Loans List */}
+            {}
             <section>
                 <h2 className="text-lg font-semibold text-slate-700 mb-3 border-l-4 border-sky-600 pl-3">
                     Active Loans

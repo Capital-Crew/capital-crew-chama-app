@@ -155,7 +155,7 @@ export async function processMeetingAttendance(input: {
                             userId: attendee.userId,
                             meetingId: meeting.id,
                             amount: new Prisma.Decimal(penaltyAmount),
-                            reason: `${finalStatus} PENALTY: ${meeting.title}`,
+                            reason: penaltyReason,
                             status: 'PENDING',
                         }
                     });

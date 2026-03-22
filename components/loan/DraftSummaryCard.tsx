@@ -67,7 +67,7 @@ export function DraftSummaryCard({ draft }: DraftSummaryCardProps) {
                 Last saved <strong>{timeAgo}</strong>. You were on Step <strong>{draft.step}/{totalSteps}</strong>.
             </p>
 
-            {/* Progress Bar */}
+            {}
             <div className="mb-6">
                 <div className="flex justify-between text-xs font-bold text-slate-500 mb-2">
                     <span>Progress</span>
@@ -81,7 +81,7 @@ export function DraftSummaryCard({ draft }: DraftSummaryCardProps) {
                 </div>
             </div>
 
-            {/* Actions */}
+            {}
             <div className="flex gap-3">
                 <button
                     onClick={handleContinue}

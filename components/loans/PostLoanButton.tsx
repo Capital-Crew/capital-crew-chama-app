@@ -81,7 +81,7 @@ export function PostLoanButton({
                 </p>
             )}
 
-            {/* Confirmation Modal */}
+            {}
             {isOpen && !isSelfApproval && (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">

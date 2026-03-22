@@ -60,7 +60,7 @@ export function LoanReportsModal({ isOpen, onClose }: LoanReportsModalProps) {
                             <p className="text-slate-400 text-sm font-medium">Advanced portfolio analytics and operational insights.</p>
                         </div>
 
-                        {/* Quick Tabs */}
+                        {}
                         <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10">
                             <button
                                 onClick={() => setActiveTab('metrics')}
@@ -83,7 +83,7 @@ export function LoanReportsModal({ isOpen, onClose }: LoanReportsModalProps) {
                 <div className="p-8 space-y-8 overflow-y-auto flex-1 scrollbar-none">
                     {activeTab === 'metrics' ? (
                         <>
-                            {/* Filters */}
+                            {}
                             <div className="flex flex-wrap gap-4 items-end bg-slate-50 p-6 rounded-2xl border border-slate-100">
                                 <div className="space-y-2">
                                     <DatePickerField
@@ -117,7 +117,7 @@ export function LoanReportsModal({ isOpen, onClose }: LoanReportsModalProps) {
                                 </div>
                             ) : metrics ? (
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    {/* Metric Cards... */}
+                                    {}
                                     <div className="bg-white border border-slate-100 p-6 rounded-3xl shadow-sm hover:shadow-md transition-all group">
                                         <div className="w-12 h-12 bg-cyan-50 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-cyan-500 group-hover:text-white transition-all">
                                             <LayersIcon className="w-6 h-6 text-cyan-600 group-hover:text-white transition-all" />

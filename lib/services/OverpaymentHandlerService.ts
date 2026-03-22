@@ -121,11 +121,6 @@ export class OverpaymentHandlerService {
                 }
             }
 
-            // If there's still remaining overpayment, it means the loan is overpaid
-            // beyond all scheduled installments. This could trigger:
-            // 1. Early loan closure
-            // 2. Credit balance for member
-            // 3. Refund process
             if (remainingOverpayment > 0) {
                 // TODO: Implement credit balance tracking or early closure logic
             }
@@ -162,9 +157,6 @@ export class OverpaymentHandlerService {
             0
         )
 
-        // For FLAT rate loans, interest doesn't change with early payment
-        // For DECLINING_BALANCE, we'd need to recalculate based on reduced principal
-        // This is a simplified calculation - real implementation would check loan type
 
         const loan = await db.loan.findUnique({
             where: { id: loanId },

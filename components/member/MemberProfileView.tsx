@@ -87,13 +87,13 @@ export function MemberProfileView({
 
     return (
         <div className="bg-white min-h-full flex flex-col">
-            {/* Header */}
+            {}
             <div className="px-4 md:px-8 pt-6 md:pt-8 border-b border-slate-100">
                 <h1 className="text-2xl md:text-3xl font-black text-slate-900 mb-4">Member Profile</h1>
             </div>
 
 
-            {/* Deactivate Control for ACTIVE members — standalone section */}
+            {}
             {member.status === 'ACTIVE' && isSystemAdmin && (
                 <div className="px-4 md:px-8 mt-4">
                     <div className="flex justify-end">
@@ -122,7 +122,7 @@ export function MemberProfileView({
                     onViewLoans={() => setActiveTab('loans')}
                 />
 
-                {/* Administrative Onboarding Controls */}
+                {}
                 {(isSystemAdmin ||
                     (member.status === 'PENDING' && currentUserPermissions?.canApproveMember) ||
                     (member.status === 'APPROVED' && currentUserPermissions?.canActivateMember)) &&
@@ -183,7 +183,7 @@ export function MemberProfileView({
                     )}
             </div>
 
-            {/* Fine Alert Section (The "Red Card") */}
+            {}
             {unpaidPenalties.length > 0 && (
                 <div className="px-4 md:px-8 mb-8">
                     <div className="bg-red-600 rounded-3xl p-6 md:p-8 text-white shadow-xl shadow-red-200 animate-in fade-in zoom-in duration-500">
@@ -242,7 +242,7 @@ export function MemberProfileView({
                 </div>
             )}
 
-            {/* Desktop Tab Navigation */}
+            {}
             <div className="hidden md:flex items-center border-b border-slate-100 bg-white sticky top-0 z-10 px-8">
                 <TabButton
                     isActive={activeTab === 'loans'}
@@ -273,7 +273,7 @@ export function MemberProfileView({
 
 
             <div className="flex-1 overflow-y-auto">
-                {/* MOBILE */}
+                {}
                 <div className="md:hidden flex flex-col bg-white">
                     <CollapsibleSection
                         title="Loans History"
@@ -343,7 +343,7 @@ export function MemberProfileView({
                     </CollapsibleSection>
                 </div>
 
-                {/* DESKTOP */}
+                {}
                 <div className="hidden md:block px-8 pb-12">
                     {activeTab === 'loans' && (
                         <ResponsiveLoansList
@@ -354,9 +354,9 @@ export function MemberProfileView({
 
                     {activeTab === 'contributions' && (
                         <div className="space-y-8">
-                            {/* Status Engine Cards */}
+                            {}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Monthly Status Card */}
+                                {}
                                 <div className={`p-6 rounded-2xl border-2 ${contributionStatus?.balance! <= 0 ? 'bg-green-50 border-green-100' : 'bg-orange-50 border-orange-100'}`}>
                                     <h4 className={`text-[10px] font-black uppercase tracking-widest mb-2 ${contributionStatus?.balance! <= 0 ? 'text-green-600' : 'text-orange-600'}`}>
                                         Current Month Status
@@ -385,7 +385,7 @@ export function MemberProfileView({
                                     </div>
                                 </div>
 
-                                {/* Arrears Card */}
+                                {}
                                 {(Number((member as any).contributionArrears || 0) > 0 || Number((member as any).penaltyArrears || 0) > 0) ? (
                                     <div className="p-6 rounded-2xl border-2 bg-red-50 border-red-100">
                                         <h4 className="text-[10px] font-black uppercase tracking-widest mb-2 text-red-600">
@@ -473,7 +473,7 @@ export function MemberProfileView({
                 </div>
             </div>
 
-            {/* Loan Details Modal */}
+            {}
             <LoanAppraisalCard
                 loanId={selectedLoanId || ''}
                 isOpen={!!selectedLoanId}
@@ -551,14 +551,14 @@ function ResponsiveLoansList({ loans, onLoanClick }: { loans: any[], onLoanClick
 
     return (
         <div className="space-y-8">
-            {/* Active Loans */}
+            {}
             {activeLoans.length > 0 && (
                 <div className="space-y-4">
                     <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
                         <Clock className="w-5 h-5 text-blue-500" /> Active Portfolio
                     </h3>
 
-                    {/* MOBILE: Card Stack */}
+                    {}
                     <div className="space-y-3 md:hidden">
                         {activeLoans.map(loan => (
                             <div
@@ -600,7 +600,7 @@ function ResponsiveLoansList({ loans, onLoanClick }: { loans: any[], onLoanClick
                         ))}
                     </div>
 
-                    {/* DESKTOP: Table */}
+                    {}
                     <div className="hidden md:block bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm text-left">
@@ -658,14 +658,14 @@ function ResponsiveLoansList({ loans, onLoanClick }: { loans: any[], onLoanClick
                 </div>
             )}
 
-            {/* History Loans */}
+            {}
             {historyLoans.length > 0 && (
                 <div className="space-y-4 opacity-75 hover:opacity-100 transition-opacity">
                     <h3 className="text-lg font-black text-slate-500 flex items-center gap-2">
                         <CheckCircle2 className="w-5 h-5" /> Cleared History
                     </h3>
 
-                    {/* Mobile Stack */}
+                    {}
                     <div className="space-y-3 md:hidden">
                         {historyLoans.map(loan => (
                             <div
@@ -689,7 +689,7 @@ function ResponsiveLoansList({ loans, onLoanClick }: { loans: any[], onLoanClick
                         ))}
                     </div>
 
-                    {/* Desktop Table (Simplified) */}
+                    {}
                     <div className="hidden md:block bg-slate-50 border border-slate-200 rounded-xl overflow-hidden">
                         <table className="w-full text-sm text-left">
                             <thead className="border-b border-slate-200">
@@ -731,7 +731,7 @@ function ResponsiveContributionsList({ contributions }: { contributions: any[] }
 
     return (
         <div>
-            {/* Mobile Stack */}
+            {}
             <div className="md:hidden space-y-3">
                 {contributions.map((c, i) => (
                     <div key={i} className="bg-white border border-slate-100 rounded-xl p-4 flex justify-between items-center shadow-sm">
@@ -746,7 +746,7 @@ function ResponsiveContributionsList({ contributions }: { contributions: any[] }
                 ))}
             </div>
 
-            {/* Desktop Table */}
+            {}
             <div className="hidden md:block bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                 <table className="w-full text-left text-sm">
                     <thead className="bg-slate-50 border-b border-slate-200">
@@ -776,7 +776,7 @@ function ResponsiveFinesList({ fines }: { fines: any[] }) {
 
     return (
         <div>
-            {/* Mobile Stack */}
+            {}
             <div className="md:hidden space-y-3">
                 {fines.map((f, i) => (
                     <div key={i} className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm">
@@ -801,7 +801,7 @@ function ResponsiveFinesList({ fines }: { fines: any[] }) {
                 ))}
             </div>
 
-            {/* Desktop Table */}
+            {}
             <div className="hidden md:block bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                 <table className="w-full text-left text-sm">
                     <thead className="bg-slate-50 border-b border-slate-200">

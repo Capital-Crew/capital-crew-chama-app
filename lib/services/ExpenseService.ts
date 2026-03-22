@@ -24,6 +24,7 @@ export class ExpenseService {
         recipientId?: string
         type?: ExpenseType
         receiptUrl?: string
+        status?: ExpenseStatus
     }) {
         const expenseType = data.type || ExpenseType.OPERATIONAL
 
@@ -38,7 +39,7 @@ export class ExpenseService {
                 recipientId: data.recipientId || null,
                 type: expenseType,
                 receiptUrl: data.receiptUrl,
-                status: ExpenseStatus.PENDING_APPROVAL,
+                status: data.status || ExpenseStatus.PENDING_APPROVAL,
                 requesterId: data.requesterId
             }
         })
@@ -169,11 +170,11 @@ export class ExpenseService {
             const difference = approvedAmount - actualAmount
 
             const wallet = await tx.wallet.findUnique({
-                where: { memberId: expense.requesterId },
+                where: { memberId: expense.recipientId || '' },
                 include: { glAccount: true }
             })
 
-            if (!wallet || !wallet.glAccount) throw new Error("User wallet not found for surrender settlement.")
+            if (!wallet || !wallet.glAccount) throw new Error("User wallet not found for surrender settlement. Ensure the recipient has an active wallet.")
 
             const { AccountingEngine } = await import('@/lib/accounting/AccountingEngine')
             let balanceAction: any = null

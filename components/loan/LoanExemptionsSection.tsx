@@ -107,7 +107,7 @@ export function LoanExemptionsSection({
                                 {item.label}
                             </span>
 
-                            {/* Dotted spacer */}
+                            {}
                             <div className="flex-grow mx-3 border-b border-dotted border-slate-300 relative top-1"></div>
 
                             <button

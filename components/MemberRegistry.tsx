@@ -86,7 +86,7 @@ export function MemberRegistry({ members, userRole }: { members: Member[], userR
                 </table>
             </div>
 
-            {/* Member Detail Modal */}
+            {}
             {selectedMemberDetail && (
                 <MemberDetailModal
                     isOpen={isDetailOpen}

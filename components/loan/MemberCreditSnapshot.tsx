@@ -36,7 +36,7 @@ export function MemberCreditSnapshot({ data }: MemberCreditSnapshotProps) {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-100">
-                {/* Share Capital */}
+                {}
                 <div className="p-6">
                     <div className="flex items-center gap-2 mb-2">
                         <Wallet className="w-4 h-4 text-slate-400" />
@@ -48,7 +48,7 @@ export function MemberCreditSnapshot({ data }: MemberCreditSnapshotProps) {
                     <p className="text-[10px] text-slate-400 mt-1 font-bold italic">GL 1200 - Qualifying Contributions</p>
                 </div>
 
-                {/* Current Exposure */}
+                {}
                 <div className="p-6">
                     <div className="flex items-center gap-2 mb-2">
                         <TrendingDown className="w-4 h-4 text-slate-400" />
@@ -60,7 +60,7 @@ export function MemberCreditSnapshot({ data }: MemberCreditSnapshotProps) {
                     <p className="text-[10px] text-slate-400 mt-1 font-bold italic">Total Active Debt</p>
                 </div>
 
-                {/* Max Qualifying Amount */}
+                {}
                 <div className="p-6 bg-cyan-50/30">
                     <div className="flex items-center justify-between gap-2 mb-2">
                         <div className="flex items-center gap-2">

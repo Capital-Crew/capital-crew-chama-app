@@ -39,7 +39,7 @@ export function SiteHeader({ user, approvalCount = 0 }: { user: { name: string, 
 
     return (
         <header className="flex justify-between md:justify-end items-center mb-6 relative z-50">
-            {/* Mobile Navigation Trigger - Visible only on mobile */}
+            {}
             <div className="md:hidden">
                 <MobileNav user={user as any} approvalCount={approvalCount} />
             </div>
@@ -64,7 +64,7 @@ export function SiteHeader({ user, approvalCount = 0 }: { user: { name: string, 
                     forceMount
                     sideOffset={12}
                 >
-                    {/* Profile Header with Gradient Background */}
+                    {}
                     <DropdownMenuLabel className="font-normal p-0 mb-2">
                         <div className="bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl p-4 text-white">
                             <div className="flex items-center gap-3 mb-3">
@@ -92,7 +92,7 @@ export function SiteHeader({ user, approvalCount = 0 }: { user: { name: string, 
 
                     <DropdownMenuSeparator className="bg-slate-100 my-2" />
 
-                    {/* Menu Items with Enhanced Styling */}
+                    {}
                     <DropdownMenuItem asChild>
                         <Link
                             href="/profile"
@@ -125,7 +125,7 @@ export function SiteHeader({ user, approvalCount = 0 }: { user: { name: string, 
 
                     <DropdownMenuSeparator className="bg-slate-100 my-2" />
 
-                    {/* Logout Button with Enhanced Red Styling */}
+                    {}
                     <DropdownMenuItem
                         onClick={handleLogout}
                         disabled={isPending}

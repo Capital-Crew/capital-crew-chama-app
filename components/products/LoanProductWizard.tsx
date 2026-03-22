@@ -102,7 +102,7 @@ export function LoanProductWizard({ accounts, initialData, productId }: LoanProd
     return (
         <FormProvider {...methods}>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-                {/* Left Sidebar: Steps */}
+                {}
                 <div className="md:col-span-1">
                     <div className="sticky top-6">
                         <StepIndicator currentStep={currentStep} steps={steps} />
@@ -115,7 +115,7 @@ export function LoanProductWizard({ accounts, initialData, productId }: LoanProd
                     </div>
                 </div>
 
-                {/* Main Content: Form */}
+                {}
                 <div className="md:col-span-3 space-y-8">
                     <form onSubmit={(e) => e.preventDefault()} className="space-y-8">
                         {currentStep === 1 && <Step1General />}
@@ -123,7 +123,7 @@ export function LoanProductWizard({ accounts, initialData, productId }: LoanProd
                         {currentStep === 3 && <Step3Engine />}
                         {currentStep === 4 && <Step4Accounting accounts={accounts} />}
 
-                        {/* Navigation */}
+                        {}
                         <div className="flex justify-between pt-6 border-t border-slate-200">
                             <Button
                                 type="button"

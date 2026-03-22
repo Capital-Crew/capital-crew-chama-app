@@ -91,9 +91,6 @@ export async function GET(
         const settings = await prisma.saccoSettings.findFirst()
         const requiredApprovals = settings?.requiredApprovals || 3
 
-        // Recalculate financial fields dynamically to ensure accuracy (especially for top-ups)
-        // This fixes any potential stale data in stored fields
-        // @ts-ignore
         const calculatedOffset = loan.topUps.reduce((sum, t) => sum + (Number(t.totalOffset) || 0), 0)
 
         // Ensure strictly numbers for deductions

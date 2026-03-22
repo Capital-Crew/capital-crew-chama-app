@@ -13,9 +13,6 @@ import { PaymentGateway, type PaymentGatewayInput, type PaymentGatewayResult } f
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
-// ========================================
-// VALIDATION SCHEMA
-// ========================================
 
 const ProcessTransferSchema = z.object({
     walletId: z.string().min(1, 'Wallet ID is required'),
@@ -27,9 +24,6 @@ const ProcessTransferSchema = z.object({
 
 type ProcessTransferInput = z.infer<typeof ProcessTransferSchema>;
 
-// ========================================
-// SERVER ACTION
-// ========================================
 
 export async function processTransfer(
     input: ProcessTransferInput
@@ -123,9 +117,6 @@ export async function processTransfer(
     }
 }
 
-// ========================================
-// HELPER ACTION: GET WALLET BALANCE
-// ========================================
 
 export async function getWalletBalance(walletId: string): Promise<number> {
     const session = await auth();
@@ -145,9 +136,6 @@ export async function getWalletBalance(walletId: string): Promise<number> {
     return Number(wallet.glAccount.balance);
 }
 
-// ========================================
-// HELPER ACTION: GET MEMBER WALLET
-// ========================================
 
 export async function getMemberWallet(memberId: string) {
     const session = await auth();

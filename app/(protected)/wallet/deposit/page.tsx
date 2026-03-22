@@ -10,9 +10,6 @@ export default async function DepositPage() {
     if (!await protectPage('WALLET')) return redirect('/dashboard')
 
     if (!session || !session.user || !session.user.memberId) {
-        // If no member ID (e.g. admin without member profile), maybe redirect or show error?
-        // For now, let's assume valid user or just handle in form if prop is missing.
-        // But better to restrict.
     }
 
     const memberId = session?.user?.memberId as string;

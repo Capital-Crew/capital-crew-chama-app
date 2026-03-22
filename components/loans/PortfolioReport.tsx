@@ -78,7 +78,7 @@ export function PortfolioReport() {
 
     return (
         <div className="space-y-6">
-            {/* Header & Main Stats */}
+            {}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
                 <div>
                     <h2 className="text-2xl font-black text-slate-900 uppercase italic tracking-tighter flex items-center gap-2">
@@ -106,9 +106,9 @@ export function PortfolioReport() {
                 </div>
             </div>
 
-            {/* Smart Filter Bar */}
+            {}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 bg-slate-50 p-6 rounded-3xl border border-slate-100 shadow-inner">
-                {/* Status Filter */}
+                {}
                 <div className="space-y-1.5">
                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
                         <FilterIcon className="w-3 h-3" /> Status
@@ -123,7 +123,7 @@ export function PortfolioReport() {
                     </select>
                 </div>
 
-                {/* Borrower Filter */}
+                {}
                 <div className="space-y-1.5">
                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
                         <UserIcon className="w-3 h-3" /> Borrower
@@ -140,7 +140,7 @@ export function PortfolioReport() {
                     />
                 </div>
 
-                {/* Date Start Filter */}
+                {}
                 <div className="space-y-1.5">
                     <DatePickerField
                         label="Start Date"
@@ -150,7 +150,7 @@ export function PortfolioReport() {
                     />
                 </div>
 
-                {/* Date End Filter */}
+                {}
                 <div className="space-y-1.5">
                     <DatePickerField
                         label="End Date"
@@ -160,7 +160,7 @@ export function PortfolioReport() {
                     />
                 </div>
 
-                {/* Min Arrears Filter */}
+                {}
                 <div className="space-y-1.5">
                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
                         <AlertCircleIcon className="w-3 h-3" /> Min. Arrears
@@ -175,7 +175,7 @@ export function PortfolioReport() {
                 </div>
             </div>
 
-            {/* Performance Table */}
+            {}
             <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs border-collapse">
@@ -245,7 +245,7 @@ export function PortfolioReport() {
                     </table>
                 </div>
 
-                {/* Pagination */}
+                {}
                 <div className="bg-slate-50/50 px-6 py-4 flex justify-between items-center border-t border-slate-100">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                         Page {page} of {totalPages}

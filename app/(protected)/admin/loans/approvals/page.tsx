@@ -15,7 +15,6 @@ export default async function LoanApprovalsPage() {
     const currentUser = {
         id: session.user.id || '',
         name: session.user.name || '',
-        // @ts-ignore
         role: session.user.role || 'Member'
     }
 

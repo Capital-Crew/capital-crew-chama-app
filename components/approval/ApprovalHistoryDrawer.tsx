@@ -28,10 +28,10 @@ export function ApprovalHistoryDrawer({ isOpen, onClose, entityType, entityId }:
 
     return (
         <div className="fixed inset-0 z-[60] flex justify-end">
-            {/* Backdrop */}
+            {}
             <div className="absolute inset-0 bg-slate-900/20 backdrop-blur-sm" onClick={onClose} />
 
-            {/* Drawer */}
+            {}
             <div className="relative w-full max-w-md bg-white shadow-2xl h-full flex flex-col animate-in slide-in-from-right duration-300">
                 <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                     <h3 className="font-bold text-slate-800">Workflow History</h3>

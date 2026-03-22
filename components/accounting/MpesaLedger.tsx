@@ -448,7 +448,7 @@ export function MpesaLedger({ members = [] }: MpesaLedgerProps) {
                         </Table>
                     </div>
 
-                    {/* Mobile List View - Pending */}
+                    {}
                     <div className="space-y-3 md:hidden">
                         {pendingTx.length === 0 ? (
                             <div className="text-center py-8 text-slate-500">No pending transactions.</div>
@@ -519,7 +519,7 @@ export function MpesaLedger({ members = [] }: MpesaLedgerProps) {
                         </Table>
                     </div>
 
-                    {/* Mobile List View - Completed */}
+                    {}
                     <div className="space-y-3 md:hidden">
                         {completedTx.length === 0 ? (
                             <div className="text-center py-8 text-slate-500">No successful transactions found.</div>
@@ -587,7 +587,7 @@ export function MpesaLedger({ members = [] }: MpesaLedgerProps) {
                         </Table>
                     </div>
 
-                    {/* Mobile List View - Failed */}
+                    {}
                     <div className="space-y-3 md:hidden">
                         {failedTx.length === 0 ? (
                             <div className="text-center py-8 text-slate-500">No failed transactions found.</div>
@@ -615,7 +615,7 @@ export function MpesaLedger({ members = [] }: MpesaLedgerProps) {
                 </TabsContent>
             </Tabs>
 
-            {/* Retry Dialog */}
+            {}
             <Dialog open={isRetryOpen} onOpenChange={setIsRetryOpen}>
                 <DialogContent>
                     <DialogHeader>
@@ -643,7 +643,7 @@ export function MpesaLedger({ members = [] }: MpesaLedgerProps) {
                 </DialogContent>
             </Dialog>
 
-            {/* Reconcile Dialog */}
+            {}
             <Dialog open={isReconcileOpen} onOpenChange={setIsReconcileOpen}>
                 <DialogContent>
                     <DialogHeader>
@@ -685,7 +685,7 @@ export function MpesaLedger({ members = [] }: MpesaLedgerProps) {
                 </DialogContent>
             </Dialog>
 
-            {/* Manual Resolve Dialog */}
+            {}
             <Dialog open={isManualOpen} onOpenChange={setIsManualOpen}>
                 <DialogContent>
                     <DialogHeader>
@@ -759,7 +759,7 @@ export function MpesaLedger({ members = [] }: MpesaLedgerProps) {
                                     <span className="font-semibold block text-xs text-slate-500 uppercase">Transaction Ref</span>
                                     <span className="font-mono">{currentLedger.transactionReference}</span>
                                 </div>
-                                {/* Only show external ref if it's different and exists */}
+                                {}
                                 {currentLedger.externalReference && currentLedger.externalReference !== currentLedger.transactionReference && (
                                     <div>
                                         <span className="font-semibold block text-xs text-slate-500 uppercase">Ext Ref</span>
@@ -830,7 +830,7 @@ export function MpesaLedger({ members = [] }: MpesaLedgerProps) {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-            {/* Transaction Details Modal (Mobile) */}
+            {}
             <Dialog open={!!viewingTransaction} onOpenChange={(open) => !open && setViewingTransaction(null)}>
                 <DialogContent className="max-w-md">
                     <DialogHeader>

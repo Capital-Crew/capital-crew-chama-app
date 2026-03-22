@@ -166,7 +166,7 @@ export function WelfareRequisitionForm({ welfareTypes, members }: WelfareRequisi
             </CardHeader>
             <form onSubmit={handleSubmit}>
                 <CardContent className="space-y-6">
-                    {/* Beneficiary Selector */}
+                    {}
                     <div className="space-y-2">
                         <Label>Beneficiary (Member)</Label>
                         <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
@@ -237,7 +237,7 @@ export function WelfareRequisitionForm({ welfareTypes, members }: WelfareRequisi
                         />
                     </div>
 
-                    {/* Dynamic Custom Fields */}
+                    {}
                     {selectedType && selectedType.customFields && selectedType.customFields.length > 0 && (
                         <div className="space-y-4 border-t pt-4">
                             <h4 className="text-sm font-medium text-slate-900">Additional Information</h4>

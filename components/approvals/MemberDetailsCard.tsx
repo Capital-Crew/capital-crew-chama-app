@@ -57,7 +57,7 @@ export function MemberDetailsCard({ requestId, memberId, isOpen, onClose }: Memb
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md transition-all duration-300">
             <div className="bg-white rounded-[2rem] w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-300">
-                {/* Header */}
+                {}
                 <div className="p-8 pb-6 border-b border-slate-100 flex justify-between items-center bg-white relative z-10">
                     <div>
                         <p className="text-xs font-black text-[#00c2e0] uppercase tracking-widest mb-1">Application Review</p>
@@ -71,7 +71,7 @@ export function MemberDetailsCard({ requestId, memberId, isOpen, onClose }: Memb
                     </button>
                 </div>
 
-                {/* Content */}
+                {}
                 <div className="p-8 overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-slate-200">
                     {loading ? (
                         <div className="py-20 flex flex-col items-center justify-center text-slate-400 gap-4">
@@ -80,7 +80,7 @@ export function MemberDetailsCard({ requestId, memberId, isOpen, onClose }: Memb
                         </div>
                     ) : member ? (
                         <div className="space-y-8">
-                            {/* Profile Header */}
+                            {}
                             <div className="flex items-center gap-6">
                                 <div className="w-24 h-24 bg-gradient-to-br from-[#00c2e0] to-[#019ab3] rounded-[2rem] flex items-center justify-center text-3xl font-black text-white shadow-xl shadow-cyan-500/20">
                                     {member.name?.charAt(0)}
@@ -99,7 +99,7 @@ export function MemberDetailsCard({ requestId, memberId, isOpen, onClose }: Memb
                                 </div>
                             </div>
 
-                            {/* Details Grid */}
+                            {}
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 hover:border-slate-200 transition-colors">
                                     <div className="w-10 h-10 rounded-xl bg-white mb-4 flex items-center justify-center shadow-sm text-slate-400">
@@ -117,7 +117,7 @@ export function MemberDetailsCard({ requestId, memberId, isOpen, onClose }: Memb
                                 </div>
                             </div>
 
-                            {/* Wallet Info */}
+                            {}
                             <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-3xl p-6 border border-indigo-100/50">
                                 <h4 className="text-sm font-black text-indigo-900 uppercase tracking-wide mb-3 flex items-center gap-2">
                                     <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
@@ -140,7 +140,7 @@ export function MemberDetailsCard({ requestId, memberId, isOpen, onClose }: Memb
                     )}
                 </div>
 
-                {/* Footer / Actions */}
+                {}
                 <div className="p-8 border-t border-slate-100 bg-white flex flex-col gap-4">
                     <textarea
                         className="w-full p-4 bg-slate-50 border-none rounded-2xl text-sm font-medium focus:ring-2 focus:ring-[#00c2e0]/20 outline-none resize-none transition-all"

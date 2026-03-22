@@ -110,7 +110,7 @@ export function MeetingReportForm({ meetings, members, settings }: MeetingReport
 
     return (
         <form onSubmit={handleSubmit} className="space-y-8 pb-20">
-            {/* Section A: Selection */}
+            {}
             <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-8">
                 <div className="flex items-center gap-3 mb-6">
                     <div className="p-3 bg-cyan-50 rounded-2xl">
@@ -147,7 +147,7 @@ export function MeetingReportForm({ meetings, members, settings }: MeetingReport
                 </div>
             </div>
 
-            {/* Section B: Attendance Grid */}
+            {}
             <div className="space-y-4">
                 <div className="flex items-center justify-between">
                     <div>
@@ -168,7 +168,7 @@ export function MeetingReportForm({ meetings, members, settings }: MeetingReport
                 />
             </div>
 
-            {/* Section C: Summary Footer (Ultra Compact) */}
+            {}
             <div className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[95%] max-w-2xl bg-slate-900/90 backdrop-blur-md rounded-2xl p-3 z-40 shadow-2xl border border-white/10">
                 <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-4 text-white">

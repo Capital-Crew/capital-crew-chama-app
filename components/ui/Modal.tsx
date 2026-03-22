@@ -27,9 +27,6 @@ const Modal = forwardRef<ModalRef, ModalProps>(({ title, children, actions, onCl
         }
     }));
 
-    // Handle ESC key or backdrop click logic if needed, 
-    // but <dialog> handles ESC natively.
-    // To handle backdrop click closing:
     const handleBackdropClick = (e: React.MouseEvent<HTMLDialogElement>) => {
         const dialogDimensions = dialogRef.current?.getBoundingClientRect();
         if (dialogDimensions) {
@@ -62,7 +59,7 @@ const Modal = forwardRef<ModalRef, ModalProps>(({ title, children, actions, onCl
                 </div>
                 <div className="modal-action">
                     <form method="dialog">
-                        {/* if there is a button in form, it will close the modal */}
+                        {}
                         <div className="flex gap-2">
                             {actions}
                             <button className="btn">Close</button>
@@ -70,7 +67,7 @@ const Modal = forwardRef<ModalRef, ModalProps>(({ title, children, actions, onCl
                     </form>
                 </div>
             </div>
-            {/* Backdrop for accessibility */}
+            {}
             <form method="dialog" className="modal-backdrop">
                 <button>close</button>
             </form>

@@ -26,9 +26,6 @@ export class TransactionReversalService {
         adminId: string
     ) {
 
-        // --- Step 1: Universal Validation ---
-        // We'll let the specific fetchers handle existence check, but we can do common checks if we had a unified table.
-        // Since tables are separate, we validate inside the switch or helper methods.
 
         // Time Limit Check (7 Days)
         const REVERSAL_WINDOW_DAYS = 7
@@ -137,11 +134,6 @@ export class TransactionReversalService {
                         // --- CASCADING REVERSAL: Check for Related Loan ---
                         if (walletTx.relatedLoanId) {
 
-                            // 1. Find the corresponding Loan Transaction
-                            // Usually a Repayment in Wallet corresponds to a Repayment in Loan
-                            // We try to match by ReferenceId (ideal) or Amount+Date (heuristic)
-                            // P3.3: Use direct FK match instead of amount+type heuristic
-                            // to avoid reversing the wrong transaction when amounts are identical
                             const loanTx = await tx.loanTransaction.findFirst({
                                 where: {
                                     loanId: walletTx.relatedLoanId,
@@ -251,10 +243,6 @@ export class TransactionReversalService {
                 }
 
 
-                // --- Step 3: GL Update (Universal) ---
-                // Find the Journal Entry linked to this reference
-                // Mapping RefType based on context is tricky without a unified ReferenceType on the input
-                // But AccountingEngine stores ReferenceId. We can search by ReferenceId.
                 const journalEntry = await tx.ledgerTransaction.findFirst({
                     where: {
                         referenceId: refId,
@@ -275,32 +263,12 @@ export class TransactionReversalService {
                 }
 
 
-                // --- Step 4: Wallet Movement (The "Money" Flow) ---
-                // "Follow the money" logic.
-                // We need to know if the ORIGINAL transaction moved money IN or OUT of a wallet.
-                // We can infer this from the Type + Schema.
 
-                // LOAN:
-                // - REPAYMENT: Money came FROM User Wallet -> Refund (Credit Wallet)
-                // - DISBURSEMENT: Money went TO User Wallet -> Recover (Debit Wallet)
 
-                // SAVINGS:
-                // - DEPOSIT: Money came FROM User (Cash/Mpesa) -> Refund? 
-                //   - Wait, "Deposit" implies Cash->Sacco. Reversal means Cash back to User?
-                //   - OR "Deposit" via Wallet (Mpesa->Wallet). Reversal?
-                //   - If it was M-Pesa -> Wallet, reversal means we owe them the money back? Or we cancel the credit?
-                //   Let's stick to INTERNAL WALLET logic.
-                //   - Deposit: User balances goes +100. Reversal: User balance -100.
-                //   - Withdrawal: User balance -100. Reversal: User balance +100.
 
                 // EXPENSE:
                 // - DISBURSEMENT (to Member): User Wallet +100. Reversal: User Wallet -100.
 
-                // We handle this via the "GL Update" mostly, because GL drives the Wallet Balance.
-                // `AccountingEngine` controls the wallet balance via LedgerAccount.
-                // When we `reverseJournalEntry`, it swaps Debits and Credits.
-                // - Original Deposit: CR Member Wallet (Liability).
-                // - Reversal: DR Member Wallet. -> Balance decreases. Correct.
 
                 // - Original Withdrawal: DR Member Wallet.
                 // - Reversal: CR Member Wallet. -> Balance increases. Correct.

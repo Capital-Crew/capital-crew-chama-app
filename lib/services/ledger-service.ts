@@ -149,11 +149,6 @@ export class LedgerService {
             // For now, we update them to keep current reporting working
             for (const line of lines) {
                 const amount = new Decimal(line.debitAmount).minus(line.creditAmount);
-                // Note: Logic depends on Normal Balance. 
-                // For Assets/Expenses: Balance += (Debit - Credit)
-                // For Liab/Equity/Income: Balance += (Credit - Debit)
-                // We'll handle this in the update query or just store signed values.
-                // Standard: Store balance as (Normal Increase - Normal Decrease)
 
                 const acc = await tx.ledgerAccount.findUnique({ where: { id: line.ledgerAccountId } });
                 const increment = acc?.normalBalance === NormalBalance.DEBIT ? amount : amount.negated();

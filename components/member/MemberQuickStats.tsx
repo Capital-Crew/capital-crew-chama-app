@@ -34,7 +34,7 @@ export function MemberQuickStats({ stats, onViewLoans }: MemberQuickStatsProps) 
 
     return (
         <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 p-8 mb-8 w-full">
-            {/* Identity Section */}
+            {}
             <div className="flex flex-col md:flex-row justify-between items-center border-b border-slate-100 pb-6 mb-8 gap-4">
                 <div className="flex items-center gap-4">
                     <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white text-2xl font-black shadow-lg shadow-blue-200">
@@ -68,9 +68,9 @@ export function MemberQuickStats({ stats, onViewLoans }: MemberQuickStatsProps) 
                 </div>
             </div>
 
-            {/* Live Stats Grid - Buttons Style */}
+            {}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Member Savings (Wallet) */}
+                {}
                 <div className="group relative overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 shadow-lg shadow-blue-200 transition-all hover:-translate-y-1 hover:shadow-xl cursor-default">
                     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                         <Wallet className="w-24 h-24 text-white transform rotate-12" />
@@ -89,7 +89,7 @@ export function MemberQuickStats({ stats, onViewLoans }: MemberQuickStatsProps) 
                     </div>
                 </div>
 
-                {/* Contributions (Asset Pool Share) */}
+                {}
                 <div className="group relative overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-6 shadow-lg shadow-emerald-200 transition-all hover:-translate-y-1 hover:shadow-xl cursor-default">
                     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                         <PiggyBank className="w-24 h-24 text-white transform -rotate-12" />
@@ -108,7 +108,7 @@ export function MemberQuickStats({ stats, onViewLoans }: MemberQuickStatsProps) 
                     </div>
                 </div>
 
-                {/* Outstanding Loans */}
+                {}
                 <div
                     onClick={onViewLoans}
                     className="group relative overflow-hidden bg-white border-2 border-slate-100 rounded-2xl p-6 transition-all hover:border-orange-200 hover:shadow-lg hover:shadow-orange-100/50 cursor-pointer"

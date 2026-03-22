@@ -79,9 +79,9 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-cyan-50/30">
-            {/* Modern Header with Gradient and Blur Effects */}
+            {}
             <div className="relative overflow-hidden bg-gradient-to-br from-cyan-500 to-indigo-600 text-white px-8 py-12 rounded-2xl shadow-xl mb-8">
-                {/* Decorative Blur Circles */}
+                {}
                 <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
                 <div className="absolute bottom-0 left-0 w-48 h-48 bg-black/10 rounded-full blur-2xl -ml-10 -mb-10 pointer-events-none"></div>
 
@@ -96,7 +96,7 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
                 </div>
             </div>
 
-            {/* Modern Tab Navigation - Scrollable on Mobile */}
+            {}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-2 mb-8 sticky top-4 z-40 backdrop-blur-md bg-white/90">
                 <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0">
                     {tabs.map((tab) => {
@@ -118,12 +118,12 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
                 </div>
             </div>
 
-            {/* Engine Health Tab */}
+            {}
             {activeTab === 'engines' && (
                 <EngineHealthDashboard />
             )}
 
-            {/* Loan Products Tab */}
+            {}
             {activeTab === 'products' && (
                 <div className="space-y-6">
                     <div className="flex justify-between items-center">
@@ -147,7 +147,7 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
                                 className={`group bg-white border-2 border-slate-200 rounded-2xl shadow-sm hover:shadow-xl hover:border-cyan-300 transition-all duration-300 overflow-hidden ${!p.isActive ? 'opacity-60' : ''
                                     }`}
                             >
-                                {/* Product Header with Gradient */}
+                                {}
                                 <div className="bg-gradient-to-br from-cyan-50 to-blue-50 p-6 border-b border-slate-200">
                                     <div className="flex justify-between items-start mb-4">
                                         <div className="flex items-center gap-3">
@@ -169,7 +169,7 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
                                         )}
                                     </div>
 
-                                    {/* Interest Rate Display */}
+                                    {}
                                     <div className="flex items-baseline gap-2">
                                         <TrendingUp className="w-4 h-4 text-cyan-600" />
                                         <span className="text-sm font-medium text-slate-600">Monthly Rate:</span>
@@ -177,7 +177,7 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
                                     </div>
                                 </div>
 
-                                {/* Product Actions */}
+                                {}
                                 <div className="p-6 flex gap-3">
                                     <button
                                         onClick={() => handleToggleStatus(p.id, p.isActive)}
@@ -218,7 +218,7 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
                 </div>
             )}
 
-            {/* Adjustments Tab */}
+            {}
             {activeTab === 'adjustments' && (
                 <div className="space-y-6">
                     <div className="flex justify-between items-center">
@@ -254,7 +254,7 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
                 </div>
             )}
 
-            {/* Welfare Tab */}
+            {}
             {activeTab === 'welfare' && (
                 <div className="space-y-6">
                     <div>
@@ -274,7 +274,7 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
             )}
 
 
-            {/* Notification Settings Tab */}
+            {}
             {activeTab === 'notifications' && (
                 <div className="space-y-6">
                     <div>
@@ -285,14 +285,14 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
                 </div>
             )}
 
-            {/* Loan Adjustment Modal */}
+            {}
             <LoanAdjustmentModal
                 isOpen={isAdjustmentModalOpen}
                 onClose={() => setIsAdjustmentModalOpen(false)}
                 onAdjustmentSubmit={handleAdjustmentSubmit}
             />
 
-            {/* Modal (Desktop Only) */}
+            {}
             {isModalOpen && (
                 <div className="hidden md:flex fixed inset-0 z-50 items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl p-8 w-full max-w-lg shadow-2xl">
@@ -340,7 +340,7 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
                 </div>
             )}
 
-            {/* Mobile Drawer (Mobile Only) */}
+            {}
             <MobileDrawer
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}

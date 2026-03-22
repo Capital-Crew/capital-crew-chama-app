@@ -16,17 +16,7 @@ interface Step4AccountingProps {
 export function Step4Accounting({ accounts }: Step4AccountingProps) {
     const { register, formState: { errors } } = useFormContext<LoanProductWizardValues>();
 
-    // Helper to filter accounts by type (simplified for MVP, ideally strict checking)
-    // We assume 'ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE' types exist.
-    // Based on schema, AccountType is enum.
 
-    // Mapping requirements:
-    // Fund Source -> ASSET (Bank/Cash)
-    // Loan Portfolio -> ASSET
-    // Interest Income -> REVENUE
-    // Interest Receivable -> ASSET
-    // Penalty Income -> REVENUE
-    // Penalty Receivable -> ASSET
 
     const assetAccounts = accounts.filter(a => a.type === 'ASSET');
     const revenueAccounts = accounts.filter(a => a.type === 'REVENUE' || a.type === 'INCOME'); // Handle variation
@@ -57,7 +47,7 @@ export function Step4Accounting({ accounts }: Step4AccountingProps) {
                 <CardDescription>Map the financial flows to your General Ledger.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-                {/* Asset Accounts */}
+                {}
                 <div className="space-y-4 border-b border-slate-100 pb-4">
                     <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Asset Mapping</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -66,7 +56,7 @@ export function Step4Accounting({ accounts }: Step4AccountingProps) {
                     </div>
                 </div>
 
-                {/* Interest Mapping */}
+                {}
                 <div className="space-y-4 border-b border-slate-100 pb-4">
                     <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Interest Mapping</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -75,7 +65,7 @@ export function Step4Accounting({ accounts }: Step4AccountingProps) {
                     </div>
                 </div>
 
-                {/* Penalty Mapping */}
+                {}
                 <div className="space-y-4">
                     <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Penalty Mapping</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

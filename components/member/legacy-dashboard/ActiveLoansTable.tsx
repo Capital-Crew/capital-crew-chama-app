@@ -55,12 +55,12 @@ export const ActiveLoansTable: React.FC<Props> = ({ loans, onLoanClick }) => {
                 {formatCurrency(loan.totalLoanBalance)}
             </td>
 
-            {/* Arrears - Highlight Red if > 0 */}
+            {}
             <td className={`py-4 px-6 text-right font-medium ${loan.arrears > 0 ? 'text-red-600 font-bold' : 'text-slate-400'}`}>
                 {loan.arrears > 0 ? formatCurrency(loan.arrears) : '-'}
             </td>
 
-            {/* Expected Payment */}
+            {}
             <td className="py-4 px-6 text-right text-slate-900 font-bold">
                 {loan.expectedAmount > 0 ? formatCurrency(loan.expectedAmount) : '-'}
             </td>
@@ -74,7 +74,7 @@ export const ActiveLoansTable: React.FC<Props> = ({ loans, onLoanClick }) => {
 
     return (
         <div className="space-y-8">
-            {/* Active Portfolio Section */}
+            {}
             <div>
                 <div className="flex items-center gap-2 mb-4">
                     <div className="p-2 bg-blue-50 rounded-lg">
@@ -116,7 +116,7 @@ export const ActiveLoansTable: React.FC<Props> = ({ loans, onLoanClick }) => {
                 </div>
             </div>
 
-            {/* Cleared History Section */}
+            {}
             {clearedLoans.length > 0 && (
                 <div className="opacity-80 hover:opacity-100 transition-opacity">
                     <div className="flex items-center gap-2 mb-4 mt-8">

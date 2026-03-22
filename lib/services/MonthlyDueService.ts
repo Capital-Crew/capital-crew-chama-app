@@ -45,10 +45,6 @@ export class MonthlyDueService {
             isOverdue: false
         }
 
-        // Separate Overdue vs Current
-        // Logic: Any installment with dueDate < Today is "Arrears"
-        // Logic: Installment with dueDate == Today (or within current cycle depending on policy) is "Current"
-        // Here we assume strict "Past Due Date" = Arrears.
 
         for (const inst of installments) {
             const dueDate = new Date(inst.dueDate)

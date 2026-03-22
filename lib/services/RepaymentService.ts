@@ -1,7 +1,4 @@
 import { db as prisma } from '@/lib/db'
-// import { CoreLedger } from '@/lib/accounting/CoreLedger' // Removed
-// import { WalletService } from './WalletService' // Removed
-// import { LoanTransactionType } from '@prisma/client' // Removed
 
 export class RepaymentService {
     /**
@@ -60,10 +57,6 @@ export class RepaymentService {
             const balances = { penalty: penaltyBalance, fees: feesBalance, interest: interestBalance, principal: principalBalance }
             const allocation = distributeRepayment(amount, balances)
 
-            // 5. System Mappings
-            // We need to fetch mappings for the specific product 
-            // OR use System Mappings for generic buckets?
-            // The Action used `getSystemMappingsDict`. Let's use that for consistency.
             const { getSystemMappingsDict } = await import('@/app/actions/system-accounting')
             const mappings = await getSystemMappingsDict()
 

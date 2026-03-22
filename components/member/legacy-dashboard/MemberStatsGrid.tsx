@@ -19,7 +19,7 @@ export const MemberStatsGrid: React.FC<Props> = ({ stats }) => {
         <div className="bg-white border border-slate-200 rounded-sm shadow-sm p-4 mb-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-y-4 gap-x-8 text-sm">
 
-                {/* Column 1 */}
+                {}
                 <div className="space-y-2">
                     <div className="grid grid-cols-[120px_1fr] items-baseline">
                         <span className="text-slate-500 font-medium">Member No:</span>
@@ -31,7 +31,7 @@ export const MemberStatsGrid: React.FC<Props> = ({ stats }) => {
                     </div>
                 </div>
 
-                {/* Column 2 */}
+                {}
                 <div className="space-y-2">
                     <div className="grid grid-cols-[180px_1fr] items-baseline">
                         <span className="text-slate-500 font-medium">C Member Savings:</span>
@@ -47,9 +47,9 @@ export const MemberStatsGrid: React.FC<Props> = ({ stats }) => {
                     </div>
                 </div>
 
-                {/* Column 3 (Empty or Extra Stats) */}
+                {}
                 <div className="space-y-2">
-                    {/* Placeholder for future expansion or "Arrears" if implemented */}
+                    {}
                 </div>
             </div>
         </div>

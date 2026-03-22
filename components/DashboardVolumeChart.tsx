@@ -26,7 +26,7 @@ export default function DashboardVolumeChart({ data }: { data: TrendData[] }) {
             {(!inView || !mounted) ? (
                 <div className="h-full w-full bg-slate-100 animate-pulse rounded-xl" />
             ) : (
-                /* LIGHTHOUSE FIX 1.3: Explicit height to prevent forced reflows loop */
+                
                 <ResponsiveContainer width="100%" height={250}>
                     <BarChart data={data}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />

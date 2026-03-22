@@ -97,8 +97,7 @@ export async function getSystemMappingsDict() {
     const mappings = await getSystemMappings();
     const dict: Partial<Record<SystemAccountType, string>> = {};
     for (const m of mappings) {
-        // @ts-ignore
-        dict[m.type] = m.account.code;
+        dict[m.type as SystemAccountType] = m.account.code;
     }
     return dict as Record<SystemAccountType, string>;
 }

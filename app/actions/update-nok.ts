@@ -12,9 +12,6 @@ export async function updateNextOfKin(data: any) {
         throw new Error("Unauthorized");
     }
 
-    // Role check - Only officials can update member details?
-    // Or can the member update their own? 
-    // Usually in SACCOs, officials update after verification.
     const isOfficial = ['CHAIRPERSON', 'TREASURER', 'SECRETARY', 'SYSTEM_ADMIN'].includes(session.user?.role || '');
     const isOwner = session.user?.memberId === data.memberId;
 

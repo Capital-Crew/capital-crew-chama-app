@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useMemo } from 'react'
+import { useState, useTransition, useMemo, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,9 +20,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
 import { Textarea } from '@/components/ui/textarea'
-import { Plus, Check, Loader2, CalendarIcon, FileText, Banknote, User, AlertCircle, RefreshCw, Upload, Download } from 'lucide-react'
+import { Plus, Check, Loader2, CalendarIcon, FileText, Banknote, User, AlertCircle, RefreshCw, Upload, Download, Eye, X, Clock, CheckCircle, XCircle } from 'lucide-react'
 import { toast } from '@/lib/toast'
-import { createExpenseRequest, approveExpense, submitExpenseSurrender, approveReimbursementClaim } from '@/app/actions/expenses'
+import { createExpenseRequest, approveExpense, submitExpenseSurrender, approveReimbursementClaim, sendExpenseForApproval, cancelExpenseApproval, voteOnExpenseApproval, getExpenseWorkflowStatus } from '@/app/actions/expenses'
 import { processBulkPayout, BulkPayoutItem } from '@/app/actions/bulk-payouts'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
@@ -34,18 +34,26 @@ type ExpenseTabProps = {
     categories: any[] // ExpenseCategoryGroup[] with nested subCategories
     members: any[] // Member list for selection
     currentUserId: string
+    currentUserRole: string
     isOfficial: boolean
     onRefresh: () => void
 }
 
-export function ExpensesTab({ expenses, accounts, categories, members, currentUserId, isOfficial, onRefresh }: ExpenseTabProps) {
+export function ExpensesTab({ expenses, accounts, categories, members, currentUserId, currentUserRole, isOfficial, onRefresh }: ExpenseTabProps) {
     const [isPending, startTransition] = useTransition()
     const [isCreateOpen, setIsCreateOpen] = useState(false)
     const [isBulkOpen, setIsBulkOpen] = useState(false)
     const [surrenderOpen, setSurrenderOpen] = useState(false)
-    const [activeTab, setActiveTab] = useState<'pending' | 'active' | 'history'>('pending')
+    const [activeTab, setActiveTab] = useState<'draft' | 'pending' | 'active' | 'history'>('draft')
     const [viewingExpense, setViewingExpense] = useState<any | null>(null)
     const [selectedExpenseForSurrender, setSelectedExpenseForSurrender] = useState<any | null>(null)
+    // Workflow status map: expenseId -> workflow data
+    const [workflowStatuses, setWorkflowStatuses] = useState<Record<string, any>>({})
+    const [loadingWorkflow, setLoadingWorkflow] = useState<Record<string, boolean>>({})
+    const [expandedApproval, setExpandedApproval] = useState<Record<string, boolean>>({})
+
+    const ADMIN_ROLES = ['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER', 'SECRETARY']
+    const isAdmin = ADMIN_ROLES.includes(currentUserRole)
 
     // Form State for Create Expense
     const [formData, setFormData] = useState({
@@ -74,13 +82,32 @@ export function ExpensesTab({ expenses, accounts, categories, members, currentUs
     })
 
     // Filter expenses by status
-    const pendingExpenses = expenses.filter(e => e.status === 'PENDING_APPROVAL' || e.status === 'DRAFT')
-    const activeExpenses = expenses.filter(e => e.status === 'DISBURSED') // Imprest pending surrender
+    const draftExpenses = expenses.filter(e => e.status === 'DRAFT')
+    const pendingExpenses = expenses.filter(e => e.status === 'PENDING_APPROVAL')
+    const activeExpenses = expenses.filter(e => e.status === 'DISBURSED')
     const historyExpenses = expenses.filter(e => ['CLOSED', 'REJECTED', 'SURRENDERED'].includes(e.status))
 
-    const displayedExpenses = activeTab === 'pending' ? pendingExpenses
-        : activeTab === 'active' ? activeExpenses
-            : historyExpenses
+    const displayedExpenses = activeTab === 'draft' ? draftExpenses
+        : activeTab === 'pending' ? pendingExpenses
+            : activeTab === 'active' ? activeExpenses
+                : historyExpenses
+
+    // Load workflow status for expenses that need it
+    const loadWorkflowStatus = useCallback(async (expenseId: string) => {
+        setLoadingWorkflow(prev => ({ ...prev, [expenseId]: true }))
+        try {
+            const data = await getExpenseWorkflowStatus(expenseId)
+            setWorkflowStatuses(prev => ({ ...prev, [expenseId]: data }))
+        } catch { } finally {
+            setLoadingWorkflow(prev => ({ ...prev, [expenseId]: false }))
+        }
+    }, [])
+
+    // Reload approval data when tab changes or expenses change
+    useEffect(() => {
+        const toLoad = displayedExpenses.filter(e => e.status === 'PENDING_APPROVAL')
+        toLoad.forEach(e => loadWorkflowStatus(e.id))
+    }, [activeTab, expenses.length])
 
     // Handlers
     const handleCreate = () => {
@@ -101,7 +128,7 @@ export function ExpensesTab({ expenses, accounts, categories, members, currentUs
             })
 
             if (result.success) {
-                toast.success("Expense requested successfully")
+                toast.success("Expense created as draft — send it for approval when ready")
                 setIsCreateOpen(false)
                 setFormData({
                     description: '', amount: '', expenseAccountId: '', subCategoryId: '', date: new Date(),
@@ -110,6 +137,47 @@ export function ExpensesTab({ expenses, accounts, categories, members, currentUs
                 onRefresh()
             } else {
                 toast.error(result.error || "Failed to create request")
+            }
+        })
+    }
+
+    const handleSendForApproval = (expenseId: string) => {
+        startTransition(async () => {
+            try {
+                await sendExpenseForApproval(expenseId)
+                toast.success("Expense sent for approval")
+                onRefresh()
+                loadWorkflowStatus(expenseId)
+            } catch (e: any) {
+                toast.error(e.message || "Failed to send for approval")
+            }
+        })
+    }
+
+    const handleCancelApproval = (expenseId: string) => {
+        if (!confirm("Cancel this approval request? The expense will return to DRAFT and can be edited again.")) return
+        startTransition(async () => {
+            try {
+                await cancelExpenseApproval(expenseId)
+                toast.success("Approval cancelled — expense is back in draft")
+                onRefresh()
+                setWorkflowStatuses(prev => { const n = { ...prev }; delete n[expenseId]; return n })
+            } catch (e: any) {
+                toast.error(e.message || "Failed to cancel approval")
+            }
+        })
+    }
+
+    const handleVote = (expenseId: string, action: 'APPROVED' | 'REJECTED') => {
+        if (action === 'REJECTED' && !confirm('Are you sure you want to REJECT this expense? This is immediate and cannot be undone.')) return
+        startTransition(async () => {
+            try {
+                await voteOnExpenseApproval(expenseId, action)
+                toast.success(action === 'APPROVED' ? 'Approved ✓' : 'Rejected — expense request declined')
+                onRefresh()
+                loadWorkflowStatus(expenseId)
+            } catch (e: any) {
+                toast.error(e.message || "Vote failed")
             }
         })
     }
@@ -162,9 +230,6 @@ export function ExpensesTab({ expenses, accounts, categories, members, currentUs
             return
         }
 
-        // Construct payout list
-        // For verify, let's just use all members with the fixed amount if specified
-        // In a real app, this would be a CSV upload or dynamic table
         let items: BulkPayoutItem[] = []
 
         if (bulkData.amountPerMember && !bulkData.payoutList.length) {
@@ -207,9 +272,16 @@ export function ExpensesTab({ expenses, accounts, categories, members, currentUs
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <div className="flex items-center gap-4">
-                    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-[400px]">
+                    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-[520px]">
                         <TabsList>
-                            <TabsTrigger value="pending">Pending Approval</TabsTrigger>
+                            <TabsTrigger value="draft" className="gap-1">
+                                Draft
+                                {draftExpenses.length > 0 && <span className="bg-slate-500 text-white text-[10px] rounded-full px-1.5">{draftExpenses.length}</span>}
+                            </TabsTrigger>
+                            <TabsTrigger value="pending" className="gap-1">
+                                Pending Approval
+                                {pendingExpenses.length > 0 && <span className="bg-yellow-500 text-white text-[10px] rounded-full px-1.5">{pendingExpenses.length}</span>}
+                            </TabsTrigger>
                             <TabsTrigger value="active">Active (Imprest)</TabsTrigger>
                             <TabsTrigger value="history">History</TabsTrigger>
                         </TabsList>
@@ -229,80 +301,209 @@ export function ExpensesTab({ expenses, accounts, categories, members, currentUs
                 </div>
             </div>
 
-            {/* Expenses Cards / Table */}
+            {}
             <div className="grid grid-cols-1 gap-4">
                 {displayedExpenses.length === 0 ? (
                     <div className="p-12 text-center border-2 border-dashed border-slate-200 rounded-xl text-slate-400">
                         No expenses found in this view.
                     </div>
                 ) : (
-                    displayedExpenses.map((expense) => (
-                        <Card key={expense.id} className="hover:shadow-md transition-shadow">
-                            <CardContent className="p-4 flex items-center justify-between">
-                                <div className="flex items-start gap-4">
-                                    <div className={cn("p-3 rounded-full",
-                                        expense.type === 'IMPREST' ? "bg-purple-100 text-purple-600" :
-                                            expense.type === 'CLAIM' ? "bg-orange-100 text-orange-600" :
-                                                "bg-blue-100 text-blue-600"
-                                    )}>
-                                        {expense.type === 'IMPREST' ? <User className="w-5 h-5" /> :
-                                            expense.type === 'CLAIM' ? <FileText className="w-5 h-5" /> :
-                                                <Banknote className="w-5 h-5" />}
-                                    </div>
-                                    <div>
-                                        <h3 className="font-bold text-slate-900">{expense.description}</h3>
-                                        <div className="text-sm text-slate-500 flex items-center gap-2">
-                                            <span>{format(new Date(expense.date), 'MMM d, yyyy')}</span>
-                                            <span>•</span>
-                                            <span>{expense.recipient?.name || expense.requester?.name || 'Unknown Recipient'}</span>
-                                        </div>
-                                        <div className="mt-1">
-                                            <Badge variant="secondary" className="mr-2 text-[10px]">{expense.type}</Badge>
-                                            <Badge className={cn("text-[10px]",
-                                                expense.status === 'PENDING_APPROVAL' ? "bg-yellow-100 text-yellow-700" :
-                                                    expense.status === 'DISBURSED' ? "bg-purple-100 text-purple-700" :
-                                                        expense.status === 'CLOSED' ? "bg-green-100 text-green-700" :
-                                                            "bg-slate-100 text-slate-700"
-                                            )}>
-                                                {expense.status.replace('_', ' ')}
-                                            </Badge>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    <div className="font-bold text-lg font-mono">
-                                        KES {parseFloat(expense.type === 'IMPREST' && expense.status === 'DISBURSED'
-                                            ? (expense.approvedAmount || expense.requestedAmount)
-                                            : (expense.actualAmount || expense.approvedAmount || expense.requestedAmount)
-                                        ).toLocaleString()}
-                                    </div>
-                                    <div className="text-xs text-slate-400 uppercase font-bold">
-                                        {expense.status === 'DISBURSED' ? 'Outstanding' : 'Amount'}
-                                    </div>
+                    displayedExpenses.map((expense) => {
+                        const wf = workflowStatuses[expense.id]
+                        const isLoadingWf = loadingWorkflow[expense.id]
+                        const isExpanded = expandedApproval[expense.id]
+                        const actions = wf?.request?.actions || []
+                        const currentStage = wf?.request?.currentStage
 
-                                    <div className="mt-2 flex justify-end gap-2">
-                                        {expense.status === 'DISBURSED' && expense.type === 'IMPREST' && (
-                                            <Button size="sm" variant="outline" onClick={() => {
-                                                setSelectedExpenseForSurrender(expense)
-                                                setSurrenderOpen(true)
-                                            }}>
-                                                Surrender
+                        // Has the current user already voted?
+                        const myVote = actions.find((a: any) => a.actor?.id === currentUserId)
+
+                        return (
+                            <Card
+                                key={expense.id}
+                                className="hover:shadow-md transition-shadow group border"
+                            >
+                                {}
+                                <CardContent className="p-4 flex items-center justify-between cursor-pointer" onClick={() => setViewingExpense(expense)}>
+                                    <div className="flex items-start gap-4">
+                                        <div className={cn("p-3 rounded-full",
+                                            expense.type === 'IMPREST' ? "bg-purple-100 text-purple-600" :
+                                                expense.type === 'CLAIM' ? "bg-orange-100 text-orange-600" :
+                                                    "bg-blue-100 text-blue-600"
+                                        )}>
+                                            {expense.type === 'IMPREST' ? <User className="w-5 h-5" /> :
+                                                expense.type === 'CLAIM' ? <FileText className="w-5 h-5" /> :
+                                                    <Banknote className="w-5 h-5" />}
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-slate-900 group-hover:text-blue-700 transition-colors">{expense.description}</h3>
+                                            <div className="text-sm text-slate-500 flex items-center gap-2">
+                                                <span>{format(new Date(expense.date), 'MMM d, yyyy')}</span>
+                                                <span>•</span>
+                                                <span>{expense.recipient?.name || expense.requester?.name || 'N/A'}</span>
+                                            </div>
+                                            <div className="mt-1">
+                                                <Badge variant="secondary" className="mr-2 text-[10px]">{expense.type}</Badge>
+                                                <Badge className={cn("text-[10px]",
+                                                    expense.status === 'DRAFT' ? "bg-slate-100 text-slate-600" :
+                                                        expense.status === 'PENDING_APPROVAL' ? "bg-yellow-100 text-yellow-700" :
+                                                            expense.status === 'DISBURSED' ? "bg-purple-100 text-purple-700" :
+                                                                expense.status === 'CLOSED' ? "bg-green-100 text-green-700" :
+                                                                    expense.status === 'REJECTED' ? "bg-red-100 text-red-700" :
+                                                                        "bg-slate-100 text-slate-700"
+                                                )}>
+                                                    {expense.status.replace(/_/g, ' ')}
+                                                </Badge>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="font-bold text-lg font-mono">
+                                            KES {parseFloat(expense.type === 'IMPREST' && expense.status === 'DISBURSED'
+                                                ? (expense.approvedAmount || expense.requestedAmount)
+                                                : (expense.actualAmount || expense.approvedAmount || expense.requestedAmount)
+                                            ).toLocaleString()}
+                                        </div>
+                                        <div className="text-xs text-slate-400 uppercase font-bold">
+                                            {expense.status === 'DISBURSED' ? 'Outstanding' : 'Amount'}
+                                        </div>
+                                        <div className="mt-2 flex justify-end gap-2" onClick={e => e.stopPropagation()}>
+                                            <Button size="sm" variant="ghost" className="text-slate-400 hover:text-blue-600 gap-1 text-xs" onClick={() => setViewingExpense(expense)}>
+                                                <Eye className="w-3 h-3" /> Details
                                             </Button>
-                                        )}
-                                        {expense.status === 'PENDING_APPROVAL' && isOfficial && (
-                                            <Button size="sm" onClick={() => handleApprove(expense)} disabled={isPending} className="bg-green-600 hover:bg-green-700 text-white">
-                                                {isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "Approve"}
-                                            </Button>
+                                            {expense.status === 'DRAFT' && (
+                                                <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => handleSendForApproval(expense.id)} disabled={isPending}>
+                                                    {isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Send for Approval'}
+                                                </Button>
+                                            )}
+                                            {expense.status === 'DISBURSED' && expense.type === 'IMPREST' && (
+                                                <Button size="sm" variant="outline" onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    setSelectedExpenseForSurrender(expense)
+                                                    setSurrenderOpen(true)
+                                                }}>
+                                                    Surrender
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </CardContent>
+
+                                {}
+                                {expense.status === 'PENDING_APPROVAL' && (
+                                    <div className="border-t border-slate-100">
+                                        {}
+                                        <button
+                                            className="w-full flex items-center justify-between px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors"
+                                            onClick={() => {
+                                                const wasExpanded = expandedApproval[expense.id]
+                                                setExpandedApproval(prev => ({ ...prev, [expense.id]: !wasExpanded }))
+                                                if (!wasExpanded && !workflowStatuses[expense.id]) {
+                                                    loadWorkflowStatus(expense.id)
+                                                }
+                                            }}
+                                        >
+                                            <span className="flex items-center gap-2">
+                                                <Clock className="w-3.5 h-3.5 text-yellow-500" />
+                                                APPROVAL REQUIRED
+                                                {currentStage && <span className="text-yellow-600 font-black">— {currentStage.name}</span>}
+                                            </span>
+                                            <span>{isExpanded ? '▲' : '▼'}</span>
+                                        </button>
+
+                                        {isExpanded && (
+                                            <div className="px-4 pb-4 space-y-3">
+                                                {isLoadingWf ? (
+                                                    <div className="flex items-center gap-2 text-xs text-slate-400 py-2">
+                                                        <Loader2 className="w-3 h-3 animate-spin" /> Loading voters...
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        {}
+                                                        {actions.length === 0 ? (
+                                                            <p className="text-xs text-slate-400 italic py-2">Waiting for first vote...</p>
+                                                        ) : (
+                                                            <div className="space-y-2">
+                                                                {actions.map((action: any) => (
+                                                                    <div key={action.id} className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center text-xs font-black text-slate-600">
+                                                                                {action.actor?.name?.charAt(0) || '?'}
+                                                                            </div>
+                                                                            <div>
+                                                                                <p className="text-xs font-bold text-slate-800">{action.actor?.name}</p>
+                                                                                <p className="text-[10px] text-slate-400 uppercase tracking-wider">{action.actor?.role?.replace(/_/g, ' ')}</p>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-[10px] text-slate-400">{action.createdAt ? format(new Date(action.createdAt), 'dd MMM, HH:mm') : ''}</span>
+                                                                            <span className={cn(
+                                                                                "text-[10px] font-black px-2 py-1 rounded-full uppercase",
+                                                                                action.action === 'APPROVED' ? "bg-green-100 text-green-700" :
+                                                                                    action.action === 'REJECTED' ? "bg-red-100 text-red-700" :
+                                                                                        "bg-slate-100 text-slate-500"
+                                                                            )}>
+                                                                                {action.action === 'APPROVED' ? '✓ Approved' : action.action === 'REJECTED' ? '✗ Rejected' : 'Pending'}
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+
+                                                        {}
+                                                        {isAdmin && !myVote && (
+                                                            <div className="flex gap-2 pt-1">
+                                                                <Button
+                                                                    size="sm"
+                                                                    className="bg-green-600 hover:bg-green-700 text-white gap-1 flex-1"
+                                                                    onClick={(e) => { e.stopPropagation(); handleVote(expense.id, 'APPROVED') }}
+                                                                    disabled={isPending}
+                                                                >
+                                                                    <CheckCircle className="w-3.5 h-3.5" /> Approve
+                                                                </Button>
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    className="border-red-300 text-red-600 hover:bg-red-50 gap-1 flex-1"
+                                                                    onClick={(e) => { e.stopPropagation(); handleVote(expense.id, 'REJECTED') }}
+                                                                    disabled={isPending}
+                                                                >
+                                                                    <XCircle className="w-3.5 h-3.5" /> Reject
+                                                                </Button>
+                                                            </div>
+                                                        )}
+
+                                                        {}
+                                                        {isAdmin && myVote && (
+                                                            <p className="text-xs text-slate-500 italic">
+                                                                You voted <span className={myVote.action === 'APPROVED' ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>{myVote.action}</span> on this expense.
+                                                            </p>
+                                                        )}
+
+                                                        {}
+                                                        <div className="pt-1 border-t border-slate-100">
+                                                            <button
+                                                                className="text-xs text-red-500 hover:text-red-700 font-bold uppercase tracking-wide"
+                                                                onClick={(e) => { e.stopPropagation(); handleCancelApproval(expense.id) }}
+                                                                disabled={isPending}
+                                                            >
+                                                                ✕ Cancel Approval Request
+                                                            </button>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
                                         )}
                                     </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))
+                                )}
+                            </Card>
+                        )
+                    })
                 )}
             </div>
 
-            {/* Create Dialog */}
+            {}
             <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                 <DialogContent className="max-w-md">
                     <DialogHeader>
@@ -427,7 +628,7 @@ export function ExpensesTab({ expenses, accounts, categories, members, currentUs
                 </DialogContent>
             </Dialog>
 
-            {/* Surrender Dialog */}
+            {}
             <Dialog open={surrenderOpen} onOpenChange={setSurrenderOpen}>
                 <DialogContent>
                     <DialogHeader>
@@ -474,7 +675,164 @@ export function ExpensesTab({ expenses, accounts, categories, members, currentUs
                 </DialogContent>
             </Dialog>
 
-            {/* Bulk Payment Dialog */}
+            {}
+            <Dialog open={!!viewingExpense} onOpenChange={(open) => !open && setViewingExpense(null)}>
+                <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-slate-900">
+                            <span className={cn("p-2 rounded-full",
+                                viewingExpense?.type === 'IMPREST' ? "bg-purple-100 text-purple-600" :
+                                    viewingExpense?.type === 'CLAIM' ? "bg-orange-100 text-orange-600" :
+                                        "bg-blue-100 text-blue-600"
+                            )}>
+                                {viewingExpense?.type === 'IMPREST' ? <User className="w-4 h-4" /> :
+                                    viewingExpense?.type === 'CLAIM' ? <FileText className="w-4 h-4" /> :
+                                        <Banknote className="w-4 h-4" />}
+                            </span>
+                            {viewingExpense?.description}
+                        </DialogTitle>
+                        <DialogDescription>
+                            Expense reference details and disbursement info.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {viewingExpense && (
+                        <div className="space-y-5 py-2">
+                            {}
+                            <div className={cn("flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold",
+                                viewingExpense.status === 'PENDING_APPROVAL' ? "bg-yellow-50 text-yellow-700 border border-yellow-200" :
+                                    viewingExpense.status === 'DISBURSED' ? "bg-purple-50 text-purple-700 border border-purple-200" :
+                                        viewingExpense.status === 'CLOSED' ? "bg-green-50 text-green-700 border border-green-200" :
+                                            "bg-slate-50 text-slate-600 border border-slate-200"
+                            )}>
+                                {viewingExpense.status === 'PENDING_APPROVAL' && <Clock className="w-4 h-4" />}
+                                {viewingExpense.status === 'DISBURSED' && <AlertCircle className="w-4 h-4" />}
+                                {viewingExpense.status === 'CLOSED' && <CheckCircle className="w-4 h-4" />}
+                                {viewingExpense.status.replace(/_/g, ' ')}
+                            </div>
+
+                            {}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-slate-50 rounded-xl p-4">
+                                    <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1">Type</p>
+                                    <p className="font-bold text-slate-800">{viewingExpense.type}</p>
+                                </div>
+                                <div className="bg-slate-50 rounded-xl p-4">
+                                    <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1">Date</p>
+                                    <p className="font-bold text-slate-800">{format(new Date(viewingExpense.date), 'dd MMM yyyy')}</p>
+                                </div>
+                                <div className="bg-slate-50 rounded-xl p-4">
+                                    <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1">Requested Amount</p>
+                                    <p className="font-bold text-slate-800 font-mono">KES {parseFloat(viewingExpense.requestedAmount || 0).toLocaleString()}</p>
+                                </div>
+                                <div className="bg-slate-50 rounded-xl p-4">
+                                    <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1">Approved Amount</p>
+                                    <p className="font-bold text-slate-800 font-mono">
+                                        {viewingExpense.approvedAmount
+                                            ? `KES ${parseFloat(viewingExpense.approvedAmount).toLocaleString()}`
+                                            : <span className="text-slate-400 font-normal">Pending</span>}
+                                    </p>
+                                </div>
+                                {viewingExpense.actualAmount && (
+                                    <div className="bg-emerald-50 rounded-xl p-4 col-span-2">
+                                        <p className="text-[10px] uppercase font-black text-emerald-500 tracking-widest mb-1">Actual Amount Spent</p>
+                                        <p className="font-bold text-emerald-700 font-mono text-lg">KES {parseFloat(viewingExpense.actualAmount).toLocaleString()}</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {}
+                            <div className="space-y-2">
+                                <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">People</p>
+                                <div className="bg-slate-50 rounded-xl p-4 space-y-3">
+                                    {viewingExpense.requester && (
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-xs font-bold text-slate-500">Requested By</span>
+                                            <span className="text-sm font-bold text-slate-800">{viewingExpense.requester?.name}</span>
+                                        </div>
+                                    )}
+                                    {viewingExpense.recipient && (
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-xs font-bold text-slate-500">Recipient</span>
+                                            <span className="text-sm font-bold text-slate-800">{viewingExpense.recipient?.name}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {}
+                            {viewingExpense.expenseAccount && (
+                                <div className="space-y-2">
+                                    <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Amount Source (GL Account)</p>
+                                    <div className="bg-slate-50 rounded-xl p-4 flex items-center gap-3">
+                                        <span className="font-mono text-xs font-bold text-cyan-700 bg-cyan-50 border border-cyan-100 px-2 py-1 rounded">{viewingExpense.expenseAccount?.code}</span>
+                                        <span className="font-bold text-slate-800">{viewingExpense.expenseAccount?.name}</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {}
+                            {viewingExpense.subCategory && (
+                                <div className="space-y-2">
+                                    <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Category</p>
+                                    <div className="bg-slate-50 rounded-xl px-4 py-3">
+                                        <span className="font-bold text-slate-700">{viewingExpense.subCategory?.name}</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {}
+                            {viewingExpense.type === 'IMPREST' && viewingExpense.status === 'CLOSED' && viewingExpense.balanceAction && (
+                                <div className={cn("p-4 rounded-xl border text-sm font-bold",
+                                    viewingExpense.balanceAction === 'REFUNDED_TO_SACCO' ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-orange-50 border-orange-200 text-orange-700"
+                                )}>
+                                    {viewingExpense.balanceAction === 'REFUNDED_TO_SACCO'
+                                        ? `✅ Surplus refunded to SACCO (Difference: KES ${Math.abs(parseFloat(viewingExpense.approvedAmount) - parseFloat(viewingExpense.actualAmount)).toLocaleString()})`
+                                        : `💳 SACCO reimbursed member for overspend (Top-up: KES ${Math.abs(parseFloat(viewingExpense.approvedAmount) - parseFloat(viewingExpense.actualAmount)).toLocaleString()})`
+                                    }
+                                </div>
+                            )}
+
+                            {}
+                            {viewingExpense.receiptUrl && (
+                                <div className="space-y-2">
+                                    <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Receipt</p>
+                                    <a
+                                        href={viewingExpense.receiptUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 text-blue-600 hover:underline text-sm font-bold px-4 py-3 bg-blue-50 rounded-xl"
+                                    >
+                                        <FileText className="w-4 h-4" />
+                                        View Receipt Document
+                                    </a>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    <DialogFooter className="gap-2">
+                        {viewingExpense?.status === 'DISBURSED' && viewingExpense?.type === 'IMPREST' && (
+                            <Button variant="outline" className="border-purple-300 text-purple-700 hover:bg-purple-50" onClick={() => {
+                                setSelectedExpenseForSurrender(viewingExpense)
+                                setSurrenderOpen(true)
+                                setViewingExpense(null)
+                            }}>
+                                Surrender Imprest
+                            </Button>
+                        )}
+                        {viewingExpense?.status === 'PENDING_APPROVAL' && isOfficial && (
+                            <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={() => { handleApprove(viewingExpense); setViewingExpense(null); }} disabled={isPending}>
+                                {isPending ? <Loader2 className="mr-2 w-4 h-4 animate-spin" /> : null}
+                                Approve
+                            </Button>
+                        )}
+                        <Button variant="ghost" onClick={() => setViewingExpense(null)}>Close</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {}
             <Dialog open={isBulkOpen} onOpenChange={setIsBulkOpen}>
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>

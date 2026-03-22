@@ -78,7 +78,7 @@ export function MeetingsAdminPanel({ meetings: initialMeetings }: MeetingsAdminP
 
     return (
         <div className="space-y-8">
-            {/* Header */}
+            {}
             <div className="relative overflow-hidden bg-gradient-to-br from-cyan-600 to-indigo-700 rounded-3xl px-8 py-10 text-white shadow-xl">
                 <div className="absolute -top-16 -right-16 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none" />
                 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -101,7 +101,7 @@ export function MeetingsAdminPanel({ meetings: initialMeetings }: MeetingsAdminP
                 </div>
             </div>
 
-            {/* Create Form */}
+            {}
             {showForm && (
                 <div className="bg-white rounded-3xl border-2 border-cyan-200 shadow-lg p-8 space-y-6 animate-in fade-in duration-200">
                     <div className="flex items-center gap-3">
@@ -152,7 +152,7 @@ export function MeetingsAdminPanel({ meetings: initialMeetings }: MeetingsAdminP
                 </div>
             )}
 
-            {/* Upcoming Meetings */}
+            {}
             <section className="space-y-4">
                 <h2 className="text-lg font-black text-slate-900 tracking-tight">Upcoming / Scheduled</h2>
                 {upcoming.length === 0 ? (
@@ -171,7 +171,7 @@ export function MeetingsAdminPanel({ meetings: initialMeetings }: MeetingsAdminP
                 )}
             </section>
 
-            {/* Past Meetings */}
+            {}
             <section className="space-y-4">
                 <h2 className="text-lg font-black text-slate-900 tracking-tight">Past Meetings</h2>
                 {past.length === 0 ? (
@@ -204,7 +204,7 @@ function MeetingCard({ meeting, onStatusChange, isPending }: {
         <div className={`bg-white border-2 rounded-2xl p-6 transition-all hover:shadow-md ${meeting.status === 'CANCELLED' ? 'border-slate-100 opacity-60' : 'border-slate-200'}`}>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-start gap-4">
-                    {/* Date Block */}
+                    {}
                     <div className="flex-shrink-0 w-14 h-14 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col items-center justify-center">
                         <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">{format(new Date(meeting.date), 'MMM')}</span>
                         <span className="text-xl font-black text-slate-900 leading-none">{format(new Date(meeting.date), 'd')}</span>
@@ -235,7 +235,7 @@ function MeetingCard({ meeting, onStatusChange, isPending }: {
                     </div>
                 </div>
 
-                {/* Action Buttons */}
+                {}
                 <div className="flex flex-wrap items-center gap-2 md:flex-shrink-0">
                     {meeting.status === 'SCHEDULED' && isPast && !meeting.isPenaltiesProcessed && (
                         <button

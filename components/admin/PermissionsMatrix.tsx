@@ -79,7 +79,7 @@ export function PermissionsMatrix({ modules, initialPermissions }: PermissionsMa
                     <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-100">
                         <tr>
                             <th className="px-6 py-4 font-bold tracking-wider">Module / Feature</th>
-                            {/* System Admin Column (Locked) */}
+                            {}
                             <th className="px-6 py-4 text-center bg-slate-100/50 border-x border-slate-100 min-w-[120px]">
                                 <div className="flex flex-col items-center gap-1">
                                     <span className="text-[#00c2e0]">System Admin</span>
@@ -88,7 +88,7 @@ export function PermissionsMatrix({ modules, initialPermissions }: PermissionsMa
                                     </Badge>
                                 </div>
                             </th>
-                            {/* Other Role Columns */}
+                            {}
                             {allRoles.map(role => (
                                 <th key={role} className="px-6 py-4 text-center font-bold tracking-wider min-w-[120px]">
                                     {role.replace('_', ' ')}
@@ -99,7 +99,7 @@ export function PermissionsMatrix({ modules, initialPermissions }: PermissionsMa
                     <tbody className="divide-y divide-slate-100">
                         {modules.map((module) => (
                             <tr key={module.key} className="hover:bg-slate-50/50 transition-colors">
-                                {/* Checkbox Row Header */}
+                                {}
                                 <td className="px-6 py-4 font-medium text-slate-700">
                                     <div className="flex flex-col">
                                         <span className="text-sm font-bold">{module.name}</span>
@@ -110,14 +110,14 @@ export function PermissionsMatrix({ modules, initialPermissions }: PermissionsMa
                                     </div>
                                 </td>
 
-                                {/* System Admin Cell (Always Checked & Disabled) */}
+                                {}
                                 <td className="px-6 py-4 text-center bg-slate-50/30 border-x border-slate-100">
                                     <div className="flex justify-center">
                                         <Checkbox checked={true} disabled className="data-[state=checked]:bg-slate-300 data-[state=checked]:border-slate-300 cursor-not-allowed opacity-50" />
                                     </div>
                                 </td>
 
-                                {/* Dynamic Role Cells */}
+                                {}
                                 {allRoles.map((role) => {
                                     const isAllowed = getPermission(role, module.key);
                                     const isLoading = loading[`${role}-${module.key}`];

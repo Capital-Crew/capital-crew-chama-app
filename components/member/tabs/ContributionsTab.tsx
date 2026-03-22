@@ -9,10 +9,6 @@ interface Contribution {
 }
 
 export default function ContributionsTab({ contributions }: { contributions: Contribution[] }) {
-    // Calculate running total (assuming contributions are sorted desc, so we need to reverse to calc correctly or just sum up)
-    // Actually, "running total" implies accumulation over time.
-    // If input is DESC (newest first), we should calculate total then subtract? Or easier: sort ASC, calc, then double reverse?
-    // Let's do: Sort ASC -> Map Running Total -> Sort DESC for display
 
     const sortedAsc = [...contributions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     let total = 0

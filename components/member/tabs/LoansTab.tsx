@@ -115,7 +115,7 @@ export default function LoansTab({ loans }: { loans: LoanProp[] }) {
                 </div>
             )}
 
-            {/* Loan Appraisal Card Modal */}
+            {}
             {selectedLoanId && (
                 <LoanAppraisalCard
                     loanId={selectedLoanId}

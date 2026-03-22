@@ -161,10 +161,6 @@ export async function getMonthlyTrends(): Promise<Serialized<any[]>> {
         prisma.ledgerEntry.findMany({
             where: {
                 ledgerAccount: {
-                    // We need to resolve the code, but usually it's stable. 
-                    // Better to query by type or fetch mapping first.
-                    // For speed, let's fetch mapping ID or just join.
-                    // Let's use the relation if possible, or fetch code separate.
                     systemMappings: {
                         some: { type: 'CONTRIBUTIONS' }
                     }
@@ -209,11 +205,6 @@ export async function getMonthlyTrends(): Promise<Serialized<any[]>> {
     for (let i = 11; i >= 0; i--) {
         const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
         const key = d.toLocaleString('default', { month: 'short', year: 'numeric' }); // "Jan 2025" or just "Jan" to match UI? 
-        // Original code used `month: 'short'` so "Jan". But checking year is safer for overlap.
-        // Let's stick to simple "Jan" if that's what UI expects, but careful of duplicates if spanning years? 
-        // Original code: `const monthName = d.toLocaleString('default', { month: 'short' });`
-        // It pushes to array.
-        // Let's use "MMM YYYY" as unique key for aggregation, then format name later.
         const uniqueKey = `${d.getFullYear()}-${d.getMonth()}`;
         trendsMap.set(uniqueKey, { contributions: 0, loans: 0 });
     }
@@ -260,3 +251,41 @@ export async function getMonthlyTrends(): Promise<Serialized<any[]>> {
 
     return serializeFinancials(trends);
 }
+
+/**
+ * Fetch Ledger KPI Totals for the dashboard (Assets, Liabilities, Revenue, Net Position)
+ */
+export async function getLedgerKPIs(): Promise<Serialized<any>> {
+    const session = await auth()
+    if (!session?.user?.id) throw new Error('Unauthorized')
+
+    const prisma = db as any
+
+    const accounts = await prisma.ledgerAccount.findMany({
+        where: {
+            status: 'ACTIVE',
+            type: { in: ['ASSET', 'LIABILITY', 'REVENUE', 'EQUITY', 'EXPENSE'] }
+        },
+        select: { type: true, balance: true }
+    })
+
+    let totalAssets = 0
+    let totalLiabilities = 0
+    let totalRevenue = 0
+    let totalEquity = 0
+    let totalExpenses = 0
+
+    accounts.forEach((a: any) => {
+        const bal = Number(a.balance || 0)
+        if (a.type === 'ASSET') totalAssets += bal
+        else if (a.type === 'LIABILITY') totalLiabilities += bal
+        else if (a.type === 'REVENUE') totalRevenue += bal
+        else if (a.type === 'EQUITY') totalEquity += bal
+        else if (a.type === 'EXPENSE') totalExpenses += bal
+    })
+
+    const netPosition = totalAssets - totalLiabilities
+
+    return serializeFinancials({ totalAssets, totalLiabilities, totalRevenue, totalExpenses, totalEquity, netPosition })
+}
+

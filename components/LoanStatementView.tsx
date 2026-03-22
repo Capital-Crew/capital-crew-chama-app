@@ -96,7 +96,7 @@ export function LoanStatementView({ loanId, refreshKey }: { loanId: string, refr
 
     return (
         <div className="p-6 space-y-6">
-            {/* Header */}
+            {}
             <div className="bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 rounded-2xl p-6">
                 <div className="flex items-center gap-3 mb-4">
                     <div className="w-12 h-12 bg-cyan-500 rounded-full flex items-center justify-center">
@@ -121,7 +121,7 @@ export function LoanStatementView({ loanId, refreshKey }: { loanId: string, refr
                 </div>
             </div>
 
-            {/* Statement Table/List */}
+            {}
             {statementRows.length === 0 ? (
                 <div className="bg-slate-50 border border-slate-200 rounded-2xl p-12 text-center">
                     <FileTextIcon className="w-16 h-16 text-slate-300 mx-auto mb-4" />
@@ -132,7 +132,7 @@ export function LoanStatementView({ loanId, refreshKey }: { loanId: string, refr
                 </div>
             ) : (
                 <>
-                    {/* MOBILE: Transaction Feed */}
+                    {}
                     <div className="md:hidden space-y-3">
                         <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">Transactions ({statementRows.length})</h3>
                         {statementRows.map((row, index) => {
@@ -141,9 +141,6 @@ export function LoanStatementView({ loanId, refreshKey }: { loanId: string, refr
                             const amountColor = isCredit ? 'text-emerald-600' : 'text-slate-800';
                             const sign = isCredit ? '+' : '-';
 
-                            // Determine if this row is reversible (it's a Credit i.e., Repayment, and description says Repayment)
-                            // Strict check: we need original txId. StatementRow usually has it.
-                            // Assuming 'row.txId' exists and description contains 'Repayment'
                             const isReversible = isCredit && row.description.toLowerCase().includes('repayment') && !row.isVoided;
 
                             return (
@@ -191,7 +188,7 @@ export function LoanStatementView({ loanId, refreshKey }: { loanId: string, refr
                                 </div>
                             );
                         })}
-                        {/* Mobile Summary Footer */}
+                        {}
                         <div className="bg-slate-800 text-white p-4 rounded-xl shadow-lg mt-4">
                             <div className="flex justify-between items-center">
                                 <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Current Balance</span>
@@ -204,7 +201,7 @@ export function LoanStatementView({ loanId, refreshKey }: { loanId: string, refr
                         </div>
                     </div>
 
-                    {/* DESKTOP: Full Table */}
+                    {}
                     <div className="hidden md:block bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
                         <div className="overflow-x-auto">
                             <table className="w-full">
@@ -296,7 +293,7 @@ export function LoanStatementView({ loanId, refreshKey }: { loanId: string, refr
                                         )
                                     })}
                                 </tbody>
-                                {/* Summary Footer */}
+                                {}
                                 <tfoot className="bg-slate-100 border-t-2 border-slate-300">
                                     <tr>
                                         <td colSpan={3} className="px-4 py-3 text-sm font-black text-slate-900 uppercase">
@@ -320,7 +317,7 @@ export function LoanStatementView({ loanId, refreshKey }: { loanId: string, refr
             )
             }
 
-            {/* Information Notice */}
+            {}
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
                 <p className="text-xs text-blue-800">
                     <strong>Note:</strong> This statement shows the chronological history of all loan-related transactions.

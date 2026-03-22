@@ -184,7 +184,7 @@ export function AddFundsModule({ memberId, userRole }: { memberId: string; userR
         <div className="bg-white border border-slate-200 rounded-3xl p-8">
             <h2 className="text-2xl font-black text-slate-900 mb-6 uppercase">Add Funds</h2>
 
-            {/* Tabs */}
+            {}
             <div className="border-b border-slate-200 mb-6">
                 <div className="flex gap-4">
                     <button
@@ -214,7 +214,7 @@ export function AddFundsModule({ memberId, userRole }: { memberId: string; userR
                 </div>
             </div>
 
-            {/* Message */}
+            {}
             {message && (
                 <div className={`p-4 rounded-xl mb-6 flex items-center gap-3 ${message.type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
                     }`}>
@@ -229,7 +229,7 @@ export function AddFundsModule({ memberId, userRole }: { memberId: string; userR
                 </div>
             )}
 
-            {/* Share Capital Tab */}
+            {}
             {activeTab === 'share' && (
                 <form onSubmit={handleShareContribution} className="space-y-4">
                     <div>
@@ -269,7 +269,7 @@ export function AddFundsModule({ memberId, userRole }: { memberId: string; userR
                 </form>
             )}
 
-            {/* Penalty Payment Tab */}
+            {}
             {activeTab === 'penalty' && (
                 <form onSubmit={handlePenaltyPayment} className="space-y-4">
                     <div>
@@ -309,7 +309,7 @@ export function AddFundsModule({ memberId, userRole }: { memberId: string; userR
                 </form>
             )}
 
-            {/* Loan Repayment Tab */}
+            {}
             {activeTab === 'loan' && (
                 <form onSubmit={handleLoanRepayment} className="space-y-4">
                     <div>
@@ -331,7 +331,7 @@ export function AddFundsModule({ memberId, userRole }: { memberId: string; userR
 
                     {selectedLoan && (
                         <>
-                            {/* Outstanding Balance Breakdown */}
+                            {}
                             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2">
                                 <h4 className="font-black text-slate-900 text-sm uppercase">Outstanding Balance</h4>
                                 <div className="grid grid-cols-2 gap-2 text-sm">
@@ -378,7 +378,7 @@ export function AddFundsModule({ memberId, userRole }: { memberId: string; userR
                                 )}
                             </div>
 
-                            {/* Allocation Preview */}
+                            {}
                             {repaymentAmount && parseFloat(repaymentAmount) > 0 && isRepaymentValid && (
                                 <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-2">
                                     <h4 className="font-black text-green-900 text-sm uppercase">Payment Allocation</h4>

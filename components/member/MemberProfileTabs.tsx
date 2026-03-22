@@ -37,7 +37,7 @@ export default function MemberProfileTabs({
 
     return (
         <div className="bg-white border border-gray-200 rounded-lg shadow-sm min-h-[600px]">
-            {/* Tab Header */}
+            {}
             <div className="border-b border-gray-200 px-6 pt-2">
                 <nav className="-mb-px flex space-x-8" aria-label="Tabs">
                     {tabs.map((tab) => (
@@ -57,7 +57,7 @@ export default function MemberProfileTabs({
                 </nav>
             </div>
 
-            {/* Tab Content Panels */}
+            {}
             <div className="p-0">
                 {activeTab === 'loans' && detailedStats ? (
                     <MemberStatsView stats={detailedStats.stats} loans={detailedStats.loans} memberId={member.member.id} snapshot={snapshot} />

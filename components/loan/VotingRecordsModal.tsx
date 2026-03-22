@@ -91,7 +91,7 @@ export function VotingRecordsModal({ isOpen, onOpenChange, approvals, requiredAp
                 </DialogHeader>
 
                 <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-slate-50/50">
-                    {/* 1. Stat Cards */}
+                    {}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         {stats.map((stat, i) => {
                             const Icon = stat.icon
@@ -107,7 +107,7 @@ export function VotingRecordsModal({ isOpen, onOpenChange, approvals, requiredAp
                         })}
                     </div>
 
-                    {/* 2. Voting Table */}
+                    {}
                     <Card className="border-slate-200 shadow-sm overflow-hidden">
                         <Table>
                             <TableHeader className="bg-slate-50">

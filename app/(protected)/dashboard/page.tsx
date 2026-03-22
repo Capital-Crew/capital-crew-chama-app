@@ -1,4 +1,4 @@
-import { getDashboardStats, getMonthlyTrends } from '@/app/dashboard-actions'
+import { getDashboardStats, getMonthlyTrends, getLedgerKPIs } from '@/app/dashboard-actions'
 import { DashboardView } from '@/components/DashboardView'
 import { auth } from '@/auth'
 import { getMemberFullDetail } from '@/app/actions/member-dashboard-actions'
@@ -22,16 +22,13 @@ export default async function DashboardPage() {
     // Fetch Global Stats — session is guaranteed valid at this point
     const stats = await getDashboardStats()
     const trends = await getMonthlyTrends()
+    const ledgerKPIs = await getLedgerKPIs()
 
-    // If user is a regular member, we might want to also pass their personal details 
-    // so the view can offer a toggle. For now, per request "dashboard should be accessible to everyone",
-    // we render the Global DashboardView. 
-    // Ideally, we pass 'personalDashboard' as a prop or render it in a tab.
 
     let personalDetail = null;
     if (memberId) {
         personalDetail = await getMemberFullDetail(memberId);
     }
 
-    return <DashboardView stats={stats} trends={trends} personalDetail={personalDetail} />
+    return <DashboardView stats={stats} trends={trends} personalDetail={personalDetail} ledgerKPIs={ledgerKPIs} />
 }

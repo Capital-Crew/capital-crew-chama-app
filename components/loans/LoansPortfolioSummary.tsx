@@ -11,9 +11,6 @@ interface LoansPortfolioSummaryProps {
 }
 
 export function LoansPortfolioSummary({ loans, onViewBreakdown }: LoansPortfolioSummaryProps) {
-    // Calculate Total Outstanding Balance
-    // We filter for active loans that have a balance > 0
-    // Based on page.tsx serialization, use 'outstandingBalance' or 'current_balance'
 
     const activeLoans = loans.filter(l =>
         ['ACTIVE', 'OVERDUE', 'DISBURSED'].includes(l.status) &&
@@ -31,7 +28,7 @@ export function LoansPortfolioSummary({ loans, onViewBreakdown }: LoansPortfolio
             onClick={onViewBreakdown}
             className="group relative overflow-hidden bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl p-6 md:p-8 text-white shadow-xl hover:shadow-2xl hover:scale-[1.01] transition-all cursor-pointer border border-blue-500/50"
         >
-            {/* Background Texture/Pattern */}
+            {}
             <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:bg-white/15 transition-all"></div>
             <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-24 h-24 bg-black/10 rounded-full blur-xl"></div>
 

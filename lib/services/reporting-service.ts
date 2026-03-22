@@ -355,9 +355,6 @@ export class ReportingService {
         }
     }
 
-    // ======================================================
-    // NEW SERVICE METHODS (Reports 2, 7, 8, 9, 10)
-    // ======================================================
 
     /**
      * Report 1: Loan Disbursement Report

@@ -122,7 +122,7 @@ export function AuditLogTable({ logs }: AuditLogTableProps) {
                     {selectedLog && (
                         <ScrollArea className="h-[calc(100vh-140px)] mt-6 pr-4">
                             <div className="space-y-10">
-                                {/* Core Info Header */}
+                                {}
                                 <div className="grid grid-cols-2 gap-px bg-slate-200 border border-slate-200 rounded-lg overflow-hidden text-xs">
                                     <div className="bg-white p-4">
                                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Actor Identity</label>
@@ -157,7 +157,7 @@ export function AuditLogTable({ logs }: AuditLogTableProps) {
                                     </div>
                                 </div>
 
-                                {/* Execution Pipeline */}
+                                {}
                                 <section>
                                     <div className="flex items-center gap-2 mb-6 border-b pb-2">
                                         <Activity className="h-5 w-5 text-slate-900" />
@@ -202,7 +202,7 @@ export function AuditLogTable({ logs }: AuditLogTableProps) {
                                     </div>
                                 </section>
 
-                                {/* State Intelligence */}
+                                {}
                                 {(selectedLog.stateBefore || selectedLog.stateAfter) && (
                                     <section>
                                         <div className="flex items-center gap-2 mb-6 border-b pb-2">
@@ -242,7 +242,7 @@ export function AuditLogTable({ logs }: AuditLogTableProps) {
                                     </section>
                                 )}
 
-                                {/* Technical Environment */}
+                                {}
                                 <section className="pt-6 border-t border-slate-100">
                                     <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
                                         <h4 className="text-[11px] font-black text-slate-900 uppercase tracking-widest mb-3">Enviroment Signature</h4>

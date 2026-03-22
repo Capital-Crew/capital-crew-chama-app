@@ -81,7 +81,7 @@ export function NextOfKinForm({ memberId, initialData }: NextOfKinFormProps) {
                     {fields.map((field, index) => (
                         <div key={field.id} className="grid grid-cols-12 gap-4 items-start bg-slate-50 p-4 rounded-lg border border-slate-100 relative group">
 
-                            {/* Name */}
+                            {}
                             <div className="col-span-12 md:col-span-3">
                                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Full Name</label>
                                 <input
@@ -92,7 +92,7 @@ export function NextOfKinForm({ memberId, initialData }: NextOfKinFormProps) {
                                 {errors.beneficiaries?.[index]?.name && <span className="text-xs text-red-500">{errors.beneficiaries[index]?.name?.message}</span>}
                             </div>
 
-                            {/* Relationship */}
+                            {}
                             <div className="col-span-12 md:col-span-2">
                                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Relationship</label>
                                 <select
@@ -107,7 +107,7 @@ export function NextOfKinForm({ memberId, initialData }: NextOfKinFormProps) {
                                 </select>
                             </div>
 
-                            {/* Nationality */}
+                            {}
                             <div className="col-span-12 md:col-span-2">
                                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Country</label>
                                 <select
@@ -122,7 +122,7 @@ export function NextOfKinForm({ memberId, initialData }: NextOfKinFormProps) {
                                 </select>
                             </div>
 
-                            {/* Phone */}
+                            {}
                             <div className="col-span-12 md:col-span-3">
                                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Phone</label>
                                 <input
@@ -157,7 +157,7 @@ export function NextOfKinForm({ memberId, initialData }: NextOfKinFormProps) {
                                 {errors.beneficiaries?.[index]?.phone && <span className="text-xs text-red-500">{errors.beneficiaries[index]?.phone?.message}</span>}
                             </div>
 
-                            {/* Alt Phone (Optional) */}
+                            {}
                             <div className="col-span-12 md:col-span-2">
                                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Alt Phone</label>
                                 <input
@@ -173,7 +173,7 @@ export function NextOfKinForm({ memberId, initialData }: NextOfKinFormProps) {
                                 />
                             </div>
 
-                            {/* Allocation */}
+                            {}
                             <div className="col-span-12 md:col-span-2 relative">
                                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Allocation %</label>
                                 <div className="relative">
@@ -192,7 +192,7 @@ export function NextOfKinForm({ memberId, initialData }: NextOfKinFormProps) {
                                 </div>
                             </div>
 
-                            {/* Delete Button */}
+                            {}
                             <button
                                 type="button"
                                 onClick={() => remove(index)}

@@ -11,9 +11,6 @@ import { Decimal, MoneyDecimal, RateDecimal, PercentDecimal, PRECISION } from '.
 // Type alias for Decimal values
 type DecimalValue = number | string | Decimal
 
-// ============================================================================
-// ARITHMETIC OPERATIONS
-// ============================================================================
 
 /**
  * Add two decimal values
@@ -76,9 +73,6 @@ export function percentOf(value: DecimalValue, percent: DecimalValue): Decimal {
     return new Decimal(value).times(new Decimal(percent).dividedBy(100))
 }
 
-// ============================================================================
-// COMPARISON OPERATIONS
-// ============================================================================
 
 /**
  * Check if two values are equal
@@ -150,9 +144,6 @@ export function max(...values: DecimalValue[]): Decimal {
 
 // ... skipping rounding functions ...
 
-// ============================================================================
-// UTILITY FUNCTIONS
-// ============================================================================
 
 // ... skipping check functions ...
 
@@ -163,9 +154,6 @@ export function sum(values: DecimalValue[]): Decimal {
     return values.reduce<Decimal>((acc, val) => acc.plus(val), new Decimal(0))
 }
 
-// ============================================================================
-// ROUNDING OPERATIONS
-// ============================================================================
 
 /**
  * Round a monetary value for storage (4 decimal places)
@@ -213,9 +201,6 @@ export function roundPercentForDisplay(value: DecimalValue): string {
     return new PercentDecimal(value).toFixed(PRECISION.DISPLAY.percent)
 }
 
-// ============================================================================
-// UTILITY FUNCTIONS
-// ============================================================================
 
 /**
  * Check if a value is zero

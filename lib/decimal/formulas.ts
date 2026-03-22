@@ -11,9 +11,6 @@ import { add, subtract, multiply, divide, isZero } from './operations'
 // Type alias for Decimal values
 type DecimalValue = number | string | Decimal
 
-// ============================================================================
-// LOAN AMORTIZATION
-// ============================================================================
 
 /**
  * Calculate loan payment using amortization formula
@@ -78,9 +75,6 @@ export function calculateEMI(
     return calculateLoanPayment(principal, annualInterestRate, numberOfMonths)
 }
 
-// ============================================================================
-// INTEREST CALCULATIONS
-// ============================================================================
 
 /**
  * Calculate simple interest
@@ -168,9 +162,6 @@ export function calculateDailyInterest(
     return new MoneyDecimal(interest)
 }
 
-// ============================================================================
-// PENALTY CALCULATIONS
-// ============================================================================
 
 /**
  * Calculate penalty for late payment
@@ -190,9 +181,6 @@ export function calculatePenalty(
     return dailyPenalty
 }
 
-// ============================================================================
-// FEE CALCULATIONS
-// ============================================================================
 
 /**
  * Calculate percentage-based fee
@@ -229,9 +217,6 @@ export function calculateAmountWithFee(
     return new MoneyDecimal(base.plus(fee))
 }
 
-// ============================================================================
-// LOAN BALANCE CALCULATIONS
-// ============================================================================
 
 /**
  * Calculate remaining balance after a payment
@@ -293,9 +278,6 @@ export function splitPayment(
     }
 }
 
-// ============================================================================
-// UTILITY FUNCTIONS
-// ============================================================================
 
 /**
  * Calculate percentage change between two values

@@ -100,9 +100,6 @@ export async function createTransferRequest(data: {
     }
 }
 
-// ========================================
-// APPROVE TRANSFER
-// ========================================
 
 export async function approveTransfer(requestId: string, notes?: string) {
     const session = await auth()
@@ -139,10 +136,6 @@ export async function approveTransfer(requestId: string, notes?: string) {
                 }
             })
 
-            // 3. CHECK CONSENSUS
-            // We need 2 approvals total (Requester + This Approver = 2)
-            // Or ideally 3? Plan said "At least 2".
-            // Since we just added one, count is request.approvals.length + 1
 
             // Re-fetch approvals to be safe? Or validation logic:
             // Previous approvals + Current one.
@@ -200,9 +193,6 @@ export async function approveTransfer(requestId: string, notes?: string) {
     }
 }
 
-// ========================================
-// REJECT TRANSFER
-// ========================================
 
 export async function rejectTransfer(requestId: string, notes: string) {
     const session = await auth()

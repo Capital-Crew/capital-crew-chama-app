@@ -65,7 +65,7 @@ export default async function LoanDetailsPage({ params }: PageProps) {
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-            {/* Header / Breadcrumb */}
+            {}
             <div className="flex items-center justify-between">
                 <div>
                     <BackButton
@@ -89,7 +89,7 @@ export default async function LoanDetailsPage({ params }: PageProps) {
                 </div>
             </div>
 
-            {/* Main Content: Client View */}
+            {}
             <div className="bg-slate-50 border border-slate-200 rounded-3xl p-6 md:p-8">
                 <LoanDetailsView
                     loan={loan}

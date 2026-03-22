@@ -117,6 +117,7 @@ export default function AuditPageClient() {
                 }
             )
         } catch (error) {
+            // TODO: replace with structured logger
             console.error(error);
         }
     }
@@ -152,7 +153,7 @@ export default function AuditPageClient() {
             {data?.stats && <AuditStats stats={data.stats} />}
 
             <div className="flex flex-col gap-6">
-                {/* Filters Bar */}
+                {}
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-4">
                     <div className="flex flex-wrap gap-4 items-center">
                         <div className="relative flex-1 min-w-[300px]">
@@ -226,11 +227,11 @@ export default function AuditPageClient() {
                     )}
                 </div>
 
-                {/* Data Table */}
+                {}
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-md overflow-hidden transition-all">
                     <AuditLogTable logs={data?.logs || []} />
 
-                    {/* Pagination */}
+                    {}
                     {data && (
                         <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
                             <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">

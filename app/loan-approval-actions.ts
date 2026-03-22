@@ -85,17 +85,14 @@ export const submitLoanApproval = withAudit(
         ctx.beginStep('Validate Authorization');
         const session = await auth();
 
-        // @ts-ignore
         if (!session?.user?.memberId) {
             ctx.setErrorCode('UNAUTHORIZED_ACCESS');
             ctx.failStep('Validate Authorization', new Error("Unauthorized: You must be a member to approve loans"));
             throw new Error("Unauthorized: You must be a member to approve loans");
         }
 
-        // @ts-ignore
         const approverId = session.user.memberId;
         const userRole = session.user.role;
-        // @ts-ignore
         const userPermissions = session.user.permissions;
 
         const roleHasPermission = [
@@ -111,7 +108,6 @@ export const submitLoanApproval = withAudit(
                     userPermissions.includes("APPROVE_LOANS") ||
                     userPermissions.includes("ALL");
             } else if (typeof userPermissions === "object") {
-                // @ts-ignore
                 hasGranularPermission =
                     userPermissions["APPROVE_LOANS"] === true ||
                     userPermissions["canApprove"] === true ||
@@ -131,7 +127,7 @@ export const submitLoanApproval = withAudit(
                 include: { fromUser: true },
             });
 
-            // @ts-ignore - relation fromUser exists in schema
+            // relation fromUser exists in schema
             const hasValidDelegation = activeDelegations.some((d) =>
                 ["SYSTEM_ADMIN", "CHAIRPERSON", "TREASURER"].includes(d.fromUser.role)
             );
@@ -272,7 +268,6 @@ export const disburseLoanToWallet = withAudit(
                 const hasRolePermission = ["TREASURER", "CHAIRPERSON", "SYSTEM_ADMIN"].includes(userRole);
                 const isOwner = session!.user.memberId === loan.memberId;
 
-                // @ts-ignore
                 const userPermissions = session!.user.permissions;
                 let hasGranularPermission = false;
                 if (userPermissions) {

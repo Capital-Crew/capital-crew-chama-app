@@ -45,7 +45,7 @@ export function MemberManagementMaster({ initialMembers, initialDetail, userRole
 
     return (
         <div className="flex flex-col h-[calc(100vh-160px)] bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm">
-            {/* Header */}
+            {}
             <header className="bg-white border-b border-slate-100 px-8 py-5 flex items-center justify-between sticky top-0 z-10">
                 <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-400 to-cyan-600 flex items-center justify-center text-white shadow-lg shadow-cyan-500/20">
@@ -80,9 +80,9 @@ export function MemberManagementMaster({ initialMembers, initialDetail, userRole
                 )}
             </header>
 
-            {/* Main Content Area */}
+            {}
             <div className="flex flex-1 overflow-hidden">
-                {/* Master List (Sidebar-like) */}
+                {}
                 <aside className="w-80 bg-slate-50/30 border-r border-slate-100 flex flex-col">
                     <div className="p-4 px-6 border-b border-slate-100 bg-white/50">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
@@ -131,7 +131,7 @@ export function MemberManagementMaster({ initialMembers, initialDetail, userRole
                     </div>
                 </aside>
 
-                {/* Detail View (Main Area) */}
+                {}
                 <main className="flex-1 overflow-y-auto bg-white scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                     {selectedDetail ? (
                         <div className="p-8">
@@ -157,7 +157,7 @@ export function MemberManagementMaster({ initialMembers, initialDetail, userRole
                 </main>
             </div>
 
-            {/* Enroll Modal (Copied from Registry) */}
+            {}
             {isEnrollOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden p-8 animate-in zoom-in-95 duration-200">

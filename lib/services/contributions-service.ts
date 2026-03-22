@@ -127,9 +127,6 @@ export class ContributionsService {
                 }
             });
 
-            // 5. Post to General Ledger
-            // Debit: Member Wallet (Liability decreases)
-            // Credit: Contributions (Asset/Liability? Account 1200)
             const journalEntry = await AccountingEngine.postJournalEntry({
                 transactionDate: new Date(),
                 referenceType: 'SHARE_CONTRIBUTION',

@@ -4,16 +4,13 @@ import { db } from "@/lib/db";
 import { auth } from "@/auth";
 import { LedgerService } from "@/lib/services/ledger-service";
 import { withAudit } from "@/lib/with-audit";
-import { AuditLogAction, LedgerStatus, AccountType, NormalBalance, ReferenceType, Prisma } from "@prisma/client";
+import { AuditLogAction, LedgerStatus, AccountType, NormalBalance, Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { serializeFinancials, Serialized } from "@/lib/safe-serialization";
 import { AccountingEngine } from "@/lib/accounting/AccountingEngine";
 import { AccountingService } from "@/lib/services/AccountingService";
 import { serializeJournalEntry } from '@/lib/serializers';
 
-// ========================================
-// LEDGER HIERARCHY & MANAGEMENT
-// ========================================
 
 /**
  * Fetch all ledgers with full hierarchy and balances
@@ -73,7 +70,7 @@ export const getAllLedgers = getChartOfAccounts;
 /**
  * Creates a new ledger in PENDING state (Maker-Checker 1/2)
  */
-export const createLedgerAction = withAudit({ action: AuditLogAction.LEDGER_CREATED, context: 'FINANCE' }, async (formData: FormData) => {
+export const createLedgerAction = withAudit({ actionType: AuditLogAction.LEDGER_CREATED, domain: 'FINANCE', apiRoute: '/api/accounts/ledger/create' }, async (ctx, formData: FormData) => {
     const session = await auth();
     if (!session?.user) throw new Error("Unauthorized");
 
@@ -108,7 +105,7 @@ export const createLedgerAction = withAudit({ action: AuditLogAction.LEDGER_CREA
 /**
  * Approves a pending ledger (Maker-Checker 2/2)
  */
-export const approveLedgerAction = withAudit({ action: AuditLogAction.LEDGER_APPROVED, context: 'FINANCE' }, async (ledgerId: string) => {
+export const approveLedgerAction = withAudit({ actionType: AuditLogAction.LEDGER_APPROVED, domain: 'FINANCE', apiRoute: '/api/accounts/ledger/approve' }, async (ctx, ledgerId: string) => {
     const session = await auth();
     if (!session?.user) throw new Error("Unauthorized");
 
@@ -137,7 +134,7 @@ export const approveLedgerAction = withAudit({ action: AuditLogAction.LEDGER_APP
     return serializeFinancials(updated);
 });
 
-export const closeLedgerAction = withAudit({ action: AuditLogAction.LEDGER_CLOSED, context: 'FINANCE' }, async (ledgerId: string) => {
+export const closeLedgerAction = withAudit({ actionType: AuditLogAction.LEDGER_CLOSED, domain: 'FINANCE', apiRoute: '/api/accounts/ledger/close' }, async (ctx, ledgerId: string) => {
     const session = await auth();
     if (!session?.user) throw new Error("Unauthorized");
 
@@ -162,7 +159,7 @@ export const closeLedgerAction = withAudit({ action: AuditLogAction.LEDGER_CLOSE
     return serializeFinancials(updated);
 });
 
-export const reactivateLedgerAction = withAudit({ action: AuditLogAction.LEDGER_APPROVED, context: 'FINANCE' }, async (ledgerId: string) => {
+export const reactivateLedgerAction = withAudit({ actionType: AuditLogAction.LEDGER_APPROVED, domain: 'FINANCE', apiRoute: '/api/accounts/ledger/reactivate' }, async (ctx, ledgerId: string) => {
     const session = await auth();
     if (!session?.user) throw new Error("Unauthorized");
 
@@ -186,7 +183,7 @@ export const reactivateLedgerAction = withAudit({ action: AuditLogAction.LEDGER_
     return serializeFinancials(updated);
 });
 
-export const rejectLedgerAction = withAudit({ action: AuditLogAction.LEDGER_CLOSED, context: 'FINANCE' }, async (ledgerId: string) => {
+export const rejectLedgerAction = withAudit({ actionType: AuditLogAction.LEDGER_CLOSED, domain: 'FINANCE', apiRoute: '/api/accounts/ledger/reject' }, async (ctx, ledgerId: string) => {
     const session = await auth();
     if (!session?.user) throw new Error("Unauthorized");
 
@@ -205,9 +202,6 @@ export const rejectLedgerAction = withAudit({ action: AuditLogAction.LEDGER_CLOS
     return { success: true };
 });
 
-// ========================================
-// JOURNAL & TRANSACTIONS
-// ========================================
 
 /**
  * Get Journal Entries with advanced filters and pagination
@@ -356,6 +350,7 @@ export async function getTransactionLedger(transactionId: string) {
 
         return serializeFinancials(ledgerEntry);
     } catch (error) {
+        // TODO: Log error to monitoring service
         return null;
     }
 }
@@ -363,7 +358,7 @@ export async function getTransactionLedger(transactionId: string) {
 /**
  * Reverse a journal entry with all side effects and audit trail
  */
-export const reverseJournalEntryAction = withAudit({ action: AuditLogAction.JOURNAL_REVERSAL, context: 'FINANCE' }, async (entryId: string, reason: string) => {
+export const reverseJournalEntryAction = withAudit({ actionType: AuditLogAction.JOURNAL_REVERSAL, domain: 'FINANCE', apiRoute: '/api/accounts/journal/reverse' }, async (ctx, entryId: string, reason: string) => {
     const session = await auth()
     if (!session?.user) throw new Error('Unauthorized')
 
@@ -428,9 +423,6 @@ export const reverseJournalEntryAction = withAudit({ action: AuditLogAction.JOUR
     return serializeFinancials(result)
 });
 
-// ========================================
-// REPORTING
-// ========================================
 
 /**
  * Get Trial Balance
@@ -546,9 +538,6 @@ export async function getAccountLedger(accountCode: string, limit = 100): Promis
     })
 }
 
-// ========================================
-// ACCOUNT MANAGEMENT (Legacy Support)
-// ========================================
 
 /**
  * Toggle account active status
@@ -567,6 +556,7 @@ export async function toggleAccountStatus(accountId: string, isActive: boolean) 
         revalidatePath('/accounts');
         return { success: true };
     } catch (error: any) {
+        // TODO: Log error to monitoring service
         throw new Error(error.message || "Failed to update account status");
     }
 }
@@ -607,6 +597,7 @@ export async function deleteAccount(accountId: string) {
         revalidatePath('/accounts');
         return { success: true };
     } catch (error: any) {
+        // TODO: Log error to monitoring service
         throw new Error(error.message || "Failed to delete account");
     }
 }
@@ -643,6 +634,7 @@ export async function updateAccountType(accountId: string, newType: string) {
         revalidatePath('/accounts');
         return { success: true };
     } catch (error: any) {
+        // TODO: Log error to monitoring service
         throw new Error(error.message || "Failed to update account type");
     }
 }

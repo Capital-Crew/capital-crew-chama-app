@@ -22,9 +22,6 @@ export type CustomFieldFormData = {
     displayOrder?: number
 }
 
-// ==========================================
-// Welfare Types Management
-// ==========================================
 
 export const createWelfareType = withAudit(
     { actionType: AuditLogAction.SETTINGS_UPDATED, domain: 'WELFARE', apiRoute: '/api/welfare/types/create' },
@@ -185,9 +182,6 @@ export async function getWelfareTypeById(id: string) {
     }
 }
 
-// ==========================================
-// Custom Fields Management
-// ==========================================
 
 export const addCustomField = withAudit(
     { actionType: AuditLogAction.SETTINGS_UPDATED, domain: 'WELFARE', apiRoute: '/api/welfare/fields/add' },

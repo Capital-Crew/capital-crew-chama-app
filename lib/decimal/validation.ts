@@ -10,9 +10,6 @@ import { Decimal, MoneyDecimal, RateDecimal, PercentDecimal } from './config'
 // Type alias for Decimal values
 type DecimalValue = number | string | Decimal
 
-// ============================================================================
-// VALIDATION REGEX PATTERNS
-// ============================================================================
 
 /**
  * Regex patterns for validating different types of financial inputs
@@ -31,9 +28,6 @@ export const VALIDATION_PATTERNS = {
     NUMBER: /^-?\d+(\.\d+)?$/,
 } as const
 
-// ============================================================================
-// VALIDATION FUNCTIONS
-// ============================================================================
 
 /**
  * Validate a monetary amount string
@@ -69,9 +63,6 @@ export function isValidNumber(value: string): boolean {
     return VALIDATION_PATTERNS.NUMBER.test(value)
 }
 
-// ============================================================================
-// CONVERSION FUNCTIONS WITH VALIDATION
-// ============================================================================
 
 /**
  * Convert and validate a monetary amount
@@ -151,9 +142,6 @@ export function toPercentSafe(value: string | number): PercentDecimal | null {
     }
 }
 
-// ============================================================================
-// API SERIALIZATION HELPERS
-// ============================================================================
 
 /**
  * Convert Decimal to string for API response
@@ -188,9 +176,6 @@ export function fromApiString(value: string): Decimal {
     return new Decimal(value)
 }
 
-// ============================================================================
-// RANGE VALIDATION
-// ============================================================================
 
 /**
  * Validate that a value is within a range
@@ -222,9 +207,6 @@ export function isNonNegativeAmount(value: DecimalValue): boolean {
     return new Decimal(value).greaterThanOrEqualTo(0)
 }
 
-// ============================================================================
-// SANITIZATION
-// ============================================================================
 
 /**
  * Sanitize user input by removing invalid characters

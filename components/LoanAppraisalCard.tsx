@@ -245,7 +245,7 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                     </div>
                 ) : loan ? (
                     <>
-                        {/* Mobile Optimized Header */}
+                        {}
                         <div className="bg-gradient-to-br from-cyan-500 via-blue-500 to-purple-500 p-4 md:p-8 text-white relative overflow-hidden shrink-0">
                             <div className="absolute inset-0 bg-white/10 backdrop-blur-sm" />
                             <div className="relative z-10">
@@ -290,7 +290,7 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                                         )}
                                     </div>
 
-                                    {/* NEW: Repay Button */}
+                                    {}
                                     {['ACTIVE', 'OVERDUE', 'WRITTEN_OFF'].includes(loan.status) && (
                                         <button
                                             onClick={() => setShowRepaymentModal(true)}
@@ -302,12 +302,12 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                                     )}
                                 </div>
 
-                                {/* Action Buttons - Only show for PENDING_APPROVAL */}
+                                {}
                                 {loan.status === 'PENDING_APPROVAL' && (
                                     <div className="w-full">
-                                        {/* Mobile: 2x2 Grid Layout */}
+                                        {}
                                         <div className="grid grid-cols-2 gap-2 md:hidden">
-                                            {/* Row 1: Approvals and Approve */}
+                                            {}
                                             <button
                                                 onClick={() => setShowVotingRecords(true)}
                                                 className="px-3 py-3 min-h-[48px] bg-blue-600 hover:bg-blue-700 text-white font-bold uppercase text-xs rounded-lg transition-all shadow-md flex items-center justify-center gap-2"
@@ -331,7 +331,7 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                                                 )}
                                             </button>
 
-                                            {/* Row 2: Reject and Cancel Approval Request */}
+                                            {}
                                             <button
                                                 onClick={handleReject}
                                                 disabled={submitting}
@@ -373,9 +373,9 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                                             </button>
                                         </div>
 
-                                        {/* Desktop: Horizontal Layout */}
+                                        {}
                                         <div className="hidden md:flex items-center gap-2">
-                                            {/* Approvals Button */}
+                                            {}
                                             <button
                                                 onClick={() => setShowVotingRecords(true)}
                                                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold uppercase text-xs rounded-lg transition-all shadow-md flex items-center gap-2"
@@ -384,7 +384,7 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                                                 Approvals
                                             </button>
 
-                                            {/* Reject Button */}
+                                            {}
                                             <button
                                                 onClick={handleReject}
                                                 disabled={submitting}
@@ -393,7 +393,7 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                                                 Reject
                                             </button>
 
-                                            {/* Approve Button */}
+                                            {}
                                             <button
                                                 onClick={handleApprove}
                                                 disabled={submitting}
@@ -407,7 +407,7 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                                                 <span>Approve</span>
                                             </button>
 
-                                            {/* Cancel Approval Request Button */}
+                                            {}
                                             <Button
                                                 onClick={async () => {
                                                     if (!confirm('Are you sure you want to cancel this approval request? It will be moved back to draft status.')) return;
@@ -447,7 +447,7 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                             </div>
                         </div>
 
-                        {/* Responsive Scrollable Tabs */}
+                        {}
                         <div className="border-b border-slate-200 px-4 md:px-8 shrink-0 bg-white sticky top-0 z-20">
                             <div className="flex gap-4 overflow-x-auto scrollbar-none pb-0.5" style={{ scrollbarWidth: 'none' }}>
                                 <TabButton
@@ -478,7 +478,7 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                             </div>
                         </div>
 
-                        {/* Content */}
+                        {}
                         <div className="p-4 md:p-8 overflow-y-auto flex-1 bg-white scrollbar-thin scrollbar-thumb-slate-200">
                             {activeTab === 'appraisal' ? (
                                 <>
@@ -560,7 +560,7 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                             )}
                         </div>
 
-                        {/* Disbursement Footer - Only show if APPROVED */}
+                        {}
                         {loan.status === 'APPROVED' && (
                             <div className="p-6 bg-purple-50 border-t border-purple-100 flex items-center justify-between shrink-0">
                                 <div>

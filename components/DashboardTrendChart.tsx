@@ -26,7 +26,7 @@ export default function DashboardTrendChart({ data }: { data: TrendData[] }) {
             {(!inView || !mounted) ? (
                 <div className="h-full w-full bg-slate-100 animate-pulse rounded-xl" />
             ) : (
-                /* LIGHTHOUSE FIX 1.3: Explicit height to prevent forced reflows loop */
+                
                 <ResponsiveContainer width="100%" height={250}>
                     <AreaChart data={data}>
                         <defs>

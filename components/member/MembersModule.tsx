@@ -89,12 +89,12 @@ export function MembersModule({ initialMembers, initialDetail, userRole, current
     return (
         <div className="h-[calc(100vh-100px)] md:h-[calc(100vh-120px)] flex flex-col md:flex-row gap-6 p-4 md:p-6 overflow-hidden">
 
-            {/* LEFT PANEL: Member List (Visible on Mobile if LIST mode, Always visible on Desktop) */}
+            {}
             <div className={cn(
                 "w-full md:w-1/3 lg:w-80 bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col",
                 viewMode === 'PROFILE' ? "hidden md:flex" : "flex"
             )}>
-                {/* Desktop "Enroll" Header */}
+                {}
                 <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                     <h2 className="text-sm font-black text-slate-800 uppercase tracking-wide flex items-center gap-2">
                         <Users className="w-4 h-4 text-cyan-500" /> Directory
@@ -119,7 +119,7 @@ export function MembersModule({ initialMembers, initialDetail, userRole, current
                 </div>
             </div>
 
-            {/* RIGHT PANEL: Profile View (Visible on Mobile if PROFILE mode, Always visible on Desktop) */}
+            {}
             <div className={cn(
                 "flex-1 bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden relative",
                 viewMode === 'LIST' ? "hidden md:flex" : "flex"
@@ -154,7 +154,7 @@ export function MembersModule({ initialMembers, initialDetail, userRole, current
                 )}
             </div>
 
-            {/* Enroll Modal (Simplified for brevity, similar to previous implementation) */}
+            {}
             {isEnrollOpen && (
                 <EnrollModal onClose={() => setIsEnrollOpen(false)} />
             )}

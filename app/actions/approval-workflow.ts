@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { db as prisma } from '@/lib/db'
 import { auth } from '@/auth'
-import { Prisma, EntityType, ApprovalAction, LoanStatus, AuditLogAction } from '@prisma/client'
+import { Prisma, EntityType, AuditLogAction } from '@prisma/client'
 import { withAudit } from '@/lib/with-audit'
 
 /**

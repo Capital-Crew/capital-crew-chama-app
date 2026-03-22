@@ -99,7 +99,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
     return (
         <div className="space-y-8">
             <div className="flex flex-col md:flex-row gap-8">
-                {/* Current Avatar Display */}
+                {}
                 <div className="flex flex-col items-center gap-4">
                     <Avatar className="h-32 w-32 ring-4 ring-slate-100 dark:ring-slate-800">
                         <AvatarImage src={avatarUrl || ""} alt={user?.name || "User"} />
@@ -110,7 +110,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
                     {isUploading && <p className="text-xs text-primary animate-pulse">Uploading...</p>}
                 </div>
 
-                {/* Avatar Selector */}
+                {}
                 <div className="flex-1">
                     <AvatarSelector
                         currentPreset={user?.avatarPreset}

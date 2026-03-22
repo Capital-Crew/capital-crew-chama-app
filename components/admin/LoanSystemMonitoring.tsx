@@ -67,7 +67,7 @@ export function LoanSystemMonitoring() {
                 </Badge>
             </div>
 
-            {/* System Health */}
+            {}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
                     <CardHeader className="pb-2">
@@ -104,7 +104,7 @@ export function LoanSystemMonitoring() {
                 </Card>
             </div>
 
-            {/* Performance Metrics */}
+            {}
             <Card>
                 <CardHeader>
                     <CardTitle>Performance Metrics</CardTitle>
@@ -155,29 +155,12 @@ export function LoanSystemMonitoring() {
                 </CardContent>
             </Card>
 
-            {/* Alerts */}
-            {/* TODO: Implement Alert component
-            {health && health.loansWithoutInstallments > 0 && (
-                <Alert variant="destructive">
-                    <AlertDescription>
-                        ⚠️ {health.loansWithoutInstallments} loan(s) are missing installments.
-                        Run the migration script: <code className="ml-2 px-2 py-1 bg-black/10 rounded">npx tsx scripts/migrate-loan-installments.ts</code>
-                    </AlertDescription>
-                </Alert>
-            )}
-            */}
+            {}
+            {}
 
-            {/* TODO: Implement Alert component
-            {metrics && metrics.errorRate > 5 && (
-                <Alert variant="destructive">
-                    <AlertDescription>
-                        ⚠️ High error rate detected ({metrics.errorRate}%). Check server logs for details.
-                    </AlertDescription>
-                </Alert>
-            )}
-            */}
+            {}
 
-            {/* Last Updated */}
+            {}
             <p className="text-sm text-muted-foreground text-center">
                 Last updated: {health?.lastChecked.toLocaleTimeString()}
             </p>

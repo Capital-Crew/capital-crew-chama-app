@@ -476,42 +476,80 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
     })
 
     return (
-        <div className="p-6 max-w-7xl mx-auto">
-            {/* Header */}
-            <div className="mb-6">
-                <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tight">Accounts</h1>
-                <p className="text-slate-600 mt-2">General Ledger & Chart of Accounts</p>
+        <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-6 md:space-y-8 animate-in fade-in duration-500">
+            {}
+            <div className="relative overflow-hidden bg-slate-900 rounded-3xl p-6 md:p-8 shadow-xl">
+                {}
+                <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/3 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl pointer-events-none" />
+                <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/3 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
+                
+                <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+                    <div>
+                        <div className="inline-flex items-center gap-2 px-3 py-1 pb-1 mb-4 rounded-full bg-white/10 border border-white/10 backdrop-blur-md">
+                            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                            <span className="text-[10px] font-black text-white/90 uppercase tracking-widest">Financial Operations</span>
+                        </div>
+                        <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight">
+                            Accounts & <br />
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400">General Ledger</span>
+                        </h1>
+                        <p className="text-slate-400 mt-2 text-sm md:text-base font-medium max-w-xl">
+                            Real-time tracking of chart of accounts, automated journal entries, and financial periods.
+                        </p>
+                    </div>
+
+                    <div className="flex shrink-0">
+                        <button 
+                            onClick={loadData}
+                            className="bg-white/10 hover:bg-white/20 text-white border border-white/10 transition-all rounded-xl px-5 py-2.5 text-sm font-bold flex items-center gap-2 backdrop-blur-md"
+                        >
+                            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                            Sync Data
+                        </button>
+                    </div>
+                </div>
             </div>
 
-            {/* Tabs */}
-            <div className="mb-8">
-                <div className="flex overflow-x-auto no-scrollbar pb-2 -mx-6 px-6 md:mx-0 md:px-0 md:pb-0 md:flex-wrap gap-2">
+            {}
+            <div className="bg-white rounded-2xl p-2 md:p-3 shadow-sm border border-slate-200 sticky top-4 z-20">
+                <div className="flex overflow-x-auto no-scrollbar gap-1 md:gap-2 snap-x">
                     {[
-                        { id: 'coa', label: 'Dashboard', shortLabel: 'D/B', icon: ListIcon },
+                        { id: 'coa', label: 'Dashboard', shortLabel: 'Dashboard', icon: ListIcon },
                         { id: 'hierarchy', label: 'Hierarchy', shortLabel: 'Tree', icon: Layers },
                         { id: 'journal', label: 'Journal', shortLabel: 'Journal', icon: HistoryIcon },
                         { id: 'periods', label: 'Periods', shortLabel: 'Periods', icon: CalendarIcon },
                         { id: 'transfers', label: 'Transfers', shortLabel: 'Transfers', icon: ArrowLeftRightIcon },
-                        { id: 'expenses', label: 'Expenses', shortLabel: 'Exp.', icon: FileTextIcon },
-                        ...(userAuth?.role !== 'Member' ? [{ id: 'config', label: 'Settings', shortLabel: 'Conf', icon: Settings }] : [])
-                    ].map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id as Tab)}
-                            className={`relative flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-sm font-bold transition-all duration-200 shrink-0 md:shrink md:flex-1 min-w-[120px] md:min-w-[140px] ${activeTab === tab.id
-                                ? 'bg-white text-cyan-700 shadow-sm ring-1 ring-slate-200'
-                                : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
-                                }`}
-                        >
-                            <tab.icon className={`w-4 h-4 ${activeTab === tab.id ? 'text-cyan-600' : 'text-slate-400'}`} />
-                            <span className="whitespace-nowrap hidden md:inline">{tab.label}</span>
-                            <span className="whitespace-nowrap md:hidden">{tab.shortLabel}</span>
-                        </button>
-                    ))}
+                        { id: 'expenses', label: 'Expenses', shortLabel: 'Expenses', icon: FileTextIcon },
+                        ...(userAuth?.role !== 'Member' ? [{ id: 'config', label: 'Settings', shortLabel: 'Settings', icon: Settings }] : [])
+                    ].map(tab => {
+                        const isActive = activeTab === tab.id;
+                        return (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id as Tab)}
+                                className={`
+                                    relative flex items-center justify-center gap-2 px-4 py-2.5 md:px-6 md:py-3 rounded-xl text-sm font-bold transition-all duration-300 snap-center shrink-0
+                                    ${isActive 
+                                        ? 'bg-slate-900 text-white shadow-md' 
+                                        : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                                    }
+                                `}
+                            >
+                                <tab.icon className={`w-4 h-4 transition-colors ${isActive ? 'text-cyan-400' : 'text-slate-400'}`} />
+                                <span className="whitespace-nowrap hidden md:inline">{tab.label}</span>
+                                <span className="whitespace-nowrap md:hidden">{tab.shortLabel}</span>
+                                
+                                {}
+                                {isActive && (
+                                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-8 h-1 bg-cyan-400 rounded-t-full shadow-[0_-2px_8px_rgba(34,211,238,0.8)]" />
+                                )}
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 
-            {/* Pending Approvals Banner */}
+            {}
             {chartOfAccounts.filter(l => l.status === 'PENDING').length > 0 && activeTab !== 'ledger' && (
                 <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 shadow-sm mb-6">
                     <div className="flex items-center gap-2 mb-4">
@@ -522,7 +560,7 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                 </div>
             )}
 
-            {/* Messages */}
+            {}
             {message && (
                 <div className={`p-4 rounded-xl mb-6 ${message.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
                     }`}>
@@ -530,19 +568,85 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                 </div>
             )}
 
-            {/* Journal History Tab */}
+            {}
+            {activeTab === 'coa' && (
+                <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+                    <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                            <h3 className="text-xl font-bold text-slate-900">Chart of Accounts</h3>
+                            <p className="text-sm text-slate-500 mt-1">Flat view of all active and pending ledger accounts.</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="relative">
+                                <SearchIcon className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                <input 
+                                    type="text" 
+                                    placeholder="Search accounts..." 
+                                    className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm w-full md:w-64 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
+                                />
+                            </div>
+                            <Button 
+                                onClick={() => setIsLedgerModalOpen(true)}
+                                className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-xl shadow-md shadow-cyan-600/20"
+                            >
+                                <PlusIcon className="w-4 h-4 mr-2" />
+                                New Account
+                            </Button>
+                        </div>
+                    </div>
+                    {loading ? (
+                        <div className="p-12 text-center text-slate-400 flex flex-col items-center">
+                            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-cyan-500" />
+                            Loading chart of accounts...
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-slate-50/50">
+                                    <tr>
+                                        <th className="px-6 py-4 text-left text-xs font-black uppercase text-slate-500 tracking-wider">Account</th>
+                                        <th className="px-6 py-4 text-left text-xs font-black uppercase text-slate-500 tracking-wider">Type</th>
+                                        <th className="px-6 py-4 text-right text-xs font-black uppercase text-slate-500 tracking-wider">Balance</th>
+                                        <th className="px-6 py-4 text-left text-xs font-black uppercase text-slate-500 tracking-wider">Status</th>
+                                        <th className="px-6 py-4 text-right text-xs font-black uppercase text-slate-500 tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {chartOfAccounts
+                                        .sort((a, b) => {
+                                            const order: Record<string, number> = { PENDING: 0, ACTIVE: 1, CLOSED: 2 };
+                                            return (order[a.status as string] ?? 1) - (order[b.status as string] ?? 1);
+                                        })
+                                        .map(ledger => renderLedgerRow(ledger))}
+                                </tbody>
+                            </table>
+                            {chartOfAccounts.length === 0 && (
+                                <div className="p-12 text-center text-slate-500">
+                                    No ledger accounts found.
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {}
             {activeTab === 'journal' && (
                 <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm p-6">
                     <JournalHistory />
                 </div>
             )}
 
-            {/* Hierarchy Tab */}
+            {}
             {activeTab === 'hierarchy' && (
-                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+                    <div className="p-6 border-b border-slate-100">
+                        <h3 className="text-xl font-bold text-slate-900">Account Hierarchy</h3>
+                        <p className="text-sm text-slate-500 mt-1">Tree view of parent and child ledger accounts.</p>
+                    </div>
                     {loading ? (
-                        <div className="p-12 text-center text-slate-400">
-                            <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-2 opacity-20" />
+                        <div className="p-12 text-center text-slate-400 flex flex-col items-center">
+                            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-cyan-500" />
                             Loading hierarchy...
                         </div>
                     ) : (
@@ -570,7 +674,7 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                 </div>
             )}
 
-            {/* Periods Tab */}
+            {}
             {activeTab === 'periods' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {periods.map(period => (
@@ -615,11 +719,11 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                 </div>
             )}
 
-            {/* Journal Entries Tab */}
+            {}
             {activeTab === 'journal' && (
                 <div className="space-y-6">
-                    {/* Filters */}
-                    <div className="bg-white border border-slate-200 rounded-2xl p-4">
+                    {}
+                    <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
                         <div className="grid grid-cols-4 gap-3">
                             <input
                                 type="text"
@@ -656,10 +760,13 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                         </div>
                     </div>
 
-                    {/* Journal Entries List */}
-                    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+                    {}
+                    <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
                         {loading ? (
-                            <div className="p-12 text-center text-slate-400">Loading...</div>
+                            <div className="p-12 text-center text-slate-400 flex flex-col items-center">
+                                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-cyan-500" />
+                                Loading journal entries...
+                            </div>
                         ) : (
                             <>
                                 <div className="divide-y divide-slate-100">
@@ -688,7 +795,7 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                                     ))}
                                 </div>
 
-                                {/* Pagination */}
+                                {}
                                 {pagination && (
                                     <div className="p-4 border-t border-slate-200 flex justify-between items-center text-sm">
                                         <div className="text-slate-600">
@@ -697,7 +804,7 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                                         <div className="flex gap-2">
                                             {pagination.page > 1 && (
                                                 <button
-                                                    onClick={() => { /* Handle previous page */ }}
+                                                    onClick={() => {  }}
                                                     className="px-4 py-2 border border-slate-300 rounded-xl font-bold hover:bg-slate-50"
                                                 >
                                                     Previous
@@ -705,7 +812,7 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                                             )}
                                             {pagination.page < pagination.totalPages && (
                                                 <button
-                                                    onClick={() => { /* Handle next page */ }}
+                                                    onClick={() => {  }}
                                                     className="px-4 py-2 border border-slate-300 rounded-xl font-bold hover:bg-slate-50"
                                                 >
                                                     Next
@@ -718,11 +825,16 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                         )}
                     </div>
 
-                    {/* Entry Details Modal */}
+                    {}
                     {selectedEntry && (
-                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setSelectedEntry(null)}>
-                            <div className="bg-white rounded-2xl p-8 max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-                                <div className="flex justify-between items-start mb-6">
+                        <AnimatePresence>
+                        <motion.div 
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setSelectedEntry(null)}>
+                            <motion.div 
+                                initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+                                className="bg-white rounded-3xl shadow-2xl p-6 md:p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex justify-between items-start mb-6 border-b border-slate-100 pb-4">
                                     <div>
                                         <h2 className="text-2xl font-black text-slate-900">{selectedEntry.entryNumber}</h2>
                                         <p className="text-slate-600">{selectedEntry.description}</p>
@@ -732,7 +844,7 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                                     </button>
                                 </div>
 
-                                {/* Journal Lines */}
+                                {}
                                 <table className="w-full mb-6">
                                     <thead className="bg-slate-50">
                                         <tr>
@@ -766,7 +878,7 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                                     </tfoot>
                                 </table>
 
-                                {/* Actions */}
+                                {}
                                 {!selectedEntry.isReversed && (
                                     (() => {
                                         const canReverse =
@@ -793,14 +905,15 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                                         );
                                     })()
                                 )}
-                            </div>
-                        </div>
+                                </motion.div>
+                            </motion.div>
+                        </AnimatePresence>
                     )}
                 </div>
             )}
 
 
-            {/* Expenses Tab */}
+            {}
             {
                 activeTab === 'expenses' && (
                     <ExpensesTab
@@ -809,13 +922,14 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                         categories={expenseCategories}
                         members={membersList}
                         currentUserId={userAuth?.permissions?.userId || ''}
+                        currentUserRole={userAuth?.role || ''}
                         isOfficial={userAuth?.role !== 'Member'}
                         onRefresh={loadData}
                     />
                 )
             }
 
-            {/* M-Pesa Tab */}
+            {}
             {
                 activeTab === 'mpesa' && (
                     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
@@ -824,7 +938,7 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                 )
             }
 
-            {/* Config Tab */}
+            {}
             {
                 activeTab === 'config' && (
                     <div className="space-y-6">
@@ -857,7 +971,7 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                             </div>
                         </div>
 
-                        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+                        <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
                             <div className="p-6 border-b border-slate-200 bg-slate-50">
                                 <h3 className="text-lg font-bold text-slate-900">Global Ledger Mappings</h3>
                                 <p className="text-sm text-slate-600 mt-1">
@@ -916,7 +1030,7 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                                     </tbody>
                                 </table>
                             </div>
-                            {/* Mobile Mappings View */}
+                            {}
                             <div className="md:hidden divide-y divide-slate-100">
                                 {mergedList.map(({ type, mapping }) => (
                                     <div key={type} className="p-4 bg-white">
@@ -959,8 +1073,8 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                             </div>
                         </div>
 
-                        {/* Reference Chart of Accounts Table */}
-                        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden mt-8">
+                        {}
+                        <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden mt-8 shadow-sm">
                             <div className="p-6 border-b border-slate-200 bg-slate-50">
                                 <h3 className="text-lg font-bold text-slate-900">Reference: Available GL Accounts</h3>
                                 <p className="text-sm text-slate-600 mt-1">
@@ -1020,16 +1134,16 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                 )
             }
 
-            {/* Account Ledger Tab */}
+            {}
             {
                 activeTab === 'ledger' && accountLedger && (
-                    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+                    <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
                         <div className="p-6 border-b border-slate-200 bg-slate-50">
                             <button onClick={() => setActiveTab('coa')} className="text-xs text-cyan-600 font-bold uppercase mb-2">← Back to Chart</button>
                             <h2 className="text-xl font-black text-slate-900">{accountLedger.account.code} - {accountLedger.account.name}</h2>
                             <p className="text-sm text-slate-600">Account Ledger • Current Balance: KES {accountLedger.currentBalance.toLocaleString()}</p>
 
-                            {/* Action Toolbar */}
+                            {}
                             <div className="flex gap-3 mt-4">
                                 <Button
                                     onClick={handleFindEntries}
@@ -1103,7 +1217,7 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                             </table>
                         </div>
 
-                        {/* Mobile Ledger View */}
+                        {}
                         <div className="md:hidden divide-y divide-slate-100">
                             {accountLedger.lines.map((line: any, index: number) => {
                                 const isExpanded = expandedLedgerId === line.journalEntryId;
@@ -1159,17 +1273,9 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     handleReverseLedgerTransaction(); // Note: logic might rely on selectedLedgerLine. I should set it or update logic.
-                                                                    // Ideally, pass the ID directly. But the existing handler uses selectedLedgerLine state.
-                                                                    // I will set it on click wrapper, but for this button I might need to ensure it's set.
-                                                                    // The wrapper onClick sets expanded, but maybe not selectedLedgerLine.
-                                                                    // I should update the wrapper to ALSO set selectedLedgerLine so the top handler works.
                                                                     setSelectedLedgerLine(line);
                                                                     // Then call reverse.
                                                                     handleReverseLedgerTransaction();
-                                                                    // Wait, re-clicking reverse immediately might be tricky if state update is async.
-                                                                    // Actually, `handleReverseLedgerTransaction` doesn't take args, it uses state. 
-                                                                    // Safer to just show the button that calls it, assuming the row click set the state.
-                                                                    // Let's make sure the row click sets selectedLedgerLine.
                                                                 }}
                                                                 className="w-full py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg font-bold text-xs uppercase flex items-center justify-center gap-2"
                                                             >
@@ -1186,7 +1292,7 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                             })}
                         </div>
 
-                        {/* Journal Entry Details Modal */}
+                        {}
                         <AnimatePresence>
                             {showJournalEntryModal && journalEntryDetails && (
                                 <motion.div
@@ -1220,7 +1326,7 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                                             </button>
                                         </div>
 
-                                        {/* Journal Lines */}
+                                        {}
                                         <table className="w-full mb-6">
                                             <thead className="bg-slate-50/50">
                                                 <tr>
@@ -1277,7 +1383,7 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                 )
             }
 
-            {/* Transfers Tab - Forced Refreshed */}
+            {}
             {
                 activeTab === 'transfers' && (
                     <div className="space-y-6">
@@ -1305,7 +1411,7 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                             </Dialog>
                         </div>
 
-                        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden p-6">
+                        <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden p-6 shadow-sm">
                             <Tabs defaultValue="pending" className="w-full">
                                 <TabsList className="grid w-full max-w-md grid-cols-2 mb-4 bg-slate-100 p-1 rounded-lg">
                                     <TabsTrigger value="pending" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
@@ -1337,7 +1443,7 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                 )
             }
 
-            {/* Modals */}
+            {}
             {isLedgerModalOpen && (
                 <LedgerForm
                     onClose={() => setIsLedgerModalOpen(false)}

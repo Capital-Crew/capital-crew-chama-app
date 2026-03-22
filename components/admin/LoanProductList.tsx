@@ -40,7 +40,7 @@ export function LoanProductList({ products }: LoanProductListProps) {
                         className={`group bg-white border-2 border-slate-200 rounded-2xl shadow-sm hover:shadow-xl hover:border-cyan-300 transition-all duration-300 overflow-hidden ${!p.isActive ? 'opacity-60' : ''
                             }`}
                     >
-                        {/* Product Header with Gradient */}
+                        {}
                         <div className="bg-gradient-to-br from-cyan-50 to-blue-50 p-6 border-b border-slate-200">
                             <div className="flex justify-between items-start mb-4">
                                 <div className="flex items-center gap-3">
@@ -62,7 +62,7 @@ export function LoanProductList({ products }: LoanProductListProps) {
                                 )}
                             </div>
 
-                            {/* Interest Rate Display */}
+                            {}
                             <div className="flex items-baseline gap-2">
                                 <TrendingUp className="w-4 h-4 text-cyan-600" />
                                 <span className="text-sm font-medium text-slate-600">Monthly Rate:</span>
@@ -70,7 +70,7 @@ export function LoanProductList({ products }: LoanProductListProps) {
                             </div>
                         </div>
 
-                        {/* Product Actions */}
+                        {}
                         <div className="p-6 flex gap-3">
                             <button
                                 onClick={() => handleToggleStatus(p.id, p.isActive)}

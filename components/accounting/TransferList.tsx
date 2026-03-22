@@ -137,7 +137,7 @@ export function TransferList({ requests, currentUserId, type }: TransferListProp
 
                             return (
                                 <React.Fragment key={req.id}>
-                                    {/* Desktop Row */}
+                                    {}
                                     <TableRow className="hidden md:table-row">
                                         <TableCell className="font-medium text-slate-600">
                                             {format(new Date(req.createdAt), 'MMM dd, yyyy')}
@@ -216,8 +216,8 @@ export function TransferList({ requests, currentUserId, type }: TransferListProp
                                         )}
                                     </TableRow>
 
-                                    {/* Mobile Row - Click opens Modal for History, Expands for Pending (or Modal for both? User asked for History specifically to pop out) */}
-                                    {/* Let's use Modal for BOTH for consistency if it's cleaner, but definitely for History */}
+                                    {}
+                                    {}
                                     <TableRow className="md:hidden" key={`${req.id}-mobile`}>
                                         <TableCell colSpan={7} className="p-0 border-b border-slate-100">
                                             <div
@@ -259,7 +259,7 @@ export function TransferList({ requests, currentUserId, type }: TransferListProp
                                                 </div>
                                             </div>
 
-                                            {/* PENDING: Keep Inline Expansion (Actionable) */}
+                                            {}
                                             {type === 'PENDING' && (
                                                 <AnimatePresence>
                                                     {expandedId === req.id && (

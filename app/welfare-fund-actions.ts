@@ -6,9 +6,6 @@ import { revalidatePath } from "next/cache"
 import { AccountingEngine } from "@/lib/accounting/AccountingEngine"
 import { getSystemMappingsDict } from "@/app/actions/system-accounting"
 
-// ==========================================
-// Welfare Fund Management
-// ==========================================
 
 export async function getWelfareFundBalance() {
     try {
@@ -60,10 +57,6 @@ export async function addWelfareFundContribution(amount: number, description: st
             }
         })
 
-        // 3. Post Journal Entry? 
-        // If this is a manual "top up" from SACCO funds, we should probably record it.
-        // Assuming it comes from general operations/income.
-        // We won't strictly force a source account here for simplicity unless required.
 
         revalidatePath('/welfare')
         return { success: true }

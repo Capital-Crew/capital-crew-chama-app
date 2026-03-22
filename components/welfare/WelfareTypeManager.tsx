@@ -205,7 +205,7 @@ export function WelfareTypeManager({ welfareTypes, accounts }: WelfareTypeManage
                     </DialogHeader>
 
                     <div className="space-y-6 py-4">
-                        {/* Basic Info */}
+                        {}
                         <div className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
@@ -246,7 +246,7 @@ export function WelfareTypeManager({ welfareTypes, accounts }: WelfareTypeManage
                             </div>
 
                             <div className="flex items-center space-x-2">
-                                {/* Ideally use Switch component, falling back to simple check if not present or needs import */}
+                                {}
                                 <input
                                     type="checkbox"
                                     id="isActive"
@@ -258,7 +258,7 @@ export function WelfareTypeManager({ welfareTypes, accounts }: WelfareTypeManage
                             </div>
                         </div>
 
-                        {/* Custom Fields Editor - Only available when editing */}
+                        {}
                         {editingType && (
                             <div className="space-y-4 border-t pt-4">
                                 <div className="flex items-center justify-between">

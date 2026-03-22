@@ -28,7 +28,7 @@ export default async function TransactionDetailsPage({ params }: PageProps) {
 
     return (
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-            {/* Breadcrumb */}
+            {}
             <div className="flex items-center text-sm text-slate-500">
                 <Link href={`/loans/${loan?.id}`} className="hover:text-teal-600 hover:underline">
                     &larr; Back to Loan {loan?.loanApplicationNumber}
@@ -37,7 +37,7 @@ export default async function TransactionDetailsPage({ params }: PageProps) {
                 <span className="font-semibold text-slate-700">Transaction Details</span>
             </div>
 
-            {/* Header */}
+            {}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-6">
                 <div>
                     <div className="flex items-center gap-3 mb-1">
@@ -63,7 +63,7 @@ export default async function TransactionDetailsPage({ params }: PageProps) {
                 </div>
             </div>
 
-            {/* Metadata Grid */}
+            {}
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 grid grid-cols-2 md:grid-cols-4 gap-6">
                 <div>
                     <p className="text-xs font-bold text-slate-500 uppercase mb-1">Type</p>
@@ -98,7 +98,7 @@ export default async function TransactionDetailsPage({ params }: PageProps) {
                 </div>
             </div>
 
-            {/* GL Entries Table */}
+            {}
             <GLEntriesTable entries={transaction.glEntries || []} />
         </div>
     );

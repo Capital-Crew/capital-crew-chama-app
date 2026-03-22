@@ -81,7 +81,7 @@ export function WalletTransferForm({
         <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md">
             <h2 className="text-2xl font-bold mb-6">Wallet Transfer</h2>
 
-            {/* Wallet Balance Display */}
+            {}
             <div className="mb-6 p-4 bg-blue-50 rounded-lg">
                 <p className="text-sm text-gray-600">Available Balance</p>
                 <p className="text-2xl font-bold text-blue-600">
@@ -90,7 +90,7 @@ export function WalletTransferForm({
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Destination Type */}
+                {}
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                         Transfer To
@@ -108,7 +108,7 @@ export function WalletTransferForm({
                     </select>
                 </div>
 
-                {/* Loan Selection (if LOAN_REPAYMENT) */}
+                {}
                 {destinationType === 'LOAN_REPAYMENT' && (
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -131,7 +131,7 @@ export function WalletTransferForm({
                     </div>
                 )}
 
-                {/* Amount */}
+                {}
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                         Amount (KES)
@@ -148,7 +148,7 @@ export function WalletTransferForm({
                     />
                 </div>
 
-                {/* Description */}
+                {}
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                         Description (Optional)
@@ -162,7 +162,7 @@ export function WalletTransferForm({
                     />
                 </div>
 
-                {/* Submit Button */}
+                {}
                 <button
                     type="submit"
                     disabled={loading}
@@ -172,7 +172,7 @@ export function WalletTransferForm({
                 </button>
             </form>
 
-            {/* Error Display */}
+            {}
             {error && (
                 <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
                     <p className="text-red-800 font-medium">Error</p>
@@ -180,7 +180,7 @@ export function WalletTransferForm({
                 </div>
             )}
 
-            {/* Success Display */}
+            {}
             {result && (
                 <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
                     <p className="text-green-800 font-medium mb-2">✓ {result.message}</p>

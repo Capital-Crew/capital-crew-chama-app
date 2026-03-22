@@ -213,24 +213,21 @@ export function LoanApplicationForm({
                     toast.success('Loan application submitted successfully!');
                     reset();
                     handleSuccess();
-                    // Note: onSuccess typically handles navigation. 
-                    // If running in Page mode, we might want manual redirect if onSuccess doesn't do it.
-                    // But LoanDraftPage passes onSuccess={() => window.location.href = "/loans"}
                 }
             } catch (err: any) {
                 toast.error(err.message || 'Failed to submit application');
                 setIsSubmitting(false);
             }
         }} className="space-y-8 pb-8">
-            {/* Hidden Failsafe Input - React Hook Form */}
+            {}
             <input type="hidden" {...register('memberId')} />
             {initialData && <input type="hidden" name="loanId" value={initialData.id} />}
 
-            {/* Top Toolbar - Sticky */}
+            {}
             <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-slate-200 -mx-8 -mt-8 px-8 py-3 mb-6">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                        {/* Back button */}
+                        {}
                         <button
                             type="button"
                             onClick={async () => {
@@ -267,7 +264,7 @@ export function LoanApplicationForm({
                     <div className="flex items-center gap-3">
 
 
-                        {/* Auto-save indicator */}
+                        {}
                         <AutoSaveIndicator
                             status={autoSaveStatus}
                             lastSaved={lastSaved}
@@ -296,7 +293,7 @@ export function LoanApplicationForm({
                 </div>
             </div>
 
-            {/* ERROR ALERT */}
+            {}
             {eligibility && !eligibility.isEligible && (
                 <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-xl shadow-sm mb-6 animate-pulse">
                     <div className="flex items-start gap-3">
@@ -311,13 +308,13 @@ export function LoanApplicationForm({
                 </div>
             )}
 
-            {/* SECTION 1: MEMBER & LOAN DETAILS */}
+            {}
             <div className="space-y-6">
                 <h3 className="text-sm font-black text-slate-700 uppercase tracking-wider border-b-2 border-cyan-500 pb-2">
                     1. Member & Loan Details
                 </h3>
 
-                {/* Member Selection */}
+                {}
                 <div className="space-y-2 px-1">
                     <label className="block text-xs font-black text-slate-700 uppercase">Applicant Profile <span className="text-red-500">*</span></label>
                     <select
@@ -340,7 +337,7 @@ export function LoanApplicationForm({
                     )}
                 </div>
 
-                {/* Loan Product & Amount */}
+                {}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                         <label className="block text-xs font-black text-slate-700 uppercase">Loan Product <span className="text-red-500">*</span></label>
@@ -376,7 +373,7 @@ export function LoanApplicationForm({
                     </div>
                 </div>
 
-                {/* Repayment Period */}
+                {}
                 <div className="space-y-2">
                     <div className="flex justify-between items-center">
                         <label className="text-xs font-black text-slate-700 uppercase">Repayment Period (Months)</label>
@@ -408,7 +405,7 @@ export function LoanApplicationForm({
                     </p>
                 </div>
 
-                {/* Loan Offset Selector */}
+                {}
                 <LoanOffsetSelector
                     memberId={watchedMemberId}
                     onSelectionChange={setSelectedLoansToOffset}
@@ -416,14 +413,14 @@ export function LoanApplicationForm({
                 />
             </div>
 
-            {/* Hidden inputs for selected loans to offset */}
+            {}
             {
                 selectedLoansToOffset.map(loanId => (
                     <input key={loanId} type="hidden" name="loansToOffset" value={loanId} />
                 ))
             }
 
-            {/* SECTION 2: QUALIFICATION DETAILS */}
+            {}
             {
                 creditSnapshot && (
                     <div className="space-y-4">
@@ -440,7 +437,7 @@ export function LoanApplicationForm({
                 )
             }
 
-            {/* SECTION 2.5: LOAN EXEMPTIONS */}
+            {}
             <div className="space-y-4">
                 <h3 className="text-sm font-black text-slate-700 uppercase tracking-wider border-b-2 border-amber-500 pb-2">
                     2.5. Loan Exemptions
@@ -455,7 +452,7 @@ export function LoanApplicationForm({
                     onChange={setFeeExemptions}
                 />
             </div>
-            {/* Hidden inputs for exemptions */}
+            {}
             {
                 Object.entries(feeExemptions).map(([key, value]) => (
                     <input key={key} type="hidden" name={`exemptions[${key}]`} value={String(value)} />
@@ -463,7 +460,7 @@ export function LoanApplicationForm({
             }
             <input type="hidden" name="feeExemptions" value={JSON.stringify(feeExemptions)} />
 
-            {/* SECTION 3 & 4: DEDUCTIONS & NET DISBURSEMENT */}
+            {}
             <div className="space-y-6 relative">
                 {calculatingQualification && (
                     <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center backdrop-blur-[2px] rounded-2xl transition-all">
@@ -476,7 +473,7 @@ export function LoanApplicationForm({
 
                 {qualification ? (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        {/* Section 3: Deductions */}
+                        {}
                         <div className="space-y-4">
                             <h3 className="text-sm font-black text-slate-700 uppercase tracking-wider border-b-2 border-orange-500 pb-2">
                                 3. Deductions
@@ -550,7 +547,7 @@ export function LoanApplicationForm({
                             </div>
                         </div>
 
-                        {/* Section 4: Net Disbursement */}
+                        {}
                         <div className="space-y-4">
                             <h3 className="text-sm font-black text-slate-700 uppercase tracking-wider border-b-2 border-purple-500 pb-2">
                                 4. Net Disbursement Amount
@@ -603,7 +600,7 @@ export function LoanApplicationForm({
                 )}
             </div>
 
-            {/* Bottom Buttons Removed - Moved to Top Toolbar */}
+            {}
         </form >
     );
 }

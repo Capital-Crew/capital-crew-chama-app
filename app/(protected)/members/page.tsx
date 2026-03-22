@@ -53,9 +53,6 @@ export default async function MembersPage() {
         }
     }
 
-    // For normal members who might have been redirected here or land here directly
-    // If they are not privileged, they should see their own data.
-    // The redirect logic above might handle some cases, but if they land here, ensure we pass their own ID.
 
     return (
         <MembersModule

@@ -68,7 +68,7 @@ export function WithdrawFundsModule({ memberId }: { memberId: string }) {
         <div className="bg-white border border-slate-200 rounded-3xl p-8">
             <h2 className="text-2xl font-black text-slate-900 mb-6 uppercase">Withdraw Funds</h2>
 
-            {/* Withdrawable Balance Display */}
+            {}
             <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-6 text-white mb-6">
                 <div className="flex items-center justify-between mb-2">
                     <WalletIcon className="w-8 h-8 opacity-80" />
@@ -87,7 +87,7 @@ export function WithdrawFundsModule({ memberId }: { memberId: string }) {
                 )}
             </div>
 
-            {/* Message */}
+            {}
             {message && (
                 <div className={`p-4 rounded-xl mb-6 flex items-center gap-3 ${message.type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
                     }`}>
@@ -102,7 +102,7 @@ export function WithdrawFundsModule({ memberId }: { memberId: string }) {
                 </div>
             )}
 
-            {/* Withdrawal Form */}
+            {}
             <form onSubmit={handleWithdrawal} className="space-y-4">
                 <div>
                     <label className="block text-sm font-bold text-slate-700 mb-2">

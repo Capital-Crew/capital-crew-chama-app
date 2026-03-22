@@ -256,7 +256,6 @@ export function UserRightsTable({ users: initialUsers, permissions = [] }: UserR
         formData.append('userId', usernameUser.id)
         formData.append('username', newUsername)
         if (usernameUser.member) {
-            // @ts-ignore
             formData.append('memberNumber', usernameUser.member.memberNumber)
         }
 
@@ -292,7 +291,7 @@ export function UserRightsTable({ users: initialUsers, permissions = [] }: UserR
 
     return (
         <div className="space-y-6">
-            {/* Header & Search */}
+            {}
             <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-100">
                 <div className="flex items-center gap-2 text-slate-700">
                     <Shield className="w-5 h-5 text-[#00c2e0]" />
@@ -310,7 +309,7 @@ export function UserRightsTable({ users: initialUsers, permissions = [] }: UserR
                 </div>
             </div>
 
-            {/* Table */}
+            {}
             <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-slate-100">
                 <table className="table w-full">
                     <thead>
@@ -413,7 +412,7 @@ export function UserRightsTable({ users: initialUsers, permissions = [] }: UserR
                 </table>
             </div>
 
-            {/* Edit Role Modal */}
+            {}
             {editingUser && (
                 <dialog className="modal modal-open">
                     <div className="modal-box">
@@ -452,7 +451,7 @@ export function UserRightsTable({ users: initialUsers, permissions = [] }: UserR
                 </dialog>
             )}
 
-            {/* Manage Permissions Modal */}
+            {}
             {permUser && (
                 <dialog className="modal modal-open">
                     <div className="modal-box w-11/12 max-w-3xl">
@@ -468,7 +467,7 @@ export function UserRightsTable({ users: initialUsers, permissions = [] }: UserR
                         </div>
 
                         <div className="max-h-[60vh] overflow-y-auto p-1 space-y-6">
-                            {/* System Permissions */}
+                            {}
                             <div>
                                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                                     <Shield className="w-3 h-3" /> System Access
@@ -495,7 +494,7 @@ export function UserRightsTable({ users: initialUsers, permissions = [] }: UserR
                                 </div>
                             </div>
 
-                            {/* Report Permissions - Completely hidden if no reportDefs */}
+                            {}
                             {reportDefs.length > 0 && (
                                 <div>
                                     <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
@@ -537,7 +536,7 @@ export function UserRightsTable({ users: initialUsers, permissions = [] }: UserR
                 </dialog>
             )}
 
-            {/* Username Assignment Modal */}
+            {}
             {usernameUser && (
                 <dialog className="modal modal-open">
                     <div className="modal-box">
@@ -546,7 +545,7 @@ export function UserRightsTable({ users: initialUsers, permissions = [] }: UserR
                             Assign Username
                         </h3>
 
-                        {/* Integrity Guard Viz */}
+                        {}
                         <div className="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100">
                             <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Identity Integrity Check</h4>
                             <div className="space-y-2">

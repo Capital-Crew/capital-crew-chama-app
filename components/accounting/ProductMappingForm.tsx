@@ -74,14 +74,7 @@ export function ProductMappingForm({ productId, glAccounts, initialMappings = {}
 
             <div className="grid gap-6 md:grid-cols-2">
                 {MAPPING_TYPES.map((field) => {
-                    // Simple Filter Logic (Optional - if 'type' matches)
-                    // If typeFilter is 'ASSET', we show 'ASSET' accounts.
-                    // But we should allow flexibility or strictness depending on User request.
-                    // User Request: 'Filtering: ... ideally only show ...'
                     const filteredAccounts = glAccounts.filter(acc => {
-                        // Loose matching since we don't know exact Enum values in runtime props without checking
-                        // Assuming standard convention: 'ASSET', 'INCOME', etc.
-                        // But also Fund Source could be Cash (Asset) or Overdraft (Liability).
                         if (field.key === 'FUND_SOURCE') return true // Allow all for Fund Source just in case
                         return acc.type === field.typeFilter
                     })

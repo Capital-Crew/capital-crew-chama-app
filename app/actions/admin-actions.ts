@@ -5,7 +5,6 @@ import { db as prisma } from "@/lib/db"
 import bcrypt from "bcryptjs"
 import { randomBytes } from "crypto"
 import { revalidatePath } from "next/cache"
-import { z } from "zod"
 import { EmailService } from "@/lib/services/EmailService"
 
 export async function resetUserPassword(inputId: string) {

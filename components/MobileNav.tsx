@@ -67,7 +67,7 @@ export function MobileNav({ user, approvalCount = 0 }: { user: { name: string, r
     return (
         <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
-                {/* LIGHTHOUSE FIX 2.1: Add aria labels and control attributes to mobile menu button */}
+                {}
                 <button
                     className="md:hidden p-2 -ml-2 text-slate-600 hover:text-slate-900 focus:outline-none"
                     aria-label={open ? "Close navigation menu" : "Open navigation menu"}
@@ -87,7 +87,7 @@ export function MobileNav({ user, approvalCount = 0 }: { user: { name: string, r
                     </div>
                 </SheetHeader>
 
-                {/* LIGHTHOUSE FIX 2.1: Provide matching ID for mobile menu controller */}
+                {}
                 <nav id="mobile-navigation" aria-hidden={!open} className="flex-1 overflow-y-auto py-4 space-y-1 scrollbar-hide">
                     {canAccess('DASHBOARD') && <NavItem icon={<DashboardIcon />} label="Dashboard" href="/dashboard" active={pathname === '/dashboard'} onClick={() => setOpen(false)} />}
                     {canAccess('APPROVALS') && <NavItem icon={<UserRightsIcon />} label="Approvals" href="/admin/approvals" active={pathname === '/admin/approvals'} badge={approvalCount > 0 ? approvalCount : undefined} onClick={() => setOpen(false)} />}
@@ -116,7 +116,7 @@ export function MobileNav({ user, approvalCount = 0 }: { user: { name: string, r
                             {canAccess('AUDIT') && <NavItem icon={<AuditLogIcon />} label="Audit Trail" href="/audit" active={pathname === '/audit'} onClick={() => setOpen(false)} />}
                         </>
                     )}
-                    {/* Spacer to Ensure Scrolling clears footer if needed, though flex should handle it */}
+                    {}
                     <div className="h-4"></div>
                 </nav>
 

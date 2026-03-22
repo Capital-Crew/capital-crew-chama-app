@@ -2,7 +2,6 @@
 
 import { db } from '@/lib/db'
 
-import { Prisma } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 import { MemberStats as DetailedMemberStats, LoanPortfolioItem } from '@/types/member-dashboard';
 import { serializePrisma } from '@/lib/serialization';
@@ -188,9 +187,6 @@ export async function getDetailedMemberStats(memberId: string): Promise<{ stats:
         })
     ]);
 
-    // FALLBACK LOGIC: Sync with Wallet Module
-    // If Ledger is empty (0), use the legacy `member.shareContributions` field
-    // This ensures "Total Contributions" matches the User Wallet view
     const legacyShares = Number(member.shareContributions) || 0;
     const shareCapital = ledgerShareCapital > 0 ? ledgerShareCapital : legacyShares;
     const contributionsBalance = ledgerContributions > 0 ? ledgerContributions : legacyShares;
@@ -550,9 +546,6 @@ export async function getLoanPortfolio(memberId: string) {
 
                 const pastPrincipal = overdueItems.reduce((sum: number, i: any) => sum + Number(i.principalDue || i.principal || 0), 0);
                 const pastInterest = overdueItems.reduce((sum: number, i: any) => sum + Number(i.interestDue || i.interest || 0), 0);
-                // Prompt: "TotalPenalties = loan.penaltyDue". 
-                // Using loan.penalties from DB or summing from Schedule if needed. 
-                // Assuming loan.penalties is the source of truth for "Accumulated Penalties".
                 const totalPenalties = Number(loan.penalties || 0);
 
                 const arrears = pastPrincipal + pastInterest + totalPenalties;
@@ -572,10 +565,6 @@ export async function getLoanPortfolio(memberId: string) {
                     const futureItems = sched.filter((i: any) => new Date(i.dueDate || i.date) >= today);
                     const theoreticalPrincipal = futureItems.reduce((sum: number, i: any) => sum + Number(i.principalDue || i.principal || 0), 0);
 
-                    // Overpayment = TheoreticalPrincipal - ActualBalance
-                    // Note: ActualBalance (statementBalance) includes Interest/Penalties.
-                    // If StatementBalance < TheoreticalPrincipal, user has paid ahead on Principal.
-                    // If StatementBalance < TheoreticalPrincipal, user has paid ahead on Principal.
                     const op = Math.max(0, theoreticalPrincipal - statementBalance);
 
                     // Adjusted Principal
@@ -676,7 +665,7 @@ export async function refreshMemberStats(memberId: string) {
 export async function getMemberFullDetail(memberId: string) {
     // Dynamic imports to prevent circular dependencies
     const { calculateCurrentMonthStatus } = await import('./contribution-engine');
-    const { LoanScheduleCache } = await import('@/lib/services/LoanScheduleCache');
+
 
     // Resolve User for penalties
     const user = await db.user.findUnique({ where: { memberId } });

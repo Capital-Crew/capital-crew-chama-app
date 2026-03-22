@@ -80,7 +80,7 @@ export function PreviewModal({ open, onOpenChange, report, data, rawData, filter
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-4xl max-h-[85vh] rounded-2xl border-0 shadow-2xl p-0 overflow-hidden flex flex-col">
 
-                {/* ── Colored Header ── */}
+                {}
                 <div className={`px-6 pt-5 pb-4 ${colors.bg} border-b ${colors.border} flex-shrink-0`}>
                     <DialogHeader className="gap-0">
                         <div className="flex items-center justify-between">
@@ -105,7 +105,7 @@ export function PreviewModal({ open, onOpenChange, report, data, rawData, filter
                     </DialogHeader>
                 </div>
 
-                {/* ── Summary KPIs ── */}
+                {}
                 {summaryEntries.length > 0 && (
                     <div className="px-6 pt-4 pb-2 flex-shrink-0 border-b border-slate-100 dark:border-slate-800">
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -128,7 +128,7 @@ export function PreviewModal({ open, onOpenChange, report, data, rawData, filter
                     </div>
                 )}
 
-                {/* ── Data Table ── */}
+                {}
                 <div className="flex-1 overflow-auto">
                     {data.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -177,7 +177,7 @@ export function PreviewModal({ open, onOpenChange, report, data, rawData, filter
                     )}
                 </div>
 
-                {/* ── Footer ── */}
+                {}
                 <DialogFooter className="px-6 pb-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex-row gap-2 flex-shrink-0">
                     <button
                         onClick={onBackToFilters}

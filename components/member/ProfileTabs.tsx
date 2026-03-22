@@ -22,7 +22,7 @@ export default function ProfileTabs({
 
     return (
         <div className="bg-white border border-gray-200 rounded-lg shadow-sm min-h-[600px]">
-            {/* Tab Header */}
+            {}
             <div className="border-b border-gray-200 px-4">
                 <nav className="-mb-px flex space-x-8" aria-label="Tabs">
                     {tabs.map((tab) => (
@@ -42,9 +42,9 @@ export default function ProfileTabs({
                 </nav>
             </div>
 
-            {/* Tab Content */}
+            {}
             <div className="p-6">
-                {/* 1. Personal Info */}
+                {}
                 {activeTab === 'personal' && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
@@ -75,7 +75,7 @@ export default function ProfileTabs({
                     </div>
                 )}
 
-                {/* 2. Contribution History */}
+                {}
                 {activeTab === 'contributions' && (
                     <div className="overflow-hidden">
                         <table className="min-w-full divide-y divide-gray-200">
@@ -115,7 +115,7 @@ export default function ProfileTabs({
                     </div>
                 )}
 
-                {/* 3. Loan Portfolio */}
+                {}
                 {activeTab === 'loans' && (
                     <div className="overflow-hidden">
                         <table className="min-w-full divide-y divide-gray-200">

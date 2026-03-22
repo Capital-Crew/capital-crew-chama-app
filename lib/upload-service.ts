@@ -14,9 +14,6 @@ export async function uploadFile(file: File): Promise<string> {
     const fileExtension = file.name.split('.').pop();
     const fileName = `${uuidv4()}.${fileExtension}`;
 
-    // Storage path logic
-    // On Vercel, public directory is read-only. We would need S3 here.
-    // For local dev, we save to public/uploads/minutes
     const relativePath = join('uploads', 'minutes', fileName);
     const absolutePath = join(process.cwd(), 'public', relativePath);
 

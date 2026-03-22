@@ -2,9 +2,6 @@ import { auth } from "@/auth"
 import { db } from "@/lib/db"
 import { serializeApprovalRequest } from "@/lib/serializers"
 
-// ==========================================
-// CONFIGURATION
-// ==========================================
 
 // Map Roles to Permissions (Simple version)
 export const ROLE_PERMISSIONS: Record<string, string[]> = {
@@ -37,9 +34,6 @@ export function hasPermission(userRole: string, requiredPermission: string | nul
     return false
 }
 
-// ==========================================
-// DATA FETCHERS (NOT Server Actions)
-// ==========================================
 
 export async function getPendingApprovals() {
     const session = await auth()

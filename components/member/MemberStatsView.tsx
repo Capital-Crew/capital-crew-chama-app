@@ -26,10 +26,10 @@ const StatRow = ({ label, value, highlight = false }: { label: string, value: st
 export function MemberStatsView({ stats, loans, memberId, snapshot }: MemberStatsViewProps) {
     return (
         <div className="bg-white min-h-screen font-sans">
-            {/* Toolbar */}
+            {}
 
 
-            {/* Quick Stats Header (snapshot) or Fallback Identity */}
+            {}
             {snapshot ? (
                 <MemberQuickStats stats={snapshot} />
             ) : (
@@ -41,7 +41,7 @@ export function MemberStatsView({ stats, loans, memberId, snapshot }: MemberStat
                 </div>
             )}
 
-            {/* General Metrics Section */}
+            {}
             <div className="mb-8">
                 <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
                     <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
@@ -49,14 +49,14 @@ export function MemberStatsView({ stats, loans, memberId, snapshot }: MemberStat
                     </div>
 
                     <div className="p-8 grid grid-cols-1 lg:grid-cols-2 gap-x-12 gap-y-6">
-                        {/* Column 1 */}
+                        {}
                         <div className="space-y-4">
                             <StatRow label="Member No." value={stats.memberNumber} />
                             <StatRow label="Member Name" value={stats.name} />
                             <StatRow label="Total Contributions" value={stats.shareCapital} />
                         </div>
 
-                        {/* Column 2 */}
+                        {}
                         <div className="space-y-4">
                             <StatRow label="Current Account Balance" value={stats.currentAccountBalance} />
                             <StatRow label="Total Outstanding Loan Balance" value={stats.totalOutstandingBalance} highlight />
@@ -65,7 +65,7 @@ export function MemberStatsView({ stats, loans, memberId, snapshot }: MemberStat
                 </div>
             </div>
 
-            {/* Loans Sub-Table */}
+            {}
             <div className="mb-8">
                 <MemberAllLoansTable loans={loans as any} />
             </div>

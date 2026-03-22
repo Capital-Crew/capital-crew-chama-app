@@ -8,7 +8,7 @@
  */
 
 import React from 'react'
-import { TrendingUp, DollarSign, Wallet, Download, Calendar, PieChart } from 'lucide-react'
+import { TrendingUp, DollarSign, Wallet, Download, Calendar, PieChart, Landmark, Scale, Target, Activity } from 'lucide-react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 
@@ -41,9 +41,10 @@ interface Props {
     stats: DashboardStats
     trends: TrendData[]
     personalDetail?: any // Type from getMemberFullDetail
+    ledgerKPIs?: any
 }
 
-export function DashboardView({ stats, trends, personalDetail }: Props) {
+export function DashboardView({ stats, trends, personalDetail, ledgerKPIs }: Props) {
     // Helper to export data
 
     // Helper to export data
@@ -72,17 +73,17 @@ export function DashboardView({ stats, trends, personalDetail }: Props) {
 
     return (
         <div className="min-h-screen bg-slate-50/50">
-            {/* Header Actions */}
+            {}
             <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 md:px-8 py-3 md:py-4 flex items-center justify-end">
                 <div className="flex gap-2 md:gap-3">
-                    {/* Date Filter Placeholder */}
+                    {}
                     <button className="flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 bg-white border border-slate-200 rounded-lg text-xs md:text-sm font-semibold text-slate-600 hover:bg-slate-50">
                         <Calendar className="w-3.5 h-3.5 md:w-4 md:h-4" />
                         <span className="hidden sm:inline">Last 12 Months</span>
                         <span className="sm:hidden">12M</span>
                     </button>
 
-                    {/* Export Button */}
+                    {}
                     <button
                         onClick={handleExport}
                         className="flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 bg-slate-900 text-white rounded-lg text-xs md:text-sm font-bold hover:bg-slate-800 transition-colors"
@@ -96,7 +97,7 @@ export function DashboardView({ stats, trends, personalDetail }: Props) {
 
             <div className="p-4 md:p-6">
                 <div className="space-y-4 md:space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    {/* Header */}
+                    {}
                     <div>
                         <h1 className="text-xl md:text-2xl font-black text-slate-900 uppercase tracking-tight mb-1 md:mb-2">
                             Financial Performance
@@ -106,8 +107,51 @@ export function DashboardView({ stats, trends, personalDetail }: Props) {
                         </p>
                     </div>
 
-                    {/* LIGHTHOUSE FIX 5: Added an sr-only h2 to pass structured hierarchy checks before using h3 in cards */}
+                    {}
                     <h2 className="sr-only">Key Metrics</h2>
+                    
+                    {}
+                    {ledgerKPIs && (
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
+                            <ModernMetricCard
+                                icon={<Landmark className="w-5 h-5 md:w-6 md:h-6" />}
+                                label="Total Assets"
+                                value={ledgerKPIs.totalAssets || 0}
+                                subtitle="Current gross assets"
+                                gradient="from-blue-500 to-cyan-600"
+                                iconBg="bg-blue-50"
+                                iconColor="text-blue-600"
+                            />
+                            <ModernMetricCard
+                                icon={<Scale className="w-5 h-5 md:w-6 md:h-6" />}
+                                label="Total Liabilities"
+                                value={ledgerKPIs.totalLiabilities || 0}
+                                subtitle="External obligations"
+                                gradient="from-amber-500 to-orange-600"
+                                iconBg="bg-amber-50"
+                                iconColor="text-amber-600"
+                            />
+                            <ModernMetricCard
+                                icon={<TrendingUp className="w-5 h-5 md:w-6 md:h-6" />}
+                                label="Total Revenue"
+                                value={ledgerKPIs.totalRevenue || 0}
+                                subtitle="Gross income"
+                                gradient="from-emerald-500 to-teal-600"
+                                iconBg="bg-emerald-50"
+                                iconColor="text-emerald-600"
+                            />
+                            <ModernMetricCard
+                                icon={<Target className="w-5 h-5 md:w-6 md:h-6" />}
+                                label="Net Position"
+                                value={ledgerKPIs.netPosition || 0}
+                                subtitle="Assets - Liabilities"
+                                gradient="from-purple-500 to-indigo-600"
+                                iconBg="bg-purple-50"
+                                iconColor="text-purple-600"
+                            />
+                        </div>
+                    )}
+
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                         <ModernMetricCard
                             icon={<Wallet className="w-5 h-5 md:w-6 md:h-6" />}
@@ -138,10 +182,10 @@ export function DashboardView({ stats, trends, personalDetail }: Props) {
                         />
                     </div>
 
-                    {/* LIGHTHOUSE FIX 5: Maintain h2 hierarchy for screen readers before charting section */}
+                    {}
                     <h2 className="sr-only">Financial Charts</h2>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
-                        {/* Trend Chart */}
+                        {}
                         <div className="bg-white p-4 md:p-5 rounded-2xl md:rounded-3xl shadow-sm border border-slate-100">
                             <h3 className="text-sm md:text-base font-bold text-slate-800 mb-3 md:mb-4 flex items-center gap-2">
                                 <TrendingUp className="w-4 h-4 text-cyan-500" />
@@ -152,7 +196,7 @@ export function DashboardView({ stats, trends, personalDetail }: Props) {
                             </div>
                         </div>
 
-                        {/* Comparison Chart */}
+                        {}
                         <div className="bg-white p-4 md:p-5 rounded-2xl md:rounded-3xl shadow-sm border border-slate-100">
                             <h3 className="text-sm md:text-base font-bold text-slate-800 mb-3 md:mb-4 flex items-center gap-2">
                                 <PieChart className="w-4 h-4 text-purple-500" />
@@ -164,7 +208,7 @@ export function DashboardView({ stats, trends, personalDetail }: Props) {
                         </div>
                     </div>
 
-                    {/* LIGHTHOUSE FIX 5: Keep heading hierarchy intact for lists */}
+                    {}
                     <h2 className="sr-only">Member Top Lists</h2>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
                         <TopListCard
@@ -200,11 +244,11 @@ function ModernMetricCard({ icon, label, value, subtitle, gradient, iconBg, icon
                 <div className={`${iconBg} ${iconColor} p-2 rounded-xl md:rounded-2xl`}>
                     {icon}
                 </div>
-                {/* Sparkline placeholder or decoration could go here */}
+                {}
             </div>
 
             <div className="relative z-10">
-                {/* LIGHTHOUSE FIX 2.3 & 2.4: Higher contrast for small text, and change h3 to p to fix heading hierarchy */}
+                {}
                 <p className="text-[10px] md:text-[11px] font-black text-slate-600 uppercase tracking-widest mb-0.5">{label}</p>
                 <div className="text-xl md:text-2xl font-black text-slate-900 mb-0.5">
                     KES {value.toLocaleString()}
@@ -212,7 +256,7 @@ function ModernMetricCard({ icon, label, value, subtitle, gradient, iconBg, icon
                 <p className="text-[10px] md:text-[11px] font-semibold text-slate-500">{subtitle}</p>
             </div>
 
-            {/* Hover Gradient */}
+            {}
             <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-5 rounded-bl-[100px] transition-opacity duration-500`} />
         </div >
     )
@@ -227,7 +271,7 @@ function TopListCard({ title, subtitle, items, type, icon, theme }: any) {
                 </div>
                 <div>
                     <h3 className="text-sm md:text-base font-bold text-slate-900">{title}</h3>
-                    {/* LIGHTHOUSE FIX 2.3: Increased contrast to passing AA limits */}
+                    {}
                     <p className="text-[10px] md:text-[11px] text-slate-600 font-semibold">{subtitle}</p>
                 </div>
             </div>

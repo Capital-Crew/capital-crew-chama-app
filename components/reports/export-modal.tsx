@@ -98,7 +98,7 @@ export function ExportModal({ open, onOpenChange, report, data }: ExportModalPro
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-sm rounded-2xl border-0 shadow-2xl p-0 overflow-hidden">
 
-                {/* ── Header ── */}
+                {}
                 <div className={`px-6 pt-6 pb-4 ${colors.bg} border-b ${colors.border}`}>
                     <DialogHeader className="gap-0">
                         <div className="flex items-center gap-3 mb-1">
@@ -117,9 +117,9 @@ export function ExportModal({ open, onOpenChange, report, data }: ExportModalPro
                     </DialogHeader>
                 </div>
 
-                {/* ── Body ── */}
+                {}
                 <div className="px-6 py-5 space-y-4">
-                    {/* Format Selection */}
+                    {}
                     <div className="space-y-1.5">
                         <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                             Format
@@ -156,7 +156,7 @@ export function ExportModal({ open, onOpenChange, report, data }: ExportModalPro
                         </div>
                     </div>
 
-                    {/* Filename */}
+                    {}
                     <label className="block space-y-1.5">
                         <span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                             Filename
@@ -170,7 +170,7 @@ export function ExportModal({ open, onOpenChange, report, data }: ExportModalPro
                     </label>
                 </div>
 
-                {/* ── Footer ── */}
+                {}
                 <DialogFooter className="px-6 pb-5 pt-0 flex-row gap-2">
                     <button
                         onClick={() => onOpenChange(false)}

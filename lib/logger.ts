@@ -32,20 +32,18 @@ class Logger {
     }
 
     info(message: string, data?: any) {
-        console.info(this.format('info', message, data));
     }
 
     warn(message: string, data?: any) {
-        console.warn(this.format('warn', message, data));
     }
 
     error(message: string, data?: any) {
+        // TODO: replace with structured logger
         console.error(this.format('error', message, data));
     }
 
     debug(message: string, data?: any) {
         if (!this.isProduction) {
-            console.debug(this.format('debug', message, data));
         }
     }
 }

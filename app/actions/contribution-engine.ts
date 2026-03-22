@@ -13,7 +13,7 @@ export async function calculateCurrentMonthStatus(memberId: string) {
     // 2. Fetch Contributions for Current Month
     const now = new Date()
     const start = startOfMonth(now)
-    const end = endOfMonth(now)
+    const _end = endOfMonth(now)
 
     // 3. Fetch MonthlyTracker for Current Month (Source of Truth)
     const currentMonthTracker = await db.monthlyTracker.findUnique({

@@ -144,7 +144,7 @@ export const reverseLoanTransaction = withAudit(
                 ctx.endStep('Execute GL Contra Reversal');
 
                 ctx.beginStep('Create Reversal Record');
-                const contraTx = await tx.loanTransaction.create({
+                await tx.loanTransaction.create({
                     data: {
                         loanId: originalTx.loanId,
                         type: 'REVERSAL',

@@ -51,7 +51,7 @@ export function MeetingsHub({ upcomingMeetings, pendingFines }: MeetingsHubProps
 
     return (
         <div className="space-y-8">
-            {/* Header Banner */}
+            {}
             <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 to-blue-700 rounded-3xl px-8 py-10 text-white shadow-xl">
                 <div className="absolute -top-16 -right-16 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none" />
                 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -69,7 +69,7 @@ export function MeetingsHub({ upcomingMeetings, pendingFines }: MeetingsHubProps
                 </div>
             </div>
 
-            {/* Pending Penalties Banner */}
+            {}
             {fines.length > 0 && (
                 <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-5 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
@@ -85,7 +85,7 @@ export function MeetingsHub({ upcomingMeetings, pendingFines }: MeetingsHubProps
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Upcoming Meetings */}
+                {}
                 <section className="space-y-4">
                     <div className="flex items-center gap-2">
                         <Calendar className="w-5 h-5 text-indigo-500" />
@@ -144,7 +144,7 @@ export function MeetingsHub({ upcomingMeetings, pendingFines }: MeetingsHubProps
                     )}
                 </section>
 
-                {/* Penalties Section */}
+                {}
                 <section className="space-y-4">
                     <div className="flex items-center gap-2">
                         <Wallet className="w-5 h-5 text-red-500" />

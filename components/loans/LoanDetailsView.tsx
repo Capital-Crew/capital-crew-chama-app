@@ -64,7 +64,7 @@ export function LoanDetailsView({ loan, transactions }: LoanDetailsViewProps) {
 
     return (
         <div className="space-y-8">
-            {/* Summary Cards */}
+            {}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <SummaryCard
                     title="Principal Paid"
@@ -87,9 +87,9 @@ export function LoanDetailsView({ loan, transactions }: LoanDetailsViewProps) {
                 />
             </div>
 
-            {/* Controls */}
+            {}
             <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                {/* Tabs */}
+                {}
                 <div className="flex p-1 bg-slate-100 rounded-lg">
                     {['ALL', 'PRINCIPAL', 'INTEREST', 'PENALTY'].map((type) => (
                         <button
@@ -105,7 +105,7 @@ export function LoanDetailsView({ loan, transactions }: LoanDetailsViewProps) {
                     ))}
                 </div>
 
-                {/* Search */}
+                {}
                 <div className="relative w-full md:w-64">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input
@@ -118,7 +118,7 @@ export function LoanDetailsView({ loan, transactions }: LoanDetailsViewProps) {
                 </div>
             </div>
 
-            {/* Table */}
+            {}
             <LoanTransactionTable transactions={filteredTransactions} />
         </div>
     );

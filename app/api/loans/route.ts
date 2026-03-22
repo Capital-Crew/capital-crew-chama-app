@@ -104,9 +104,6 @@ export async function POST(request: NextRequest) {
             orderBy: { createdAt: 'desc' },
             select: { loanApplicationNumber: true }
         })
-        // Pass pseudo-array to generator if it relies on length, OR better: refactor generator?
-        // Checking utils.ts: generateLoanApplicationNumber uses `starts with prefix` count.
-        // So we DO need a count of loans for this month.
         const now = new Date();
         const year = now.getFullYear();
         const month = (now.getMonth() + 1).toString().padStart(2, '0');

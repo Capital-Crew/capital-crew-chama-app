@@ -189,7 +189,7 @@ export function PermissionControlPanel() {
 
     return (
         <div className="space-y-6">
-            {/* Success/Error Messages */}
+            {}
             {success && (
                 <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl text-sm font-bold">
                     ✓ {success}
@@ -202,7 +202,7 @@ export function PermissionControlPanel() {
                 </div>
             )}
 
-            {/* Header */}
+            {}
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-6">
                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">
                     Permission Control Panel
@@ -212,7 +212,7 @@ export function PermissionControlPanel() {
                 </p>
             </div>
 
-            {/* Users Table */}
+            {}
             <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden">
                 <table className="w-full text-left text-xs">
                     <thead className="bg-slate-50 text-slate-400 font-black uppercase tracking-widest text-[10px]">
@@ -269,11 +269,11 @@ export function PermissionControlPanel() {
                 </table>
             </div>
 
-            {/* Permission Modal */}
+            {}
             {isModalOpen && selectedUser && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden">
-                        {/* Modal Header */}
+                        {}
                         <div className="bg-gradient-to-r from-cyan-500 to-blue-500 p-6 text-white">
                             <h3 className="text-xl font-black">Manage Permissions</h3>
                             <p className="text-sm opacity-90 mt-1">
@@ -281,7 +281,7 @@ export function PermissionControlPanel() {
                             </p>
                         </div>
 
-                        {/* Modal Body */}
+                        {}
                         <div className="p-6 max-h-[60vh] overflow-y-auto">
                             {error && (
                                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm font-bold mb-4">
@@ -318,7 +318,7 @@ export function PermissionControlPanel() {
                             </div>
                         </div>
 
-                        {/* Modal Footer */}
+                        {}
                         <div className="bg-slate-50 p-6 flex gap-3">
                             <button
                                 onClick={() => setIsModalOpen(false)}

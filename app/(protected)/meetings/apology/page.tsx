@@ -27,7 +27,7 @@ export default async function MemberApologyPage() {
 
     return (
         <div className="min-h-screen bg-slate-50/50">
-            {/* Header */}
+            {}
             <div className="bg-white border-b border-slate-200 sticky top-0 z-30">
                 <div className="max-w-3xl mx-auto px-4 py-6">
                     <div className="flex items-center gap-4">
@@ -73,7 +73,7 @@ export default async function MemberApologyPage() {
                             Approved apologies exempt you from the standard "Absentee Fine". Ensure you submit your reason clearly and before the 3-day deadline.
                         </p>
                     </div>
-                    {/* Decorative Blob */}
+                    {}
                     <div className="absolute -top-12 -right-12 w-48 h-48 bg-white/10 rounded-full blur-3xl" />
                 </div>
             </main>

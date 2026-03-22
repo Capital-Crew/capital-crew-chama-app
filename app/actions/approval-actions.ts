@@ -2,7 +2,6 @@
 
 import { auth } from "@/auth"
 import { db } from "@/lib/db"
-import { ApprovalStatus } from "@prisma/client"
 import { revalidatePath } from "next/cache"
 import { serializeApprovalRequest } from "@/lib/serializers"
 import { hasPermission } from "@/lib/data/approval-data"
@@ -72,9 +71,6 @@ export async function processApproval(requestId: string, decision: 'APPROVED' | 
                     // Add other cases
                 }
             } else {
-                // REJECTED Logic
-                // Generic rejection usually doesn't need to do much besides updating the request status,
-                // but if we need to update the reference table, do it here.
                 switch (request.type) {
                     case 'MEMBER':
                         // Maybe mark as REJECTED in member table too if needed

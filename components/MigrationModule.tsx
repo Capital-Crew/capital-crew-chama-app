@@ -25,13 +25,13 @@ export function MigrationModule() {
 
     return (
         <div className="p-6 max-w-6xl mx-auto">
-            {/* Header */}
+            {}
             <div className="mb-6">
                 <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tight">System & Data Setup</h1>
                 <p className="text-slate-600 mt-2">Configure core system accounting.</p>
             </div>
 
-            {/* Setup Warning - Seed Accounts */}
+            {}
             <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-4 mb-6">
                 <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -51,7 +51,7 @@ export function MigrationModule() {
                 </div>
             </div>
 
-            {/* Messages */}
+            {}
             {message && (
                 <div className={`p-4 rounded-xl mb-6 flex items-center gap-3 ${message.type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
                     }`}>

@@ -135,7 +135,7 @@ export function RepaymentModal({ isOpen, onClose, loan, onSuccess }: RepaymentMo
                                 fileName={`Receipt-${receiptData.transactionId}.pdf`}
                                 className="w-full py-4 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold uppercase tracking-widest text-sm transition-all flex items-center justify-center gap-2"
                             >
-                                {/* @ts-ignore - React-PDF types issue with dynamic import rendering children function */}
+                                {}
                                 {({ loading }: any) => (
                                     <>
                                         <Download className="w-5 h-5" />
@@ -166,7 +166,7 @@ export function RepaymentModal({ isOpen, onClose, loan, onSuccess }: RepaymentMo
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
 
-                {/* Header */}
+                {}
                 <div className="bg-gradient-to-r from-blue-600 to-cyan-600 p-6 flex justify-between items-start shrink-0">
                     <div className="text-white">
                         <h3 className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
@@ -180,7 +180,7 @@ export function RepaymentModal({ isOpen, onClose, loan, onSuccess }: RepaymentMo
                     </button>
                 </div>
 
-                {/* Body */}
+                {}
                 <div className="p-6 overflow-y-auto">
                     {error && (
                         <div className="mb-4 p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-700">

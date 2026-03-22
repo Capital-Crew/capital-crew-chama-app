@@ -16,7 +16,7 @@ export default function ToastTestPage() {
             </div>
 
             <div className="grid gap-6">
-                {/* Success Notifications */}
+                {}
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
@@ -53,7 +53,7 @@ export default function ToastTestPage() {
                     </CardContent>
                 </Card>
 
-                {/* Error Notifications */}
+                {}
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
@@ -102,7 +102,7 @@ export default function ToastTestPage() {
                     </CardContent>
                 </Card>
 
-                {/* Warning Notifications */}
+                {}
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
@@ -131,7 +131,7 @@ export default function ToastTestPage() {
                     </CardContent>
                 </Card>
 
-                {/* Info Notifications */}
+                {}
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
@@ -160,7 +160,7 @@ export default function ToastTestPage() {
                     </CardContent>
                 </Card>
 
-                {/* Loading & Promise Notifications */}
+                {}
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
@@ -204,7 +204,7 @@ export default function ToastTestPage() {
                     </CardContent>
                 </Card>
 
-                {/* Multiple Toasts (Stacking Test) */}
+                {}
                 <Card>
                     <CardHeader>
                         <CardTitle>Stacking Test</CardTitle>

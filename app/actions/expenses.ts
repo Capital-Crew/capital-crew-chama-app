@@ -2,7 +2,7 @@
 
 import { auth } from '@/auth'
 import { db } from '@/lib/db'
-import { ApprovalStatus, AuditLogAction, ExpenseStatus, ExpenseType } from '@prisma/client'
+import { AuditLogAction, ExpenseType } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 import { serializeFinancials, Serialized } from "@/lib/safe-serialization"
 import { ExpenseService } from '@/lib/services/ExpenseService'
@@ -35,18 +35,19 @@ export const createExpenseRequest = withAudit(
         try {
             ctx.beginStep('Execute Expense Creation');
             const expense = await ExpenseService.createExpense({
-                ...data,
-                requesterId: session.user.id
+                description: data.description,
+                amount: data.amount,
+                date: data.date,
+                expenseAccountId: data.expenseAccountId,
+                subCategoryId: data.subCategoryId,
+                recipientId: data.recipientId,
+                type: data.type,
+                receiptUrl: data.receiptUrl,
+                requesterId: session.user.id,
+                status: 'DRAFT' as any // Start as DRAFT — user must explicitly send for approval
             })
             ctx.captureAfter(expense);
             ctx.endStep('Execute Expense Creation');
-
-            ctx.beginStep('Initiate Approval Workflow');
-            try {
-                const { initiateWorkflow } = await import('@/app/actions/workflow-engine')
-                await initiateWorkflow('EXPENSE', expense.id, session.user.id)
-            } catch (e) { }
-            ctx.endStep('Initiate Approval Workflow');
 
             revalidatePath('/accounts')
             return serializeFinancials({ success: true, expense })
@@ -153,6 +154,114 @@ export async function approveReimbursementClaim(expenseId: string) {
         await ExpenseService.finalizeExpense(expenseId, tx)
         return { success: true }
     })
+}
+
+// ─── APPROVAL WORKFLOW ACTIONS ──────────────────────────────────────────────
+
+/**
+ * Get the live workflow status for an expense — used to power the approval panel.
+ */
+export async function getExpenseWorkflowStatus(expenseId: string) {
+    const session = await auth()
+    if (!session?.user?.id) throw new Error('Unauthorized')
+
+    const request = await prisma.workflowRequest.findFirst({
+        where: { entityId: expenseId, entityType: 'EXPENSE' },
+        include: {
+            currentStage: true,
+            actions: {
+                include: { actor: { select: { id: true, name: true, role: true } } },
+                orderBy: { createdAt: 'asc' } as any
+            }
+        },
+        orderBy: { createdAt: 'desc' }
+    })
+
+    return serializeFinancials({ request, currentUserId: session.user.id, currentUserRole: session.user.role })
+}
+
+/**
+ * Send an expense for approval — moves it from DRAFT → PENDING_APPROVAL and creates the workflow.
+ */
+export async function sendExpenseForApproval(expenseId: string) {
+    const session = await auth()
+    if (!session?.user?.id) throw new Error('Unauthorized')
+
+    const expense = await prisma.expense.findUnique({ where: { id: expenseId } })
+    if (!expense) throw new Error('Expense not found')
+    if (expense.status !== 'DRAFT') throw new Error('Only DRAFT expenses can be sent for approval')
+
+    // Check no active workflow already
+    const existing = await prisma.workflowRequest.findFirst({
+        where: { entityId: expenseId, entityType: 'EXPENSE', status: 'PENDING' }
+    })
+    if (existing) throw new Error('An approval request is already active for this expense')
+
+    const { initiateWorkflow } = await import('@/app/actions/workflow-engine')
+    await initiateWorkflow('EXPENSE', expenseId, session.user.id)
+
+    await prisma.expense.update({
+        where: { id: expenseId },
+        data: { status: 'PENDING_APPROVAL' }
+    })
+
+    revalidatePath('/accounts')
+    return { success: true }
+}
+
+/**
+ * Cancel an in-flight expense approval — resets to DRAFT so it can be edited and re-sent.
+ */
+export async function cancelExpenseApproval(expenseId: string) {
+    const session = await auth()
+    if (!session?.user?.id) throw new Error('Unauthorized')
+
+    const request = await prisma.workflowRequest.findFirst({
+        where: { entityId: expenseId, entityType: 'EXPENSE', status: 'PENDING' }
+    })
+    if (!request) throw new Error('No active approval request found')
+
+    // Delete all actions then the request
+    await prisma.workflowAction.deleteMany({ where: { requestId: request.id } })
+    await prisma.workflowRequest.delete({ where: { id: request.id } })
+
+    await prisma.expense.update({
+        where: { id: expenseId },
+        data: { status: 'DRAFT' }
+    })
+
+    revalidatePath('/accounts')
+    return { success: true }
+}
+
+/**
+ * Admin vote on an expense — APPROVE or REJECT.
+ */
+export async function voteOnExpenseApproval(expenseId: string, action: 'APPROVED' | 'REJECTED', notes?: string) {
+    const session = await auth()
+    if (!session?.user?.id) throw new Error('Unauthorized')
+
+    const adminRoles = ['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER', 'SECRETARY']
+    if (!adminRoles.includes(session.user.role as string)) throw new Error('Only admins can vote on expenses')
+
+    const request = await prisma.workflowRequest.findFirst({
+        where: { entityId: expenseId, entityType: 'EXPENSE', status: 'PENDING' }
+    })
+    if (!request) throw new Error('No active approval workflow found for this expense')
+
+    const { processWorkflowAction } = await import('@/app/actions/workflow-engine')
+    await processWorkflowAction(request.id, action as any, notes)
+
+    // If rejected, update expense status
+    if (action === 'REJECTED') {
+        await prisma.expense.update({
+            where: { id: expenseId },
+            data: { status: 'REJECTED' }
+        })
+    }
+
+    revalidatePath('/accounts')
+    return { success: true }
 }
 
 /**

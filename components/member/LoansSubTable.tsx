@@ -60,7 +60,7 @@ export function LoansSubTable({ loans }: LoansSubTableProps) {
                                     </Link>
                                 </td>
                                 <td className="px-4 py-3 text-right text-red-500">{formatCurrency(loan.principalInArrears)}</td>
-                                <td className="px-4 py-3 text-right text-red-500">{formatCurrency(0)}</td> {/* Interest Arrears breakdown not in basic item yet, strictly 0 per screenshot mostly, or mapped */}
+                                <td className="px-4 py-3 text-right text-red-500">{formatCurrency(0)}</td> {}
                                 <td className="px-4 py-3 text-right text-teal-500">{formatCurrency(0)}</td>
                                 <td className="px-4 py-3 text-right text-teal-500">{formatCurrency(0)}</td>
                                 <td className="px-4 py-3 text-right">{formatCurrency(loan.principalInArrears)}</td>

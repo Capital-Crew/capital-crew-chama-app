@@ -19,7 +19,7 @@ export default function StatementsTab({ ledger }: { ledger: LedgerEntry[] }) {
 
     return (
         <div className="space-y-6">
-            {/* Filter Toolbar */}
+            {}
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex flex-wrap gap-4 items-end">
                 <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Date Range</label>
@@ -43,7 +43,7 @@ export default function StatementsTab({ ledger }: { ledger: LedgerEntry[] }) {
                 </button>
             </div>
 
-            {/* Statement Table */}
+            {}
             <div className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
                 <table className="min-w-full divide-y divide-slate-200">
                     <thead className="bg-gray-50 text-slate-500 font-mono text-[11px] uppercase tracking-wider">
@@ -53,7 +53,7 @@ export default function StatementsTab({ ledger }: { ledger: LedgerEntry[] }) {
                             <th className="px-6 py-3 text-left">Description</th>
                             <th className="px-6 py-3 text-right">Debit</th>
                             <th className="px-6 py-3 text-right">Credit</th>
-                            {/* <th className="px-6 py-3 text-right">Balance</th> */}
+                            {}
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-100 font-mono text-xs">
@@ -63,9 +63,6 @@ export default function StatementsTab({ ledger }: { ledger: LedgerEntry[] }) {
                             </tr>
                         ) : (
                             ledger.map((entry) => {
-                                // For display, we usually show the aggregated Debit and Credit for clarity?
-                                // Or we just show one line per entry.
-                                // Let's show the Totals.
                                 const debit = entry.lines.reduce((sum, l) => sum + l.debit, 0)
                                 const credit = entry.lines.reduce((sum, l) => sum + l.credit, 0)
 

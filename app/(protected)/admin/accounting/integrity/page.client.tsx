@@ -48,7 +48,7 @@ export default function IntegrityPage() {
 
             {result && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* General Ledger Status */}
+                    {}
                     <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
                         <h2 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-2">
                             <ActivityIcon className="w-6 h-6 text-slate-400" />
@@ -85,7 +85,7 @@ export default function IntegrityPage() {
                         </div>
                     </div>
 
-                    {/* Account Cache Status */}
+                    {}
                     <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
                         <h2 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-2">
                             <ActivityIcon className="w-6 h-6 text-slate-400" />

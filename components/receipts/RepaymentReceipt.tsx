@@ -2,9 +2,6 @@ import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Font } from '@react-pdf/renderer';
 import { format } from 'date-fns';
 
-// ----------------------------------------------------------------------
-// STYLES
-// ----------------------------------------------------------------------
 
 const styles = StyleSheet.create({
     page: {
@@ -134,9 +131,6 @@ const styles = StyleSheet.create({
     }
 });
 
-// ----------------------------------------------------------------------
-// DATA TYPES
-// ----------------------------------------------------------------------
 
 export interface ReceiptData {
     transactionId: string;
@@ -159,9 +153,6 @@ export interface ReceiptData {
     };
 }
 
-// ----------------------------------------------------------------------
-// COMPONENT
-// ----------------------------------------------------------------------
 
 export function RepaymentReceipt({ data }: { data: ReceiptData }) {
     const { transactionId, date, amount, description, member, loan, allocation } = data;
@@ -172,7 +163,7 @@ export function RepaymentReceipt({ data }: { data: ReceiptData }) {
     return (
         <Document>
             <Page size="A5" style={styles.page}>
-                {/* HEADER */}
+                {}
                 <View style={styles.header}>
                     <Text style={styles.logoText}>CAPITAL CREW SACCO</Text>
                     <View style={styles.companyInfo}>
@@ -182,10 +173,10 @@ export function RepaymentReceipt({ data }: { data: ReceiptData }) {
                     </View>
                 </View>
 
-                {/* TITLE */}
+                {}
                 <Text style={styles.title}>Official Receipt</Text>
 
-                {/* INFO GRID */}
+                {}
                 <View style={[styles.row, { justifyContent: 'space-between' }]}>
                     <View style={{ width: '48%' }}>
                         <Text style={{ ...styles.section, color: '#637381', fontSize: 9 }}>RECEIVED FROM:</Text>
@@ -200,7 +191,7 @@ export function RepaymentReceipt({ data }: { data: ReceiptData }) {
                     </View>
                 </View>
 
-                {/* ALLOCATION TABLE */}
+                {}
                 <View style={styles.table}>
                     <View style={styles.tableRow}>
                         <View style={styles.tableCol}>
@@ -248,7 +239,7 @@ export function RepaymentReceipt({ data }: { data: ReceiptData }) {
                     )}
                 </View>
 
-                {/* TOTAL */}
+                {}
                 <View style={styles.totalRow}>
                     <Text style={styles.totalLabel}>TOTAL AMOUNT PAID:</Text>
                     <Text style={styles.totalValue}>{formatCurrency(amount)}</Text>
@@ -258,7 +249,7 @@ export function RepaymentReceipt({ data }: { data: ReceiptData }) {
                     ({description})
                 </Text>
 
-                {/* FOOTER */}
+                {}
                 <View style={styles.footer}>
                     <Text>This is a system generated receipt and does not require a signature.</Text>
                     <Text>Capital Crew Sacco System • {format(new Date(), 'yyyy')}</Text>

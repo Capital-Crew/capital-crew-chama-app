@@ -5,11 +5,6 @@ import { AccountType, ReferenceType, Prisma, SystemAccountType, PrismaClient } f
 
 type DbClient = Prisma.TransactionClient | PrismaClient
 
-// COMPATIBILITY MODE for Phase 1
-// We map old logic to new tables:
-// Account -> LedgerAccount
-// JournalEntry -> LedgerTransaction
-// JournalLine -> LedgerEntry
 
 
 // Configure Decimal for precise calculations
@@ -129,9 +124,6 @@ export class AccountingEngine {
             // UPDATE CACHED BALANCES
             // We iterate safely to update the `balance` column on LedgerAccount
             for (const line of linesWithAccountIds) {
-                // Determine net impact based on account type
-                // ASSETS/EXPENSES: Debit increases (+), Credit decreases (-)
-                // LIABILITY/EQUITY/REVENUE: Credit increases (+), Debit decreases (-)
 
                 let netChange = new Prisma.Decimal(0)
                 const debit = new Prisma.Decimal(line.debitAmount)
@@ -292,9 +284,7 @@ export class AccountingEngine {
                         transactionDate: { lte: asOfDate }
                     }
                 }),
-                /* ledgerTransaction: {
-                    isReversed: false  // Exclude reversed entries
-                } */
+                
             },
             include: {
                 ledgerTransaction: true
@@ -410,9 +400,6 @@ export async function getMemberWalletBalance(memberId: string, tx?: DbClient): P
 
 export async function getMemberContributionBalance(memberId: string, tx?: DbClient): Promise<number> {
     const code = await getSystemCode('CONTRIBUTIONS' as SystemAccountType, tx)
-    // Get balance for this specific member's contributions
-    // Contributions are credits to account 1200.
-    // Since 1200 is now a LIABILITY (Member Fund), credits increase the balance (Positive).
     return await AccountingEngine.getAccountBalance(code, memberId, undefined, tx)
 }
 
@@ -466,10 +453,6 @@ export async function getLoanOutstandingBalance(loanId: string, tx?: DbClient): 
 
     const lines = Array.from(allEntriesMap.values());
 
-    // 5. Intelligent Filtering for multi-loan transactions
-    // If a line was picked up by Reference ID, but mentions a COMPLETELY DIFFERENT loan number, skip it for this loan.
-    // Example: A transaction for LN010 has a line "Repayment - LN005". 
-    // This line should NOT be counted for LN010's balance.
     const filteredLines = lines.filter(line => {
         const desc = line.description || "";
         // If it mentions ANOTHER loan and DOES NOT mention THIS loan, exclude it.
@@ -551,9 +534,6 @@ export async function getLoanPenaltyBalance(loanId: string, tx?: DbClient): Prom
     const client = tx ?? prisma
 
     try {
-        // Attempt to get system mapping for Penalty Receivable
-        // If not mapped, it might throw, so we catch and return 0 or rely on Loan model if needed.
-        // But AccountingEngine should drive this.
         const penaltyCode = await getSystemCode('RECEIVABLE_LOAN_PENALTY' as SystemAccountType, tx)
 
         // Penalties are Assets (Receivables)
@@ -579,9 +559,6 @@ export async function getLoanFeeBalance(loanId: string, tx?: DbClient): Promise<
     }
 }
 
-// ========================================
-// PRODUCT-LEVEL ACCOUNTING MAPPING
-// ========================================
 
 type LoanEventType = 'INTEREST_ACCRUAL' | 'PENALTY_APPLIED'
 

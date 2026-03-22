@@ -6,7 +6,7 @@ export default function LoginPage() {
             className="flex items-center justify-center min-h-screen bg-cover bg-center bg-no-repeat relative"
             style={{ backgroundImage: "url('/login-bg.png')" }}
         >
-            {/* Optional Overlay for better text contrast if needed */}
+            {}
             <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] z-0" />
 
             <div className="w-full max-w-2xl p-12 relative z-10 bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl shadow-2xl animate-in fade-in zoom-in duration-500">

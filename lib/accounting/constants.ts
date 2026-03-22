@@ -2,17 +2,6 @@ import { SystemAccountType } from "@prisma/client"
 
 // Default Mappings — aligned with full Chart of Accounts hierarchy
 export const DEFAULT_MAPPINGS: Record<SystemAccountType, string> = {
-    // Full hierarchy codes:
-    // 1011: Bank Account (Cash & Bank)
-    // 1021: Principal Loans to Members
-    // 1022: Interest Receivable
-    // 1023: Penalty Receivable
-    // 1024: Fees Receivable
-    // 3011: Non-Withdrawable Deposits (Contributions)
-    // 3012: Member Withdrawable Wallet
-    // 4011: Interest on Loans
-    // 4012: Interest on Penalties
-    // 4021: Processing Fees
 
     // Base Mappings
     CASH_ON_HAND: '1011', // Bank Account

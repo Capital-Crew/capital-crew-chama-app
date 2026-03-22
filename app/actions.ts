@@ -10,11 +10,8 @@ import {
     LoanStatus, ApprovalStatus, NotificationType, RepaymentFrequencyType,
     InterestType, AmortizationType, InterestCalculationPeriodType
 } from '@/lib/types'
-import { redirect } from 'next/navigation'
 import { generateLoanApplicationNumber, generateRepaymentSchedule } from '../lib/utils'
-import { calculateMonthlyInstallment } from '@/lib/loan-calculator'
 import { calculateTopUpDetails, validateNetLoan } from '@/lib/topup-calculator'
-import { EmailService } from '@/lib/services/EmailService'
 import { withAudit } from '@/lib/with-audit'
 
 export async function createMember(formData: FormData) {
@@ -67,6 +64,7 @@ export async function createMember(formData: FormData) {
             const { initiateWorkflow } = await import('@/app/actions/workflow-engine')
             await initiateWorkflow('MEMBER', newMember.id, newMember.id)
         } catch (error) {
+            // TODO: Log error to monitoring service
         }
 
         return newMember
@@ -80,27 +78,9 @@ export async function createMember(formData: FormData) {
 export async function createUserAccount(formData: FormData) {
     // 1. Strict Role Check
     const session = await auth(); // Using auth() from @/auth as imported in other files, but wait, this file imports prisma from relative. 
-    // imports at top of this file: import { auth } -> wait, this file (app/actions.ts) DOES NOT import auth yet.
-    // I need to add import { auth } from '@/auth' at the top if it's missing.
-    // Let me check imports first.
 
-    // Actually, I'll rewrite the function assuming 'auth' is available or I will add the import in a separate step if needed. 
-    // But replace_file_content works on chunks. 
-    // I will assume I can add the import at the top too? No, tool allows contiguous edit.
-    // I will assume 'auth' needs to be imported. I'll do two edits or use multi_replace if imports are far.
-    // Let's look at the file content provided earlier (Step 425). 
-    // It imports 'revalidatePath' and 'prisma'. It DOES NOT import 'auth'.
-    // So I need to add that import first or in parallel.
-    // I will use multi_replace to do both safely.
 
-    // WAIT. I cannot switch to multi_replace inside this tool call flow easily if I already committed to replace_file_content.
-    // I will use this tool call to ONLY update the function relying on a separate step to add the import? 
-    // Or I can add the import here if it's close? It's at line 4?
-    // createUserAccount is at line 45. That's far.
 
-    // I will ABORT this specific tool call and use multi_replace in the next turn? 
-    // No, I can just write the logic here and assume I'll fix the import immediately after.
-    // OR better: I can check if I can modify imports.
 
     // Let's implement the logic assuming `auth` is available, and then I'll add the import.
 
@@ -139,7 +119,10 @@ export async function createUserAccount(formData: FormData) {
     }
 
     // Default Password Logic
-    const defaultPassword = process.env.DEFAULT_MEMBER_PASSWORD || "CapitalCrew@Secure2025"
+    const defaultPassword = process.env.DEFAULT_MEMBER_PASSWORD;
+    if (!defaultPassword) {
+      throw new Error("DEFAULT_MEMBER_PASSWORD environment variable is not set");
+    }
     const bcrypt = require('bcryptjs')
     const hashedPassword = await bcrypt.hash(defaultPassword, 10)
 
@@ -214,9 +197,6 @@ export async function createUserAccount(formData: FormData) {
 
         })
 
-        // Create wallet for the member
-        // Create wallet and Ledger Account for the member using WalletService
-        // WalletService handles the transaction logic (joins existing or creates new)
         const wallet = await WalletService.createWallet(member.id, tx)
 
         // Create welcome notification
@@ -238,7 +218,7 @@ export async function createUserAccount(formData: FormData) {
 
 export const applyForLoan = withAudit(
     { actionType: AuditLogAction.LOAN_APPLIED, domain: 'LOAN', apiRoute: '/api/loans/apply' },
-    async (ctx, prevState: any, formData: FormData) => {
+    async (ctx, _prevState: any, formData: FormData) => {
         ctx.beginStep('Verify Authentication');
         const session = await auth()
         if (!session?.user) {
@@ -610,6 +590,7 @@ export const applyForLoan = withAudit(
                         const { initiateWorkflow } = await import('@/app/actions/workflow-engine');
                         await initiateWorkflow('LOAN', loan.id, loan.memberId, (loan as any).submissionVersion || 1);
                     } catch (workflowErr) {
+                        // TODO: Log error to monitoring service
                         console.error('[WORKFLOW_INIT_FAILURE]:', workflowErr);
                         // We don't throw here as the loan is already updated to PENDING_APPROVAL.
                         // The submitLoanApproval action has auto-repair to fix this later if needed.
@@ -630,6 +611,7 @@ export const applyForLoan = withAudit(
             return { success: true, loanId: loan.id }
 
         } catch (e: any) {
+            // TODO: Log error to monitoring service
             ctx.setErrorCode('DATABASE_ERROR');
             return { error: e.message || 'Failed to process loan application' }
         }
@@ -708,7 +690,7 @@ export async function disburseLoan(loanId: string) {
     const loan = await prisma.loan.findUnique({ where: { id: loanId } })
     if (!loan) return
 
-    const updatedLoan = await prisma.loan.update({
+    await prisma.loan.update({
         where: { id: loanId },
         data: {
             status: LoanStatus.DISBURSED,
@@ -863,6 +845,7 @@ export const submitLoanApplication = withAudit(
             const { initiateWorkflow } = await import('@/app/actions/workflow-engine')
             await initiateWorkflow('LOAN', loan.id, loan.memberId, nextVersion)
         } catch (e) {
+            // TODO: replace with structured logger
             console.error('[WORKFLOW_INIT_ERROR]:', e)
         }
 

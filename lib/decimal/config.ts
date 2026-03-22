@@ -9,9 +9,6 @@
 
 import Decimal from 'decimal.js-light'
 
-// ============================================================================
-// GLOBAL CONFIGURATION
-// ============================================================================
 
 /**
  * Global Decimal configuration
@@ -25,9 +22,6 @@ Decimal.set({
     toExpPos: 9e15,
 })
 
-// ============================================================================
-// SPECIALIZED DECIMAL CONSTRUCTORS
-// ============================================================================
 
 /**
  * MoneyDecimal - For monetary amounts (currency)
@@ -87,9 +81,6 @@ export type PercentDecimal = Decimal;
 // Configure PercentDecimal
 // PercentDecimal.set(PercentDecimal.config())
 
-// ============================================================================
-// CONSTANTS
-// ============================================================================
 
 /**
  * Precision constants for different financial data types

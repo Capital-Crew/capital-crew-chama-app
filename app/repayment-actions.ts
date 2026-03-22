@@ -5,6 +5,10 @@ import { db as prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 
+if (!process.env.CASH_LEDGER_ACCOUNT_ID || !process.env.LOAN_LEDGER_ACCOUNT_ID) {
+  throw new Error('CASH_LEDGER_ACCOUNT_ID and LOAN_LEDGER_ACCOUNT_ID must be set in environment variables')
+}
+
 // Response type
 type ActionResponse = {
     success: boolean
@@ -62,12 +66,6 @@ export async function submitRepayment(formData: FormData): Promise<ActionRespons
 
             // 5. Validation
             if (repaymentAmount > trueOutstandingBalance) {
-                // Return specific error as requested, but we must throw to abort transaction or return error object allowed?
-                // Returning object inside transaction passes it out.
-                // But we want to fail the logic.
-                // Let's throw a custom error to catch outside or simpler: just return error.
-                // Note: returning inside checks validation, but doesn't abort prior writes (none yet).
-                // So returning is safe here.
                 return {
                     success: false,
                     message: `Repayment amount (KES ${repaymentAmount.toLocaleString()}) exceeds actual outstanding balance (KES ${trueOutstandingBalance.toLocaleString()})`,
@@ -79,37 +77,7 @@ export async function submitRepayment(formData: FormData): Promise<ActionRespons
 
             // a) Insert new repayment record (Journal Entry)
             // TODO: Refactor to use AccountingEngine.postJournalEntry like other files
-            /*
-            const entryNumber = `LT-${Date.now()}`
-            await tx.ledgerTransaction.create({
-                data: {
-                    transactionDate: new Date(),
-                    referenceType: 'LOAN_REPAYMENT',
-                    referenceId: loanId,
-                    description: `Robust Repayment - Loan ${loanId}`,
-                    createdBy: 'SYSTEM_ROBUST_ACTION',
-                    createdByName: 'System',
-                    entries: {
-                        create: [
-                            {
-                                ledgerAccountId: process.env.CASH_LEDGER_ACCOUNT_ID!,
-                                description: 'Cash Received',
-                                debitAmount: repaymentAmount,
-                                creditAmount: 0,
-                                ledgerAccount: { connect: { code: '1000' } }
-                            },
-                            {
-                                ledgerAccountId: process.env.LOAN_LEDGER_ACCOUNT_ID!,
-                                description: 'Loan Principal Repayment',
-                                debitAmount: 0,
-                                creditAmount: repaymentAmount,
-                                ledgerAccount: { connect: { code: '1200' } }
-                            }
-                        ]
-                    }
-                }
-            })
-            */
+            
 
             // b) Self-Healing: Update Loan's current_balance
             // New Balance = True Balance - Current Repayment
@@ -128,12 +96,7 @@ export async function submitRepayment(formData: FormData): Promise<ActionRespons
             }
         })
     } catch (error: any) {
-        // If validation inside returned an object, it's fine. If an error was thrown (e.g. database), catch here.
-        // Wait, if I returned inside transaction, the transaction commits?
-        // Yes, if I return a value, it commits.
-        // If I return the { success: false } object, the transaction commits (creates nothing, updates nothing).
-        // This is correct behavior for validation failure.
-
+        // TODO: Log error to monitoring service
         // If it was a real error:
         return {
             success: false,

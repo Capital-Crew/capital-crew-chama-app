@@ -55,12 +55,12 @@ export function LoanJourneyTimeline({ events }: LoanJourneyTimelineProps) {
         <div className="space-y-4">
             {events.map((event, index) => (
                 <div key={event.id} className="flex gap-4 relative">
-                    {/* Timeline Line */}
+                    {}
                     {index !== events.length - 1 && (
                         <div className="absolute left-6 top-12 bottom-0 w-0.5 bg-slate-200" />
                     )}
 
-                    {/* Icon Circle */}
+                    {}
                     <div className={`
                         relative z-10 flex-shrink-0 w-12 h-12 rounded-full 
                         flex items-center justify-center text-xl
@@ -70,7 +70,7 @@ export function LoanJourneyTimeline({ events }: LoanJourneyTimelineProps) {
                         {eventIcons[event.eventType] || '•'}
                     </div>
 
-                    {/* Event Details */}
+                    {}
                     <div className="flex-1 bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
                         <div className="flex items-start justify-between gap-4 mb-2">
                             <div>

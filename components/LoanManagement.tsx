@@ -22,8 +22,9 @@ import { useRouter } from 'next/navigation';
 import { BarChart3Icon } from 'lucide-react';
 import { LoanReportsModal } from './loans/LoanReportsModal';
 import { SearchableSelect } from './ui/searchable-select';
-import { FilterIcon, UserIcon, PackageIcon, XIcon, SearchIcon } from 'lucide-react';
+import { FilterIcon, UserIcon, PackageIcon, XIcon, SearchIcon, CheckCircle2Icon } from 'lucide-react';
 import { PremiumTabs, TabOption } from './shared/PremiumTabs';
+import { DirectLoanLoader } from './loan/DirectLoanLoader';
 // import { LoansPortfolioSummary } from './loans/LoansPortfolioSummary';
 
 interface LoanManagementProps {
@@ -44,6 +45,7 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
     const [selectedLoanId, setSelectedLoanId] = useState<string | null>(null);
     const [isCreating, setIsCreating] = useState(false);
     const [isReportsModalOpen, setIsReportsModalOpen] = useState(false);
+    const [isDirectLoadOpen, setIsDirectLoadOpen] = useState(false);
     const [requiredApprovals, setRequiredApprovals] = useState(3);
 
     // Filters for Disbursed Tab
@@ -200,6 +202,16 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
                         <span className="hidden md:inline">{myDraft ? 'Resume Draft' : 'New Application'}</span>
                         <span className="md:hidden">{myDraft ? 'Resume' : 'New App'}</span>
                     </button>
+                    {['SYSTEM_ADMIN', 'CHAIRPERSON'].includes(userRole) && (
+                        <button
+                            onClick={() => setIsDirectLoadOpen(true)}
+                            className="bg-slate-900 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl font-bold shadow-lg hover:bg-slate-800 transition-all flex items-center gap-2 text-xs md:text-sm"
+                        >
+                            <CheckCircle2Icon className="w-4 h-4 md:w-5 md:h-5 text-cyan-400" />
+                            <span className="hidden md:inline">Load Existing</span>
+                            <span className="md:hidden">Load</span>
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -410,6 +422,13 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
             <LoanReportsModal
                 isOpen={isReportsModalOpen}
                 onClose={() => setIsReportsModalOpen(false)}
+            />
+
+            <DirectLoanLoader 
+                members={members}
+                products={products}
+                isOpen={isDirectLoadOpen}
+                onClose={() => setIsDirectLoadOpen(false)}
             />
         </div >
     );

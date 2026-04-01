@@ -251,7 +251,10 @@ export function WalletDashboard({ memberId }: { memberId: string }) {
                                                 <div className="flex-1">
                                                     <div className="font-bold text-slate-900">{tx.description}</div>
                                                     <div className="text-xs text-slate-500 mt-1">
-                                                        {new Date(tx.date).toLocaleString()}
+                                                        {new Date(tx.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' })}
+                                                        {modalType === 'balance' && (
+                                                            <span className="ml-1"> at {new Date(tx.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })}</span>
+                                                        )}
                                                         {modalType === 'balance' && tx.entryNumber && (
                                                             <span className="ml-2">• Entry #{tx.entryNumber}</span>
                                                         )}

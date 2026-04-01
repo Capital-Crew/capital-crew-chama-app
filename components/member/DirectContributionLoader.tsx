@@ -1,15 +1,13 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Member, LoanProduct } from '@/lib/types';
+import { Member } from '@/lib/types';
 import { toast } from '@/lib/toast';
-import { directLoadLoan } from '@/app/actions/direct-loan-loader-action';
+import { directLoadContribution } from '@/app/actions/direct-contribution-loader-action';
 import { XIcon, CheckCircle2Icon, Loader2Icon, AlertCircleIcon, SearchIcon, ChevronDownIcon } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
 
-interface DirectLoanLoaderProps {
+interface DirectContributionLoaderProps {
     members: Member[];
-    products: LoanProduct[];
     isOpen: boolean;
     onClose: () => void;
 }
@@ -101,67 +99,45 @@ function InlineSelect({
     );
 }
 
-export function DirectLoanLoader({ members, products, isOpen, onClose }: DirectLoanLoaderProps) {
+export function DirectContributionLoader({ members, isOpen, onClose }: DirectContributionLoaderProps) {
     const [memberId, setMemberId] = useState('');
-    const [productId, setProductId] = useState('');
     const [amount, setAmount] = useState('');
-    const [installments, setInstallments] = useState('');
-    const [interestRate, setInterestRate] = useState('');
-    const [disbursementDate, setDisbursementDate] = useState(new Date().toISOString().split('T')[0]);
+    const [effectiveDate, setEffectiveDate] = useState(new Date().toISOString().split('T')[0]);
+    const [description, setDescription] = useState('Balance Brought Forward');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     if (!isOpen) return null;
 
-    const selectedProduct = products.find(p => p.id === productId);
-
-    // When a product is selected, auto-populate the interest rate
-    const handleProductChange = (id: string) => {
-        setProductId(id);
-        const product = products.find(p => p.id === id);
-        if (product) {
-            setInterestRate(parseFloat((product as any).interestRatePerPeriod?.toString() ?? '0').toString());
-        } else {
-            setInterestRate('');
-        }
-    };
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!memberId || !productId || !amount || !installments || !disbursementDate) {
+        if (!memberId || !amount || !effectiveDate) {
             toast.error("Please fill all required fields");
             return;
         }
 
         setIsSubmitting(true);
         try {
-            const result = await directLoadLoan({
+            const result = await directLoadContribution({
                 memberId,
-                loanProductId: productId,
                 amount: parseFloat(amount),
-                installments: parseInt(installments),
-                disbursementDate,
-                purpose: "Back-loaded existing loan"
+                effectiveDate,
+                description
             });
 
             if (result.success) {
-                toast.success(`Success! Loan #${result.loanNumber} has been loaded.`);
-                setMemberId(''); setProductId(''); setAmount(''); setInstallments('');
-                setInterestRate('');
+                toast.success(`Success! Contribution balance loaded.`);
+                setMemberId(''); setAmount('');
                 onClose();
             }
         } catch (error: any) {
-            toast.error(error.message || "Failed to load loan");
+            toast.error(error.message || "Failed to load contribution");
         } finally {
             setIsSubmitting(false);
         }
     };
 
     const memberOptions = members.map(m => ({ value: m.id, label: `${m.name}${m.memberNumber ? ` (${m.memberNumber})` : ''}` }));
-    const productOptions = products.map(p => ({
-        value: p.id,
-        label: `${p.name} (${parseFloat((p as any).interestRatePerPeriod?.toString() ?? '0')}% p.m.)`
-    }));
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
@@ -170,10 +146,10 @@ export function DirectLoanLoader({ members, products, isOpen, onClose }: DirectL
                 <div className="bg-slate-50 px-8 py-6 border-b border-slate-100 flex justify-between items-center rounded-t-[2.5rem]">
                     <div>
                         <h2 className="text-xl font-black text-slate-900 uppercase italic tracking-tighter flex items-center gap-2">
-                            <span className="w-8 h-8 rounded-lg bg-cyan-500 flex items-center justify-center text-white shadow-lg shadow-cyan-200">
+                            <span className="w-8 h-8 rounded-lg bg-teal-500 flex items-center justify-center text-white shadow-lg shadow-teal-200">
                                 <CheckCircle2Icon className="w-5 h-5" />
                             </span>
-                            Direct Loan Loader
+                            Direct Contribution Loader
                         </h2>
                         <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Administrative Injection Tool</p>
                     </div>
@@ -187,7 +163,7 @@ export function DirectLoanLoader({ members, products, isOpen, onClose }: DirectL
                         <AlertCircleIcon className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
                         <p className="text-[11px] text-amber-700 font-bold leading-relaxed">
                             <span className="uppercase tracking-wider mr-1 text-amber-800">Note:</span>
-                            This tool bypasses all approvals and immediately disburses the loan. Use only for migrating already approved loans.
+                            This tool securely injects a historical contribution balance directly into the Member's equity and the core General Ledger.
                         </p>
                     </div>
 
@@ -198,50 +174,9 @@ export function DirectLoanLoader({ members, products, isOpen, onClose }: DirectL
                             <InlineSelect options={memberOptions} value={memberId} onChange={setMemberId} placeholder="Search for a member..." />
                         </div>
 
-                        {/* Product */}
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Loan Product</label>
-                            <InlineSelect options={productOptions} value={productId} onChange={handleProductChange} placeholder="Select product..." />
-                        </div>
-
-                        {/* Interest Rate — auto-filled from product, editable override */}
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Interest Rate (% p.m.)</label>
-                            <div className="relative">
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    value={interestRate}
-                                    onChange={(e) => setInterestRate(e.target.value)}
-                                    placeholder="Auto-filled on product select"
-                                    className={`w-full border-2 rounded-2xl px-4 py-3 text-sm font-black focus:outline-none transition-all placeholder:font-normal placeholder:text-slate-300 ${
-                                        interestRate
-                                            ? 'bg-cyan-50 border-cyan-200 text-cyan-700 focus:border-cyan-500'
-                                            : 'bg-slate-50 border-slate-100 text-slate-800 focus:border-cyan-500'
-                                    }`}
-                                />
-                                {interestRate && (
-                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black uppercase tracking-widest text-cyan-500 bg-cyan-100 px-2 py-0.5 rounded-full">
-                                        Auto
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Disbursement Date */}
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Start Date</label>
-                            <input
-                                type="date"
-                                value={disbursementDate}
-                                onChange={(e) => setDisbursementDate(e.target.value)}
-                                className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold text-slate-800 focus:outline-none focus:border-cyan-500 transition-all"
-                            />
-                        </div>
-
                         {/* Amount */}
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Principal Amount</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Total Balance Brought Forward</label>
                             <div className="relative">
                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-slate-400 text-sm">KES</span>
                                 <input
@@ -249,57 +184,43 @@ export function DirectLoanLoader({ members, products, isOpen, onClose }: DirectL
                                     value={amount}
                                     onChange={(e) => setAmount(e.target.value)}
                                     placeholder="0.00"
-                                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl pl-12 pr-4 py-3 text-sm font-black text-slate-900 focus:outline-none focus:border-cyan-500 transition-all placeholder:text-slate-300"
+                                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl pl-12 pr-4 py-3 text-sm font-black text-slate-900 focus:outline-none focus:border-teal-500 transition-all placeholder:text-slate-300"
                                 />
                             </div>
                         </div>
 
-                        {/* Installments */}
+                        {/* Effective Date */}
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Installments (Months)</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Effective Date</label>
                             <input
-                                type="number"
-                                value={installments}
-                                onChange={(e) => setInstallments(e.target.value)}
-                                placeholder="e.g. 12"
-                                className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold text-slate-800 focus:outline-none focus:border-cyan-500 transition-all"
+                                type="date"
+                                value={effectiveDate}
+                                onChange={(e) => setEffectiveDate(e.target.value)}
+                                className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold text-slate-800 focus:outline-none focus:border-teal-500 transition-all"
+                            />
+                        </div>
+
+                        {/* Description */}
+                        <div className="col-span-full space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Description</label>
+                            <input
+                                type="text"
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                placeholder="Balance Brought Forward"
+                                className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold text-slate-800 focus:outline-none focus:border-teal-500 transition-all"
                             />
                         </div>
                     </div>
-
-                    {/* Summary Snapshot */}
-                    {selectedProduct && amount && installments && interestRate && (
-                        <div className="bg-cyan-50 rounded-3xl p-5 border border-cyan-100 animate-in slide-in-from-top-2">
-                            <h4 className="text-[10px] font-black uppercase tracking-widest text-cyan-600 mb-3">Summary Snapshot</h4>
-                            <div className="grid grid-cols-3 gap-3">
-                                <div className="bg-white/80 p-3 rounded-2xl">
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase">Rate p.m.</p>
-                                    <p className="font-black text-cyan-600 italic">{parseFloat(interestRate)}%</p>
-                                </div>
-                                <div className="bg-white/80 p-3 rounded-2xl">
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase">Total Interest</p>
-                                    <p className="font-black text-orange-600 italic text-xs">
-                                        {formatCurrency(parseFloat(amount) * (parseFloat(interestRate) / 100) * parseInt(installments))}
-                                    </p>
-                                </div>
-                                <div className="bg-white/80 p-3 rounded-2xl">
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase">Est. Monthly</p>
-                                    <p className="font-black text-slate-900 italic text-xs">
-                                        {formatCurrency((parseFloat(amount) * (parseFloat(interestRate) / 100) * parseInt(installments) + parseFloat(amount)) / parseInt(installments))}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
 
                     <button
                         disabled={isSubmitting}
                         className="w-full bg-slate-900 text-white rounded-[1.5rem] py-5 font-black uppercase tracking-tighter italic text-lg hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-3 disabled:opacity-50"
                     >
                         {isSubmitting ? (
-                            <><Loader2Icon className="w-6 h-6 animate-spin text-cyan-400" /> Processing...</>
+                            <><Loader2Icon className="w-6 h-6 animate-spin text-teal-400" /> Injecting...</>
                         ) : (
-                            <><CheckCircle2Icon className="w-6 h-6 text-cyan-400" /> Load Loan Record</>
+                            <><CheckCircle2Icon className="w-6 h-6 text-teal-400" /> Inject Contribution Balance</>
                         )}
                     </button>
                 </form>

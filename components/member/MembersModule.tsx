@@ -6,9 +6,10 @@ import { MemberProfileView } from './MemberProfileView';
 import { getMemberFullDetail } from '@/app/actions/member-dashboard-actions';
 import { UserPermissions } from '@/lib/types';
 import { createUserAccount } from '@/app/actions'; // For Enroll Modal
-import { UserPlus, Users, Loader2 } from 'lucide-react';
+import { UserPlus, Users, Loader2, DatabaseIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
+import { DirectContributionLoader } from './DirectContributionLoader';
 
 interface MembersModuleProps {
     initialMembers: any[];
@@ -29,6 +30,7 @@ export function MembersModule({ initialMembers, initialDetail, userRole, current
     const [viewMode, setViewMode] = useState<'LIST' | 'PROFILE'>('LIST'); // Mobile View Control
     const [isLoading, setIsLoading] = useState(false);
     const [isEnrollOpen, setIsEnrollOpen] = useState(false);
+    const [isLoadContributionOpen, setIsLoadContributionOpen] = useState(false);
     const [enrollError, setEnrollError] = useState('');
 
     // HANDLERS
@@ -99,13 +101,24 @@ export function MembersModule({ initialMembers, initialDetail, userRole, current
                     <h2 className="text-sm font-black text-slate-800 uppercase tracking-wide flex items-center gap-2">
                         <Users className="w-4 h-4 text-cyan-500" /> Directory
                     </h2>
-                    <button
-                        onClick={() => setIsEnrollOpen(true)}
-                        className="bg-slate-900 hover:bg-slate-800 text-white p-2 rounded-lg transition-colors shadow-md"
-                        title="Enroll New Member"
-                    >
-                        <UserPlus className="w-4 h-4" />
-                    </button>
+                    <div className="flex gap-2">
+                        {isAdmin && (
+                            <button
+                                onClick={() => setIsLoadContributionOpen(true)}
+                                className="bg-teal-50 hover:bg-teal-100 text-teal-600 border border-teal-200 p-2 rounded-lg transition-colors shadow-sm"
+                                title="Load Historical Contribution"
+                            >
+                                <DatabaseIcon className="w-4 h-4" />
+                            </button>
+                        )}
+                        <button
+                            onClick={() => setIsEnrollOpen(true)}
+                            className="bg-slate-900 hover:bg-slate-800 text-white p-2 rounded-lg transition-colors shadow-md"
+                            title="Enroll New Member"
+                        >
+                            <UserPlus className="w-4 h-4" />
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex-1 overflow-hidden">
@@ -157,6 +170,14 @@ export function MembersModule({ initialMembers, initialDetail, userRole, current
             {}
             {isEnrollOpen && (
                 <EnrollModal onClose={() => setIsEnrollOpen(false)} />
+            )}
+
+            {isLoadContributionOpen && (
+                <DirectContributionLoader 
+                    isOpen={isLoadContributionOpen} 
+                    onClose={() => setIsLoadContributionOpen(false)} 
+                    members={initialMembers} 
+                />
             )}
         </div>
     );

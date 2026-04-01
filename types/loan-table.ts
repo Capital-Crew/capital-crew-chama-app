@@ -49,4 +49,10 @@ export interface MemberLoanTableRow {
 
     // 14. Total Due (Clamped)
     totalDue: number;
+
+    // 15. Monthly Due — current scheduled installment total_due (earliest unpaid)
+    monthlyDue: number;
+
+    // 16. Arrears — cumulative unpaid from all past partial/unpaid installments
+    arrears: number;
 }

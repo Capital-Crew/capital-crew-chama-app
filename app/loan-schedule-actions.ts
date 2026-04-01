@@ -1,44 +1,63 @@
 'use server'
 
 import { db as prisma } from '@/lib/db'
-import { calculateLoanSchedule, type LoanScheduleResult } from '@/lib/services/loanCalculator'
+import { generateRepaymentSchedule } from '@/lib/loan-calculator'
+import type { LoanScheduleResult } from '@/lib/services/loanCalculator'
 
 /**
- * Get loan payment schedule for a specific loan
- * Fetches loan and product data, then generates the amortization schedule
+ * Get loan payment schedule for a specific loan.
+ * Uses the MONTHLY-rate calculator so the UI matches the DB schedule exactly.
+ * loan.interestRate is stored as a monthly percentage (e.g. 2 = 2% per month).
  */
 export async function getLoanSchedule(loanId: string): Promise<LoanScheduleResult | null> {
     try {
-        // Fetch loan with product details
         const loan = await prisma.loan.findUnique({
             where: { id: loanId },
-            include: {
-                loanProduct: true, // Need this for interestType and numberOfRepayments
-                member: true
-            }
+            include: { loanProduct: true, member: true }
         })
 
-        if (!loan) {
-            throw new Error('Loan not found')
-        }
+        if (!loan) throw new Error('Loan not found')
 
-        // Extract calculation parameters
-        const principal = loan.amount
-        const annualInterestRate = loan.interestRate
+        const principal    = Number(loan.amount)
+        const monthlyRate  = Number(loan.interestRate)   // already per month (e.g. 2 for 2%)
         const durationMonths = loan.installments || loan.loanProduct.numberOfRepayments
-        const interestType = loan.loanProduct.interestType // FLAT or DECLINING_BALANCE
-        const startDate = loan.disbursementDate || new Date()
+        const startDate    = loan.disbursementDate || new Date()
+        const amortType    = (loan.loanProduct.amortizationType as any) || 'EQUAL_INSTALLMENTS'
+        const interestType = (loan.loanProduct.interestType as 'FLAT' | 'DECLINING_BALANCE') || 'DECLINING_BALANCE'
 
-        // Calculate schedule
-        const schedule = calculateLoanSchedule({
-            principal,
-            annualInterestRate,
-            durationMonths,
-            interestType,
+        // Generate using the monthly-rate-aware calculator with product's interest method
+        const rawSchedule = generateRepaymentSchedule(
+            {
+                principal,
+                interestRatePerMonth: monthlyRate,
+                installments: durationMonths,
+                amortizationType: amortType,
+                interestType
+            },
             startDate
-        })
+        )
 
-        return schedule
+        // Map to the LoanScheduleResult shape that LoanScheduleView expects
+        const schedule = rawSchedule.map(item => ({
+            monthNo:          item.installmentNumber,
+            date:             item.dueDate,
+            principalPayment: item.principalDue,
+            interestPayment:  item.interestDue,
+            totalPayment:     item.totalDue,
+            remainingBalance: item.balance,
+        }))
+
+        const totalInterest = schedule.reduce((s, i) => s + i.interestPayment, 0)
+        const totalPayable  = principal + totalInterest
+
+        return {
+            summary: {
+                monthlyPaymentAmount: schedule[0]?.totalPayment ?? 0,
+                totalInterest,
+                totalPayable,
+            },
+            schedule,
+        }
     } catch (error) {
         return null
     }

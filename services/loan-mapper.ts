@@ -5,7 +5,17 @@ import { MemberLoanTableRow, LoanCategory } from '@/types/loan-table';
 // Helper type for the input loan with relations
 type LoanWithRelations = Loan & {
     loanProduct: LoanProduct;
-    repaymentSchedule: any; // Typed as any usually to handle JSON field, but we treat it as RepaymentScheduleItem[]
+    repaymentSchedule: any; // Legacy JSON field on the Loan model
+    // Real, normalised installment records from the RepaymentInstallment table
+    repaymentInstallments?: Array<{
+        installmentNumber: number;
+        dueDate: Date | string;
+        principalDue: any;
+        interestDue: any;
+        principalPaid: any;
+        interestPaid: any;
+        isFullyPaid: boolean;
+    }>;
 };
 
 /**
@@ -36,47 +46,103 @@ function toSafeNumber(val: any): number {
 }
 
 export function mapLoanToTableRow(loan: LoanWithRelations): MemberLoanTableRow {
-    // 0. Initial Data Extraction
-    const schedules = (loan.repaymentSchedule as any[]) || [];
     const today = new Date();
 
-    // 1. Calculate Balances & Source of Truth
-    // REFACTOR: Calculate real-time balance from schedule, but fallback to current_balance if schedule missing
+    // ─── NORMALISE INSTALLMENTS FROM DB ─────────────────────────────────────
+    // The DB model has split paid fields. We normalise to a common shape here
+    // so the rest of the computation is clean and matches the spec exactly.
+    type NormalisedInstallment = {
+        installmentNumber: number;
+        dueDate: Date;
+        totalDue: number;
+        amountPaid: number;
+        status: 'PAID' | 'PARTIAL' | 'UNPAID' | 'UPCOMING';
+    };
+
+    let installments: NormalisedInstallment[] = [];
+
+    if (loan.repaymentInstallments && loan.repaymentInstallments.length > 0) {
+        installments = loan.repaymentInstallments.map(s => {
+            const totalDue = toSafeNumber(s.principalDue) + toSafeNumber(s.interestDue);
+            const amountPaid = toSafeNumber(s.principalPaid) + toSafeNumber(s.interestPaid);
+            const dueDate = new Date(s.dueDate);
+
+            let status: NormalisedInstallment['status'];
+            if (s.isFullyPaid || amountPaid >= totalDue) {
+                status = 'PAID';
+            } else if (dueDate > today) {
+                // Future installment with no or partial payment
+                status = amountPaid > 0 ? 'PARTIAL' : 'UPCOMING';
+            } else {
+                // Past installment not fully paid
+                status = amountPaid > 0 ? 'PARTIAL' : 'UNPAID';
+            }
+
+            return {
+                installmentNumber: s.installmentNumber,
+                dueDate,
+                totalDue,
+                amountPaid,
+                status,
+            };
+        });
+    }
+
+    // ─── MONTHLY DUE (Spec §3) ─────────────────────────────────────────────────
+    // Earliest installment where total_outstanding > 0 — its total_due is the Monthly Due.
+    const sortedByInstallment = [...installments].sort(
+        (a, b) => a.installmentNumber - b.installmentNumber
+    );
+    const currentInstallment = sortedByInstallment.find(s => (s.totalDue - s.amountPaid) > 0);
+    const monthlyDue = currentInstallment ? currentInstallment.totalDue : 0;
+
+    // ─── ARREARS (Spec §4) ────────────────────────────────────────────────────
+    // SUM(total_outstanding) for all installments where due_date < today AND total_outstanding > 0.
+    const arrears = Math.max(
+        0,
+        installments.reduce((sum, s) => {
+            const outstanding = Math.max(0, s.totalDue - s.amountPaid);
+            if (s.dueDate < today && outstanding > 0) {
+                return sum + outstanding;
+            }
+            return sum;
+        }, 0)
+    );
+
+    // ─── LEGACY BALANCE CALCULATION (retained for existing split-column display) ───
+    // Use the normalised installments if the JSON repaymentSchedule field is absent
+    const schedules = (loan.repaymentSchedule as any[]) || [];
+    const legacyList = schedules.length > 0 ? schedules : installments;
+    const normaliseStatus = (s: string) => (s || '').toUpperCase();
+
     let offsetBalance = 0;
-    if (schedules.length > 0) {
-        offsetBalance = schedules.reduce((sum, s) => {
+    if (legacyList.length > 0) {
+        offsetBalance = legacyList.reduce((sum: number, s: any) => {
             const pDue = toSafeNumber(s.principalDue);
-            const pPaid = toSafeNumber(s.principalPaid);
+            const pPaid = toSafeNumber(s.principalPaid ?? 0);
             const iDue = toSafeNumber(s.interestDue);
-            const iPaid = toSafeNumber(s.interestPaid);
+            const iPaid = toSafeNumber(s.interestPaid ?? 0);
             return sum + (pDue - pPaid) + (iDue - iPaid);
         }, 0);
     } else {
-        // Fallback for new loans or missing schedules
         offsetBalance = toSafeNumber(loan.current_balance);
     }
 
     const penalties = toSafeNumber(loan.penalties);
-    // Assuming 'otherCharges' might come from somewhere else in future, but 0 for now as per instructions
     const otherCharges = 0;
-
-    // Total Outstanding = Schedule Balance + Penalties + Other Charges
     const outstandingBalance = Math.max(0, offsetBalance + penalties + otherCharges);
 
-    // 2. Schedule Analysis
-    // Filter for items that are strictly in the past (< today) and NOT fully paid
-    const overdueSchedules = schedules.filter(s =>
-        new Date(s.dueDate) < today && s.status !== 'PAID'
+    // ─── LEGACY OVERDUE ANALYSIS (for existing split-column table) ───────────────
+    const overdueSchedules = legacyList.filter((s: any) =>
+        new Date(s.dueDate) < today && normaliseStatus(s.status ?? (s.isFullyPaid ? 'PAID' : 'UNPAID')) !== 'PAID'
+    );
+    const currentSchedule = legacyList.find((s: any) =>
+        new Date(s.dueDate) >= today && normaliseStatus(s.status ?? (s.isFullyPaid ? 'PAID' : 'UNPAID')) !== 'PAID'
     );
 
-    // Find the current month's installment (Due >= Today)
-    const currentSchedule = schedules.find(s =>
-        new Date(s.dueDate) >= today && s.status !== 'PAID'
-    );
-
-    // 3. Arrears Calculation (Columns 7, 8)
-    const principalInArrears = overdueSchedules.reduce((sum, s) => sum + (toSafeNumber(s.principalDue) - toSafeNumber(s.principalPaid)), 0);
-    const interestInArrears = overdueSchedules.reduce((sum, s) => sum + (toSafeNumber(s.interestDue) - toSafeNumber(s.interestPaid)), 0);
+    // 3. Legacy Arrears Calculation (split columns 7, 8 — kept for existing table display)
+    const principalInArrears = overdueSchedules.reduce((sum, s) => sum + (toSafeNumber(s.principalDue) - toSafeNumber(s.principalPaid ?? s.amountPaid ?? 0)), 0);
+    const interestInArrears = overdueSchedules.reduce((sum, s) => sum + (toSafeNumber(s.interestDue) - toSafeNumber(s.interestPaid ?? 0)), 0);
 
     // 4. Period in Arrears (Column 5)
     let periodInArrears = 0;
@@ -104,8 +170,8 @@ export function mapLoanToTableRow(loan: LoanWithRelations): MemberLoanTableRow {
     }
 
     // 6. Current Dues (Columns 12, 13)
-    const principalDue = currentSchedule ? (toSafeNumber(currentSchedule.principalDue) - toSafeNumber(currentSchedule.principalPaid)) : 0;
-    const interestDue = currentSchedule ? (toSafeNumber(currentSchedule.interestDue) - toSafeNumber(currentSchedule.interestPaid)) : 0;
+    const principalDue = currentSchedule ? (toSafeNumber(currentSchedule.principalDue) - toSafeNumber(currentSchedule.principalPaid ?? 0)) : 0;
+    const interestDue = currentSchedule ? (toSafeNumber(currentSchedule.interestDue) - toSafeNumber(currentSchedule.interestPaid ?? 0)) : 0;
 
     // 7. Aggregates (Column 11)
     const totalArrears = principalInArrears + interestInArrears + penalties + otherCharges;
@@ -128,7 +194,7 @@ export function mapLoanToTableRow(loan: LoanWithRelations): MemberLoanTableRow {
         memberName: (loan as any).member?.name,
         memberNumber: (loan as any).member?.memberNumber,
         status: loan.status,
-        date: loan.disbursementDate || loan.applicationDate,
+        date: loan.disbursementDate ?? loan.applicationDate ?? undefined,
 
         productName: loan.loanProduct.name,
         approvedAmount: toSafeNumber(loan.amount),
@@ -142,6 +208,8 @@ export function mapLoanToTableRow(loan: LoanWithRelations): MemberLoanTableRow {
         totalArrears,
         principalDue,
         interestDue,
-        totalDue: finalTotalDue
+        totalDue: finalTotalDue,
+        monthlyDue,
+        arrears
     };
 }

@@ -3,10 +3,8 @@ import { Prisma } from '@prisma/client';
 
 export class RepaymentCalculator {
     /**
-     * Generates a list of repayment schedule records ready for database insertion
-     * @param loanId The ID of the loan
-     * @param input Calculation parameters (principal, rate, installments, type)
-     * @param disbursementDate The date the loan is posted
+     * Generates a list of repayment schedule records ready for database insertion.
+     * Supports FLAT and DECLINING_BALANCE interest types read from the loan product.
      */
     static generateSchedule(
         loanId: string,

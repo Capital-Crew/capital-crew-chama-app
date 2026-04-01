@@ -27,12 +27,12 @@ interface MemberProfileViewProps {
     stats: any;
     contributions: any[];
     loans: any[];
-    contributionStatus: any;
+    contributionStatus?: any;
     nextOfKin: any[];
     unpaidPenalties?: any[];
     attendanceHistory?: any[];
-    currentUserRole: string;
-    currentUserId: string;
+    currentUserRole?: string;
+    currentUserId?: string;
     currentUserPermissions?: UserPermissions;
     onBack?: () => void;
 }
@@ -227,7 +227,7 @@ export function MemberProfileView({
                                                         toast.success('Fine paid successfully');
                                                         router.refresh();
                                                     } else {
-                                                        toast.error(res.error || 'Failed to pay fine');
+                                                        toast.error((res as any).error || 'Failed to pay fine');
                                                     }
                                                 }}
                                                 className="bg-white text-red-600 px-6 py-2 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-red-50 transition-all active:scale-95 shadow-lg shadow-red-900/20"
@@ -598,6 +598,8 @@ function ResponsiveLoansList({ loans, onLoanClick }: { loans: any[], onLoanClick
                                         <th className="py-3 px-6">Class</th>
                                         <th className="py-3 px-6 text-right">Approved</th>
                                         <th className="py-3 px-6 text-right">Balance</th>
+                                        <th className="py-3 px-6 text-right" style={{ color: '#D97706' }}>Monthly Due</th>
+                                        <th className="py-3 px-6 text-right" style={{ color: '#DC2626' }}>Arrears</th>
                                         <th className="py-3 px-6 text-right">Next Payment</th>
                                         <th className="py-3 px-6 text-center">Action</th>
                                     </tr>
@@ -623,6 +625,12 @@ function ResponsiveLoansList({ loans, onLoanClick }: { loans: any[], onLoanClick
                                                 >
                                                     {formatCurrency(loan.totalLoanBalance)}
                                                 </Link>
+                                            </td>
+                                            <td className="py-4 px-6 text-right font-bold" style={{ color: '#D97706' }}>
+                                                KES {Number(loan.monthlyDue || 0).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </td>
+                                            <td className="py-4 px-6 text-right font-bold" style={{ color: '#DC2626' }}>
+                                                KES {Number(loan.arrears || 0).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </td>
                                             <td className="py-4 px-6 text-right text-slate-600">{loan.nextExpectedDate ? format(new Date(loan.nextExpectedDate), 'dd-MMM-yyyy') : '-'}</td>
                                             <td className="py-4 px-6 text-center">

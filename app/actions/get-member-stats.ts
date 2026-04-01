@@ -117,7 +117,19 @@ export async function getAllMemberLoans(memberId: string): Promise<Serialized<Me
             orderBy: { disbursementDate: 'desc' },
             include: {
                 member: true,
-                loanProduct: true
+                loanProduct: true,
+                repaymentInstallments: {
+                    orderBy: { installmentNumber: 'asc' },
+                    select: {
+                        installmentNumber: true,
+                        dueDate: true,
+                        principalDue: true,
+                        interestDue: true,
+                        principalPaid: true,
+                        interestPaid: true,
+                        isFullyPaid: true,
+                    }
+                }
             }
         });
 

@@ -5,20 +5,18 @@ import { db } from '@/lib/db'
 import { getNextLoanNumber } from '@/lib/utils'
 import { z } from 'zod'
 import { withAudit } from '@/lib/with-audit'
-import { AuditLogAction, LoanStatus } from '@prisma/client'
+import { AuditLogAction, LoanStatus, Prisma } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
+import { RepaymentCalculator } from '@/lib/utils/repayment-calculator'
+import { AccountingEngine } from '@/lib/accounting/AccountingEngine'
+import { getSystemMappingsDict } from '@/app/actions/system-accounting'
 
-/**
- * Zod schema for Direct Loan Loading.
- * This bypasses the typical application flow.
- */
 const directLoanLoaderSchema = z.object({
     memberId: z.string().min(1, "Member is required"),
     loanProductId: z.string().min(1, "Loan Product is required"),
     amount: z.number().positive("Amount must be positive"),
     installments: z.number().int().positive().max(360, "Max 360 installments"),
     disbursementDate: z.string().min(1, "Disbursement date is required"),
-    purpose: z.string().optional().default("Back-loaded existing loan"),
 })
 
 export const directLoadLoan = withAudit(
@@ -31,7 +29,6 @@ export const directLoadLoan = withAudit(
             throw new Error('Unauthorized')
         }
 
-        // Check if user is Admin or Chairperson
         const user = await db.user.findUnique({
             where: { id: session.user.id },
             select: { role: true }
@@ -43,36 +40,37 @@ export const directLoadLoan = withAudit(
         }
         ctx.endStep('Validate Admin Session');
 
-        ctx.beginStep('Parse Payload');
+        ctx.beginStep('Parse & Validate Payload');
         const result = directLoanLoaderSchema.safeParse(data)
         if (!result.success) {
             ctx.setErrorCode('INVALID_PAYLOAD');
             throw new Error('Invalid data: ' + result.error.issues[0].message)
         }
-        const { memberId, loanProductId, amount, installments, disbursementDate, purpose } = result.data
-        ctx.endStep('Parse Payload');
+        const { memberId, loanProductId, amount, installments, disbursementDate } = result.data
 
-        ctx.beginStep('Validate Entities');
         const [member, product] = await Promise.all([
-            db.member.findUnique({ where: { id: memberId } }),
+            db.member.findUnique({ where: { id: memberId }, include: { wallet: true } }),
             db.loanProduct.findUnique({ where: { id: loanProductId } })
         ])
 
         if (!member) throw new Error('Member not found')
         if (!product) throw new Error('Loan Product not found')
-        ctx.endStep('Validate Entities');
+        ctx.endStep('Parse & Validate Payload');
 
         ctx.beginStep('Atomic Loan Injection');
         try {
-            // 1. Generate Loan Number
             const lastLoan = await db.loan.findFirst({
                 orderBy: { loanApplicationNumber: 'desc' },
                 select: { loanApplicationNumber: true }
             })
             const nextNumber = getNextLoanNumber(lastLoan?.loanApplicationNumber)
+            const interestRate = parseFloat(product.interestRatePerPeriod?.toString() ?? '0')
+            const disbDate = new Date(disbursementDate)
+            const actorId = session.user.id!
+            const actorName = session.user.name || 'Admin'
 
-            // 2. Perform everything in a transaction
             const loan = await db.$transaction(async (tx) => {
+                // STEP 1: Create the Loan record in ACTIVE status
                 const newLoan = await tx.loan.create({
                     data: {
                         loanApplicationNumber: nextNumber,
@@ -80,44 +78,143 @@ export const directLoadLoan = withAudit(
                         loanProductId,
                         amount,
                         installments,
-                        disbursementDate: new Date(disbursementDate),
-                        applicationDate: new Date(disbursementDate), // Assume applied same day
-                        purpose,
-                        status: 'DISBURSED', // Direct loading as Disbursed
+                        disbursementDate: disbDate,
+                        applicationDate: disbDate,
+                        status: LoanStatus.ACTIVE,
                         current_balance: amount,
-                        outstandingBalance: amount,
-                        interestRate: product.interestRate,
-                        dueDate: new Date(new Date(disbursementDate).setMonth(new Date(disbursementDate).getMonth() + installments)),
-                        
-                        // Metadata for tracking
-                        notes: `Directly loaded by ${session.user.name}`
+                        outstandingBalance: amount, // updated below after schedule
+                        interestRate,
+                        interestRatePerMonth: interestRate, // store monthly rate
+                        dueDate: new Date(new Date(disbDate).setMonth(disbDate.getMonth() + installments)),
+                        approvalVotes: [],
+                        memberSharesAtApplication: 0,
+                        grossQualifyingAmount: amount,
+                        processingFee: 0,
+                        insuranceFee: 0,
+                        shareCapitalDeduction: 0,
+                        existingLoanOffset: 0,
+                        totalDeductions: 0,
+                        netDisbursementAmount: amount,
+                        penalties: 0,
                     }
                 })
 
-                // 3. Create initial Disbursement Transaction in Loan Ledger
+                // STEP 2: Generate schedule using the product's interestType and amortizationType
+                const interestType = (product.interestType as 'FLAT' | 'DECLINING_BALANCE') ?? 'DECLINING_BALANCE'
+                const amortizationType = (product.amortizationType as 'EQUAL_INSTALLMENTS' | 'EQUAL_PRINCIPAL') ?? 'EQUAL_INSTALLMENTS'
+
+                const scheduleData = RepaymentCalculator.generateSchedule(
+                    newLoan.id,
+                    {
+                        principal: amount,
+                        interestRatePerMonth: interestRate,
+                        installments,
+                        amortizationType,
+                        interestType
+                    },
+                    disbDate
+                )
+
+                await tx.repaymentInstallment.createMany({
+                    data: scheduleData.map(item => ({
+                        ...item,
+                        loanId: newLoan.id
+                    }))
+                })
+
+                // STEP 3: Compute total outstanding (principal + all interest)
+                const totalOutstanding = scheduleData.reduce(
+                    (sum, item) => sum + Number(item.principalDue) + Number(item.interestDue), 0
+                )
+                await tx.loan.update({
+                    where: { id: newLoan.id },
+                    data: {
+                        outstandingBalance: totalOutstanding,
+                        current_balance: totalOutstanding,
+                    }
+                })
+
+                // STEP 4: Balance B/F transaction entry
                 await tx.loanTransaction.create({
                     data: {
                         loanId: newLoan.id,
                         type: 'DISBURSEMENT',
-                        amount,
-                        principalAmount: amount,
-                        description: `Initial disbursement for pre-approved loan ${nextNumber}`,
-                        transactionDate: new Date(disbursementDate),
-                        postedAt: new Date(),
+                        amount: new Prisma.Decimal(amount),
+                        principalAmount: new Prisma.Decimal(amount),
+                        description: `Balance B/F — Migrated existing loan`,
+                        transactionDate: disbDate,
+                        postedAt: disbDate,
                     }
                 })
 
-                // 4. Create Ledger Transactions (Optional but recommended for consistency)
-                // Note: Simplified for this tool. Real implementation might need mapping lookups.
-                
+                // STEP 4: Post a GL Journal Entry (Debit Loan Portfolio, Credit Fund Source)
+                // This ensures the accounting ledger reflects the loan correctly
+                try {
+                    const mappings = await getSystemMappingsDict()
+
+                    const loanPortfolioAcc = mappings.EVENT_LOAN_DISBURSEMENT
+                        ? await tx.ledgerAccount.findUnique({ where: { code: mappings.EVENT_LOAN_DISBURSEMENT } })
+                        : null
+                    const fundSourceAcc = mappings.CASH_ON_HAND
+                        ? await tx.ledgerAccount.findUnique({ where: { code: mappings.CASH_ON_HAND } })
+                        : null
+
+                    if (loanPortfolioAcc && fundSourceAcc) {
+                        await AccountingEngine.postJournalEntry({
+                            transactionDate: disbDate,
+                            referenceType: 'LOAN_DISBURSEMENT',
+                            referenceId: newLoan.id,
+                            description: `Balance B/F — Loan ${nextNumber}`,
+                            lines: [
+                                {
+                                    accountId: loanPortfolioAcc.id,
+                                    debitAmount: amount,
+                                    creditAmount: 0,
+                                    description: `Loan Portfolio — Balance B/F`,
+                                    index: 0
+                                },
+                                {
+                                    accountId: fundSourceAcc.id,
+                                    debitAmount: 0,
+                                    creditAmount: amount,
+                                    description: `Fund Source — Balance B/F`,
+                                    index: 1
+                                }
+                            ],
+                            createdBy: actorId,
+                            createdByName: actorName
+                        }, tx)
+                    }
+                } catch (glError) {
+                    // GL is best-effort for migration. The loan and schedule are the priority.
+                    console.warn('[DirectLoanLoader] GL entry skipped:', glError)
+                }
+
+                // STEP 5: Create Loan Journey Events (mirrors normal disbursement)
+                await tx.loanJourneyEvent.create({
+                    data: {
+                        loanId: newLoan.id,
+                        eventType: 'LOAN_DISBURSED',
+                        description: `Loan migrated via Direct Loader. Balance B/F: KES ${amount.toLocaleString()}`,
+                        actorId,
+                        actorName,
+                    }
+                })
+
                 return newLoan
+            }, {
+                maxWait: 10000,
+                timeout: 30000
             })
 
             ctx.captureAfter(loan);
             ctx.endStep('Atomic Loan Injection', { loanId: loan.id });
-            
+
             revalidatePath('/loans')
+            revalidatePath('/dashboard')
+            revalidatePath('/accounts')
             return { success: true, loanId: loan.id, loanNumber: loan.loanApplicationNumber }
+
         } catch (error: any) {
             ctx.setErrorCode('TRANSACTION_FAILED');
             ctx.failStep('Atomic Loan Injection', error);

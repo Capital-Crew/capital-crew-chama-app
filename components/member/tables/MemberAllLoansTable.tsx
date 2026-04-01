@@ -5,6 +5,11 @@ import { formatCurrency } from '@/lib/utils';
 import Link from 'next/link';
 import { ArrowUpDown } from 'lucide-react';
 
+/** KES currency formatting per spec §7 */
+function formatKES(value: number): string {
+    return 'KES ' + value.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 interface MemberAllLoansTableProps {
     loans: MemberLoanTableRow[];
 }
@@ -47,6 +52,8 @@ export function MemberAllLoansTable({ loans }: MemberAllLoansTableProps) {
                             <th className="px-4 py-3 text-center">Category</th>
                             <th className="px-4 py-3 text-center text-red-500">Arrears (Days)</th>
                             <th className="px-4 py-3 text-right text-teal-600">Balance</th>
+                            <th className="px-4 py-3 text-right" style={{ color: '#D97706' }}>Monthly Due</th>
+                            <th className="px-4 py-3 text-right" style={{ color: '#DC2626' }}>Arrears</th>
                             <th className="px-4 py-3 text-right text-red-500">Prin. Arrears</th>
                             <th className="px-4 py-3 text-right text-red-500">Int. Arrears</th>
                             <th className="px-4 py-3 text-right text-teal-600">Penalty</th>
@@ -80,6 +87,16 @@ export function MemberAllLoansTable({ loans }: MemberAllLoansTableProps) {
 
                                 <td className="px-4 py-4 text-right font-bold text-teal-600">
                                     {formatCurrency(loan.totalLoanBalance)}
+                                </td>
+
+                                {/* Monthly Due — current scheduled installment (Spec §3) */}
+                                <td className="px-4 py-4 text-right font-bold" style={{ color: '#D97706' }}>
+                                    {formatKES(loan.monthlyDue ?? 0)}
+                                </td>
+
+                                {/* Arrears — cumulative past unpaid (Spec §4) */}
+                                <td className="px-4 py-4 text-right font-bold" style={{ color: '#DC2626' }}>
+                                    {formatKES(loan.arrears ?? 0)}
                                 </td>
 
                                 <td className="px-4 py-4 text-right text-red-500 font-medium">

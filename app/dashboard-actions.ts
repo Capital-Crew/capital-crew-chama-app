@@ -67,7 +67,8 @@ export async function getDashboardStats(): Promise<Serialized<any>> {
             by: ['referenceId'],
             where: {
                 referenceType: 'SHARE_CONTRIBUTION',
-                referenceId: { in: memberIds }
+                referenceId: { in: memberIds },
+                isReversed: false
             },
             _sum: { totalAmount: true },
             orderBy: {
@@ -167,6 +168,7 @@ export async function getMonthlyTrends(): Promise<Serialized<any[]>> {
                 },
                 ledgerTransaction: {
                     referenceType: 'SHARE_CONTRIBUTION',
+                    isReversed: false,
                     transactionDate: {
                         gte: startDate,
                         lte: endDate

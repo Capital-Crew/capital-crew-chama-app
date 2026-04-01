@@ -5,9 +5,10 @@
 
 export interface LoanCalculationInput {
     principal: number
-    interestRatePerMonth: number // e.g., 2 for 2%
+    interestRatePerMonth: number // e.g., 2 for 2% per month
     installments: number
     amortizationType: 'EQUAL_INSTALLMENTS' | 'EQUAL_PRINCIPAL'
+    interestType?: 'FLAT' | 'DECLINING_BALANCE' // defaults to DECLINING_BALANCE
 }
 
 export interface RepaymentScheduleItem {
@@ -20,52 +21,72 @@ export interface RepaymentScheduleItem {
 }
 
 /**
- * Calculate monthly installment amount
- * @param input - Loan calculation parameters
- * @returns Monthly installment amount rounded to 2 decimals
+ * Calculate monthly installment amount (used for summary display / reducing balance only)
  */
 export function calculateMonthlyInstallment(input: LoanCalculationInput): number {
     const { principal, interestRatePerMonth, installments, amortizationType } = input
-    const r = interestRatePerMonth / 100 // Convert 2% to 0.02
+    const r = interestRatePerMonth / 100
 
-    if (r === 0) {
-        // Zero interest: Simple division
-        return Math.round((principal / installments) * 100) / 100
+    if (input.interestType === 'FLAT') {
+        const totalInterest = principal * r * installments
+        return Math.round(((principal + totalInterest) / installments) * 100) / 100
     }
 
+    if (r === 0) return Math.round((principal / installments) * 100) / 100
+
     if (amortizationType === 'EQUAL_INSTALLMENTS') {
-        // EMI Formula: P * [r(1+r)^n] / [(1+r)^n - 1]
-        // This ensures equal monthly payments with reducing interest
         const numerator = principal * r * Math.pow(1 + r, installments)
         const denominator = Math.pow(1 + r, installments) - 1
-        const emi = numerator / denominator
-
-        return Math.round(emi * 100) / 100 // Round to 2 decimals
+        return Math.round((numerator / denominator) * 100) / 100
     } else {
-        // EQUAL_PRINCIPAL: Fixed principal + reducing interest
-        // First month has highest payment (max principal + max interest)
         const principalPerMonth = principal / installments
         const firstMonthInterest = principal * r
-
         return Math.round((principalPerMonth + firstMonthInterest) * 100) / 100
     }
 }
 
 /**
- * Generate full repayment schedule
- * @param input - Loan calculation parameters
- * @param disbursementDate - Date when loan is disbursed
- * @returns Array of repayment schedule items
+ * Generate full repayment schedule.
+ * Supports FLAT rate (interest on original principal) and DECLINING_BALANCE (EMI reducing balance).
  */
 export function generateRepaymentSchedule(
     input: LoanCalculationInput,
     disbursementDate: Date
 ): RepaymentScheduleItem[] {
-    const { principal, interestRatePerMonth, installments, amortizationType } = input
+    const { principal, interestRatePerMonth, installments, amortizationType, interestType = 'DECLINING_BALANCE' } = input
     const r = interestRatePerMonth / 100
     const schedule: RepaymentScheduleItem[] = []
-    let balance = principal
 
+    if (interestType === 'FLAT') {
+        // FLAT RATE: Interest = Principal × rate × installments (spread evenly)
+        const totalInterest = principal * r * installments
+        const interestPerMonth = Math.round((totalInterest / installments) * 100) / 100
+        const principalPerMonth = Math.round((principal / installments) * 100) / 100
+        const totalPerMonth = Math.round((principalPerMonth + interestPerMonth) * 100) / 100
+        let balance = principal
+
+        for (let i = 1; i <= installments; i++) {
+            const dueDate = new Date(disbursementDate)
+            dueDate.setMonth(dueDate.getMonth() + i)
+
+            const isLast = i === installments
+            const principalDue = isLast ? Math.round(balance * 100) / 100 : principalPerMonth
+            balance -= principalDue
+
+            schedule.push({
+                installmentNumber: i,
+                dueDate,
+                principalDue,
+                interestDue: interestPerMonth,
+                totalDue: Math.round((principalDue + interestPerMonth) * 100) / 100,
+                balance: Math.round(Math.max(0, balance) * 100) / 100
+            })
+        }
+        return schedule
+    }
+
+    // DECLINING BALANCE (Reducing Balance / EMI)
+    let balance = principal
     for (let i = 1; i <= installments; i++) {
         const dueDate = new Date(disbursementDate)
         dueDate.setMonth(dueDate.getMonth() + i)
@@ -74,12 +95,10 @@ export function generateRepaymentSchedule(
         let interestDue: number
 
         if (amortizationType === 'EQUAL_INSTALLMENTS') {
-            // EMI: Interest on remaining balance, principal is the difference
             interestDue = balance * r
             const emi = calculateMonthlyInstallment(input)
             principalDue = emi - interestDue
         } else {
-            // EQUAL_PRINCIPAL: Fixed principal, reducing interest
             principalDue = principal / installments
             interestDue = balance * r
         }
@@ -95,7 +114,6 @@ export function generateRepaymentSchedule(
             balance: Math.round(Math.max(0, balance) * 100) / 100
         })
     }
-
     return schedule
 }
 

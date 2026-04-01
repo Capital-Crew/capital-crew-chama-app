@@ -20,7 +20,7 @@ export async function getContributionHistory(memberId: string, sortOrder: 'asc' 
     }
 
     const transactions = await prisma.shareTransaction.findMany({
-        where: { memberId },
+        where: { memberId, isReversed: false },
         orderBy: { createdAt: sortOrder },
         take: 50 // Limit to recent 50 transactions
     })

@@ -165,7 +165,8 @@ export async function getDetailedMemberStats(memberId: string): Promise<{ stats:
         ledgerShareCapital,
         normalShares,
         fosaShares,
-        loansRaw
+        loansRaw,
+        contributionTxCount
     ] = await Promise.all([
         WalletService.getWalletBalance(memberId), // Savings (Account 2200)
         getAccountBalance(memberId, '3011', 'CREDIT'), // Contributions (Account 3011)
@@ -184,12 +185,18 @@ export async function getDetailedMemberStats(memberId: string): Promise<{ stats:
                     orderBy: { dueDate: 'asc' }
                 }
             }
+        }),
+        db.ledgerTransaction.count({
+            where: {
+                referenceId: memberId,
+                referenceType: { in: ['SHARE_CONTRIBUTION', 'OPENING_BALANCE'] }
+            }
         })
     ]);
 
     const legacyShares = Number(member.shareContributions) || 0;
     const shareCapital = ledgerShareCapital > 0 ? ledgerShareCapital : legacyShares;
-    const contributionsBalance = ledgerContributions > 0 ? ledgerContributions : legacyShares;
+    const contributionsBalance = contributionTxCount > 0 ? ledgerContributions : legacyShares;
 
     // Import statement processor for consistent balance calculation
     const { processTransactions } = await import('@/lib/statementProcessor');
@@ -355,7 +362,7 @@ export async function getDetailedMemberStats(memberId: string): Promise<{ stats:
             ledgerTransaction: {
                 referenceId: memberId,
                 referenceType: { in: ['SHARE_CONTRIBUTION', 'OPENING_BALANCE'] },
-                // isReversed: false
+                isReversed: false
             }
         }
     });
@@ -404,7 +411,7 @@ export async function getContributionHistory(memberId: string) {
         where: {
             referenceId: memberId,
             referenceType: 'SHARE_CONTRIBUTION',
-            // isReversed: false
+            isReversed: false
         },
         orderBy: { transactionDate: 'desc' },
         include: {
@@ -495,7 +502,7 @@ export async function getLoanPortfolio(memberId: string) {
             waterfallSchedule = await LoanScheduleCache.generateAndSaveSchedule(loan.id)
         }
 
-        return {
+        const baseLoan = {
             // Explicitly pick fields to avoid circular refs and huge payloads
             id: loan.id,
             loanApplicationNumber: loan.loanApplicationNumber,
@@ -590,12 +597,59 @@ export async function getLoanPortfolio(memberId: string) {
                     daysInArrears = Math.max(0, Math.floor((now.getTime() - oldestDueDate.getTime()) / (1000 * 60 * 60 * 24)));
                 }
 
+                // ─── SPEC §3 & §4: MONTHLY DUE AND ARREARS ────────────────────
+                // The schedule here could be the legacy JSON or the RepaymentInstallment DB objects.
+                // We normalise them first to safely compute according to the spec.
+                const normalisedSched = sched.map((s: any) => {
+                    const totalDue = Number(s.totalDue || s.total || s.principalDue || s.principal || 0) + Number(s.interestDue || s.interest || 0);
+                    // Legacy JSON schedules sometimes have principalPaid/interestPaid, DB has them explicit.
+                    const pPaid = Number(s.principalPaid ?? 0);
+                    const iPaid = Number(s.interestPaid ?? 0);
+                    const amountPaid = Number(s.amountPaid || s.paid || 0) || (pPaid + iPaid);
+                    const d = new Date(s.dueDate || s.date);
+                    
+                    let status = s.status ? String(s.status).toUpperCase() : '';
+                    if (!status) {
+                        if (s.isFullyPaid || amountPaid >= totalDue) status = 'PAID';
+                        else if (d > today) status = amountPaid > 0 ? 'PARTIAL' : 'UPCOMING';
+                        else status = amountPaid > 0 ? 'PARTIAL' : 'UNPAID';
+                    } else if (status === 'FULLY_PAID') {
+                        status = 'PAID';
+                    }
+
+                    return {
+                        installmentNumber: Number(s.installmentNumber || s.installment || 0),
+                        dueDate: d,
+                        totalDue,
+                        amountPaid,
+                        status
+                    };
+                }).sort((a, b) => a.installmentNumber - b.installmentNumber);
+
+                // Step 2: Find the earliest installment where total_outstanding > 0
+                const currentInst = normalisedSched.find(s => (s.totalDue - s.amountPaid) > 0);
+                // Monthly Due = that installment's total_due
+                const monthlyDue = currentInst ? currentInst.totalDue : 0;
+
+                // Step 3: Arrears = sum of outstanding balances for all installments where due_date < today AND total_outstanding > 0
+                const specArrears = Math.max(0, normalisedSched.reduce((sum, s) => {
+                    const outstanding = Math.max(0, s.totalDue - s.amountPaid);
+                    if (s.dueDate < today && outstanding > 0) {
+                        return sum + outstanding;
+                    }
+                    return sum;
+                }, 0));
+
                 return {
-                    arrears: arrears,
+                    arrears: arrears, // Legacy totalArrears mapped in the table? Wait, let's keep it safe.
                     expectedAmount: totalExpected,
                     nextExpectedDate: expectedDateVal,
                     isOverdue: arrears > 0,
-                    daysInArrears: daysInArrears
+                    daysInArrears: daysInArrears,
+                    
+                    // New Spec Fields for the UI table
+                    monthlyDue: monthlyDue,
+                    specArrears: specArrears
                 };
             })(),
 
@@ -603,6 +657,12 @@ export async function getLoanPortfolio(memberId: string) {
             interestDue: 0,
             totalDue: statementBalance,
             totalLoanBalance: statementBalance
+        };
+        
+        // Remap specArrears to the `arrears` field the table expects, without colliding with the internal `arrears` variable above
+        return {
+            ...baseLoan,
+            arrears: baseLoan.specArrears
         };
     }));
 

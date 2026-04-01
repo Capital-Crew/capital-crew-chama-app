@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native", "rhel-openssl-1.0.x", "rhel-openssl-3.0.x"]
 }
 
@@ -76,14 +76,14 @@ enum ExpenseCategory {
 }
 
 enum ExpenseType {
-  IMPREST       // Advance given, spend, return change
-  CLAIM         // User spends own money, claims reimbursement
-  OPERATIONAL   // Direct SACCO payment (e.g. rent, utilities)
+  IMPREST // Advance given, spend, return change
+  CLAIM // User spends own money, claims reimbursement
+  OPERATIONAL // Direct SACCO payment (e.g. rent, utilities)
 }
 
 enum BalanceAction {
-  REFUNDED_TO_SACCO  // User returned surplus after imprest
-  PAID_TO_USER       // SACCO topped up shortfall
+  REFUNDED_TO_SACCO // User returned surplus after imprest
+  PAID_TO_USER // SACCO topped up shortfall
 }
 
 enum BatchPaymentStatus {
@@ -156,7 +156,7 @@ enum AuditLogAction {
   LEDGER_CLOSED
   PERIOD_CLOSED
   PERIOD_REOPENED
-  
+
   // Welfare Events
   WELFARE_REQUISITION_CREATED
   WELFARE_STATUS_CHANGED
@@ -164,7 +164,7 @@ enum AuditLogAction {
   WELFARE_TYPE_CREATED
   WELFARE_TYPE_UPDATED
   WELFARE_TYPE_DELETED
-  
+
   // Auth Events
   USER_LOGIN
   USER_LOGOUT
@@ -197,10 +197,10 @@ enum WalletTransactionType {
   REVERSAL // Reversal transaction
   REFUND // Fee refund
   ADJUSTMENT // Admin adjustment
-  EXPENSE_PAYOUT     // Reimbursement / claim payout
-  IMPREST_ADVANCE    // Advance sent to user
-  IMPREST_REFUND     // Surplus returned by user
-  DIVIDEND_PAYOUT    // Bulk dividend/interest payout
+  EXPENSE_PAYOUT // Reimbursement / claim payout
+  IMPREST_ADVANCE // Advance sent to user
+  IMPREST_REFUND // Surplus returned by user
+  DIVIDEND_PAYOUT // Bulk dividend/interest payout
 }
 
 enum LedgerTransactionType {
@@ -235,56 +235,56 @@ enum LoanEventType {
 
 // Replaces "Account"
 model LedgerAccount {
-  id               String      @id @default(cuid())
-  code             String      @unique
-  name             String
-  type             AccountType
-  subType          String?
-  
-  // Cached Balance - Updated via transactions
-  balance          Decimal     @default(0) @db.Decimal(19, 4)
-  
-  // Hierarchy
-  parentId         String?
-  parent           LedgerAccount?    @relation("AccountHierarchy", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  children         LedgerAccount[]   @relation("AccountHierarchy")
-  
-  isActive         Boolean     @default(true)
-  status           LedgerStatus @default(ACTIVE) // Default to ACTIVE for existing accounts
-  normalBalance    NormalBalance @default(DEBIT) // Default to DEBIT, corrected during migration
-  currency         String       @default("KES")
-  
-  isSystemAccount  Boolean     @default(false)
-  isManualPostingAllowed Boolean   @default(true)
-  
-  createdBy        String?
-  approvedBy       String?
-  activatedBy      String?
-  activatedAt      DateTime?
-  closedAt         DateTime?
-  version          Int         @default(1)
+  id      String      @id @default(cuid())
+  code    String      @unique
+  name    String
+  type    AccountType
+  subType String?
 
-  allowManualEntry Boolean     @default(false)
+  // Cached Balance - Updated via transactions
+  balance Decimal @default(0) @db.Decimal(19, 4)
+
+  // Hierarchy
+  parentId String?
+  parent   LedgerAccount?  @relation("AccountHierarchy", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children LedgerAccount[] @relation("AccountHierarchy")
+
+  isActive      Boolean       @default(true)
+  status        LedgerStatus  @default(ACTIVE) // Default to ACTIVE for existing accounts
+  normalBalance NormalBalance @default(DEBIT) // Default to DEBIT, corrected during migration
+  currency      String        @default("KES")
+
+  isSystemAccount        Boolean @default(false)
+  isManualPostingAllowed Boolean @default(true)
+
+  createdBy   String?
+  approvedBy  String?
+  activatedBy String?
+  activatedAt DateTime?
+  closedAt    DateTime?
+  version     Int       @default(1)
+
+  allowManualEntry Boolean @default(false)
   description      String?
 
   // Relations
-  ledgerEntries   LedgerEntry[]
-  
+  ledgerEntries LedgerEntry[]
+
   // Mappings (Updated names)
-  productMappings ProductAccountingMapping[]
-  systemMappings  SystemAccountingMapping[]
-  expenses        Expense[]                  @relation("ExpenseAccount")
-  welfareTypes    WelfareType[]              @relation("WelfareTypeGLAccount")
-  meetingSettings SaccoSettings[]            @relation("MeetingFeesIncome")
-  meetingReceivableSettings SaccoSettings[]   @relation("MeetingFeesReceivable")
-  
+  productMappings           ProductAccountingMapping[]
+  systemMappings            SystemAccountingMapping[]
+  expenses                  Expense[]                  @relation("ExpenseAccount")
+  welfareTypes              WelfareType[]              @relation("WelfareTypeGLAccount")
+  meetingSettings           SaccoSettings[]            @relation("MeetingFeesIncome")
+  meetingReceivableSettings SaccoSettings[]            @relation("MeetingFeesReceivable")
+
   // Transfers
-  debitTransfers  TransferRequest[] @relation("TransferDebit")
+  debitTransfers TransferRequest[] @relation("TransferDebit")
 
   creditTransfers TransferRequest[] @relation("TransferCredit")
-  
+
   // Wallet Link
-  wallets          Wallet[]
+  wallets Wallet[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -301,9 +301,9 @@ model AccountingPeriod {
   status    AccountingPeriodStatus @default(OPEN)
   closedAt  DateTime?
   closedBy  String?
-  
-  memo      String?
-  
+
+  memo String?
+
   transactions LedgerTransaction[]
 
   createdAt DateTime @default(now())
@@ -342,18 +342,18 @@ model LedgerTransaction {
   createdAt     DateTime @default(now())
 
   // Status
-  status        TransactionStatus @default(POSTED)
-  
+  status TransactionStatus @default(POSTED)
+
   // Accounting Period
   accountingPeriodId String?
   accountingPeriod   AccountingPeriod? @relation(fields: [accountingPeriodId], references: [id])
-  
+
   // Idempotency / External Links
   externalReferenceId String? @unique // e.g. M-Pesa TransID
 
   // Specific domain links (Optional, for easier joins)
   welfareRequisition WelfareRequisition? @relation("WelfareJournalEntry")
-  
+
   @@index([referenceType, referenceId])
   @@index([transactionDate])
   @@index([createdAt])
@@ -372,16 +372,14 @@ model LedgerEntry {
   // Amounts
   // We keep distinct debit/credit columns for clarity and reporting, 
   // but logically one is 0.
-  debitAmount  Decimal @db.Decimal(19, 4) @default(0)
-  creditAmount Decimal @db.Decimal(19, 4) @default(0)
+  debitAmount  Decimal @default(0) @db.Decimal(19, 4)
+  creditAmount Decimal @default(0) @db.Decimal(19, 4)
 
   description String?
 
   @@index([ledgerTransactionId])
   @@index([ledgerAccountId])
 }
-
-
 
 enum ShareTransactionType {
   CONTRIBUTION // Member contributes to share capital
@@ -486,9 +484,9 @@ enum DomainEventType {
 // Idempotency tracking for preventing duplicate transactions
 model IdempotencyRecord {
   key       String   @id // UUID from frontend
-  path      String   // Action name (e.g., "createLoan", "submitExpense")
+  path      String // Action name (e.g., "createLoan", "submitExpense")
   createdAt DateTime @default(now())
-  response  Json?    // Cached response from successful execution
+  response  Json? // Cached response from successful execution
   locked    Boolean  @default(true) // Race condition handling
 
   @@index([path, createdAt]) // For querying by action and cleanup
@@ -496,19 +494,19 @@ model IdempotencyRecord {
 }
 
 model User {
-  id                 String   @id @default(cuid())
-  name               String?
-  username           String?  @unique
-  email              String   @unique
-  passwordHash       String
-  role               UserRole @default(MEMBER)
-  permissions        Json? // Stores UserPermissions object
-  memberId           String?  @unique
-  member             Member?  @relation(fields: [memberId], references: [id])
-  image              String? // Profile picture URL or Base64
-  avatarPreset       String? // Selected cartoon avatar identifier
-  mustChangePassword Boolean  @default(false)
-  failedLoginAttempts Int      @default(0)
+  id                  String    @id @default(cuid())
+  name                String?
+  username            String?   @unique
+  email               String    @unique
+  passwordHash        String
+  role                UserRole  @default(MEMBER)
+  permissions         Json? // Stores UserPermissions object
+  memberId            String?   @unique
+  member              Member?   @relation(fields: [memberId], references: [id])
+  image               String? // Profile picture URL or Base64
+  avatarPreset        String? // Selected cartoon avatar identifier
+  mustChangePassword  Boolean   @default(false)
+  failedLoginAttempts Int       @default(0)
   lockoutUntil        DateTime?
 
   expensesRequested Expense[]         @relation("ExpenseRequester")
@@ -535,11 +533,12 @@ model User {
   // Batch Payouts
   batchPayments BatchPayment[] @relation("BatchCreator")
 
-  auditLogs     AuditLog[]
-  attendanceFines AttendanceFine[]
-  apologies      Apology[]
-  createdAt     DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  auditLogs           AuditLog[]
+  attendanceFines     AttendanceFine[]
+  apologies           Apology[]
+  pendingTransactions PendingTransaction[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
 }
 
 // NEW ENUMS
@@ -620,10 +619,10 @@ model Member {
   generalLedger     GeneralLedger[]
   guaranteedLoans   GuarantorMap[]
   nextOfKin         NextOfKin[]
-  mpesaTransactions Transaction[]     // M-Pesa Transactions
+  mpesaTransactions Transaction[] // M-Pesa Transactions
 
   // NEW: Contributions Waterfall
-  monthlyTrackers MonthlyTracker[]
+  monthlyTrackers          MonthlyTracker[]
   contributionTransactions ContributionTransaction[]
 
   // Welfare Relations
@@ -631,15 +630,15 @@ model Member {
   welfareApprovals    WelfareApproval[]    @relation("WelfareApprover")
 
   // Expense & Payout Relations
-  expensePayouts Expense[]    @relation("ExpenseRecipient")
+  expensePayouts Expense[]   @relation("ExpenseRecipient")
   batchItems     BatchItem[]
 
   // Audit Trails
   // NEW: Meetings & Penalties
-  attendances    MeetingAttendee[]
-  createdAt DateTime @default(now())
-  createdBy String?
-  updatedAt DateTime @updatedAt
+  attendances MeetingAttendee[]
+  createdAt   DateTime          @default(now())
+  createdBy   String?
+  updatedAt   DateTime          @updatedAt
 
   approvedAt DateTime?
   approvedBy String?
@@ -777,29 +776,29 @@ model LoanProduct {
 }
 
 model Loan {
-  id                    String      @id @default(cuid())
-  loanApplicationNumber String      @unique
+  id                    String       @id @default(cuid())
+  loanApplicationNumber String       @unique
   memberId              String
-  member                Member      @relation(fields: [memberId], references: [id])
+  member                Member       @relation(fields: [memberId], references: [id])
   loanProductId         String?
   loanProduct           LoanProduct? @relation(fields: [loanProductId], references: [id])
 
-  amount             Decimal?    @db.Decimal(19, 4)
-  
+  amount Decimal? @db.Decimal(19, 4)
+
   /// @deprecated Legacy field. Do not use.
-  current_balance    Decimal    @default(0) @db.Decimal(19, 4) // Legacy
-  
+  current_balance Decimal @default(0) @db.Decimal(19, 4) // Legacy
+
   /// @deprecated Read-only cache. Use AccountingEngine for authoritative balance.
-  outstandingBalance Decimal    @default(0) @db.Decimal(19, 4) // NEW: Strict Decimal Balance
-  
-  applicationDate    DateTime?
-  disbursementDate   DateTime?
-  dueDate            DateTime?
-  interestRate       Decimal?    @db.Decimal(10, 6)
-  
+  outstandingBalance Decimal @default(0) @db.Decimal(19, 4) // NEW: Strict Decimal Balance
+
+  applicationDate  DateTime?
+  disbursementDate DateTime?
+  dueDate          DateTime?
+  interestRate     Decimal?  @db.Decimal(10, 6)
+
   /// @deprecated Read-only cache. Use AccountingEngine.
-  penalties          Decimal    @default(0) @db.Decimal(19, 4)
-  status             LoanStatus @default(PENDING_APPROVAL)
+  penalties Decimal    @default(0) @db.Decimal(19, 4)
+  status    LoanStatus @default(PENDING_APPROVAL)
 
   // Loan Appraisal Calculation Fields
   memberSharesAtApplication Decimal @default(0) @db.Decimal(19, 4)
@@ -859,25 +858,26 @@ model Loan {
   cancellationCount Int @default(0)
   submissionVersion Int @default(1)
 
-  history            LoanHistory[]
+  history LoanHistory[]
 }
 
 // Auto-Save Draft Storage for Loan Applications
 model LoanDraft {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  loanType  String?  // e.g., "EMERGENCY", "DEVELOPMENT", "NORMAL"
-  step      Int      @default(1) // Current step in multi-step form (1-4)
-  data      Json     // Stores complete form state
-  
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  loanType String? // e.g., "EMERGENCY", "DEVELOPMENT", "NORMAL"
+  step     Int     @default(1) // Current step in multi-step form (1-4)
+  data     Json // Stores complete form state
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([updatedAt])
 }
+
 // ========================================
 
 // NEW: Audit History Model
@@ -890,22 +890,20 @@ enum LoanHistoryAction {
 }
 
 model LoanHistory {
-  id        String   @id @default(cuid())
-  loanId    String
-  loan      Loan     @relation(fields: [loanId], references: [id], onDelete: Cascade)
-  
-  actorName String   // Snapshot of user name
-  actorRole String   // Snapshot of user role
+  id     String @id @default(cuid())
+  loanId String
+  loan   Loan   @relation(fields: [loanId], references: [id], onDelete: Cascade)
+
+  actorName String // Snapshot of user name
+  actorRole String // Snapshot of user role
   action    LoanHistoryAction
-  version   Int      // The submission version this action belongs to
-  
+  version   Int // The submission version this action belongs to
+
   metadata  Json?
   timestamp DateTime @default(now())
 
   @@index([loanId])
 }
-
-
 
 // ========================================
 // INTEREST ENGINE MODELS
@@ -977,11 +975,11 @@ model ChargeTemplate {
 enum ExpenseStatus {
   DRAFT
   PENDING_APPROVAL
-  DISBURSED        // Imprest: advance sent to user
-  SURRENDERED      // Imprest: user reported actuals
-  CLOSED           // Fully settled
+  DISBURSED // Imprest: advance sent to user
+  SURRENDERED // Imprest: user reported actuals
+  CLOSED // Fully settled
   REJECTED
-  REVERSED         // Reversal of an approved/disbursed expense
+  REVERSED // Reversal of an approved/disbursed expense
 }
 
 model Expense {
@@ -1042,12 +1040,12 @@ model Expense {
 // ========================================
 
 model ExpenseCategoryGroup {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  slug        String   @unique  // URL-safe key, e.g. "member-returns"
+  id          String  @id @default(cuid())
+  name        String  @unique
+  slug        String  @unique // URL-safe key, e.g. "member-returns"
   description String?
-  sortOrder   Int      @default(0)
-  isActive    Boolean  @default(true)
+  sortOrder   Int     @default(0)
+  isActive    Boolean @default(true)
 
   subCategories ExpenseSubCategory[]
 
@@ -1056,15 +1054,15 @@ model ExpenseCategoryGroup {
 }
 
 model ExpenseSubCategory {
-  id       String   @id @default(cuid())
-  name     String
-  slug     String   @unique  // URL-safe key, e.g. "dividend-payments"
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique // URL-safe key, e.g. "dividend-payments"
   description String?
-  sortOrder   Int      @default(0)
-  isActive    Boolean  @default(true)
+  sortOrder   Int     @default(0)
+  isActive    Boolean @default(true)
 
-  groupId  String
-  group    ExpenseCategoryGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  groupId String
+  group   ExpenseCategoryGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
   expenses Expense[]
 
@@ -1080,39 +1078,39 @@ model ExpenseSubCategory {
 
 model BatchPayment {
   id          String             @id @default(cuid())
-  title       String             // e.g. "Dec 2025 Dividends"
+  title       String // e.g. "Dec 2025 Dividends"
   description String?
   totalAmount Decimal            @db.Decimal(19, 4)
   status      BatchPaymentStatus @default(DRAFT)
-  type        String             // "DIVIDEND" | "INTEREST" | "BONUS"
+  type        String // "DIVIDEND" | "INTEREST" | "BONUS"
 
   createdById String
-  createdBy   User               @relation("BatchCreator", fields: [createdById], references: [id])
+  createdBy   User   @relation("BatchCreator", fields: [createdById], references: [id])
 
-  items       BatchItem[]
+  items BatchItem[]
 
-  journalEntryId String?         // Link to accounting JE
+  journalEntryId String? // Link to accounting JE
 
   processedAt DateTime?
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model BatchItem {
-  id          String       @id @default(cuid())
-  batchId     String
-  batch       BatchPayment @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  id      String       @id @default(cuid())
+  batchId String
+  batch   BatchPayment @relation(fields: [batchId], references: [id], onDelete: Cascade)
 
-  memberId    String
-  member      Member       @relation(fields: [memberId], references: [id])
+  memberId String
+  member   Member @relation(fields: [memberId], references: [id])
 
-  amount      Decimal      @db.Decimal(19, 4)
-  status      String       @default("PENDING") // PENDING | PAID | FAILED
+  amount Decimal @db.Decimal(19, 4)
+  status String  @default("PENDING") // PENDING | PAID | FAILED
 
-  walletTransactionId String?  // Reference to the wallet credit
+  walletTransactionId String? // Reference to the wallet credit
 
-  error       String?           // Error message if failed
-  createdAt   DateTime          @default(now())
+  error     String? // Error message if failed
+  createdAt DateTime @default(now())
 
   @@index([batchId])
   @@index([memberId])
@@ -1142,7 +1140,7 @@ model TransferRequest {
 
   creditAccountId String
 
-  creditAccount   LedgerAccount @relation("TransferCredit", fields: [creditAccountId], references: [id])
+  creditAccount LedgerAccount @relation("TransferCredit", fields: [creditAccountId], references: [id])
 
   amount      Decimal @db.Decimal(19, 4)
   description String
@@ -1222,49 +1220,49 @@ model Notification {
 }
 
 model AuditLog {
-  id        String         @id @default(cuid())
-  timestamp DateTime       @default(now())
-  createdAt DateTime       @default(now())
+  id        String   @id @default(cuid())
+  timestamp DateTime @default(now())
+  createdAt DateTime @default(now())
   userId    String
-  user      User           @relation(fields: [userId], references: [id])
-  
+  user      User     @relation(fields: [userId], references: [id])
+
   // Identity enrichment
-  userEmail   String?       // Nullable for legacy logs
-  userRole    String?       // Nullable for legacy logs
-  ipAddress   String?       // Existing
-  userAgent   String?       // Nullable for legacy logs
-  sessionId   String?       // Existing field in logic but maybe not in DB? No, it was missing.
-  geolocation String?       
+  userEmail   String? // Nullable for legacy logs
+  userRole    String? // Nullable for legacy logs
+  ipAddress   String? // Existing
+  userAgent   String? // Nullable for legacy logs
+  sessionId   String? // Existing field in logic but maybe not in DB? No, it was missing.
+  geolocation String?
 
   // What happened
-  action      AuditLogAction // Existing
-  actionType  AuditLogAction? // New field for upgraded tracking
-  domain      String?       // New (was context)
-  details     String?       // Existing
-  summary     String?       // Existing
-  context     String?       // Existing alias for domain
-  
+  action     AuditLogAction // Existing
+  actionType AuditLogAction? // New field for upgraded tracking
+  domain     String? // New (was context)
+  details    String? // Existing
+  summary    String? // Existing
+  context    String? // Existing alias for domain
+
   // Entity tracking
-  entityType  String?       @default("unknown")
-  entityId    String?       @default("unknown")
+  entityType String? @default("unknown")
+  entityId   String? @default("unknown")
 
   // Request tracking
-  requestId   String?
-  apiRoute    String?
-  httpMethod  String?       @default("POST")
+  requestId  String?
+  apiRoute   String?
+  httpMethod String? @default("POST")
 
   // Outcome
-  status      AuditStatus?  @default(SUCCESS)
-  severity    String?       // Existing String field
-  severityLevel Severity?   @default(INFO)
-  errorCode   String?
-  errorStack  String?
-  durationMs  Int?          // Existing
+  status        AuditStatus? @default(SUCCESS)
+  severity      String? // Existing String field
+  severityLevel Severity?    @default(INFO)
+  errorCode     String?
+  errorStack    String?
+  durationMs    Int? // Existing
 
   // Execution detail
-  steps       Json?         // Existing
-  snapshot    Json?         // Existing
-  metadata    Json?         // Existing
+  steps    Json? // Existing
+  snapshot Json? // Existing
+  metadata Json? // Existing
 
   // State diff
   stateBefore Json?
@@ -1282,15 +1280,13 @@ model AuditLog {
   @@index([severity])
 }
 
-
-
 model ReversalLog {
-  id          String   @id @default(cuid())
-  targetType  String   // LOAN, SAVINGS, SHARE, EXPENSE
-  targetId    String   // ID of the reversed transaction
-  reason      String
-  adminId     String
-  timestamp   DateTime @default(now())
+  id         String   @id @default(cuid())
+  targetType String // LOAN, SAVINGS, SHARE, EXPENSE
+  targetId   String // ID of the reversed transaction
+  reason     String
+  adminId    String
+  timestamp  DateTime @default(now())
 }
 
 // ShareTransaction - Immutable record of share capital contributions
@@ -1321,7 +1317,6 @@ model ShareTransaction {
   @@index([memberId, createdAt])
 }
 
-
 enum WalletStatus {
   ACTIVE
   INACTIVE
@@ -1330,28 +1325,28 @@ enum WalletStatus {
 }
 
 model Wallet {
-  id       String  @id @default(cuid())
-  
-  memberId String  @unique
-  member   Member  @relation(fields: [memberId], references: [id])
+  id String @id @default(cuid())
+
+  memberId String @unique
+  member   Member @relation(fields: [memberId], references: [id])
 
   // Core Banking Link
-  accountRef   String @unique // Paybill "Account Reference"
-  glAccountId  String // The underlying Liability Ledger Account (Many Wallets -> One Liability Account)
-  glAccount    LedgerAccount @relation(fields: [glAccountId], references: [id])
+  accountRef  String        @unique // Paybill "Account Reference"
+  glAccountId String // The underlying Liability Ledger Account (Many Wallets -> One Liability Account)
+  glAccount   LedgerAccount @relation(fields: [glAccountId], references: [id])
 
   currency String       @default("KES")
   status   WalletStatus @default(ACTIVE)
 
   // balance IS REMOVED. Use glAccount.balance
 
-  transactions WalletTransaction[]
+  transactions             WalletTransaction[]
   contributionTransactions ContributionTransaction[]
+  pendingTransactions      PendingTransaction[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
-
 
 model WalletTransaction {
   id       String @id @default(uuid())
@@ -1367,8 +1362,8 @@ model WalletTransaction {
 
   balanceAfter Decimal @db.Decimal(19, 4)
   immutable    Boolean @default(true)
-  
-  isReversed   Boolean @default(false)
+
+  isReversed Boolean @default(false)
 
   reversedBy String? // ID of reversal transaction
   reverses   String? // ID of transaction being reversed
@@ -1376,7 +1371,7 @@ model WalletTransaction {
   generalLedger GeneralLedger?
 
   createdAt DateTime @default(now())
-  
+
   @@index([walletId])
   @@index([createdAt])
 }
@@ -1454,10 +1449,10 @@ model SaccoSettings {
   // NEW: Meeting & Penalty Configuration
   penaltyAbsentAmount Decimal @default(500) @db.Decimal(19, 4)
   penaltyLateAmount   Decimal @default(200) @db.Decimal(19, 4)
-  
-  meetingFeesGlId     String?
-  meetingFeesGl       LedgerAccount? @relation("MeetingFeesIncome", fields: [meetingFeesGlId], references: [id])
-  
+
+  meetingFeesGlId String?
+  meetingFeesGl   LedgerAccount? @relation("MeetingFeesIncome", fields: [meetingFeesGlId], references: [id])
+
   meetingReceivableGlId String?
   meetingReceivableGl   LedgerAccount? @relation("MeetingFeesReceivable", fields: [meetingReceivableGlId], references: [id])
 }
@@ -1467,137 +1462,137 @@ model SaccoSettings {
 // ========================================
 
 enum MeetingStatus {
-    SCHEDULED
-    COMPLETED
-    CANCELLED
+  SCHEDULED
+  COMPLETED
+  CANCELLED
 }
 
 enum AttendanceStatus {
-    PRESENT
-    ABSENT
-    LATE
-    APOLOGY
-    APOLOGY_APPROVED
-    APOLOGY_REJECTED
+  PRESENT
+  ABSENT
+  LATE
+  APOLOGY
+  APOLOGY_APPROVED
+  APOLOGY_REJECTED
 }
 
 model Meeting {
-    id        String   @id @default(cuid())
-    title     String
-    date      DateTime
-    minutesUrl String? // Path to uploaded PDF
-    
-    status    MeetingStatus @default(SCHEDULED)
-    
-    isPenaltiesProcessed Boolean @default(false)
-    processedAt          DateTime?
+  id         String   @id @default(cuid())
+  title      String
+  date       DateTime
+  minutesUrl String? // Path to uploaded PDF
 
-    attendees MeetingAttendee[]
-    fines     AttendanceFine[]
-    apologies Apology[]
+  status MeetingStatus @default(SCHEDULED)
 
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+  isPenaltiesProcessed Boolean   @default(false)
+  processedAt          DateTime?
+
+  attendees MeetingAttendee[]
+  fines     AttendanceFine[]
+  apologies Apology[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model MeetingAttendee {
-    id        String @id @default(cuid())
-    
-    meetingId String
-    meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
-    
-    memberId  String
-    member    Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
-    
-    status      AttendanceStatus @default(PRESENT)
-    minutesLate Int?            @default(0) // Only relevant if LATE
-    
-    isFinalized Boolean @default(false)
+  id String @id @default(cuid())
 
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+  meetingId String
+  meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
 
-    @@unique([meetingId, memberId])
-    @@index([memberId])
-    @@index([meetingId])
+  memberId String
+  member   Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  status      AttendanceStatus @default(PRESENT)
+  minutesLate Int?             @default(0) // Only relevant if LATE
+
+  isFinalized Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([meetingId, memberId])
+  @@index([memberId])
+  @@index([meetingId])
 }
 
 enum ApologyStatus {
-    PENDING
-    APPROVED
-    REJECTED
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 model Apology {
-    id        String   @id @default(cuid())
-    meetingId String
-    meeting   Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
-    userId    String
-    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-    reason    String
-    status    ApologyStatus @default(PENDING)
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+  id        String        @id @default(cuid())
+  meetingId String
+  meeting   Meeting       @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reason    String
+  status    ApologyStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 
-    @@unique([meetingId, userId])
-    @@index([meetingId])
-    @@index([userId])
+  @@unique([meetingId, userId])
+  @@index([meetingId])
+  @@index([userId])
 }
 
 enum AttendanceFineStatus {
-    PENDING
-    PAID
-    WAIVED
+  PENDING
+  PAID
+  WAIVED
 }
 
 model AttendanceFine {
-    id        String   @id @default(cuid())
-    
-    userId    String
-    user      User     @relation(fields: [userId], references: [id])
-    
-    meetingId String
-    meeting   Meeting  @relation(fields: [meetingId], references: [id])
-    
-    amount    Decimal  @db.Decimal(19, 4)
-    reason    String   // e.g. "Absent from AGM"
-    
-    status    AttendanceFineStatus @default(PENDING)
-    
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+  id String @id @default(cuid())
 
-    @@unique([meetingId, userId])
-    @@index([userId])
-    @@index([status])
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  meetingId String
+  meeting   Meeting @relation(fields: [meetingId], references: [id])
+
+  amount Decimal @db.Decimal(19, 4)
+  reason String // e.g. "Absent from AGM"
+
+  status AttendanceFineStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([meetingId, userId])
+  @@index([userId])
+  @@index([status])
 }
 
 // Legacy tables preserved to avoid data loss. 
 // Do not delete these models unless you have migrated or no longer need the data.
 model LegacyAttendance {
-    id          String   @id @default(cuid())
-    meetingId   String?
-    userId      String?
-    memberId    String?
-    status      String?
-    minutesLate Int?             @default(0)
-    createdAt   DateTime         @default(now())
-    updatedAt   DateTime         @updatedAt
+  id          String   @id @default(cuid())
+  meetingId   String?
+  userId      String?
+  memberId    String?
+  status      String?
+  minutesLate Int?     @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-    @@map("Attendance")
+  @@map("Attendance")
 }
 
 model LegacyPenaltyBill {
-    id        String   @id @default(cuid())
-    meetingId String?
-    userId    String?
-    amount    Decimal  @db.Decimal(19, 4)
-    reason    String?
-    status    String?
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+  id        String   @id @default(cuid())
+  meetingId String?
+  userId    String?
+  amount    Decimal  @db.Decimal(19, 4)
+  reason    String?
+  status    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-    @@map("PenaltyBill")
+  @@map("PenaltyBill")
 }
 
 model LoanApproval {
@@ -1632,7 +1627,6 @@ model LoanJourneyEvent {
 // ========================================
 // ACCOUNTING ENGINE MODELS
 // ========================================
-
 
 // Journal Entry (Header)
 
@@ -1802,7 +1796,7 @@ model SystemAccountingMapping {
   type      SystemAccountType @unique
   accountId String
 
-  account   LedgerAccount     @relation(fields: [accountId], references: [id])
+  account LedgerAccount @relation(fields: [accountId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1811,9 +1805,9 @@ model SystemAccountingMapping {
 }
 
 model ProductAccountingMapping {
-  id          String                @id @default(uuid())
-  productId   String
-  product     LoanProduct           @relation(fields: [productId], references: [id])
+  id        String      @id @default(uuid())
+  productId String
+  product   LoanProduct @relation(fields: [productId], references: [id])
 
   accountId   String
   account     LedgerAccount         @relation(fields: [accountId], references: [id])
@@ -1857,9 +1851,9 @@ model LoanTransaction {
   feeAmount          Decimal @default(0) @db.Decimal(15, 2)
   overpaymentPortion Decimal @default(0) @db.Decimal(15, 2)
 
-  postedAt  DateTime @default(now())
-  transactionDate DateTime @default(now()) // Added for strict date tracking
-  reversedAt DateTime? // Added for reversal tracking
+  postedAt        DateTime  @default(now())
+  transactionDate DateTime  @default(now()) // Added for strict date tracking
+  reversedAt      DateTime? // Added for reversal tracking
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1871,26 +1865,26 @@ model LoanTransaction {
 }
 
 model DailySummary {
-  id            String   @id @default(cuid())
-  date          DateTime @unique
-  
+  id   String   @id @default(cuid())
+  date DateTime @unique
+
   // Portfolio Snapshots
   totalPrincipalOutstanding Decimal @db.Decimal(19, 4)
   totalInterestReceivable   Decimal @db.Decimal(19, 4)
   totalPenaltyReceivable    Decimal @db.Decimal(19, 4)
-  
+
   // Performance
   disbursementVolume Decimal @db.Decimal(19, 4)
   repaymentVolume    Decimal @db.Decimal(19, 4)
-  
+
   createdAt DateTime @default(now())
 }
 
 model ReportingMapping {
-  id          String   @id @default(cuid())
-  reportLine  String   // e.g. "INTEREST_INCOME", "OFFICE_EXPENSE"
-  accountCode String   // Link to LedgerAccount.code
-  
+  id          String @id @default(cuid())
+  reportLine  String // e.g. "INTEREST_INCOME", "OFFICE_EXPENSE"
+  accountCode String // Link to LedgerAccount.code
+
   @@unique([reportLine, accountCode])
 }
 
@@ -1935,7 +1929,6 @@ model PasswordResetToken {
   expires   DateTime
   createdAt DateTime @default(now())
 
-
   @@unique([email, token])
 }
 
@@ -1950,21 +1943,21 @@ enum MonthlyTrackerStatus {
 }
 
 model MonthlyTracker {
-  id        String   @id @default(cuid())
-  memberId  String
-  member    Member   @relation(fields: [memberId], references: [id])
+  id       String @id @default(cuid())
+  memberId String
+  member   Member @relation(fields: [memberId], references: [id])
 
-  month     DateTime // The first day of the month being tracked
-  year      Int
-  
-  required  Decimal  @db.Decimal(19, 4) // Snapshot of expected amount
-  paid      Decimal  @default(0) @db.Decimal(19, 4)
-  balance   Decimal  @db.Decimal(19, 4) // Computed: required - paid
-  
-  status    MonthlyTrackerStatus @default(PENDING)
-  
-  isPenalized     Boolean @default(false)
-  penaltyApplied  Decimal @default(0) @db.Decimal(19, 4)
+  month DateTime // The first day of the month being tracked
+  year  Int
+
+  required Decimal @db.Decimal(19, 4) // Snapshot of expected amount
+  paid     Decimal @default(0) @db.Decimal(19, 4)
+  balance  Decimal @db.Decimal(19, 4) // Computed: required - paid
+
+  status MonthlyTrackerStatus @default(PENDING)
+
+  isPenalized    Boolean @default(false)
+  penaltyApplied Decimal @default(0) @db.Decimal(19, 4)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1975,20 +1968,20 @@ model MonthlyTracker {
 }
 
 model ContributionTransaction {
-  id        String   @id @default(cuid())
-  
-  memberId  String
-  member    Member   @relation(fields: [memberId], references: [id])
+  id String @id @default(cuid())
 
-  walletId  String
-  wallet    Wallet   @relation(fields: [walletId], references: [id])
+  memberId String
+  member   Member @relation(fields: [memberId], references: [id])
 
-  amount    Decimal  @db.Decimal(19, 4)
-  date      DateTime @default(now())
-  
+  walletId String
+  wallet   Wallet @relation(fields: [walletId], references: [id])
+
+  amount Decimal  @db.Decimal(19, 4)
+  date   DateTime @default(now())
+
   // Link to Ledger for audit
   ledgerTransactionId String? @unique
-  
+
   createdAt DateTime @default(now())
 
   @@index([memberId])
@@ -2055,8 +2048,8 @@ model WelfareRequisition {
   id                String        @id @default(cuid())
   requisitionNumber String        @unique
   welfareTypeId     String
-  memberId          String     // The Beneficiary Member
-  beneficiaryName   String?    // Snapshot of name or external name
+  memberId          String // The Beneficiary Member
+  beneficiaryName   String? // Snapshot of name or external name
   amount            Decimal       @db.Decimal(19, 4)
   reason            String
   customFieldData   Json?
@@ -2070,8 +2063,8 @@ model WelfareRequisition {
 
   // Disbursement tracking
   disbursedAt    DateTime?
-  journalEntryId String?             @unique
-  journalEntry   LedgerTransaction?  @relation("WelfareJournalEntry", fields: [journalEntryId], references: [id])
+  journalEntryId String?            @unique
+  journalEntry   LedgerTransaction? @relation("WelfareJournalEntry", fields: [journalEntryId], references: [id])
 
   createdById String
   createdBy   User   @relation("WelfareCreator", fields: [createdById], references: [id])
@@ -2114,18 +2107,18 @@ model WelfareJourneyEvent {
 }
 
 model WelfareFundTransaction {
-  id            String   @id @default(cuid())
-  type          String // CONTRIBUTION, DISBURSEMENT, ADJUSTMENT
-  amount        Decimal  @db.Decimal(19, 4)
-  description   String
-  balanceAfter  Decimal  @db.Decimal(19, 4)
-  requisitionId String? // Auditing
-  createdById   String
-  createdByName String?  @default("")
+  id                  String   @id @default(cuid())
+  type                String // CONTRIBUTION, DISBURSEMENT, ADJUSTMENT
+  amount              Decimal  @db.Decimal(19, 4)
+  description         String
+  balanceAfter        Decimal  @db.Decimal(19, 4)
+  requisitionId       String? // Auditing
+  createdById         String
+  createdByName       String?  @default("")
   // Idempotency / External Links
-  externalReferenceId String? @unique // e.g. M-Pesa TransID
-  createdBy     User     @relation("WelfareFundCreator", fields: [createdById], references: [id])
-  createdAt     DateTime @default(now())
+  externalReferenceId String?  @unique // e.g. M-Pesa TransID
+  createdBy           User     @relation("WelfareFundCreator", fields: [createdById], references: [id])
+  createdAt           DateTime @default(now())
 
   @@index([createdAt])
 }
@@ -2155,37 +2148,37 @@ enum ApprovalType {
 }
 
 model ApprovalRequest {
-  id        String   @id @default(cuid())
+  id String @id @default(cuid())
 
   // Type & Reference
   type           ApprovalType
-  referenceId    String   // ID of the Loan, Expense, Member, etc.
-  referenceTable String   // For clarity (e.g. 'Loan')
+  referenceId    String // ID of the Loan, Expense, Member, etc.
+  referenceTable String // For clarity (e.g. 'Loan')
 
   // Requester Info
-  requesterId    String?  // ID of User/Member requesting
-  requesterName  String?
+  requesterId   String? // ID of User/Member requesting
+  requesterName String?
 
   // Content Snapshot
-  description    String?
-  amount         Decimal? @db.Decimal(19, 4)
+  description String?
+  amount      Decimal? @db.Decimal(19, 4)
 
   // Status
-  status         ApprovalStatus @default(PENDING)
+  status ApprovalStatus @default(PENDING)
 
   // RBAC
   requiredPermission String? // Permission required to view/act (e.g. 'APPROVE_LOANS')
 
   // Decision
-  approverId     String?
-  approverName   String?
-  decisionNotes  String?
-  approvedAt     DateTime?
+  approverId    String?
+  approverName  String?
+  decisionNotes String?
+  approvedAt    DateTime?
 
-  version        Int      @default(1)
+  version Int @default(1)
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([status])
   @@index([type])
@@ -2211,8 +2204,29 @@ model Transaction {
   createdAt          DateTime               @default(now())
 }
 
+model PendingTransaction {
+  id                 String    @id @default(uuid())
+  walletId           String
+  userId             String
+  profilePhone       String // Normalized MSISDN from profile
+  payingPhone        String // Normalized MSISDN entered in modal
+  amount             Decimal   @db.Decimal(19, 4)
+  initiatedAt        DateTime  @default(now())
+  status             String    @default("pending") // pending, completed, failed, expired
+  ncbaReference      String?   @unique
+  callbackReceivedAt DateTime?
 
+  // Relations
+  user   User   @relation(fields: [userId], references: [id])
+  wallet Wallet @relation(fields: [walletId], references: [id])
 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ncbaReference])
+  @@index([payingPhone, amount, status])
+  @@index([userId])
+}
 
 // Universal Approval System
 enum EntityType {
@@ -2235,30 +2249,30 @@ model ApprovalHistory {
   entityType    EntityType
   entityId      String
   actorUsername String
-  actorId       String?        
+  actorId       String?
   action        ApprovalAction
   timestamp     DateTime       @default(now())
-  metadata      Json?          
-  
+  metadata      Json?
+
   @@index([entityType, entityId])
 }
 
 // Approval Delegation System
 // Allows users to delegate their approval authority to others
 model ApprovalDelegation {
-  id          String      @id @default(cuid())
-  fromUserId  String      // User delegating their authority
-  toUserId    String      // User receiving the authority
-  entityType  EntityType? // Optional: Limit to specific entity type
-  entityId    String?     // Optional: Limit to specific entity
-  expiresAt   DateTime?   // Optional: Auto-expire delegation
-  createdAt   DateTime    @default(now())
-  revokedAt   DateTime?   // When delegation was manually revoked
-  
+  id         String      @id @default(cuid())
+  fromUserId String // User delegating their authority
+  toUserId   String // User receiving the authority
+  entityType EntityType? // Optional: Limit to specific entity type
+  entityId   String? // Optional: Limit to specific entity
+  expiresAt  DateTime? // Optional: Auto-expire delegation
+  createdAt  DateTime    @default(now())
+  revokedAt  DateTime? // When delegation was manually revoked
+
   // Relations
-  fromUser    User        @relation("DelegationsFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
-  toUser      User        @relation("DelegationsTo", fields: [toUserId], references: [id], onDelete: Cascade)
-  
+  fromUser User @relation("DelegationsFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser   User @relation("DelegationsTo", fields: [toUserId], references: [id], onDelete: Cascade)
+
   @@index([fromUserId, toUserId])
   @@index([toUserId, entityType])
   @@index([toUserId, expiresAt])
@@ -2277,69 +2291,69 @@ enum WorkflowStatus {
 }
 
 model WorkflowDefinition {
-  id          String      @id @default(cuid())
-  entityType  EntityType  @unique // One workflow per entity type for now (e.g. LOAN)
+  id          String     @id @default(cuid())
+  entityType  EntityType @unique // One workflow per entity type for now (e.g. LOAN)
   name        String
   description String?
-  isActive    Boolean     @default(true)
+  isActive    Boolean    @default(true)
 
-  stages      WorkflowStage[]
-  requests    WorkflowRequest[]
+  stages   WorkflowStage[]
+  requests WorkflowRequest[]
 
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model WorkflowStage {
-  id          String      @id @default(cuid())
-  workflowId  String
-  workflow    WorkflowDefinition @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  id         String             @id @default(cuid())
+  workflowId String
+  workflow   WorkflowDefinition @relation(fields: [workflowId], references: [id], onDelete: Cascade)
 
-  stepNumber   Int
-  name         String
-  requiredRole UserRole 
-  canReject    Boolean     @default(true)
-  isFinal      Boolean     @default(false)
-  minVotesRequired Int     @default(1) // Number of approvals needed
+  stepNumber       Int
+  name             String
+  requiredRole     UserRole
+  canReject        Boolean  @default(true)
+  isFinal          Boolean  @default(false)
+  minVotesRequired Int      @default(1) // Number of approvals needed
 
   // Reverse relation for current stage tracking
   currentInRequests WorkflowRequest[]
 
   // Reverse relation for actions taken in this stage
-  actions      WorkflowAction[]
+  actions WorkflowAction[]
 
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([workflowId, stepNumber])
 }
 
 model WorkflowRequest {
-  id             String             @id @default(cuid())
-  workflowId     String
-  workflow       WorkflowDefinition @relation(fields: [workflowId], references: [id])
+  id         String             @id @default(cuid())
+  workflowId String
+  workflow   WorkflowDefinition @relation(fields: [workflowId], references: [id])
 
   // Track progress
   currentStageId String?
-  currentStage   WorkflowStage?     @relation(fields: [currentStageId], references: [id])
-  
-  status         WorkflowStatus     @default(PENDING)
+  currentStage   WorkflowStage? @relation(fields: [currentStageId], references: [id])
+
+  status WorkflowStatus @default(PENDING)
 
   // Entity Reference
-  entityType     EntityType
-  entityId       String
-  
+  entityType EntityType
+  entityId   String
+
   // Requester
-  requesterId    String
-  requester      User               @relation(fields: [requesterId], references: [id])
+  requesterId String
+  requester   User   @relation(fields: [requesterId], references: [id])
 
   // History
-  actions        WorkflowAction[]
+  actions WorkflowAction[]
 
-  version        Int                @default(1)
+  version Int @default(1)
 
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([entityType, entityId])
   @@index([status])
@@ -2347,19 +2361,19 @@ model WorkflowRequest {
 }
 
 model WorkflowAction {
-  id          String          @id @default(cuid())
-  requestId   String
-  request     WorkflowRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  id        String          @id @default(cuid())
+  requestId String
+  request   WorkflowRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
 
-  stageId     String
-  stage       WorkflowStage   @relation(fields: [stageId], references: [id])
+  stageId String
+  stage   WorkflowStage @relation(fields: [stageId], references: [id])
 
-  actorId     String
-  actor       User            @relation(fields: [actorId], references: [id])
+  actorId String
+  actor   User   @relation(fields: [actorId], references: [id])
 
-  action      ApprovalAction 
-  notes       String?
-  timestamp   DateTime        @default(now())
+  action    ApprovalAction
+  notes     String?
+  timestamp DateTime       @default(now())
 
   @@index([requestId])
   @@index([actorId])
@@ -2370,7 +2384,7 @@ model WorkflowAction {
 model SystemModule {
   id          String           @id @default(cuid())
   key         String           @unique // e.g., "LOANS"
-  name        String           // e.g., "Loans Management"
+  name        String // e.g., "Loans Management"
   description String?
   permissions RolePermission[]
   createdAt   DateTime         @default(now())
@@ -2378,13 +2392,13 @@ model SystemModule {
 }
 
 model RolePermission {
-  id          String       @id @default(cuid())
-  role        UserRole
-  moduleKey   String
-  module      SystemModule @relation(fields: [moduleKey], references: [key])
-  canAccess   Boolean      @default(false)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id        String       @id @default(cuid())
+  role      UserRole
+  moduleKey String
+  module    SystemModule @relation(fields: [moduleKey], references: [key])
+  canAccess Boolean      @default(false)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
   @@unique([role, moduleKey])
 }
@@ -2395,7 +2409,7 @@ model RolePermission {
 
 model EmailTemplate {
   id        String   @id @default(cuid())
-  type      String   @unique  // "LOAN_APPROVAL_REQUEST" | "LOAN_DISBURSEMENT"
+  type      String   @unique // "LOAN_APPROVAL_REQUEST" | "LOAN_DISBURSEMENT"
   name      String
   subject   String
   body      String   @db.Text
@@ -2410,8 +2424,8 @@ model EmailNotificationLog {
   templateType String
   sentAt       DateTime @default(now())
   recipients   String[]
-  status       String   // "SENT" | "FAILED"
+  status       String // "SENT" | "FAILED"
   error        String?
 
-  @@unique([loanId, templateType])  // enforces deduplication
+  @@unique([loanId, templateType]) // enforces deduplication
 }

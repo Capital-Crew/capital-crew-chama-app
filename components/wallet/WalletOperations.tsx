@@ -7,6 +7,8 @@ import {
     addLoanRepayment,
     getActiveLoansByMember
 } from '@/app/wallet-add-funds-actions'
+import { initiatePayment } from '@/app/actions/payment-actions'
+import { getWalletBalance } from '@/app/wallet-actions'
 import { useSearchParams } from 'next/navigation'
 import {
     withdrawFunds,
@@ -83,6 +85,7 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
     const [withdrawAmount, setWithdrawAmount] = useState('')
     const [withdrawDescription, setWithdrawDescription] = useState('')
     const [fetchingBalance, setFetchingBalance] = useState(false)
+    const [profilePhone, setProfilePhone] = useState('')
 
     // Effects
     useEffect(() => {
@@ -96,7 +99,20 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
         if (activeMainTab === 'withdrawals') {
             fetchWithdrawableBalance()
         }
+        if (activeMainTab === 'deposits') {
+            fetchProfilePhone()
+        }
     }, [activeMainTab, memberId])
+
+    const fetchProfilePhone = async () => {
+        try {
+            const walletInfo = await getWalletBalance(memberId)
+            if (walletInfo.phoneNumber) {
+                setProfilePhone(walletInfo.phoneNumber)
+                if (!mpesaPhone) setMpesaPhone(walletInfo.phoneNumber)
+            }
+        } catch (err) {}
+    }
 
     // Loan Selection Logic - With REAL-TIME Refresh
     useEffect(() => {
@@ -199,22 +215,15 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
         e.preventDefault()
         setLoading(true); setMessage(null)
         try {
-            const res = await fetch('/api/deposit', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    phoneNumber: mpesaPhone,
-                    amount: parseFloat(mpesaAmount),
-                    memberId: memberId
-                })
+            const result = await initiatePayment({
+                amount: parseFloat(mpesaAmount),
+                payingPhone: mpesaPhone || profilePhone
             })
-            const data = await res.json()
 
-            if (!res.ok) throw new Error(data.error || 'Deposit failed')
-
-            setMessage({ type: 'success', text: 'STK Push sent! Please check your phone.' })
-            setMpesaAmount('')
-            // Phone number kept for convenience
+            if (result.success) {
+                setMessage({ type: 'success', text: result.message })
+                setMpesaAmount('')
+            }
         } catch (err: any) {
             setMessage({ type: 'error', text: err.message })
         } finally {
@@ -355,8 +364,20 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
                                     <div>
                                         <label className="text-xs font-bold uppercase text-slate-500 mb-1 block">Phone Number</label>
                                         <input type="tel" required value={mpesaPhone} onChange={e => setMpesaPhone(e.target.value)}
-                                            className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-green-500 focus:border-transparent font-bold text-slate-900"
+                                            className={`w-full px-4 py-3 rounded-xl border transition-all font-bold text-slate-900 outline-none focus:ring-2 ${
+                                                mpesaPhone !== profilePhone && mpesaPhone !== ''
+                                                ? 'border-orange-400 bg-orange-50/30 focus:ring-orange-500' 
+                                                : 'border-slate-300 focus:ring-green-500'
+                                            }`}
                                             placeholder="2547..." />
+                                        {mpesaPhone !== profilePhone && mpesaPhone !== '' ? (
+                                            <p className="mt-1.5 text-[10px] font-bold text-orange-600 flex items-center gap-1">
+                                                <AlertCircleIcon className="w-3 h-3" />
+                                                Paying from a different number.
+                                            </p>
+                                        ) : (
+                                            <p className="mt-1 text-[10px] text-slate-400">Pre-filled from your profile.</p>
+                                        )}
                                     </div>
                                     <div>
                                         <label className="text-xs font-bold uppercase text-slate-500 mb-1 block">Amount (KES)</label>

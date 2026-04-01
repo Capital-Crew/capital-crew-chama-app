@@ -1,14 +1,16 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { WalletIcon, CoinsIcon, AlertCircleIcon, XIcon, ArrowUpIcon, ArrowDownIcon, PlusCircleIcon } from 'lucide-react'
-import { getContributionHistory, getWithdrawableBalanceHistory, addCashDeposit } from '@/app/wallet-history-actions'
+import { WalletIcon, CoinsIcon, AlertCircleIcon, AlertTriangleIcon, XIcon, ArrowUpIcon, ArrowDownIcon, PlusCircleIcon } from 'lucide-react'
+import { getContributionHistory, getWithdrawableBalanceHistory } from '@/app/wallet-history-actions'
+import { initiatePayment } from '@/app/actions/payment-actions'
 
 interface WalletBalance {
     shareContributions?: number
     balance: number
     availableBalance?: number
     totalContributions?: number
+    phoneNumber?: string
 }
 
 type TransactionType = 'share' | 'balance'
@@ -28,9 +30,12 @@ export function WalletDashboard({ memberId }: { memberId: string }) {
     // Deposit modal state
     const [showDepositModal, setShowDepositModal] = useState(false)
     const [depositAmount, setDepositAmount] = useState('')
-    const [depositDescription, setDepositDescription] = useState('')
+    const [payingPhoneNumber, setPayingPhoneNumber] = useState('')
     const [depositLoading, setDepositLoading] = useState(false)
     const [depositMessage, setDepositMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+
+    const profilePhone = walletData?.phoneNumber || ''
+    const isDifferentNumber = payingPhoneNumber !== '' && payingPhoneNumber !== profilePhone
 
     useEffect(() => {
         fetchWallet()
@@ -86,26 +91,31 @@ export function WalletDashboard({ memberId }: { memberId: string }) {
         setDepositMessage(null)
 
         try {
-            await addCashDeposit({
-                memberId,
+            const result = await initiatePayment({
                 amount: parseFloat(depositAmount),
-                description: depositDescription
+                payingPhone: payingPhoneNumber || profilePhone
             })
 
-            setDepositMessage({ type: 'success', text: 'Deposit successful!' })
-            setDepositAmount('')
-            setDepositDescription('')
-            fetchWallet() // Refresh balance
-
-            setTimeout(() => {
-                setShowDepositModal(false)
-                setDepositMessage(null)
-            }, 2000)
+            if (result.success) {
+                setDepositMessage({ type: 'success', text: result.message })
+                setDepositAmount('')
+                
+                // Allow user to see success message before closing
+                setTimeout(() => {
+                    setShowDepositModal(false)
+                    setDepositMessage(null)
+                }, 3000)
+            }
         } catch (error: any) {
             setDepositMessage({ type: 'error', text: error.message })
         } finally {
             setDepositLoading(false)
         }
+    }
+
+    const openDepositModal = () => {
+        setPayingPhoneNumber(profilePhone)
+        setShowDepositModal(true)
     }
 
     if (loading) {
@@ -187,7 +197,7 @@ export function WalletDashboard({ memberId }: { memberId: string }) {
                                 <WalletIcon className="w-6 h-6 text-emerald-600" />
                             </div>
                             <button
-                                onClick={() => setShowDepositModal(true)}
+                                onClick={openDepositModal}
                                 className="px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700 rounded-xl text-xs font-black uppercase tracking-wide flex items-center gap-2 shadow-lg hover:shadow-emerald-600/30 transition-all active:scale-95"
                             >
                                 <PlusCircleIcon className="w-4 h-4" />
@@ -301,7 +311,7 @@ export function WalletDashboard({ memberId }: { memberId: string }) {
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-3xl max-w-md w-full">
                         <div className="flex items-center justify-between p-6 border-b border-slate-200">
-                            <h2 className="text-2xl font-black text-slate-900">Add Cash Deposit</h2>
+                            <h2 className="text-2xl font-black text-slate-900 italic uppercase italic tracking-tight">Top Up Wallet</h2>
                             <button
                                 onClick={() => setShowDepositModal(false)}
                                 className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
@@ -319,27 +329,45 @@ export function WalletDashboard({ memberId }: { memberId: string }) {
                             )}
 
                             <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">Amount (KES)</label>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    min="0.01"
-                                    value={depositAmount}
-                                    onChange={(e) => setDepositAmount(e.target.value)}
-                                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                    placeholder="0.00"
-                                    required
-                                />
+                                <label className="block text-sm font-bold text-slate-700 mb-2">M-Pesa Phone Number</label>
+                                <div className="space-y-2">
+                                    <input
+                                        type="tel"
+                                        value={payingPhoneNumber}
+                                        onChange={(e) => setPayingPhoneNumber(e.target.value)}
+                                        className={`w-full px-4 py-3 border rounded-xl transition-all outline-none focus:ring-2 ${
+                                            isDifferentNumber 
+                                            ? 'border-orange-400 bg-orange-50/30 focus:ring-orange-500' 
+                                            : 'border-slate-300 focus:ring-emerald-500'
+                                        }`}
+                                        placeholder="2547XXXXXXXX"
+                                        required
+                                    />
+                                    {isDifferentNumber ? (
+                                        <div className="flex items-start gap-2 p-3 bg-orange-50 rounded-xl border border-orange-100 animate-in fade-in slide-in-from-top-1">
+                                            <AlertTriangleIcon className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
+                                            <p className="text-[11px] font-bold text-orange-800 leading-tight">
+                                                Paying from a different number — your internal wallet will still be credited automatically.
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <p className="px-1 text-[10px] font-medium text-slate-400">
+                                            Pre-filled from your profile. Edit to pay from a different number.
+                                        </p>
+                                    )}
+                                </div>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">Description</label>
-                                <textarea
-                                    value={depositDescription}
-                                    onChange={(e) => setDepositDescription(e.target.value)}
-                                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                    placeholder="Purpose of deposit..."
-                                    rows={3}
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Amount (KES)</label>
+                                <input
+                                    type="number"
+                                    step="1"
+                                    min="1"
+                                    value={depositAmount}
+                                    onChange={(e) => setDepositAmount(e.target.value)}
+                                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                                    placeholder="0"
                                     required
                                 />
                             </div>
@@ -347,9 +375,14 @@ export function WalletDashboard({ memberId }: { memberId: string }) {
                             <button
                                 type="submit"
                                 disabled={depositLoading}
-                                className="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-black uppercase text-sm transition-colors disabled:opacity-50"
+                                className="w-full bg-slate-900 hover:bg-black text-white py-4 rounded-xl font-black uppercase text-xs tracking-widest transition-all shadow-xl shadow-slate-200 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none mt-4"
                             >
-                                {depositLoading ? 'Processing...' : 'Add Deposit'}
+                                {depositLoading ? (
+                                    <span className="flex items-center justify-center gap-2">
+                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                        Processing...
+                                    </span>
+                                ) : 'Initiate Secure Payment'}
                             </button>
                         </form>
                     </div>

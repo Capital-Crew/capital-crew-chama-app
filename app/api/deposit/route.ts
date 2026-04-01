@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { MpesaService } from "@/lib/mpesa";
 import { auth } from "@/auth";
 import { handleApiError } from "@/lib/api-utils";
 
@@ -16,22 +15,25 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Amount and Phone Number are required" }, { status: 400 });
         }
 
-        const cleanPhone = phoneNumber.startsWith("+") ? phoneNumber.substring(1) : phoneNumber;
+        // Import and call the new initiation logic
+        const { initiatePayment } = await import("@/app/actions/payment-actions");
+        
+        // Note: initiatePayment is a withAudit action. For an API route, 
+        // we might need to handle context differently, but calling it directly 
+        // will at least trigger the flow.
+        const result = await initiatePayment({
+            amount: Number(amount),
+            payingPhone: phoneNumber
+        });
 
-        // Use MpesaService
-        const result = await MpesaService.initiateSTKPush(
-            cleanPhone,
-            Number(amount)
-        );
-
-        if (result.ResponseCode === "0") {
+        if (result.success) {
             return NextResponse.json({
                 success: true,
-                message: "Payment requested. Please check your phone for the M-Pesa pin prompt.",
-                checkoutRequestId: result.CheckoutRequestID
+                message: result.message,
+                transactionId: result.transactionId
             });
         } else {
-            throw new Error(result.ResponseDescription || "STK Push Failed");
+            throw new Error("NCBA Payment Initiation Failed");
         }
 
     } catch (error: any) {

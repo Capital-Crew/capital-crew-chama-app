@@ -8,43 +8,26 @@
  */
 
 import React from 'react'
-import { TrendingUp, DollarSign, Wallet, Download, Calendar, PieChart, Landmark, Scale, Target, Activity } from 'lucide-react'
-import Link from 'next/link'
-import dynamic from 'next/dynamic'
+import { TrendingUp, DollarSign, Wallet, Download, Calendar, Landmark, Scale, Target, Activity } from 'lucide-react'
+import { DelinquentLoansTable } from './dashboard/DelinquentLoansTable'
+import { ContributionArrearsTable } from './dashboard/ContributionArrearsTable'
 
-// LIGHTHOUSE FIX 1.2 & 1.3: Dynamic import with SSR disabled to reduce main bundle and avoid SVGs blocking render
-const DashboardTrendChart = dynamic(() => import('@/components/DashboardTrendChart'), {
-    ssr: false,
-    loading: () => <div className="h-[250px] w-full bg-slate-100 animate-pulse rounded-xl" />
-})
-
-const DashboardVolumeChart = dynamic(() => import('@/components/DashboardVolumeChart'), {
-    ssr: false,
-    loading: () => <div className="h-[250px] w-full bg-slate-100 animate-pulse rounded-xl" />
-})
 
 interface DashboardStats {
     totalContributions: number
-    totalLoansIssued: number
     outstandingLoans: number
-    topContributors: Array<{ name: string; amount: number; id?: string }> // Added ID for linking
-    topBorrowers: Array<{ name: string; amount: number; id?: string }>   // Added ID for linking
+    delinquentLoans: any[]
+    contributionArrears: any[]
 }
 
-interface TrendData {
-    name: string
-    contributions: number
-    loans: number
-}
 
 interface Props {
     stats: DashboardStats
-    trends: TrendData[]
     personalDetail?: any // Type from getMemberFullDetail
     ledgerKPIs?: any
 }
 
-export function DashboardView({ stats, trends, personalDetail, ledgerKPIs }: Props) {
+export function DashboardView({ stats, personalDetail, ledgerKPIs }: Props) {
     // Helper to export data
 
     // Helper to export data
@@ -52,11 +35,8 @@ export function DashboardView({ stats, trends, personalDetail, ledgerKPIs }: Pro
         const rows = [
             ['Metric', 'Value'],
             ['Total Contributions', stats.totalContributions],
-            ['Total Loans Issued', stats.totalLoansIssued],
             ['Outstanding Loans', stats.outstandingLoans],
-            [],
-            ['Month', 'Contributions', 'Loan Disbursements'],
-            ...trends.map(t => [t.name, t.contributions, t.loans])
+            ['Total Delinquency', stats.delinquentLoans.reduce((acc, curr) => acc + curr.arrears, 0)]
         ]
 
         const csvContent = "data:text/csv;charset=utf-8,"
@@ -164,12 +144,12 @@ export function DashboardView({ stats, trends, personalDetail, ledgerKPIs }: Pro
                         />
                         <ModernMetricCard
                             icon={<TrendingUp className="w-5 h-5 md:w-6 md:h-6" />}
-                            label="Total Loans Disbursed"
-                            value={stats.totalLoansIssued}
-                            subtitle="All-time principal"
-                            gradient="from-purple-500 to-pink-600"
-                            iconBg="bg-purple-50"
-                            iconColor="text-purple-600"
+                            label="Delinquent Loans"
+                            value={stats.delinquentLoans.reduce((acc, curr) => acc + curr.arrears, 0)}
+                            subtitle={`${stats.delinquentLoans.length} active overdue loans`}
+                            gradient="from-red-500 to-pink-600"
+                            iconBg="bg-red-50"
+                            iconColor="text-red-600"
                         />
                         <ModernMetricCard
                             icon={<DollarSign className="w-5 h-5 md:w-6 md:h-6" />}
@@ -182,51 +162,12 @@ export function DashboardView({ stats, trends, personalDetail, ledgerKPIs }: Pro
                         />
                     </div>
 
-                    {}
-                    <h2 className="sr-only">Financial Charts</h2>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
-                        {}
-                        <div className="bg-white p-4 md:p-5 rounded-2xl md:rounded-3xl shadow-sm border border-slate-100">
-                            <h3 className="text-sm md:text-base font-bold text-slate-800 mb-3 md:mb-4 flex items-center gap-2">
-                                <TrendingUp className="w-4 h-4 text-cyan-500" />
-                                Growth Trends
-                            </h3>
-                            <div className="h-[200px] md:h-[250px] w-full min-h-[200px]">
-                                <DashboardTrendChart data={trends} />
-                            </div>
-                        </div>
-
-                        {}
-                        <div className="bg-white p-4 md:p-5 rounded-2xl md:rounded-3xl shadow-sm border border-slate-100">
-                            <h3 className="text-sm md:text-base font-bold text-slate-800 mb-3 md:mb-4 flex items-center gap-2">
-                                <PieChart className="w-4 h-4 text-purple-500" />
-                                Monthly Volume
-                            </h3>
-                            <div className="h-[200px] md:h-[250px] w-full min-h-[200px]">
-                                <DashboardVolumeChart data={trends} />
-                            </div>
-                        </div>
-                    </div>
 
                     {}
-                    <h2 className="sr-only">Member Top Lists</h2>
+                    <h2 className="sr-only">Delinquency & Arrears</h2>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
-                        <TopListCard
-                            title="Top Contributors"
-                            subtitle="Highest capital builders"
-                            items={stats.topContributors}
-                            type="contributor"
-                            icon="🏆"
-                            theme="green"
-                        />
-                        <TopListCard
-                            title="Top Borrowers"
-                            subtitle="Active loan utilization"
-                            items={stats.topBorrowers}
-                            type="borrower"
-                            icon="💰"
-                            theme="blue"
-                        />
+                        <DelinquentLoansTable loans={stats.delinquentLoans} />
+                        <ContributionArrearsTable arrears={stats.contributionArrears} />
                     </div>
                 </div>
             </div>
@@ -258,42 +199,6 @@ function ModernMetricCard({ icon, label, value, subtitle, gradient, iconBg, icon
 
             {}
             <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-5 rounded-bl-[100px] transition-opacity duration-500`} />
-        </div >
-    )
-}
-
-function TopListCard({ title, subtitle, items, type, icon, theme }: any) {
-    return (
-        <div className="bg-white p-4 md:p-5 rounded-2xl md:rounded-3xl shadow-sm border border-slate-100">
-            <div className="flex items-center gap-2 md:gap-3 mb-3 md:mb-4">
-                <div className={`w-8 h-8 rounded-lg md:rounded-xl flex items-center justify-center text-lg bg-${theme}-50`}>
-                    {icon}
-                </div>
-                <div>
-                    <h3 className="text-sm md:text-base font-bold text-slate-900">{title}</h3>
-                    {}
-                    <p className="text-[10px] md:text-[11px] text-slate-600 font-semibold">{subtitle}</p>
-                </div>
-            </div>
-
-            <div className="space-y-1 md:space-y-2">
-                {items.map((item: any, idx: number) => (
-                    <div key={idx} className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 group transition-colors">
-                        <div className="flex items-center gap-2 md:gap-3">
-                            <span className={`w-5 h-5 md:w-6 md:h-6 rounded-md md:rounded-lg bg-slate-100 text-slate-500 text-[10px] font-bold flex items-center justify-center`}>
-                                {idx + 1}
-                            </span>
-                            <Link href={`/members/${item.id}`} className="font-bold text-xs text-slate-700 hover:text-cyan-600 transition-colors">
-                                {item.name}
-                            </Link>
-                        </div>
-                        <span className="font-bold text-xs text-slate-900">
-                            {Number(item.amount).toLocaleString()}
-                        </span>
-                    </div>
-                ))}
-                {items.length === 0 && <p className="text-center text-slate-400 text-xs py-2">No data available</p>}
-            </div>
         </div>
     )
 }

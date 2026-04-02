@@ -19,65 +19,28 @@ export async function getDashboardStats(): Promise<Serialized<any>> {
 
     const prisma = db as any
 
-    // 1. Fetch Members first (Lightweight)
+    // 1. Fetch Members mapping
     const allMembers = await prisma.member.findMany({
-        select: {
-            id: true,
-            name: true
-        }
+        select: { id: true, name: true }
     })
-    const memberIds = allMembers.map((m: any) => m.id)
     const memberMap = new Map(allMembers.map((m: any) => [m.id, m.name]))
 
-    // 2. Get Contribution Account Code
-    const contributionMapping = await prisma.systemAccountingMapping.findUnique({
-        where: { type: 'CONTRIBUTIONS' },
-        include: { account: true }
-    })
-    const contributionAccountCode = contributionMapping?.account.code || '3000'
-
-    // 3. Parallel Fetching of Main Datasets
+    // 2. Parallel Fetching of Data
     const [
-        allLoans,
         contributionsAgg,
-        contributorStats,
         loanPortfolioAgg,
-        topLoansHeuristic
+        delinquentInstallments,
+        missedTrackers
     ] = await Promise.all([
-        // A. All Loans (for historical totals)
-        prisma.loan.findMany({
-            select: {
-                id: true,
-                memberId: true,
-                amount: true,
-                status: true
-            }
-        }),
-
-        // B. Total Contributions (Account 1200 / 3000 mapping)
+        // A. Total Contributions (Account mapping)
         prisma.ledgerEntry.aggregate({
             where: {
-                ledgerAccount: { code: contributionAccountCode },
+                ledgerAccount: { systemMappings: { some: { type: 'CONTRIBUTIONS' } } },
             },
             _sum: { debitAmount: true, creditAmount: true }
         }),
 
-        // C. Top Contributors (from ledger)
-        prisma.ledgerTransaction.groupBy({
-            by: ['referenceId'],
-            where: {
-                referenceType: 'SHARE_CONTRIBUTION',
-                referenceId: { in: memberIds },
-                isReversed: false
-            },
-            _sum: { totalAmount: true },
-            orderBy: {
-                _sum: { totalAmount: 'desc' },
-            },
-            take: 5
-        }),
-
-        // D. Outstanding Loans (Using Cached Balances for speed)
+        // B. Total Outstanding Loans
         prisma.ledgerAccount.aggregate({
             where: {
                 productMappings: { some: { accountType: 'LOAN_PORTFOLIO' } }
@@ -85,60 +48,100 @@ export async function getDashboardStats(): Promise<Serialized<any>> {
             _sum: { balance: true }
         }),
 
-        // E. Top Borrowers Heuristic
-        prisma.loan.findMany({
-            where: { status: { in: ['ACTIVE', 'OVERDUE'] } },
-            orderBy: { outstandingBalance: 'desc' },
-            take: 10,
-            select: {
-                memberId: true,
-                outstandingBalance: true,
-                member: { select: { name: true } }
-            }
+        // C. Delinquent Loan Installments (passed due date and not fully paid)
+        prisma.repaymentInstallment.findMany({
+            where: {
+                dueDate: { lt: new Date() },
+                isFullyPaid: false,
+                loan: { status: { in: ['ACTIVE', 'OVERDUE'] } }
+            },
+            include: {
+                loan: {
+                    select: {
+                        loanApplicationNumber: true,
+                        member: { select: { name: true, id: true } }
+                    }
+                }
+            },
+            orderBy: { dueDate: 'asc' }
+        }),
+
+        // D. Contribution Arrears (from MonthlyTracker)
+        prisma.monthlyTracker.findMany({
+            where: {
+                balance: { gt: 0 },
+                month: { lte: new Date() }
+            },
+            include: {
+                member: { select: { name: true, id: true } }
+            },
+            orderBy: { month: 'asc' }
         })
     ])
 
-    // --- AGGREGATION & CALCULATIONS ---
+    // --- AGGREGATION ---
 
-    // 1. Total Contributions
+    // 1. Financial Totals
     const totalContributions = Number(contributionsAgg._sum.creditAmount || 0) - Number(contributionsAgg._sum.debitAmount || 0)
+    const outstandingLoans = Number(loanPortfolioAgg._sum.balance || 0)
 
-    // 2. Total Loans Issued (Historical)
-    const totalLoansIssued = allLoans
-        .filter((l: any) => ['ACTIVE', 'OVERDUE', 'CLEARED'].includes(l.status))
-        .reduce((sum: number, l: any) => sum + Number(l.amount), 0)
-
-    const outstandingLoans = Number((loanPortfolioAgg as any)._sum.balance || 0)
-
-    // 4. Top Borrowers (Aggregated from Heuristic)
-    const memberLoanTotals = new Map<string, number>()
-    topLoansHeuristic.forEach((loan: any) => {
-        const current = memberLoanTotals.get(loan.memberId) || 0
-        memberLoanTotals.set(loan.memberId, current + Number(loan.outstandingBalance))
-    })
-
-    const topBorrowers = Array.from(memberLoanTotals.entries())
-        .map(([memberId, amount]) => ({
-            name: memberMap.get(memberId) || 'Unknown Member',
-            amount
-        }))
-        .sort((a, b) => b.amount - a.amount)
-        .slice(0, 5)
-
-    // 5. Top Contributors
-    const topContributors = (contributorStats as any[]).map((stat: any) => {
-        return {
-            name: memberMap.get(stat.referenceId) || 'Unknown Member',
-            amount: Number(stat._sum.totalAmount || 0)
+    // 2. Aggregate Delinquent Loans
+    const loanArrearsMap = new Map<string, any>()
+    delinquentInstallments.forEach((inst: any) => {
+        const loanId = inst.loanId
+        const arrears = Number(inst.principalDue) + Number(inst.interestDue) + Number(inst.penaltyDue) + Number(inst.feeDue)
+                        - (Number(inst.principalPaid) + Number(inst.interestPaid) + Number(inst.penaltyPaid) + Number(inst.feesPaid))
+        
+        if (loanArrearsMap.has(loanId)) {
+            const existing = loanArrearsMap.get(loanId)
+            existing.arrears += arrears
+            // Keep the earliest due date for "Days Overdue"
+            if (new Date(inst.dueDate) < new Date(existing.earliestDueDate)) {
+                existing.earliestDueDate = inst.dueDate
+            }
+        } else {
+            loanArrearsMap.set(loanId, {
+                loanId: inst.loanId,
+                loanNumber: inst.loan.loanApplicationNumber,
+                memberName: inst.loan.member.name,
+                memberId: inst.loan.member.id,
+                arrears: arrears,
+                earliestDueDate: inst.dueDate
+            })
         }
     })
 
+    const delinquentLoans = Array.from(loanArrearsMap.values()).map(l => ({
+        ...l,
+        daysOverdue: Math.floor((Date.now() - new Date(l.earliestDueDate).getTime()) / (1000 * 60 * 60 * 24))
+    })).sort((a, b) => b.arrears - a.arrears).slice(0, 5)
+
+    // 3. Aggregate Contribution Arrears
+    const memberContributionArrearsMap = new Map<string, any>()
+    missedTrackers.forEach((track: any) => {
+        const mid = track.memberId
+        if (memberContributionArrearsMap.has(mid)) {
+            const existing = memberContributionArrearsMap.get(mid)
+            existing.arrears += Number(track.balance)
+        } else {
+            memberContributionArrearsMap.set(mid, {
+                memberId: mid,
+                memberName: track.member.name,
+                arrears: Number(track.balance),
+                lastMissed: track.month
+            })
+        }
+    })
+
+    const contributionArrears = Array.from(memberContributionArrearsMap.values())
+        .sort((a, b) => b.arrears - a.arrears)
+        .slice(0, 5)
+
     return serializeFinancials({
         totalContributions,
-        totalLoansIssued,
         outstandingLoans,
-        topContributors,
-        topBorrowers
+        delinquentLoans,
+        contributionArrears
     })
 }
 

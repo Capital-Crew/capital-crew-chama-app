@@ -1,4 +1,4 @@
-import { getDashboardStats, getMonthlyTrends, getLedgerKPIs } from '@/app/dashboard-actions'
+import { getDashboardStats, getLedgerKPIs } from '@/app/dashboard-actions'
 import { DashboardView } from '@/components/DashboardView'
 import { auth } from '@/auth'
 import { getMemberFullDetail } from '@/app/actions/member-dashboard-actions'
@@ -21,7 +21,6 @@ export default async function DashboardPage() {
 
     // Fetch Global Stats — session is guaranteed valid at this point
     const stats = await getDashboardStats()
-    const trends = await getMonthlyTrends()
     const ledgerKPIs = await getLedgerKPIs()
 
 
@@ -30,5 +29,5 @@ export default async function DashboardPage() {
         personalDetail = await getMemberFullDetail(memberId);
     }
 
-    return <DashboardView stats={stats} trends={trends} personalDetail={personalDetail} ledgerKPIs={ledgerKPIs} />
+    return <DashboardView stats={stats} personalDetail={personalDetail} ledgerKPIs={ledgerKPIs} />
 }

@@ -7,6 +7,9 @@ import { PermissionsMatrix } from '@/components/admin/PermissionsMatrix';
 import { Settings, DollarSign, Users, Shield, CheckCircle, TrendingUp, Scale } from 'lucide-react';
 import { toast } from 'sonner';
 import { PremiumTabs } from './shared/PremiumTabs';
+import { useFormAction } from '@/hooks/useFormAction';
+import { SubmitButton } from '@/components/ui/SubmitButton';
+import { FormError } from '@/components/ui/FormError';
 
 interface SettingsProps {
     users?: any[];
@@ -18,6 +21,7 @@ interface SettingsProps {
 export function UserRightsManagementModule({ users = [], modules = [], permissions = [], expenseAccounts = [] }: SettingsProps) {
     const [activeTab, setActiveTab] = useState('rights');
     const [saccoSettings, setSaccoSettings] = useState<any>(null);
+    const { isPending: loading, error, execute, setError } = useFormAction();
     const [settingsForm, setSettingsForm] = useState({
         loanMultiplier: 3.0,
         processingFeePercent: 2.0,
@@ -65,17 +69,20 @@ export function UserRightsManagementModule({ users = [], modules = [], permissio
     const handleSaccoSettingsSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
-        await updateSaccoSettings(formData);
-        const updated = await getSaccoSettings();
-        setSaccoSettings(updated);
-        toast.success("SACCO settings updated successfully");
+        
+        await execute(async () => {
+            await updateSaccoSettings(formData);
+            const updated = await getSaccoSettings();
+            setSaccoSettings(updated);
+            toast.success("SACCO settings updated successfully");
+            return { success: true };
+        });
     };
 
-    const tabs = [
-        { id: 'rights', label: 'User Rights', icon: Shield },
-        { id: 'sacco', label: 'SACCO Settings', icon: Settings },
-        { id: 'access', label: 'Access Control', icon: Shield }
-    ];
+    const handleTabChange = (tab: string) => {
+        setActiveTab(tab);
+        setError(null);
+    };
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-cyan-50/30">
@@ -104,7 +111,7 @@ export function UserRightsManagementModule({ users = [], modules = [], permissio
                         { id: 'access', label: 'Access Control', icon: Shield }
                     ]}
                     activeTab={activeTab}
-                    onChange={setActiveTab}
+                    onChange={handleTabChange}
                 />
             </div>
 
@@ -132,8 +139,10 @@ export function UserRightsManagementModule({ users = [], modules = [], permissio
                             <p className="text-slate-600 mt-1">Fine-tune financial parameters and approval workflows</p>
                         </div>
 
+                        <FormError message={error} className="mb-6" />
+
                         {saccoSettings ? (
-                            <form onSubmit={handleSaccoSettingsSubmit} className="space-y-6">
+                            <form onSubmit={handleSaccoSettingsSubmit} className="space-y-6 step-container">
                                 {}
                                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                                     <div className="bg-gradient-to-r from-emerald-50 to-teal-50 px-6 py-4 border-b border-slate-200">
@@ -317,13 +326,13 @@ export function UserRightsManagementModule({ users = [], modules = [], permissio
                                     </div>
                                 </div>
 
-                                <button
-                                    type="submit"
-                                    className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-indigo-500/30 hover:shadow-xl transition-all flex items-center justify-center gap-2"
-                                >
-                                    <CheckCircle className="w-5 h-5" />
-                                    Save Configuration
-                                </button>
+                                <SubmitButton
+                                    isPending={loading}
+                                    label="Save Configuration"
+                                    pendingLabel="Saving..."
+                                    className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-indigo-500/30 hover:shadow-xl transition-all"
+                                    icon={<CheckCircle className="w-5 h-5" />}
+                                />
                             </form>
                         ) : (
                             <div className="flex items-center justify-center h-64 bg-white rounded-2xl border border-dashed border-slate-200">

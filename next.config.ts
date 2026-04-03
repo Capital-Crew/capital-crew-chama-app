@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  serverActions: {
+    bodySizeLimit: "5mb",
+  },
   transpilePackages: ['@react-pdf/renderer'],
   // LIGHTHOUSE FIX 1.1: Remove legacy polyfills    // Added: Security headers
   // Note: experimental.browsersListForSwc is invalid in this Next.js version (Turbopack)

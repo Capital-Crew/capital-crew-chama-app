@@ -49,4 +49,5 @@ export interface LoanPortfolioItem {
     interestDue: number;
     totalDue: number;
     isArrears: boolean;
+    unpaidPenalty: number;
 }

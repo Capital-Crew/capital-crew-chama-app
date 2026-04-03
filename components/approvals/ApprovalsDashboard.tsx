@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useTransition } from 'react'
+import React, { useState, useTransition, useOptimistic } from 'react'
 import { useRouter } from 'next/navigation'
 import { ApprovalRequest } from '@prisma/client'
 import { format } from 'date-fns'
@@ -10,6 +10,7 @@ import { UserCheck, FileText, DollarSign, Users, ChevronRight, Check, X, Loader2
 import { processApproval } from '@/app/actions/approval-actions'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { useOptimisticAction } from '@/hooks/useOptimisticAction'
 
 // Icon mapping
 const TYPE_ICONS = {
@@ -42,12 +43,19 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
     const router = useRouter()
     const [selectedRequest, setSelectedRequest] = useState<ExtendedApprovalRequest | null>(null)
     const [filter, setFilter] = useState('ALL')
-    const [isPending, startTransition] = useTransition()
-    const [processingId, setProcessingId] = useState<string | null>(null)
+    
+    // Optimistic state for the list of requests
+    const [optimisticRequests, setOptimisticRequests] = useOptimistic(
+        requests,
+        (state, actionedId: string) => state.filter(r => r.id !== actionedId)
+    );
+
+    const { execute: executeAction, isPending: anyIsPending } = useOptimisticAction();
+    const [processingId, setProcessingId] = useState<string | null>(null);
 
     const visibleRequests = filter === 'ALL'
-        ? requests
-        : requests.filter(r => r.type === filter)
+        ? optimisticRequests
+        : optimisticRequests.filter(r => r.type === filter)
 
     const handleClose = () => {
         setSelectedRequest(null)
@@ -66,24 +74,27 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
 
         setProcessingId(req.id)
 
-        const loadingToast = toast.loading(`${decision === 'APPROVED' ? 'Approving' : 'Rejecting'}...`)
-
-        try {
+        await executeAction(async () => {
             const result = await processApproval(req.id, decision)
-            toast.dismiss(loadingToast)
-
             if (result.error) {
                 toast.error(`Failed: ${result.error}`)
+                return { success: false, error: result.error }
             } else {
                 toast.success(`${decision === 'APPROVED' ? 'Approved' : 'Rejected'} successfully`)
                 router.refresh()
+                return { success: true }
             }
-        } catch (error) {
-            toast.dismiss(loadingToast)
-            toast.error("An unexpected error occurred")
-        } finally {
-            setProcessingId(null)
-        }
+        }, {
+            onOptimisticUpdate: () => {
+                setOptimisticRequests(req.id);
+                // Also close selected request if it's the one being actioned (though this is quick action from list)
+                if (selectedRequest?.id === req.id) {
+                    setSelectedRequest(null);
+                }
+            }
+        });
+        
+        setProcessingId(null)
     }
 
     return (
@@ -127,7 +138,10 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
                             <div
                                 key={req.id}
                                 onClick={() => setSelectedRequest(req)}
-                                className="group bg-white border border-slate-100 hover:border-[#00c2e0]/30 cursor-pointer transition-all duration-300 hover:shadow-xl shadow-sm rounded-2xl overflow-hidden flex flex-col"
+                                className={cn(
+                                    "group bg-white border border-slate-100 hover:border-[#00c2e0]/30 cursor-pointer transition-all duration-300 hover:shadow-xl shadow-sm rounded-2xl overflow-hidden flex flex-col",
+                                    isProcessing && "opacity-50 pointer-events-none scale-[0.98]"
+                                )}
                             >
                                 <div className="p-5 flex-1 relative">
                                     {}

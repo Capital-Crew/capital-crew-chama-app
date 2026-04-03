@@ -127,12 +127,21 @@ export const repayLoan = withAudit(
             ctx.endStep('Post Journal Entry', { jeId: journalEntry.id });
 
             ctx.beginStep('Create Loan Transaction Record');
+            const description = [
+                allocation.principal > 0 ? `Principal: ${allocation.principal.toLocaleString()}` : null,
+                allocation.interest > 0 ? `Interest: ${allocation.interest.toLocaleString()}` : null,
+                allocation.penalty > 0 ? `Penalty: ${allocation.penalty.toLocaleString()}` : null
+            ].filter(Boolean).join(', ');
+
             await tx.loanTransaction.create({
                 data: {
                     loanId: loan.id,
                     type: 'REPAYMENT',
                     amount: new Prisma.Decimal(amount),
-                    description: `Repayment received (Ref: ${journalEntry.id})`,
+                    description: `Repayment: ${description} (Ref: ${journalEntry.id})`,
+                    principalAmount: new Prisma.Decimal(allocation.principal),
+                    interestAmount: new Prisma.Decimal(allocation.interest),
+                    penaltyAmount: new Prisma.Decimal(allocation.penalty),
                     referenceId: journalEntry.id,
                     postedAt: new Date()
                 }

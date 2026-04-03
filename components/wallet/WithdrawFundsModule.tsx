@@ -3,9 +3,12 @@
 import React, { useState, useEffect } from 'react'
 import { withdrawFunds, getWithdrawableBalance } from '@/app/wallet-withdraw-actions'
 import { WalletIcon, AlertCircleIcon, CheckCircleIcon, LoaderIcon } from 'lucide-react'
+import { useFormAction } from '@/hooks/useFormAction'
+import { SubmitButton } from '@/components/ui/SubmitButton'
+import { FormError } from '@/components/ui/FormError'
 
 export function WithdrawFundsModule({ memberId }: { memberId: string }) {
-    const [loading, setLoading] = useState(false)
+    const { isPending: loading, error, execute } = useFormAction()
     const [fetchingBalance, setFetchingBalance] = useState(true)
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
@@ -32,10 +35,9 @@ export function WithdrawFundsModule({ memberId }: { memberId: string }) {
 
     const handleWithdrawal = async (e: React.FormEvent) => {
         e.preventDefault()
-        setLoading(true)
         setMessage(null)
 
-        try {
+        await execute(async () => {
             const result = await withdrawFunds({
                 memberId,
                 amount: parseFloat(amount),
@@ -49,11 +51,8 @@ export function WithdrawFundsModule({ memberId }: { memberId: string }) {
             setAmount('')
             setDescription('')
             fetchBalance() // Refresh balance
-        } catch (error: any) {
-            setMessage({ type: 'error', text: error.message })
-        } finally {
-            setLoading(false)
-        }
+            return { success: true }
+        })
     }
 
     const setMaxAmount = () => {
@@ -89,7 +88,7 @@ export function WithdrawFundsModule({ memberId }: { memberId: string }) {
 
             {}
             {message && (
-                <div className={`p-4 rounded-xl mb-6 flex items-center gap-3 ${message.type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+                <div className={`p-4 rounded-xl mb-6 flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300 ${message.type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
                     }`}>
                     {message.type === 'success' ? (
                         <CheckCircleIcon className="w-5 h-5 text-green-600" />
@@ -102,70 +101,73 @@ export function WithdrawFundsModule({ memberId }: { memberId: string }) {
                 </div>
             )}
 
+            <FormError message={error} className="mb-6" />
+
             {}
-            <form onSubmit={handleWithdrawal} className="space-y-4">
-                <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">
-                        Withdrawal Amount (KES) - Available: {withdrawableBalance.toLocaleString()}
-                    </label>
-                    <div className="relative">
-                        <input
-                            type="number"
-                            step="0.01"
-                            min="0.01"
-                            max={withdrawableBalance}
-                            value={amount}
-                            onChange={(e) => setAmount(e.target.value)}
-                            className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${isOverdraft ? 'border-red-300 bg-red-50' : 'border-slate-300'
-                                }`}
-                            placeholder="0.00"
-                            required
-                            disabled={withdrawableBalance === 0}
-                        />
-                        <button
-                            type="button"
-                            onClick={setMaxAmount}
-                            disabled={withdrawableBalance === 0}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-cyan-100 text-cyan-700 rounded-lg text-xs font-bold uppercase hover:bg-cyan-200 disabled:opacity-50"
-                        >
-                            Max
-                        </button>
+            <div className="step-container">
+                <form onSubmit={handleWithdrawal} className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">
+                            Withdrawal Amount (KES) - Available: {withdrawableBalance.toLocaleString()}
+                        </label>
+                        <div className="relative">
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                max={withdrawableBalance}
+                                value={amount}
+                                onChange={(e) => setAmount(e.target.value)}
+                                className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${isOverdraft ? 'border-red-300 bg-red-50' : 'border-slate-300'
+                                    }`}
+                                placeholder="0.00"
+                                required
+                                disabled={withdrawableBalance === 0}
+                            />
+                            <button
+                                type="button"
+                                onClick={setMaxAmount}
+                                disabled={withdrawableBalance === 0}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-cyan-100 text-cyan-700 rounded-lg text-xs font-bold uppercase hover:bg-cyan-200 disabled:opacity-50"
+                            >
+                                Max
+                            </button>
+                        </div>
+                        {isOverdraft && (
+                            <p className="text-red-600 text-xs mt-1 font-bold flex items-center gap-1">
+                                <AlertCircleIcon className="w-3 h-3" />
+                                Insufficient balance - withdrawal amount exceeds available funds
+                            </p>
+                        )}
+                        {withdrawableBalance === 0 && (
+                            <p className="text-amber-600 text-xs mt-1 font-bold flex items-center gap-1">
+                                <AlertCircleIcon className="w-3 h-3" />
+                                No withdrawable balance available
+                            </p>
+                        )}
                     </div>
-                    {isOverdraft && (
-                        <p className="text-red-600 text-xs mt-1 font-bold flex items-center gap-1">
-                            <AlertCircleIcon className="w-3 h-3" />
-                            Insufficient balance - withdrawal amount exceeds available funds
-                        </p>
-                    )}
-                    {withdrawableBalance === 0 && (
-                        <p className="text-amber-600 text-xs mt-1 font-bold flex items-center gap-1">
-                            <AlertCircleIcon className="w-3 h-3" />
-                            No withdrawable balance available
-                        </p>
-                    )}
-                </div>
 
-                <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Purpose / Description</label>
-                    <textarea
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                        placeholder="Reason for withdrawal..."
-                        rows={3}
-                        required
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">Purpose / Description</label>
+                        <textarea
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                            placeholder="Reason for withdrawal..."
+                            rows={3}
+                            required
+                        />
+                    </div>
+
+                    <SubmitButton
+                        isPending={loading}
+                        disabled={!isValid || fetchingBalance}
+                        label="Withdraw Funds"
+                        pendingLabel="Processing..."
+                        className="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-3 rounded-xl font-black uppercase text-sm transition-colors"
                     />
-                </div>
-
-                <button
-                    type="submit"
-                    disabled={loading || !isValid || fetchingBalance}
-                    className="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-3 rounded-xl font-black uppercase text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                    {loading && <LoaderIcon className="w-4 h-4 animate-spin" />}
-                    {loading ? 'Processing...' : 'Withdraw Funds'}
-                </button>
-            </form>
+                </form>
+            </div>
         </div>
     )
 }

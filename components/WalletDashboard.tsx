@@ -4,6 +4,9 @@ import React, { useEffect, useState } from 'react'
 import { WalletIcon, CoinsIcon, AlertCircleIcon, AlertTriangleIcon, XIcon, ArrowUpIcon, ArrowDownIcon, PlusCircleIcon } from 'lucide-react'
 import { getContributionHistory, getWithdrawableBalanceHistory } from '@/app/wallet-history-actions'
 import { initiatePayment } from '@/app/actions/payment-actions'
+import { useFormAction } from '@/hooks/useFormAction'
+import { SubmitButton } from '@/components/ui/SubmitButton'
+import { FormError } from '@/components/ui/FormError'
 
 interface WalletBalance {
     shareContributions?: number
@@ -28,10 +31,10 @@ export function WalletDashboard({ memberId }: { memberId: string }) {
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
     // Deposit modal state
+    const { isPending: depositLoading, error: depositError, execute: executeDeposit, setError: setDepositError } = useFormAction()
     const [showDepositModal, setShowDepositModal] = useState(false)
     const [depositAmount, setDepositAmount] = useState('')
     const [payingPhoneNumber, setPayingPhoneNumber] = useState('')
-    const [depositLoading, setDepositLoading] = useState(false)
     const [depositMessage, setDepositMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
     const profilePhone = walletData?.phoneNumber || ''
@@ -87,10 +90,9 @@ export function WalletDashboard({ memberId }: { memberId: string }) {
 
     const handleDeposit = async (e: React.FormEvent) => {
         e.preventDefault()
-        setDepositLoading(true)
         setDepositMessage(null)
 
-        try {
+        await executeDeposit(async () => {
             const result = await initiatePayment({
                 amount: parseFloat(depositAmount),
                 payingPhone: payingPhoneNumber || profilePhone
@@ -105,16 +107,17 @@ export function WalletDashboard({ memberId }: { memberId: string }) {
                     setShowDepositModal(false)
                     setDepositMessage(null)
                 }, 3000)
+                return { success: true }
+            } else {
+                return { success: false, error: result.message || 'Payment initiation failed' }
             }
-        } catch (error: any) {
-            setDepositMessage({ type: 'error', text: error.message })
-        } finally {
-            setDepositLoading(false)
-        }
+        })
     }
 
     const openDepositModal = () => {
         setPayingPhoneNumber(profilePhone)
+        setDepositError(null)
+        setDepositMessage(null)
         setShowDepositModal(true)
     }
 
@@ -309,7 +312,7 @@ export function WalletDashboard({ memberId }: { memberId: string }) {
             {}
             {showDepositModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-3xl max-w-md w-full">
+                    <div className="bg-white rounded-3xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200">
                         <div className="flex items-center justify-between p-6 border-b border-slate-200">
                             <h2 className="text-2xl font-black text-slate-900 italic uppercase italic tracking-tight">Top Up Wallet</h2>
                             <button
@@ -320,71 +323,72 @@ export function WalletDashboard({ memberId }: { memberId: string }) {
                             </button>
                         </div>
 
-                        <form onSubmit={handleDeposit} className="p-6 space-y-4">
+                        <div className="p-6">
                             {depositMessage && (
-                                <div className={`p-3 rounded-lg text-sm font-bold ${depositMessage.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+                                <div className={`p-4 rounded-xl mb-4 flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300 ${depositMessage.type === 'success' ? 'bg-green-50 border border-green-200 text-green-800' : 'bg-red-50 border border-red-200 text-red-800'
                                     }`}>
-                                    {depositMessage.text}
+                                    {depositMessage.type === 'success' ? <CheckCircleIcon className="w-5 h-5 text-green-600" /> : <AlertCircleIcon className="w-5 h-5 text-red-600" />}
+                                    <p className="font-bold text-sm">{depositMessage.text}</p>
                                 </div>
                             )}
 
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">M-Pesa Phone Number</label>
-                                <div className="space-y-2">
-                                    <input
-                                        type="tel"
-                                        value={payingPhoneNumber}
-                                        onChange={(e) => setPayingPhoneNumber(e.target.value)}
-                                        className={`w-full px-4 py-3 border rounded-xl transition-all outline-none focus:ring-2 ${
-                                            isDifferentNumber 
-                                            ? 'border-orange-400 bg-orange-50/30 focus:ring-orange-500' 
-                                            : 'border-slate-300 focus:ring-emerald-500'
-                                        }`}
-                                        placeholder="2547XXXXXXXX"
-                                        required
-                                    />
-                                    {isDifferentNumber ? (
-                                        <div className="flex items-start gap-2 p-3 bg-orange-50 rounded-xl border border-orange-100 animate-in fade-in slide-in-from-top-1">
-                                            <AlertTriangleIcon className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
-                                            <p className="text-[11px] font-bold text-orange-800 leading-tight">
-                                                Paying from a different number — your internal wallet will still be credited automatically.
-                                            </p>
+                            <FormError message={depositError} className="mb-4" />
+
+                            <div className="step-container">
+                                <form onSubmit={handleDeposit} className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-2">M-Pesa Phone Number</label>
+                                        <div className="space-y-2">
+                                            <input
+                                                type="tel"
+                                                value={payingPhoneNumber}
+                                                onChange={(e) => setPayingPhoneNumber(e.target.value)}
+                                                className={`w-full px-4 py-3 border rounded-xl transition-all outline-none focus:ring-2 ${
+                                                    isDifferentNumber 
+                                                    ? 'border-orange-400 bg-orange-50/30 focus:ring-orange-500' 
+                                                    : 'border-slate-300 focus:ring-emerald-500'
+                                                }`}
+                                                placeholder="2547XXXXXXXX"
+                                                required
+                                            />
+                                            {isDifferentNumber ? (
+                                                <div className="flex items-start gap-2 p-3 bg-orange-50 rounded-xl border border-orange-100 animate-in fade-in slide-in-from-top-1">
+                                                    <AlertTriangleIcon className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
+                                                    <p className="text-[11px] font-bold text-orange-800 leading-tight">
+                                                        Paying from a different number — your internal wallet will still be credited automatically.
+                                                    </p>
+                                                </div>
+                                            ) : (
+                                                <p className="px-1 text-[10px] font-medium text-slate-400">
+                                                    Pre-filled from your profile. Edit to pay from a different number.
+                                                </p>
+                                            )}
                                         </div>
-                                    ) : (
-                                        <p className="px-1 text-[10px] font-medium text-slate-400">
-                                            Pre-filled from your profile. Edit to pay from a different number.
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
+                                    </div>
 
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">Amount (KES)</label>
-                                <input
-                                    type="number"
-                                    step="1"
-                                    min="1"
-                                    value={depositAmount}
-                                    onChange={(e) => setDepositAmount(e.target.value)}
-                                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
-                                    placeholder="0"
-                                    required
-                                />
-                            </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-2">Amount (KES)</label>
+                                        <input
+                                            type="number"
+                                            step="1"
+                                            min="1"
+                                            value={depositAmount}
+                                            onChange={(e) => setDepositAmount(e.target.value)}
+                                            className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                                            placeholder="0"
+                                            required
+                                        />
+                                    </div>
 
-                            <button
-                                type="submit"
-                                disabled={depositLoading}
-                                className="w-full bg-slate-900 hover:bg-black text-white py-4 rounded-xl font-black uppercase text-xs tracking-widest transition-all shadow-xl shadow-slate-200 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none mt-4"
-                            >
-                                {depositLoading ? (
-                                    <span className="flex items-center justify-center gap-2">
-                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                        Processing...
-                                    </span>
-                                ) : 'Initiate Secure Payment'}
-                            </button>
-                        </form>
+                                    <SubmitButton
+                                        isPending={depositLoading}
+                                        label="Initiate Secure Payment"
+                                        pendingLabel="Processing..."
+                                        className="w-full bg-slate-900 hover:bg-black text-white py-4 rounded-xl font-black uppercase text-xs tracking-widest transition-all shadow-xl shadow-slate-200 active:scale-[0.98] mt-4"
+                                    />
+                                </form>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

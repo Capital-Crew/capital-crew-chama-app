@@ -70,8 +70,7 @@ export function ExpensesModule() {
                             <span className="text-[10px] font-black text-white/90 uppercase tracking-widest">Financial Transparency</span>
                         </div>
                         <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight">
-                            Sacco <br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400">Expense Module</span>
+                            Expenses
                         </h1>
                         <p className="text-slate-400 mt-2 text-sm md:text-base font-medium max-w-xl">
                             Track operational costs, reimbursements, and group expenditures with full audit trails.

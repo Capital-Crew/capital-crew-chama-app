@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
-import { Calendar as CalendarIcon, Check, PartyPopper } from 'lucide-react'
+import { Calendar as CalendarIcon, Check } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,6 +33,9 @@ import {
 import { Calendar } from '@/components/ui/calendar'
 import { cn } from '@/lib/utils'
 import { createWelfareRequisition } from '@/app/welfare-requisition-actions'
+import { useFormAction } from '@/hooks/useFormAction'
+import { SubmitButton } from '@/components/ui/SubmitButton'
+import { FormError } from '@/components/ui/FormError'
 
 type WelfareType = any // Import types properly in real app
 
@@ -49,13 +52,13 @@ interface WelfareRequisitionFormProps {
 
 export function WelfareRequisitionForm({ welfareTypes, members }: WelfareRequisitionFormProps) {
     const router = useRouter()
+    const { isPending: isSubmitting, error, execute } = useFormAction()
+    const [isSuccess, setIsSuccess] = useState(false)
     const [selectedTypeId, setSelectedTypeId] = useState<string>('')
     const [selectedMemberId, setSelectedMemberId] = useState<string>('')
     const [amount, setAmount] = useState<string>('')
     const [reason, setReason] = useState<string>('')
     const [customData, setCustomData] = useState<Record<string, any>>({})
-    const [isSubmitting, setIsSubmitting] = useState(false)
-    const [isSuccess, setIsSuccess] = useState(false)
 
     // Search state for beneficiary
     const [searchTerm, setSearchTerm] = useState('')
@@ -73,7 +76,7 @@ export function WelfareRequisitionForm({ welfareTypes, members }: WelfareRequisi
         setCustomData({})
     }, [selectedTypeId])
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
 
         if (!selectedMemberId) {
@@ -86,7 +89,8 @@ export function WelfareRequisitionForm({ welfareTypes, members }: WelfareRequisi
             return
         }
 
-        if (!amount || Number(amount) <= 0) {
+        const amtNum = Number(amount)
+        if (!amount || isNaN(amtNum) || amtNum <= 0) {
             toast.error('Please enter a valid amount')
             return
         }
@@ -106,12 +110,11 @@ export function WelfareRequisitionForm({ welfareTypes, members }: WelfareRequisi
             }
         }
 
-        setIsSubmitting(true)
-        try {
+        await execute(async () => {
             const res = await createWelfareRequisition({
                 welfareTypeId: selectedTypeId,
                 memberId: selectedMemberId,
-                amount: Number(amount),
+                amount: amtNum,
                 reason,
                 customFieldData: customData
             })
@@ -121,7 +124,6 @@ export function WelfareRequisitionForm({ welfareTypes, members }: WelfareRequisi
                 toast.success('Requisition submitted successfully')
                 setTimeout(() => {
                     setIsSuccess(false)
-                    // Reset form
                     setSelectedTypeId('')
                     setSelectedMemberId('')
                     setAmount('')
@@ -129,19 +131,16 @@ export function WelfareRequisitionForm({ welfareTypes, members }: WelfareRequisi
                     setCustomData({})
                     router.refresh()
                 }, 2000)
+                return { success: true }
             } else {
-                toast.error(res.error || 'Failed to submit requisition')
+                return { success: false, error: res.error || 'Failed to submit requisition' }
             }
-        } catch (error) {
-            toast.error('An error occurred')
-        } finally {
-            setIsSubmitting(false)
-        }
+        })
     }
 
     if (isSuccess) {
         return (
-            <Card className="border-green-200 bg-green-50 shadow-sm">
+            <Card className="border-green-200 bg-green-50 shadow-sm animate-in fade-in zoom-in duration-300">
                 <CardContent className="pt-6 text-center space-y-4">
                     <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
                         <Check className="w-6 h-6 text-green-600" />
@@ -165,7 +164,7 @@ export function WelfareRequisitionForm({ welfareTypes, members }: WelfareRequisi
                 <CardDescription>Apply for welfare benefits for a member</CardDescription>
             </CardHeader>
             <form onSubmit={handleSubmit}>
-                <CardContent className="space-y-6">
+                <CardContent className="space-y-6 step-container">
                     {}
                     <div className="space-y-2">
                         <Label>Beneficiary (Member)</Label>
@@ -310,11 +309,15 @@ export function WelfareRequisitionForm({ welfareTypes, members }: WelfareRequisi
                             ))}
                         </div>
                     )}
+                    <FormError message={error} />
                 </CardContent>
                 <CardFooter>
-                    <Button type="submit" className="w-full" disabled={isSubmitting}>
-                        {isSubmitting ? 'Submitting...' : 'Submit Requisition'}
-                    </Button>
+                    <SubmitButton
+                        isPending={isSubmitting}
+                        label="Submit Requisition"
+                        pendingLabel="Submitting..."
+                        className="w-full"
+                    />
                 </CardFooter>
             </form>
         </Card>

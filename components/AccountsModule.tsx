@@ -15,6 +15,7 @@ import {
     rejectLedgerAction
 } from '@/app/actions/accounting-actions'
 import { getAccountingPeriods, closeAccountingPeriodAction, openAccountingPeriodAction } from '@/app/actions/accounting-period-actions'
+import { useFormAction } from '@/hooks/useFormAction'
 import { FileTextIcon, ListIcon, ScaleIcon, XCircleIcon, SearchIcon, FilterIcon, Settings, RefreshCw, Loader2, Save, ArrowLeftRightIcon, PlusIcon, DollarSign, ArrowRightIcon, ChevronDown, ChevronRight, Layers, Calendar as CalendarIcon, Shield, Clock, Power, RotateCcw, CheckCircle, History as HistoryIcon } from 'lucide-react'
 
 import {
@@ -301,59 +302,77 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
         setExpandedNodes(next)
     }
 
+    const { execute, isPending: isProcessingAccounting } = useFormAction()
+
     const handleApprove = async (id: string) => {
-        try {
-            await approveLedgerAction(id)
-            toast.success("Ledger approved and activated")
-            loadData()
-        } catch (error: any) {
-            toast.error(error.message || "Approval failed")
-        }
+        await execute(async (idempotencyKey) => {
+            try {
+                await approveLedgerAction(id, idempotencyKey)
+                toast.success("Ledger approved and activated")
+                loadData()
+                return { success: true }
+            } catch (error: any) {
+                return { success: false, error: error.message || "Approval failed" }
+            }
+        }, { useIdempotency: true })
     }
 
     const handleCloseLedger = async (id: string) => {
         if (!confirm("Are you sure you want to close this ledger? This will prevent any further postings.")) return
-        try {
-            await closeLedgerAction(id)
-            toast.success("Ledger closed successfully")
-            loadData()
-        } catch (error: any) {
-            toast.error(error.message || "Failed to close ledger")
-        }
+        await execute(async (idempotencyKey) => {
+            try {
+                await closeLedgerAction(id, idempotencyKey)
+                toast.success("Ledger closed successfully")
+                loadData()
+                return { success: true }
+            } catch (error: any) {
+                return { success: false, error: error.message || "Failed to close ledger" }
+            }
+        }, { useIdempotency: true })
     }
 
     const handleReactivate = async (id: string) => {
         if (!confirm("Are you sure you want to reactivate this ledger?")) return
-        try {
-            await reactivateLedgerAction(id)
-            toast.success("Ledger reactivated successfully")
-            loadData()
-        } catch (error: any) {
-            toast.error(error.message || "Failed to reactivate ledger")
-        }
+        await execute(async (idempotencyKey) => {
+            try {
+                await reactivateLedgerAction(id, idempotencyKey)
+                toast.success("Ledger reactivated successfully")
+                loadData()
+                return { success: true }
+            } catch (error: any) {
+                return { success: false, error: error.message || "Failed to reactivate ledger" }
+            }
+        }, { useIdempotency: true })
     }
 
     const handleRejectLedger = async (id: string) => {
         if (!confirm("Are you sure you want to reject this ledger? It will be permanently deleted.")) return
-        try {
-            await rejectLedgerAction(id)
-            toast.success("Ledger rejected and removed")
-            loadData()
-        } catch (error: any) {
-            toast.error(error.message || "Failed to reject ledger")
-        }
+        await execute(async (idempotencyKey) => {
+            try {
+                await rejectLedgerAction(id, idempotencyKey)
+                toast.success("Ledger rejected and removed")
+                loadData()
+                return { success: true }
+            } catch (error: any) {
+                return { success: false, error: error.message || "Failed to reject ledger" }
+            }
+        }, { useIdempotency: true })
     }
 
     const handleClosePeriod = async (id: string) => {
         if (!confirm("Are you sure you want to close this accounting period? This will prevent any further postings to this date range.")) return
-        try {
-            await closeAccountingPeriodAction(id)
-            toast.success("Accounting period closed")
-            loadData()
-        } catch (error: any) {
-            toast.error(error.message)
-        }
+        await execute(async (idempotencyKey) => {
+            try {
+                await closeAccountingPeriodAction(id)
+                toast.success("Accounting period closed")
+                loadData()
+                return { success: true }
+            } catch (error: any) {
+                return { success: false, error: error.message || "Failed to close period" }
+            }
+        })
     }
+    // Note: closeAccountingPeriodAction doesn't support idempotency yet, but wrapping it in useFormAction still provides UI protection.
 
     const renderLedgerRow = (ledger: any, depth: number = 0) => {
         const hasChildren = ledger.children && ledger.children.length > 0;
@@ -404,27 +423,29 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                         <div className="flex justify-end gap-2">
                             {ledger.status === 'PENDING' && (
                                 <button
+                                    disabled={isProcessingAccounting}
                                     onClick={() => handleApprove(ledger.id)}
-                                    className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors shadow-sm"
+                                    className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl transition-all shadow-lg shadow-emerald-900/10 active:scale-95 disabled:opacity-50"
                                 >
-                                    <CheckCircle className="w-3.5 h-3.5" />
+                                    {isProcessingAccounting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
                                     Approve
                                 </button>
                             )}
                             {ledger.status === 'ACTIVE' && (
                                 <button
+                                    disabled={isProcessingAccounting}
                                     onClick={() => handleCloseLedger(ledger.id)}
-                                    className="flex items-center gap-1.5 border border-red-300 text-red-600 hover:bg-red-50 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+                                    className="flex items-center gap-1.5 border-2 border-red-100 text-red-600 hover:bg-red-50 text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl transition-all active:scale-95 disabled:opacity-50"
                                 >
-                                    <Power className="w-3.5 h-3.5" />
+                                    {isProcessingAccounting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Power className="w-3.5 h-3.5" />}
                                     Close
                                 </button>
                             )}
                             <button
                                 onClick={() => loadAccountLedger(ledger.code)}
-                                className="text-xs font-bold text-cyan-600 hover:underline px-2 py-1.5"
+                                className="text-[10px] font-black text-cyan-600 hover:text-cyan-800 uppercase tracking-widest px-2 py-2 transition-colors"
                             >
-                                Ledger
+                                Explorer
                             </button>
                         </div>
                     </td>
@@ -663,11 +684,13 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                                 <div className="text-[10px] text-slate-400 italic">
                                     {period.status === 'CLOSED' ? `Closed by Admin at ${new Date(period.closedAt).toLocaleDateString()}` : 'Period remains open for postings'}
                                 </div>
-                                {period.status === 'OPEN' && (
+                                 {period.status === 'OPEN' && (
                                     <button
+                                        disabled={isProcessingAccounting}
                                         onClick={() => handleClosePeriod(period.id)}
-                                        className="text-xs font-black text-red-600 hover:text-red-700 uppercase"
+                                        className="text-[10px] font-black text-red-600 hover:text-red-700 uppercase tracking-widest bg-red-50 px-3 py-2 rounded-lg transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2"
                                     >
+                                        {isProcessingAccounting ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
                                         Close Period
                                     </button>
                                 )}

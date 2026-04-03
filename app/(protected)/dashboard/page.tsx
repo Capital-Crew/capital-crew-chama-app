@@ -1,4 +1,4 @@
-import { getDashboardStats, getLedgerKPIs } from '@/app/dashboard-actions'
+import { getDashboardStatsSync as getDashboardStats, getLedgerKPIs } from '@/app/dashboard-actions'
 import { DashboardView } from '@/components/DashboardView'
 import { auth } from '@/auth'
 import { getMemberFullDetail } from '@/app/actions/member-dashboard-actions'

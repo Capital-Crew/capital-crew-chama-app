@@ -56,7 +56,7 @@ export default async function WelfarePage() {
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-3xl font-bold tracking-tight">Welfare & Benefits</h1>
+                <h1 className="text-3xl font-bold tracking-tight">Welfare</h1>
                 <p className="text-muted-foreground">
                     {isExec
                         ? 'Manage welfare requisitions and track claims.'

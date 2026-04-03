@@ -102,104 +102,156 @@ export const createLedgerAction = withAudit({ actionType: AuditLogAction.LEDGER_
     return serializeFinancials(ledger);
 });
 
+import { withIdempotency } from "@/lib/idempotency";
+
 /**
  * Approves a pending ledger (Maker-Checker 2/2)
  */
-export const approveLedgerAction = withAudit({ actionType: AuditLogAction.LEDGER_APPROVED, domain: 'FINANCE', apiRoute: '/api/accounts/ledger/approve' }, async (ctx, ledgerId: string) => {
+export const approveLedgerAction = withAudit({ actionType: AuditLogAction.LEDGER_APPROVED, domain: 'FINANCE', apiRoute: '/api/accounts/ledger/approve' }, async (ctx, ledgerId: string, idempotencyKey?: string) => {
     const session = await auth();
     if (!session?.user) throw new Error("Unauthorized");
 
-    const ledger = await db.ledgerAccount.findUnique({ where: { id: ledgerId } });
-    if (!ledger) throw new Error("Ledger not found");
-    if (ledger.status !== LedgerStatus.PENDING) throw new Error("Ledger is not in PENDING status");
+    const businessLogic = async () => {
+        const ledger = await db.ledgerAccount.findUnique({ where: { id: ledgerId } });
+        if (!ledger) throw new Error("Ledger not found");
+        
+        if (ledger.status === LedgerStatus.ACTIVE) return serializeFinancials(ledger);
+        if (ledger.status !== LedgerStatus.PENDING) throw new Error("Ledger is not in PENDING status");
 
-    // Enforce Maker-Checker: Approver must be different from Creator
-    if (ledger.createdBy === session.user.id) {
-        throw new Error("Checker cannot be the same user as the Maker. Please ask another administrator to approve.");
+        // Enforce Maker-Checker: Approver must be different from Creator
+        if (ledger.createdBy === session.user.id) {
+            throw new Error("Checker cannot be the same user as the Maker. Please ask another administrator to approve.");
+        }
+
+        const updated = await db.ledgerAccount.update({
+            where: { id: ledgerId },
+            data: {
+                status: LedgerStatus.ACTIVE,
+                approvedBy: session.user.id,
+                activatedBy: session.user.id,
+                activatedAt: new Date(),
+                version: { increment: 1 }
+            }
+        });
+
+        revalidatePath('/admin');
+        revalidatePath('/accounts');
+        return serializeFinancials(updated);
     }
 
-    const updated = await db.ledgerAccount.update({
-        where: { id: ledgerId },
-        data: {
-            status: LedgerStatus.ACTIVE,
-            approvedBy: session.user.id,
-            activatedBy: session.user.id,
-            activatedAt: new Date(),
-            version: { increment: 1 }
-        }
-    });
-
-    revalidatePath('/admin');
-    revalidatePath('/accounts');
-    return serializeFinancials(updated);
+    if (idempotencyKey) {
+        return await withIdempotency({
+            key: idempotencyKey,
+            path: 'approveLedgerAction',
+            businessLogic
+        });
+    }
+    return await businessLogic();
 });
 
-export const closeLedgerAction = withAudit({ actionType: AuditLogAction.LEDGER_CLOSED, domain: 'FINANCE', apiRoute: '/api/accounts/ledger/close' }, async (ctx, ledgerId: string) => {
+export const closeLedgerAction = withAudit({ actionType: AuditLogAction.LEDGER_CLOSED, domain: 'FINANCE', apiRoute: '/api/accounts/ledger/close' }, async (ctx, ledgerId: string, idempotencyKey?: string) => {
     const session = await auth();
     if (!session?.user) throw new Error("Unauthorized");
 
-    const ledger = await db.ledgerAccount.findUnique({ where: { id: ledgerId } });
-    if (!ledger) throw new Error("Ledger not found");
+    const businessLogic = async () => {
+        const ledger = await db.ledgerAccount.findUnique({ where: { id: ledgerId } });
+        if (!ledger) throw new Error("Ledger not found");
 
-    if (Number(ledger.balance) !== 0) {
-        throw new Error("Ledger must have zero balance before it can be closed.");
+        if (ledger.status === LedgerStatus.CLOSED) return serializeFinancials(ledger);
+
+        if (Number(ledger.balance) !== 0) {
+            throw new Error("Ledger must have zero balance before it can be closed.");
+        }
+
+        const updated = await db.ledgerAccount.update({
+            where: { id: ledgerId },
+            data: {
+                status: LedgerStatus.CLOSED,
+                closedAt: new Date(),
+                version: { increment: 1 }
+            }
+        });
+
+        revalidatePath('/admin');
+        revalidatePath('/accounts');
+        return serializeFinancials(updated);
     }
 
-    const updated = await db.ledgerAccount.update({
-        where: { id: ledgerId },
-        data: {
-            status: LedgerStatus.CLOSED,
-            closedAt: new Date(),
-            version: { increment: 1 }
-        }
-    });
-
-    revalidatePath('/admin');
-    revalidatePath('/accounts');
-    return serializeFinancials(updated);
+    if (idempotencyKey) {
+        return await withIdempotency({
+            key: idempotencyKey,
+            path: 'closeLedgerAction',
+            businessLogic
+        });
+    }
+    return await businessLogic();
 });
 
-export const reactivateLedgerAction = withAudit({ actionType: AuditLogAction.LEDGER_APPROVED, domain: 'FINANCE', apiRoute: '/api/accounts/ledger/reactivate' }, async (ctx, ledgerId: string) => {
+export const reactivateLedgerAction = withAudit({ actionType: AuditLogAction.LEDGER_APPROVED, domain: 'FINANCE', apiRoute: '/api/accounts/ledger/reactivate' }, async (ctx, ledgerId: string, idempotencyKey?: string) => {
     const session = await auth();
     if (!session?.user) throw new Error("Unauthorized");
 
-    const ledger = await db.ledgerAccount.findUnique({ where: { id: ledgerId } });
-    if (!ledger) throw new Error("Ledger not found");
-    if (ledger.status !== LedgerStatus.CLOSED) throw new Error("Only closed ledgers can be reactivated");
+    const businessLogic = async () => {
+        const ledger = await db.ledgerAccount.findUnique({ where: { id: ledgerId } });
+        if (!ledger) throw new Error("Ledger not found");
+        
+        if (ledger.status === LedgerStatus.ACTIVE) return serializeFinancials(ledger);
+        if (ledger.status !== LedgerStatus.CLOSED) throw new Error("Only closed ledgers can be reactivated");
 
-    const updated = await db.ledgerAccount.update({
-        where: { id: ledgerId },
-        data: {
-            status: LedgerStatus.ACTIVE,
-            closedAt: null,
-            activatedAt: new Date(),
-            activatedBy: session.user.id,
-            version: { increment: 1 }
-        }
-    });
+        const updated = await db.ledgerAccount.update({
+            where: { id: ledgerId },
+            data: {
+                status: LedgerStatus.ACTIVE,
+                closedAt: null,
+                activatedAt: new Date(),
+                activatedBy: session.user.id,
+                version: { increment: 1 }
+            }
+        });
 
-    revalidatePath('/admin');
-    revalidatePath('/accounts');
-    return serializeFinancials(updated);
-});
-
-export const rejectLedgerAction = withAudit({ actionType: AuditLogAction.LEDGER_CLOSED, domain: 'FINANCE', apiRoute: '/api/accounts/ledger/reject' }, async (ctx, ledgerId: string) => {
-    const session = await auth();
-    if (!session?.user) throw new Error("Unauthorized");
-
-    const ledger = await db.ledgerAccount.findUnique({ where: { id: ledgerId } });
-    if (!ledger) throw new Error("Ledger not found");
-    if (ledger.status !== LedgerStatus.PENDING) throw new Error("Only pending ledgers can be rejected");
-
-    if (ledger.createdBy === session.user.id) {
-        throw new Error("You cannot reject your own ledger request. Please ask another administrator.");
+        revalidatePath('/admin');
+        revalidatePath('/accounts');
+        return serializeFinancials(updated);
     }
 
-    await db.ledgerAccount.delete({ where: { id: ledgerId } });
+    if (idempotencyKey) {
+        return await withIdempotency({
+            key: idempotencyKey,
+            path: 'reactivateLedgerAction',
+            businessLogic
+        });
+    }
+    return await businessLogic();
+});
 
-    revalidatePath('/admin');
-    revalidatePath('/accounts');
-    return { success: true };
+export const rejectLedgerAction = withAudit({ actionType: AuditLogAction.LEDGER_CLOSED, domain: 'FINANCE', apiRoute: '/api/accounts/ledger/reject' }, async (ctx, ledgerId: string, idempotencyKey?: string) => {
+    const session = await auth();
+    if (!session?.user) throw new Error("Unauthorized");
+
+    const businessLogic = async () => {
+        const ledger = await db.ledgerAccount.findUnique({ where: { id: ledgerId } });
+        if (!ledger) throw new Error("Ledger not found");
+        if (ledger.status !== LedgerStatus.PENDING) throw new Error("Only pending ledgers can be rejected");
+
+        if (ledger.createdBy === session.user.id) {
+            throw new Error("You cannot reject your own ledger request. Please ask another administrator.");
+        }
+
+        await db.ledgerAccount.delete({ where: { id: ledgerId } });
+
+        revalidatePath('/admin');
+        revalidatePath('/accounts');
+        return { success: true };
+    }
+
+    if (idempotencyKey) {
+        return await withIdempotency({
+            key: idempotencyKey,
+            path: 'rejectLedgerAction',
+            businessLogic
+        });
+    }
+    return await businessLogic();
 });
 
 

@@ -17,10 +17,11 @@ import { formatCurrency } from '@/lib/utils';
 import { ChevronLeft, Send, X, FileText } from 'lucide-react';
 import { useFormAutoSave } from '@/hooks/useFormAutoSave';
 import { AutoSaveIndicator } from './AutoSaveIndicator';
-// import { deleteLoanDraft } from '@/app/loan-draft-actions'; // Removed
 import { LoanExemptionsSection } from './LoanExemptionsSection';
 import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
+import { useFormAction } from '@/hooks/useFormAction';
+import { SubmitButton } from '@/components/ui/SubmitButton';
+import { FormError } from '@/components/ui/FormError';
 
 interface LoanApplicationFormProps {
     members: Member[];
@@ -48,6 +49,7 @@ export function LoanApplicationForm({
     canEditExemptions = false,
 }: LoanApplicationFormProps) {
     const router = useRouter() // Ensure next/navigation is imported
+    const { isPending: isSubmitting, error, execute } = useFormAction();
 
     // Validation Schema
     const loanApplicationSchema = z.object({
@@ -66,7 +68,6 @@ export function LoanApplicationForm({
     // Default handlers if not provided
     const handleSuccess = onSuccess || (() => router.push('/loans'))
     const handleCancel = onCancel || (() => router.push('/loans'))
-    const [isSubmitting, setIsSubmitting] = useState(false);
     const [selectedLoansToOffset, setSelectedLoansToOffset] = useState<string[]>(
         initialData?.existingLoanOffset && (initialData as any).topUps
             ? (initialData as any).topUps.map((t: any) => t.oldLoanId)
@@ -80,18 +81,14 @@ export function LoanApplicationForm({
     const [calculatingQualification, setCalculatingQualification] = useState(false);
     const [calcError, setCalcError] = useState<string | null>(null);
 
-
-
     // Status check for read-only mode or auto-save disable
-    const isPending = initialData?.status &&
+    const isPendingDraft = initialData?.status &&
         initialData.status !== 'APPLICATION' &&
         initialData.status !== 'DRAFT';
 
     const { register, watch, setValue, reset, formState: { errors } } = useForm({
         resolver: zodResolver(loanApplicationSchema),
         defaultValues: {
-            // SECURITY: Always use currentMemberId (logged-in user's member)
-            // Never trust memberId from draftData or initialData
             memberId: currentMemberId || draftData?.memberId || initialData?.memberId || '',
             loanProductId: draftData?.loanProductId || initialData?.loanProductId || '',
             amount: draftData?.amount || (initialData?.amount ? String(initialData.amount) : ''),
@@ -103,14 +100,12 @@ export function LoanApplicationForm({
     const { status: autoSaveStatus, lastSaved, error: autoSaveError, save: saveDraft } = useFormAutoSave({
         watch,
         debounceMs: 1000,
-        enabled: !isPending, // Enabled for drafts/application, disabled if Pending/Approved
+        enabled: !isPendingDraft,
         onSave: async (data: any) => {
             if (initialData?.id) {
-                // Editing existing Loan record (DRAFT/APPLICATION status)
                 const { updateLoanDraft } = await import('@/app/actions/loan-application-actions');
                 await updateLoanDraft(initialData.id, data);
             } else {
-                // New application - save to LoanDraft table
                 const { saveLoanDraft } = await import('@/app/loan-draft-actions');
                 await saveLoanDraft({ formData: data });
             }
@@ -125,20 +120,17 @@ export function LoanApplicationForm({
     const debouncedAmount = useDebounce(watchedAmount, 500);
     const debouncedMemberId = useDebounce(watchedMemberId, 300);
 
-    // Memoize selected product
     const selectedProduct = useMemo(() =>
         products.find(p => p.id === watchedProductId),
         [products, watchedProductId]
     );
 
-    // Update installments when product changes
     useEffect(() => {
         if (selectedProduct) {
             setValue('installments', selectedProduct.numberOfRepayments || 12);
         }
     }, [selectedProduct, setValue]);
 
-    // Fetch active loans for selected member
     useEffect(() => {
         if (debouncedMemberId) {
             getMemberActiveLoans(debouncedMemberId)
@@ -149,17 +141,13 @@ export function LoanApplicationForm({
         }
     }, [debouncedMemberId]);
 
-    // Eligibility state
     const [eligibility, setEligibility] = useState<{ isEligible: boolean; message?: string } | null>(null);
 
-    // Calculate qualification
-    // Calculate qualification
     useEffect(() => {
         if (debouncedMemberId) {
             setCalculatingQualification(true);
             setCalcError(null);
             const amount = debouncedAmount ? parseFloat(debouncedAmount) : undefined;
-            // Pass feeExemptions to calculation
             calculateLoanQualification(debouncedMemberId, selectedLoansToOffset, amount, feeExemptions)
                 .then(result => setQualification(result))
                 .catch(error => {
@@ -167,7 +155,6 @@ export function LoanApplicationForm({
                 })
                 .finally(() => setCalculatingQualification(false));
 
-            // NEW: Check Eligibility
             import('@/app/actions/loan-eligibility').then(({ checkLoanEligibility }) => {
                 checkLoanEligibility(debouncedMemberId).then(result => {
                     setEligibility(result);
@@ -176,7 +163,6 @@ export function LoanApplicationForm({
                     }
                 });
             });
-
         } else {
             setQualification(null);
             setCalcError(null);
@@ -184,71 +170,51 @@ export function LoanApplicationForm({
         }
     }, [debouncedMemberId, selectedLoansToOffset, debouncedAmount, feeExemptions]);
 
-    // Button Visibility Logic
-    const isEditMode = !!initialData;
-    const isDraft = !initialData || initialData.status === 'APPLICATION';
+    async function handleFormAction(formData: FormData) {
+        await execute(async () => {
+            const memberId = watchedMemberId || currentMemberId;
+            if (memberId && !formData.get('memberId')) {
+                formData.set('memberId', memberId);
+            }
+
+            const res = await applyForLoan(null, formData);
+            if (res?.error) {
+                return { success: false, error: res.error };
+            }
+
+            toast.success('Loan application submitted successfully!');
+            reset();
+            handleSuccess();
+            return { success: true };
+        });
+    }
 
     return (
-        <form action={async (formData) => {
-            // Prevent duplicate submissions
-            if (isSubmitting) {
-                return;
-            }
-
-            setIsSubmitting(true);
-            toast.loading('Processing loan application...');
-
-            try {
-                const memberId = watchedMemberId || currentMemberId;
-                if (memberId && !formData.get('memberId')) {
-                    formData.set('memberId', memberId);
-                }
-
-                const res = await applyForLoan(null, formData);
-                if (res?.error) {
-                    toast.error(res.error);
-                    setIsSubmitting(false);
-                } else {
-                    // SUCCESS
-                    toast.success('Loan application submitted successfully!');
-                    reset();
-                    handleSuccess();
-                }
-            } catch (err: any) {
-                toast.error(err.message || 'Failed to submit application');
-                setIsSubmitting(false);
-            }
-        }} className="space-y-8 pb-8">
-            {}
+        <form action={handleFormAction} className="space-y-8 pb-8">
             <input type="hidden" {...register('memberId')} />
             {initialData && <input type="hidden" name="loanId" value={initialData.id} />}
 
-            {}
             <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-slate-200 -mx-8 -mt-8 px-8 py-3 mb-6">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                        {}
                         <button
                             type="button"
                             onClick={async () => {
-                                // Save draft as APPLICATION status before navigating away (only for new applications)
                                 if (!initialData) {
                                     const formData = new FormData();
                                     formData.append('memberId', watchedMemberId || '');
                                     formData.append('loanProductId', watchedProductId || '');
                                     formData.append('amount', watchedAmount || '0');
                                     formData.append('installments', String(watchedInstallments || 12));
-                                    formData.append('submitAction', 'save'); // Mark as draft
+                                    formData.append('submitAction', 'save');
 
-                                    // Add selected loans to offset
                                     selectedLoansToOffset.forEach(loanId => {
                                         formData.append('loansToOffset', loanId);
                                     });
 
                                     try {
                                         await applyForLoan(null, formData);
-                                    } catch (error) {
-                                    }
+                                    } catch (error) { }
                                 }
                                 handleCancel();
                             }}
@@ -262,38 +228,23 @@ export function LoanApplicationForm({
                     </div>
 
                     <div className="flex items-center gap-3">
-
-
-                        {}
                         <AutoSaveIndicator
                             status={autoSaveStatus}
                             lastSaved={lastSaved}
                             error={autoSaveError}
                         />
-                        <Button
-                            type="submit"
-                            name="submitAction"
-                            value="send"
-                            disabled={isSubmitting || !canEditDetails} // Disable Send if only allowed to edit exemptions
-                            className="bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {isSubmitting ? (
-                                <>
-                                    <Spinner className="mr-2 h-4 w-4" />
-                                    Processing...
-                                </>
-                            ) : (
-                                <>
-                                    <Send className="mr-2 h-4 w-4" />
-                                    Send Approval Request
-                                </>
-                            )}
-                        </Button>
+                        <SubmitButton
+                            isPending={isSubmitting}
+                            label="Send Approval Request"
+                            pendingLabel="Processing..."
+                            icon={<Send className="w-4 h-4 mr-2" />}
+                            disabled={!canEditDetails}
+                            className="bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200"
+                        />
                     </div>
                 </div>
             </div>
 
-            {}
             {eligibility && !eligibility.isEligible && (
                 <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-xl shadow-sm mb-6 animate-pulse">
                     <div className="flex items-start gap-3">
@@ -308,13 +259,13 @@ export function LoanApplicationForm({
                 </div>
             )}
 
-            {}
-            <div className="space-y-6">
+            <div className="step-container space-y-6">
+                <FormError message={error} className="mb-4" />
+
                 <h3 className="text-sm font-black text-slate-700 uppercase tracking-wider border-b-2 border-cyan-500 pb-2">
                     1. Member & Loan Details
                 </h3>
 
-                {}
                 <div className="space-y-2 px-1">
                     <label className="block text-xs font-black text-slate-700 uppercase">Applicant Profile <span className="text-red-500">*</span></label>
                     <select
@@ -337,12 +288,11 @@ export function LoanApplicationForm({
                     )}
                 </div>
 
-                {}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                         <label className="block text-xs font-black text-slate-700 uppercase">Loan Product <span className="text-red-500">*</span></label>
                         <select
-                            {...register('loanProductId', { required: false })}
+                            {...register('loanProductId')}
                             disabled={!canEditDetails}
                             className="w-full bg-white border-2 border-slate-300 rounded-xl px-4 py-3 text-sm font-bold focus:border-cyan-500 outline-none disabled:bg-slate-50 disabled:cursor-not-allowed"
                         >
@@ -361,7 +311,7 @@ export function LoanApplicationForm({
                     <div className="space-y-2">
                         <label className="block text-xs font-black text-slate-700 uppercase">Requested Amount (KES) <span className="text-red-500">*</span></label>
                         <input
-                            {...register('amount', { required: false })}
+                            {...register('amount')}
                             type="number"
                             placeholder="Enter amount"
                             readOnly={!canEditDetails}
@@ -373,7 +323,6 @@ export function LoanApplicationForm({
                     </div>
                 </div>
 
-                {}
                 <div className="space-y-2">
                     <div className="flex justify-between items-center">
                         <label className="text-xs font-black text-slate-700 uppercase">Repayment Period (Months)</label>
@@ -383,10 +332,7 @@ export function LoanApplicationForm({
                     </div>
                     <select
                         {...register('installments', {
-                            required: true,
                             valueAsNumber: true,
-                            min: 1,
-                            max: selectedProduct?.numberOfRepayments || 12
                         })}
                         disabled={!canEditDetails}
                         className="w-full bg-white border-2 border-slate-300 rounded-xl px-4 py-3 text-sm font-bold focus:border-cyan-500 outline-none disabled:bg-slate-50 disabled:cursor-not-allowed"
@@ -405,22 +351,19 @@ export function LoanApplicationForm({
                     </p>
                 </div>
 
-                {}
                 <LoanOffsetSelector
                     memberId={watchedMemberId}
                     onSelectionChange={setSelectedLoansToOffset}
-                    disabled={!canEditDetails} // Pass disabled prop if supported
+                    disabled={!canEditDetails}
                 />
             </div>
 
-            {}
             {
                 selectedLoansToOffset.map(loanId => (
                     <input key={loanId} type="hidden" name="loansToOffset" value={loanId} />
                 ))
             }
 
-            {}
             {
                 creditSnapshot && (
                     <div className="space-y-4">
@@ -437,7 +380,6 @@ export function LoanApplicationForm({
                 )
             }
 
-            {}
             <div className="space-y-4">
                 <h3 className="text-sm font-black text-slate-700 uppercase tracking-wider border-b-2 border-amber-500 pb-2">
                     2.5. Loan Exemptions
@@ -447,12 +389,10 @@ export function LoanApplicationForm({
                     exemptions={feeExemptions}
                     isOwnLoan={currentMemberId === watchedMemberId}
                     loanStatus={initialData?.status}
-                    loanStatus={initialData?.status}
                     isEditable={canEditExemptions}
                     onChange={setFeeExemptions}
                 />
             </div>
-            {}
             {
                 Object.entries(feeExemptions).map(([key, value]) => (
                     <input key={key} type="hidden" name={`exemptions[${key}]`} value={String(value)} />
@@ -460,7 +400,6 @@ export function LoanApplicationForm({
             }
             <input type="hidden" name="feeExemptions" value={JSON.stringify(feeExemptions)} />
 
-            {}
             <div className="space-y-6 relative">
                 {calculatingQualification && (
                     <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center backdrop-blur-[2px] rounded-2xl transition-all">
@@ -473,7 +412,6 @@ export function LoanApplicationForm({
 
                 {qualification ? (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        {}
                         <div className="space-y-4">
                             <h3 className="text-sm font-black text-slate-700 uppercase tracking-wider border-b-2 border-orange-500 pb-2">
                                 3. Deductions
@@ -547,7 +485,6 @@ export function LoanApplicationForm({
                             </div>
                         </div>
 
-                        {}
                         <div className="space-y-4">
                             <h3 className="text-sm font-black text-slate-700 uppercase tracking-wider border-b-2 border-purple-500 pb-2">
                                 4. Net Disbursement Amount
@@ -599,8 +536,6 @@ export function LoanApplicationForm({
                     </div>
                 )}
             </div>
-
-            {}
         </form >
     );
 }

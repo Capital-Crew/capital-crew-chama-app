@@ -4,7 +4,8 @@ import React, { useTransition } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { CheckIcon, XIcon, ClockIcon, UserIcon, ArrowRightIcon, CheckCircle, Ban } from 'lucide-react'
+import { CheckIcon, XIcon, ClockIcon, UserIcon, ArrowRightIcon, CheckCircle, Ban, Loader2 } from 'lucide-react'
+import { useFormAction } from '@/hooks/useFormAction'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
 import { approveTransfer, rejectTransfer } from '@/app/actions/transfer-actions'
 import { toast } from 'sonner'
@@ -47,49 +48,35 @@ interface TransferListProps {
 }
 
 export function TransferList({ requests, currentUserId, type }: TransferListProps) {
-    const [isPending, startTransition] = useTransition()
-    const [processingId, setProcessingId] = React.useState<string | null>(null)
-    const [expandedId, setExpandedId] = React.useState<string | null>(null)
-    const [selectedRequest, setSelectedRequest] = React.useState<TransferRequest | null>(null)
+    const { execute, isPending } = useFormAction()
 
-    const handleApprove = (id: string) => {
-        setProcessingId(id)
-        toast.promise(
-            new Promise((resolve, reject) => {
-                startTransition(async () => {
-                    try {
-                        const res = await approveTransfer(id)
-                        if ('error' in res && res.error) throw new Error(res.error as string)
-                        resolve('Approved')
-                    } catch (e) {
-                        reject(e)
-                    } finally {
-                        setProcessingId(null)
-                    }
-                })
-            }),
-            {
-                loading: 'Verifying Compliance...',
-                success: 'Approval Recorded',
-                error: (err) => `Error: ${err.message}`
+    const handleApprove = async (id: string) => {
+        await execute(async (idempotencyKey) => {
+            try {
+                const res = await approveTransfer(id, undefined, idempotencyKey)
+                if (res && 'error' in res && res.error) {
+                    return { success: false, error: res.error as string }
+                }
+                toast.success('Approval Recorded')
+                return { success: true }
+            } catch (e: any) {
+                return { success: false, error: e.message || 'Approval failed' }
             }
-        )
+        }, { useIdempotency: true })
     }
 
-    const handleReject = (id: string) => {
+    const handleReject = async (id: string) => {
         if (!confirm("Are you sure you want to reject this transfer?")) return
 
-        setProcessingId(id)
-        startTransition(async () => {
+        await execute(async (idempotencyKey) => {
             try {
-                await rejectTransfer(id, 'Rejected by admin')
+                await rejectTransfer(id, 'Rejected by admin', idempotencyKey)
                 toast.success("Transfer Rejected")
-            } catch (e) {
-                toast.error("Failed to reject")
-            } finally {
-                setProcessingId(null)
+                return { success: true }
+            } catch (e: any) {
+                return { success: false, error: e.message || 'Failed to reject' }
             }
-        })
+        }, { useIdempotency: true })
     }
 
     if (requests.length === 0) {
@@ -185,23 +172,23 @@ export function TransferList({ requests, currentUserId, type }: TransferListProp
                                                         <Button
                                                             size="sm"
                                                             variant="ghost"
-                                                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 disabled:opacity-50"
                                                             onClick={() => handleReject(req.id)}
-                                                            disabled={processingId === req.id || isPending}
+                                                            disabled={isPending}
                                                         >
-                                                            <Ban className="w-4 h-4" />
+                                                            {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ban className="w-4 h-4" />}
                                                         </Button>
                                                         <Button
                                                             size="sm"
-                                                            className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                            className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-[10px] px-4 rounded-lg disabled:opacity-50"
                                                             onClick={() => handleApprove(req.id)}
-                                                            disabled={processingId === req.id || isPending}
+                                                            disabled={isPending}
                                                         >
-                                                            {processingId === req.id ? (
-                                                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                            {isPending ? (
+                                                                <Loader2 className="w-4 h-4 animate-spin" />
                                                             ) : (
                                                                 <>
-                                                                    <CheckCircle className="w-4 h-4 mr-1.5" />
+                                                                    <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
                                                                     Approve
                                                                 </>
                                                             )}
@@ -299,20 +286,20 @@ export function TransferList({ requests, currentUserId, type }: TransferListProp
                                                                             <Button
                                                                                 size="sm"
                                                                                 variant="outline"
-                                                                                className="flex-1 border-slate-200 text-slate-600 h-9"
+                                                                                className="flex-1 border-slate-200 text-slate-600 h-10 font-black uppercase tracking-widest text-[10px] rounded-xl"
                                                                                 onClick={() => handleReject(req.id)}
-                                                                                disabled={processingId === req.id || isPending}
+                                                                                disabled={isPending}
                                                                             >
-                                                                                Reject
+                                                                                {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Reject'}
                                                                             </Button>
                                                                             <Button
                                                                                 size="sm"
-                                                                                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white h-9"
+                                                                                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white h-10 font-black uppercase tracking-widest text-[10px] rounded-xl"
                                                                                 onClick={() => handleApprove(req.id)}
-                                                                                disabled={processingId === req.id || isPending}
+                                                                                disabled={isPending}
                                                                             >
-                                                                                {processingId === req.id ? (
-                                                                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto" />
+                                                                                {isPending ? (
+                                                                                    <Loader2 className="w-4 h-4 animate-spin" />
                                                                                 ) : (
                                                                                     <>
                                                                                         <CheckCircle className="w-4 h-4 mr-1.5" />

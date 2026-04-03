@@ -25,8 +25,9 @@ import {
     SmartphoneIcon
 } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-
-
+import { useFormAction } from '@/hooks/useFormAction'
+import { SubmitButton } from '@/components/ui/SubmitButton'
+import { FormError } from '@/components/ui/FormError'
 
 // Types
 type MainTab = 'deposits' | 'repayments' | 'withdrawals'
@@ -49,6 +50,7 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
     const initialTab = (searchParams.get('tab') as MainTab) || 'deposits'
     const initialSubTab = searchParams.get('subtab') || 'mpesa'
 
+    const { isPending: loading, error, execute, setError } = useFormAction()
     const [activeMainTab, setActiveMainTab] = useState<MainTab>(initialTab)
     const [activeSubTab, setActiveSubTab] = useState(initialSubTab)
 
@@ -61,7 +63,6 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
     }, [searchParams])
 
     // Shared State
-    const [loading, setLoading] = useState(false)
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
     // Deposit Forms State
@@ -210,11 +211,24 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
         setRepaymentAllocation(allocation)
     }
 
+    // Switch logic
+    const handleSwitchMainTab = (tab: MainTab) => {
+        setActiveMainTab(tab)
+        setError(null)
+        setMessage(null)
+    }
+
+    const handleSwitchSubTab = (subtab: string) => {
+        setActiveSubTab(subtab)
+        setError(null)
+        setMessage(null)
+    }
+
     // Handlers
     const handleMpesaDeposit = async (e: React.FormEvent) => {
         e.preventDefault()
-        setLoading(true); setMessage(null)
-        try {
+        setMessage(null)
+        await execute(async () => {
             const result = await initiatePayment({
                 amount: parseFloat(mpesaAmount),
                 payingPhone: mpesaPhone || profilePhone
@@ -223,60 +237,59 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
             if (result.success) {
                 setMessage({ type: 'success', text: result.message })
                 setMpesaAmount('')
+                return { success: true }
+            } else {
+                return { success: false, error: result.message || 'Payment initiation failed' }
             }
-        } catch (err: any) {
-            setMessage({ type: 'error', text: err.message })
-        } finally {
-            setLoading(false)
-        }
+        })
     }
 
     const handleShareContribution = async (e: React.FormEvent) => {
         e.preventDefault()
-        setLoading(true); setMessage(null)
-        try {
+        setMessage(null)
+        await execute(async () => {
             await addContribution({ memberId, amount: parseFloat(shareAmount), description: shareDescription })
             setMessage({ type: 'success', text: 'Share contribution successful!' })
             setShareAmount(''); setShareDescription('')
             onTransactionComplete?.() // Refresh wallet balance
-        } catch (err: any) { setMessage({ type: 'error', text: err.message }) }
-        finally { setLoading(false) }
+            return { success: true }
+        })
     }
 
     const handlePenaltyPayment = async (e: React.FormEvent) => {
         e.preventDefault()
-        setLoading(true); setMessage(null)
-        try {
+        setMessage(null)
+        await execute(async () => {
             await addPenaltyPayment({ memberId, amount: parseFloat(penaltyAmount), description: penaltyDescription })
             setMessage({ type: 'success', text: 'Penalty payment successful!' })
             setPenaltyAmount(''); setPenaltyDescription('')
             onTransactionComplete?.() // Refresh wallet balance
-        } catch (err: any) { setMessage({ type: 'error', text: err.message }) }
-        finally { setLoading(false) }
+            return { success: true }
+        })
     }
 
     const handleLoanRepayment = async (e: React.FormEvent) => {
         e.preventDefault()
-        setLoading(true); setMessage(null)
-        try {
+        setMessage(null)
+        await execute(async () => {
             const result = await addLoanRepayment({ memberId, loanId: selectedLoanId, amount: parseFloat(repaymentAmount), description: repaymentDescription })
             setMessage({ type: 'success', text: `Repayment successful! Remaining: KES ${result.newOutstanding.toLocaleString()}` })
             setRepaymentAmount(''); setRepaymentDescription(''); setSelectedLoanId(''); loadActiveLoans()
             onTransactionComplete?.() // Refresh wallet balance
-        } catch (err: any) { setMessage({ type: 'error', text: err.message }) }
-        finally { setLoading(false) }
+            return { success: true }
+        })
     }
 
     const handleWithdrawal = async (e: React.FormEvent) => {
         e.preventDefault()
-        setLoading(true); setMessage(null)
-        try {
+        setMessage(null)
+        await execute(async () => {
             await withdrawFunds({ memberId, amount: parseFloat(withdrawAmount), description: withdrawDescription })
             setMessage({ type: 'success', text: 'Withdrawal successful!' })
             setWithdrawAmount(''); setWithdrawDescription(''); fetchWithdrawableBalance()
             onTransactionComplete?.() // Refresh wallet balance
-        } catch (err: any) { setMessage({ type: 'error', text: err.message }) }
-        finally { setLoading(false) }
+            return { success: true }
+        })
     }
 
     // Render Helpers
@@ -287,7 +300,7 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
             {}
             <div className="flex border-b-2 border-slate-300">
                 <button
-                    onClick={() => { setActiveMainTab('deposits'); setMessage(null) }}
+                    onClick={() => handleSwitchMainTab('deposits')}
                     className={`flex-1 py-4 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all relative
                         ${activeMainTab === 'deposits'
                             ? 'bg-gradient-to-br from-green-500 to-green-600 text-white border-b-4 border-green-700 shadow-lg'
@@ -298,7 +311,7 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
                 </button>
                 <div className="w-px bg-slate-300" /> {}
                 <button
-                    onClick={() => { setActiveMainTab('repayments'); setMessage(null) }}
+                    onClick={() => handleSwitchMainTab('repayments')}
                     className={`flex-1 py-4 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all relative
                         ${activeMainTab === 'repayments'
                             ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white border-b-4 border-blue-700 shadow-lg'
@@ -309,7 +322,7 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
                 </button>
                 <div className="w-px bg-slate-300" /> {}
                 <button
-                    onClick={() => { setActiveMainTab('withdrawals'); setMessage(null) }}
+                    onClick={() => handleSwitchMainTab('withdrawals')}
                     className={`flex-1 py-4 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all relative
                         ${activeMainTab === 'withdrawals'
                             ? 'bg-gradient-to-br from-red-500 to-red-600 text-white border-b-4 border-red-700 shadow-lg'
@@ -325,15 +338,17 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
                 {message && (
                     <div className={`p-4 rounded-xl mb-6 flex items-center gap-3 animate-in fade-in slide-in-from-top-2 ${message.type === 'success' ? 'bg-green-50 border border-green-200 text-green-800' : 'bg-red-50 border border-red-200 text-red-800'
                         }`}>
-                        {message.type === 'success' ? <CheckCircleIcon className="w-5 h-5" /> : <AlertCircleIcon className="w-5 h-5" />}
+                    {message.type === 'success' ? <CheckCircleIcon className="w-5 h-5 text-green-600" /> : <AlertCircleIcon className="w-5 h-5 text-red-600" />}
                         <p className="font-bold text-sm">{message.text}</p>
                     </div>
                 )}
 
+                <FormError message={error} className="mb-6" />
+
                 {}
                 {activeMainTab === 'deposits' && (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
-                        <Tabs value={activeSubTab} onValueChange={setActiveSubTab} className="w-full">
+                        <Tabs value={activeSubTab} onValueChange={handleSwitchSubTab} className="w-full">
                             <TabsList className="w-full flex overflow-x-auto md:grid md:grid-cols-3 mb-6 gap-2 md:gap-0 p-1 md:p-1 bg-slate-100/50 md:bg-slate-100 rounded-xl md:rounded-lg scrollbar-none">
                                 <TabsTrigger value="mpesa" className="flex-1 min-w-[120px] md:min-w-0 data-[state=active]:bg-green-100 data-[state=active]:text-green-800 data-[state=active]:shadow-sm">
                                     <SmartphoneIcon className="w-4 h-4 mr-2" /> M-Pesa
@@ -348,58 +363,59 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
 
                             {}
                             <TabsContent value="mpesa">
-                                <form onSubmit={handleMpesaDeposit} className="space-y-4">
-                                    <div className="p-4 bg-green-50 border border-green-200 rounded-xl mb-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="bg-green-100 p-2 rounded-full">
-                                                <SmartphoneIcon className="w-5 h-5 text-green-600" />
-                                            </div>
-                                            <div>
-                                                <h4 className="text-sm font-bold text-green-900">M-Pesa Deposit</h4>
-                                                <p className="text-xs text-green-700">Instant deposit to your wallet via STK Push.</p>
+                                <div className="step-container">
+                                    <form onSubmit={handleMpesaDeposit} className="space-y-4">
+                                        <div className="p-4 bg-green-50 border border-green-200 rounded-xl mb-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="bg-green-100 p-2 rounded-full">
+                                                    <SmartphoneIcon className="w-5 h-5 text-green-600" />
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-sm font-bold text-green-900">M-Pesa Deposit</h4>
+                                                    <p className="text-xs text-green-700">Instant deposit to your wallet via STK Push.</p>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    <div>
-                                        <label className="text-xs font-bold uppercase text-slate-500 mb-1 block">Phone Number</label>
-                                        <input type="tel" required value={mpesaPhone} onChange={e => setMpesaPhone(e.target.value)}
-                                            className={`w-full px-4 py-3 rounded-xl border transition-all font-bold text-slate-900 outline-none focus:ring-2 ${
-                                                mpesaPhone !== profilePhone && mpesaPhone !== ''
-                                                ? 'border-orange-400 bg-orange-50/30 focus:ring-orange-500' 
-                                                : 'border-slate-300 focus:ring-green-500'
-                                            }`}
-                                            placeholder="2547..." />
-                                        {mpesaPhone !== profilePhone && mpesaPhone !== '' ? (
-                                            <p className="mt-1.5 text-[10px] font-bold text-orange-600 flex items-center gap-1">
-                                                <AlertCircleIcon className="w-3 h-3" />
-                                                Paying from a different number.
-                                            </p>
-                                        ) : (
-                                            <p className="mt-1 text-[10px] text-slate-400">Pre-filled from your profile.</p>
-                                        )}
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-bold uppercase text-slate-500 mb-1 block">Amount (KES)</label>
-                                        <input type="number" step="1" min="1" required value={mpesaAmount} onChange={e => setMpesaAmount(e.target.value)}
-                                            className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-green-500 focus:border-transparent font-bold text-slate-900"
-                                            placeholder="0" />
-                                    </div>
+                                        <div>
+                                            <label className="text-xs font-bold uppercase text-slate-500 mb-1 block">Phone Number</label>
+                                            <input type="tel" required value={mpesaPhone} onChange={e => setMpesaPhone(e.target.value)}
+                                                className={`w-full px-4 py-3 rounded-xl border transition-all font-bold text-slate-900 outline-none focus:ring-2 ${
+                                                    mpesaPhone !== profilePhone && mpesaPhone !== ''
+                                                    ? 'border-orange-400 bg-orange-50/30 focus:ring-orange-500' 
+                                                    : 'border-slate-300 focus:ring-green-500'
+                                                }`}
+                                                placeholder="2547..." />
+                                            {mpesaPhone !== profilePhone && mpesaPhone !== '' ? (
+                                                <p className="mt-1.5 text-[10px] font-bold text-orange-600 flex items-center gap-1">
+                                                    <AlertCircleIcon className="w-3 h-3" />
+                                                    Paying from a different number.
+                                                </p>
+                                            ) : (
+                                                <p className="mt-1 text-[10px] text-slate-400">Pre-filled from your profile.</p>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold uppercase text-slate-500 mb-1 block">Amount (KES)</label>
+                                            <input type="number" step="1" min="1" required value={mpesaAmount} onChange={e => setMpesaAmount(e.target.value)}
+                                                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-green-500 focus:border-transparent font-bold text-slate-900"
+                                                placeholder="0" />
+                                        </div>
 
-                                    <button type="submit" disabled={loading} className="w-full bg-green-600 hover:bg-green-700 text-white py-4 rounded-xl font-black uppercase tracking-wide transition-all disabled:opacity-50 flex items-center justify-center gap-2">
-                                        {loading ? 'Processing...' : (
-                                            <>
-                                                <span>Initiate STK Push</span>
-                                                <SmartphoneIcon className="w-4 h-4" />
-                                            </>
-                                        )}
-                                    </button>
-                                </form>
+                                        <SubmitButton
+                                            isPending={loading}
+                                            label="Initiate STK Push"
+                                            pendingLabel="Processing..."
+                                            className="w-full bg-green-600 hover:bg-green-700 text-white py-4 rounded-xl font-black uppercase tracking-wide transition-all shadow-lg shadow-green-100"
+                                            icon={<SmartphoneIcon className="w-4 h-4" />}
+                                        />
+                                    </form>
+                                </div>
                             </TabsContent>
 
                             {}
                             <TabsContent value="share">
-                                <div className="space-y-6">
+                                <div className="space-y-6 step-container">
                                     <div className="flex items-center gap-3 p-4 bg-cyan-50 border border-cyan-200 rounded-xl">
                                         <div className="bg-cyan-100 p-2 rounded-full">
                                             <CoinsIcon className="w-5 h-5 text-cyan-600" />
@@ -421,16 +437,19 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
                                             <textarea required value={shareDescription} onChange={e => setShareDescription(e.target.value)}
                                                 className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-cyan-500 focus:border-transparent" placeholder="Details..." rows={2} />
                                         </div>
-                                        <button type="submit" disabled={loading} className="w-full bg-cyan-600 hover:bg-cyan-700 text-white py-4 rounded-xl font-black uppercase tracking-wide transition-all disabled:opacity-50">
-                                            {loading ? 'Processing...' : 'Submit Contribution'}
-                                        </button>
+                                        <SubmitButton
+                                            isPending={loading}
+                                            label="Submit Contribution"
+                                            pendingLabel="Processing..."
+                                            className="w-full bg-cyan-600 hover:bg-cyan-700 text-white py-4 rounded-xl font-black uppercase tracking-wide transition-all shadow-lg shadow-cyan-100"
+                                        />
                                     </form>
                                 </div>
                             </TabsContent>
 
                             {}
                             <TabsContent value="penalty">
-                                <div className="space-y-6">
+                                <div className="space-y-6 step-container">
                                     <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
                                         <div className="bg-red-100 p-2 rounded-full">
                                             <AlertCircleIcon className="w-5 h-5 text-red-600" />
@@ -452,9 +471,12 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
                                             <textarea required value={penaltyDescription} onChange={e => setPenaltyDescription(e.target.value)}
                                                 className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Reason..." rows={2} />
                                         </div>
-                                        <button type="submit" disabled={loading} className="w-full bg-red-600 hover:bg-red-700 text-white py-4 rounded-xl font-black uppercase tracking-wide transition-all disabled:opacity-50">
-                                            {loading ? 'Processing...' : 'Pay Penalty'}
-                                        </button>
+                                        <SubmitButton
+                                            isPending={loading}
+                                            label="Pay Penalty"
+                                            pendingLabel="Processing..."
+                                            className="w-full bg-red-600 hover:bg-red-700 text-white py-4 rounded-xl font-black uppercase tracking-wide transition-all shadow-lg shadow-red-100"
+                                        />
                                     </form>
                                 </div>
                             </TabsContent>
@@ -464,7 +486,7 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
 
                 {}
                 {activeMainTab === 'repayments' && (
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 step-container">
                         <div className="space-y-6">
                             <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl">
                                 <div className="bg-blue-100 p-2 rounded-full">
@@ -552,13 +574,13 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
                                     </>
                                 )}
 
-                                <button
-                                    type="submit"
-                                    disabled={loading || !selectedLoanId || !isRepaymentValid}
-                                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-black uppercase tracking-wide transition-all disabled:opacity-50 shadow-lg shadow-blue-200 mt-2"
-                                >
-                                    {loading ? 'Processing...' : 'Submit Repayment'}
-                                </button>
+                                <SubmitButton
+                                    isPending={loading}
+                                    disabled={!selectedLoanId || !isRepaymentValid}
+                                    label="Submit Repayment"
+                                    pendingLabel="Processing..."
+                                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-black uppercase tracking-wide transition-all shadow-lg shadow-blue-200 mt-2"
+                                />
                             </form>
                         </div>
                     </div>
@@ -566,7 +588,7 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
 
                 {}
                 {activeMainTab === 'withdrawals' && (
-                    <div className="max-w-xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-300">
+                    <div className="max-w-xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-300 step-container">
                         <div className="bg-teal-50 border border-teal-100 rounded-2xl p-6 mb-6 flex items-center justify-between">
                             <div>
                                 <h4 className="text-teal-900 font-bold uppercase text-xs tracking-wider mb-1">Withdrawable Balance</h4>
@@ -596,9 +618,13 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
                                 <textarea required value={withdrawDescription} onChange={e => setWithdrawDescription(e.target.value)}
                                     className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-teal-500 focus:border-transparent" placeholder="Withdrawal reason..." rows={2} />
                             </div>
-                            <button type="submit" disabled={loading || (parseFloat(withdrawAmount) > withdrawableBalance)} className="w-full bg-teal-600 hover:bg-teal-700 text-white py-4 rounded-xl font-black uppercase tracking-wide transition-all disabled:opacity-50">
-                                {loading ? 'Processing...' : 'Withdraw Funds'}
-                            </button>
+                            <SubmitButton
+                                isPending={loading}
+                                disabled={parseFloat(withdrawAmount) > withdrawableBalance}
+                                label="Withdraw Funds"
+                                pendingLabel="Processing..."
+                                className="w-full bg-teal-600 hover:bg-teal-700 text-white py-4 rounded-xl font-black uppercase tracking-wide transition-all shadow-lg shadow-teal-100"
+                            />
                         </form>
                     </div>
                 )}

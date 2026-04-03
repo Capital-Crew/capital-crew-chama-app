@@ -40,6 +40,9 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { createWelfareType, updateWelfareType, deleteWelfareType, addCustomField, updateCustomField, deleteCustomField } from '@/app/welfare-types-actions'
+import { useFormAction } from '@/hooks/useFormAction'
+import { SubmitButton } from '@/components/ui/SubmitButton'
+import { FormError } from '@/components/ui/FormError'
 
 type WelfareType = any // Ideally import type from Prisma or actions
 type Account = any
@@ -52,7 +55,7 @@ interface WelfareTypeManagerProps {
 export function WelfareTypeManager({ welfareTypes, accounts }: WelfareTypeManagerProps) {
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [editingType, setEditingType] = useState<WelfareType | null>(null)
-    const [isLoading, setIsLoading] = useState(false)
+    const { isPending: isLoading, error, execute } = useFormAction()
 
     // Form State
     const [formData, setFormData] = useState({
@@ -89,16 +92,16 @@ export function WelfareTypeManager({ welfareTypes, accounts }: WelfareTypeManage
             return
         }
 
-        setIsLoading(true)
-        try {
+        await execute(async () => {
             if (editingType) {
                 const res = await updateWelfareType(editingType.id, formData)
                 if (res.success) {
                     toast.success('Welfare type updated')
                     setIsDialogOpen(false)
                     resetForm()
+                    return { success: true }
                 } else {
-                    toast.error(res.error || 'Failed to update')
+                    return { success: false, error: res.error || 'Failed to update' }
                 }
             } else {
                 const res = await createWelfareType(formData)
@@ -106,15 +109,12 @@ export function WelfareTypeManager({ welfareTypes, accounts }: WelfareTypeManage
                     toast.success('Welfare type created')
                     setIsDialogOpen(false)
                     resetForm()
+                    return { success: true }
                 } else {
-                    toast.error(res.error || 'Failed to create')
+                    return { success: false, error: res.error || 'Failed to create' }
                 }
             }
-        } catch (error) {
-            toast.error('An error occurred')
-        } finally {
-            setIsLoading(false)
-        }
+        })
     }
 
     const handleDelete = async (id: string) => {
@@ -196,7 +196,7 @@ export function WelfareTypeManager({ welfareTypes, accounts }: WelfareTypeManage
             </CardContent>
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto step-container">
                     <DialogHeader>
                         <DialogTitle>{editingType ? 'Edit Welfare Type' : 'Create Welfare Type'}</DialogTitle>
                         <DialogDescription>
@@ -312,13 +312,17 @@ export function WelfareTypeManager({ welfareTypes, accounts }: WelfareTypeManage
                             </div>
                         )}
 
+                        <FormError message={error} />
                     </div>
 
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                        <Button onClick={handleSubmit} disabled={isLoading}>
-                            {isLoading ? 'Saving...' : (editingType ? 'Update' : 'Create')}
-                        </Button>
+                        <SubmitButton
+                            isPending={isLoading}
+                            label={editingType ? 'Update' : 'Create'}
+                            pendingLabel="Saving..."
+                            onClick={handleSubmit}
+                        />
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

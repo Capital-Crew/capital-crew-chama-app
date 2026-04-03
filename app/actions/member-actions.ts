@@ -179,3 +179,121 @@ export const deactivateMemberAction = withAudit(
         }
     }
 );
+
+/**
+ * Update Member Profile Action
+ */
+const updateProfileSchema = z.object({
+    memberId: z.string(),
+    email: z.string().email("Invalid email address"),
+    mobile: z.string().min(9, "Valid mobile number is required")
+})
+
+export const updateMemberProfile = withAudit(
+    { actionType: AuditLogAction.MEMBER_UPDATED, domain: 'MEMBERSHIP', apiRoute: '/api/membership/update-profile' },
+    async (ctx, data: { memberId: string, email: string, mobile: string }): Promise<ActionResult> => {
+        ctx.beginStep('Verify Authorization');
+        const session = await auth()
+        if (!session?.user?.id) {
+            ctx.setErrorCode('UNAUTHORIZED');
+            return { success: false, error: "Unauthorized" }
+        }
+
+        const validated = updateProfileSchema.safeParse(data)
+        if (!validated.success) {
+            ctx.setErrorCode('VALIDATION_ERROR');
+            return { success: false, error: validated.error.issues[0].message }
+        }
+
+        const { memberId, email, mobile } = validated.data;
+
+        try {
+            ctx.beginStep('Update Member & User Data');
+            
+            // Start a transaction to ensure both are updated
+            const result = await prisma.$transaction(async (tx) => {
+                // 1. Update MemberContact
+                const contact = await tx.memberContact.upsert({
+                    where: { memberId },
+                    update: { email, mobile },
+                    create: { memberId, email, mobile }
+                });
+
+                // 2. Find linked User and update email
+                const member = await tx.member.findUnique({
+                    where: { id: memberId },
+                    select: { user: true }
+                });
+
+                if (member?.user) {
+                    await tx.user.update({
+                        where: { id: member.user.id },
+                        data: { email }
+                    });
+                }
+
+                return contact;
+            });
+
+            ctx.captureAfter(result);
+            ctx.endStep('Update Member & User Data');
+
+            revalidatePath(`/dashboard/members/${memberId}`)
+            revalidatePath(`/members/${memberId}`)
+            
+            return { success: true, data: result }
+        } catch (e: any) {
+            ctx.setErrorCode('UPDATE_FAILED');
+            return { success: false, error: e.message || "Failed to update profile" }
+        }
+    }
+);
+
+export const updateMemberProfileImage = withAudit(
+    { actionType: AuditLogAction.MEMBER_UPDATED, domain: 'MEMBERSHIP', apiRoute: '/api/members/profile-image' },
+    async (ctx, formData: FormData) => {
+        const memberId = formData.get("memberId") as string;
+        const file = formData.get("file") as File;
+        
+        if (!memberId || !file) {
+            return { success: false, error: "Missing member ID or file" };
+        }
+
+        // Limit size to 2MB (2 * 1024 * 1024)
+        if (file.size > 2 * 1024 * 1024) {
+            return { success: false, error: "Image size exceeds 2MB limit" };
+        }
+
+        try {
+            ctx.beginStep('Find Member and User');
+            const member = await prisma.member.findUnique({
+                where: { id: memberId },
+                include: { user: true }
+            });
+
+            if (!member?.user?.id) {
+                ctx.setErrorCode('USER_NOT_FOUND');
+                return { success: false, error: "Member has no associated user account" };
+            }
+
+            ctx.beginStep('Process Image');
+            const bytes = await file.arrayBuffer();
+            const buffer = Buffer.from(bytes);
+            const base64Image = `data:${file.type};base64,${buffer.toString("base64")}`;
+
+            ctx.beginStep('Update Database');
+            await prisma.user.update({
+                where: { id: member.user.id },
+                data: { image: base64Image }
+            });
+
+            revalidatePath(`/members/${memberId}`);
+            revalidatePath(`/`, 'layout');
+            return { success: true };
+        } catch (error) {
+            console.error("Upload error:", error);
+            ctx.setErrorCode('UPLOAD_FAILED');
+            return { success: false, error: "Failed to upload image" };
+        }
+    }
+);

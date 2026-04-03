@@ -182,8 +182,8 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
         <div className="space-y-6 md:space-y-8">
             <div className="flex justify-between items-center">
                 <div>
-                    <h2 className="text-xl md:text-2xl font-black text-slate-900 uppercase italic tracking-tighter">Lending Operations</h2>
-                    <p className="text-xs md:text-sm text-slate-500">Manage the complete lifecycle of group loans.</p>
+                    <h2 className="text-xl md:text-2xl font-black text-slate-900 uppercase italic tracking-tighter">Loans</h2>
+                    <p className="text-xs md:text-sm text-slate-500">Manage and track group loan applications.</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <button

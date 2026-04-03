@@ -101,16 +101,31 @@ export async function getLoanStatement(loanId: string) {
     // Apply change to running balance
     runningBalance += balanceChange
 
+    // Generate a detailed description for repayments if breakdown exists
+    let description = tx.description || `${tx.type} Transaction`
+    const p = Number(tx.principalAmount || 0)
+    const i = Number(tx.interestAmount || 0)
+    const pen = Number(tx.penaltyAmount || 0)
+
+    if (tx.type === 'REPAYMENT' && (p > 0 || i > 0 || pen > 0)) {
+      const parts = [
+        p > 0 ? `Principal: ${p.toLocaleString()}` : null,
+        i > 0 ? `Interest: ${i.toLocaleString()}` : null,
+        pen > 0 ? `Penalty: ${pen.toLocaleString()}` : null
+      ].filter(Boolean).join(', ')
+      description = `Repayment: ${parts}`
+    }
+
     return {
       id: tx.id,
       type,
       amount: amount,
-      description: tx.description || `${tx.type} Transaction`,
+      description: description,
       createdAt: tx.postedAt,
       // Pass breakdown fields for statement formatting
-      principalAmount: Number(tx.principalAmount || 0),
-      interestAmount: Number(tx.interestAmount || 0),
-      penaltyAmount: Number(tx.penaltyAmount || 0),
+      principalAmount: p,
+      interestAmount: i,
+      penaltyAmount: pen,
       feeAmount: Number(tx.feeAmount || 0),
       isReversed: tx.isReversed,
       reversedAt: tx.reversedAt,

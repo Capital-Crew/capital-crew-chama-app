@@ -2,8 +2,11 @@
 
 import React, { useState, useEffect } from 'react'
 import { addContribution, addPenaltyPayment, addLoanRepayment, getActiveLoansByMember } from '@/app/wallet-add-funds-actions'
-import { CoinsIcon, AlertCircleIcon, TrendingUpIcon, CheckCircleIcon, LoaderIcon } from 'lucide-react'
+import { CoinsIcon, AlertCircleIcon, TrendingUpIcon, CheckCircleIcon } from 'lucide-react'
 import { PremiumTabs } from '../shared/PremiumTabs'
+import { useFormAction } from '@/hooks/useFormAction'
+import { SubmitButton } from '@/components/ui/SubmitButton'
+import { FormError } from '@/components/ui/FormError'
 
 type DepositType = 'share' | 'penalty' | 'loan'
 
@@ -21,7 +24,7 @@ interface ActiveLoan {
 
 export function AddFundsModule({ memberId, userRole }: { memberId: string; userRole: string }) {
     const [activeTab, setActiveTab] = useState<DepositType>('share')
-    const [loading, setLoading] = useState(false)
+    const { isPending: loading, error, execute, reset } = useFormAction()
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
     // Share Capital state
@@ -62,6 +65,12 @@ export function AddFundsModule({ memberId, userRole }: { memberId: string; userR
         }
     }, [repaymentAmount, selectedLoan])
 
+    const handleTabChange = (id: string) => {
+        setActiveTab(id as DepositType)
+        reset()
+        setMessage(null)
+    }
+
     const loadActiveLoans = async () => {
         try {
             const loans = await getActiveLoansByMember(memberId)
@@ -101,14 +110,14 @@ export function AddFundsModule({ memberId, userRole }: { memberId: string; userR
 
     const handleShareContribution = async (e: React.FormEvent) => {
         e.preventDefault()
-        setLoading(true)
         setMessage(null)
 
-        try {
+        await execute(async (idempotencyKey) => {
             const result = await addContribution({
                 memberId,
                 amount: parseFloat(shareAmount),
-                description: shareDescription
+                description: shareDescription,
+                idempotencyKey
             })
 
             setMessage({
@@ -117,23 +126,20 @@ export function AddFundsModule({ memberId, userRole }: { memberId: string; userR
             })
             setShareAmount('')
             setShareDescription('')
-        } catch (error: any) {
-            setMessage({ type: 'error', text: error.message })
-        } finally {
-            setLoading(false)
-        }
+            return { success: true }
+        }, { useIdempotency: true })
     }
 
     const handlePenaltyPayment = async (e: React.FormEvent) => {
         e.preventDefault()
-        setLoading(true)
         setMessage(null)
 
-        try {
+        await execute(async (idempotencyKey) => {
             const result = await addPenaltyPayment({
                 memberId,
                 amount: parseFloat(penaltyAmount),
-                description: penaltyDescription
+                description: penaltyDescription,
+                idempotencyKey
             })
 
             setMessage({
@@ -142,24 +148,21 @@ export function AddFundsModule({ memberId, userRole }: { memberId: string; userR
             })
             setPenaltyAmount('')
             setPenaltyDescription('')
-        } catch (error: any) {
-            setMessage({ type: 'error', text: error.message })
-        } finally {
-            setLoading(false)
-        }
+            return { success: true }
+        }, { useIdempotency: true })
     }
 
     const handleLoanRepayment = async (e: React.FormEvent) => {
         e.preventDefault()
-        setLoading(true)
         setMessage(null)
 
-        try {
+        await execute(async (idempotencyKey) => {
             const result = await addLoanRepayment({
                 memberId,
                 loanId: selectedLoanId,
                 amount: parseFloat(repaymentAmount),
-                description: repaymentDescription
+                description: repaymentDescription,
+                idempotencyKey
             })
 
             const allocationText = `Penalty: ${result.allocation.paidPenalty}, Interest: ${result.allocation.paidInterest}, Principal: ${result.allocation.paidPrincipal}`
@@ -172,11 +175,8 @@ export function AddFundsModule({ memberId, userRole }: { memberId: string; userR
             setRepaymentAmount('')
             setRepaymentDescription('')
             loadActiveLoans() // Reload to update balances
-        } catch (error: any) {
-            setMessage({ type: 'error', text: error.message })
-        } finally {
-            setLoading(false)
-        }
+            return { success: true }
+        }, { useIdempotency: true })
     }
 
     const isRepaymentValid = selectedLoan && parseFloat(repaymentAmount) > 0 && parseFloat(repaymentAmount) <= selectedLoan.outstandingBalance
@@ -185,8 +185,6 @@ export function AddFundsModule({ memberId, userRole }: { memberId: string; userR
         <div className="bg-white border border-slate-200 rounded-3xl p-8">
             <h2 className="text-2xl font-black text-slate-900 mb-6 uppercase">Add Funds</h2>
 
-            {}
-            {/* Tab Navigation */}
             <div className="border-b border-slate-200 mb-6">
                 <PremiumTabs 
                     tabs={[
@@ -195,13 +193,12 @@ export function AddFundsModule({ memberId, userRole }: { memberId: string; userR
                         { id: 'loan', label: 'Loan Repayment', icon: TrendingUpIcon }
                     ]}
                     activeTab={activeTab}
-                    onChange={(id) => setActiveTab(id as DepositType)}
+                    onChange={handleTabChange}
                 />
             </div>
 
-            {}
             {message && (
-                <div className={`p-4 rounded-xl mb-6 flex items-center gap-3 ${message.type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+                <div className={`p-4 rounded-xl mb-6 flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300 ${message.type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
                     }`}>
                     {message.type === 'success' ? (
                         <CheckCircleIcon className="w-5 h-5 text-green-600" />
@@ -214,196 +211,190 @@ export function AddFundsModule({ memberId, userRole }: { memberId: string; userR
                 </div>
             )}
 
-            {}
-            {activeTab === 'share' && (
-                <form onSubmit={handleShareContribution} className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">Amount (KES)</label>
-                        <input
-                            type="number"
-                            step="0.01"
-                            min="0.01"
-                            value={shareAmount}
-                            onChange={(e) => setShareAmount(e.target.value)}
-                            className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                            placeholder="0.00"
-                            required
+            <FormError message={error} className="mb-6" />
+
+            <div className="step-container">
+                {activeTab === 'share' && (
+                    <form onSubmit={handleShareContribution} className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Amount (KES)</label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                value={shareAmount}
+                                onChange={(e) => setShareAmount(e.target.value)}
+                                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                placeholder="0.00"
+                                required
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Description</label>
+                            <textarea
+                                value={shareDescription}
+                                onChange={(e) => setShareDescription(e.target.value)}
+                                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                placeholder="Purpose of contribution..."
+                                rows={3}
+                                required
+                            />
+                        </div>
+
+                        <SubmitButton
+                            isPending={loading}
+                            label="Add Contribution"
+                            pendingLabel="Processing..."
+                            className="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-3 rounded-xl font-black uppercase text-sm transition-colors"
                         />
-                    </div>
+                    </form>
+                )}
 
-                    <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">Description</label>
-                        <textarea
-                            value={shareDescription}
-                            onChange={(e) => setShareDescription(e.target.value)}
-                            className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                            placeholder="Purpose of contribution..."
-                            rows={3}
-                            required
+                {activeTab === 'penalty' && (
+                    <form onSubmit={handlePenaltyPayment} className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Amount (KES)</label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                value={penaltyAmount}
+                                onChange={(e) => setPenaltyAmount(e.target.value)}
+                                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                placeholder="0.00"
+                                required
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Description</label>
+                            <textarea
+                                value={penaltyDescription}
+                                onChange={(e) => setPenaltyDescription(e.target.value)}
+                                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                placeholder="Reason for penalty/fine payment..."
+                                rows={3}
+                                required
+                            />
+                        </div>
+
+                        <SubmitButton
+                            isPending={loading}
+                            label="Pay Penalty/Fine"
+                            pendingLabel="Processing..."
+                            className="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-3 rounded-xl font-black uppercase text-sm transition-colors"
                         />
-                    </div>
+                    </form>
+                )}
 
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-3 rounded-xl font-black uppercase text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                        {loading && <LoaderIcon className="w-4 h-4 animate-spin" />}
-                        {loading ? 'Processing...' : 'Add Contribution'}
-                    </button>
-                </form>
-            )}
+                {activeTab === 'loan' && (
+                    <form onSubmit={handleLoanRepayment} className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Select Loan</label>
+                            <select
+                                value={selectedLoanId}
+                                onChange={(e) => setSelectedLoanId(e.target.value)}
+                                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                required
+                            >
+                                <option value="">-- Select a loan --</option>
+                                {activeLoans.map(loan => (
+                                    <option key={loan.id} value={loan.id}>
+                                        {loan.loanApplicationNumber} - {loan.productName} (Outstanding: KES {loan.outstandingBalance.toLocaleString()})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
 
-            {}
-            {activeTab === 'penalty' && (
-                <form onSubmit={handlePenaltyPayment} className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">Amount (KES)</label>
-                        <input
-                            type="number"
-                            step="0.01"
-                            min="0.01"
-                            value={penaltyAmount}
-                            onChange={(e) => setPenaltyAmount(e.target.value)}
-                            className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                            placeholder="0.00"
-                            required
-                        />
-                    </div>
+                        {selectedLoan && (
+                            <>
+                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2">
+                                    <h4 className="font-black text-slate-900 text-sm uppercase">Outstanding Balance</h4>
+                                    <div className="grid grid-cols-2 gap-2 text-sm">
+                                        <div className="text-slate-600">Penalty:</div>
+                                        <div className="font-bold text-right">KES {selectedLoan.penaltyBalance.toLocaleString()}</div>
 
-                    <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">Description</label>
-                        <textarea
-                            value={penaltyDescription}
-                            onChange={(e) => setPenaltyDescription(e.target.value)}
-                            className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                            placeholder="Reason for penalty/fine payment..."
-                            rows={3}
-                            required
-                        />
-                    </div>
+                                        <div className="text-slate-600">Interest:</div>
+                                        <div className="font-bold text-right">KES {selectedLoan.interestBalance.toLocaleString()}</div>
 
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-3 rounded-xl font-black uppercase text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                        {loading && <LoaderIcon className="w-4 h-4 animate-spin" />}
-                        {loading ? 'Processing...' : 'Pay Penalty/Fine'}
-                    </button>
-                </form>
-            )}
+                                        <div className="text-slate-600">Principal:</div>
+                                        <div className="font-bold text-right">KES {selectedLoan.principalBalance.toLocaleString()}</div>
 
-            {}
-            {activeTab === 'loan' && (
-                <form onSubmit={handleLoanRepayment} className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">Select Loan</label>
-                        <select
-                            value={selectedLoanId}
-                            onChange={(e) => setSelectedLoanId(e.target.value)}
-                            className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                            required
-                        >
-                            <option value="">-- Select a loan --</option>
-                            {activeLoans.map(loan => (
-                                <option key={loan.id} value={loan.id}>
-                                    {loan.loanApplicationNumber} - {loan.productName} (Outstanding: KES {loan.outstandingBalance.toLocaleString()})
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {selectedLoan && (
-                        <>
-                            {}
-                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2">
-                                <h4 className="font-black text-slate-900 text-sm uppercase">Outstanding Balance</h4>
-                                <div className="grid grid-cols-2 gap-2 text-sm">
-                                    <div className="text-slate-600">Penalty:</div>
-                                    <div className="font-bold text-right">KES {selectedLoan.penaltyBalance.toLocaleString()}</div>
-
-                                    <div className="text-slate-600">Interest:</div>
-                                    <div className="font-bold text-right">KES {selectedLoan.interestBalance.toLocaleString()}</div>
-
-                                    <div className="text-slate-600">Principal:</div>
-                                    <div className="font-bold text-right">KES {selectedLoan.principalBalance.toLocaleString()}</div>
-
-                                    <div className="text-slate-900 font-black border-t pt-2">Total:</div>
-                                    <div className="font-black text-right border-t pt-2">KES {selectedLoan.outstandingBalance.toLocaleString()}</div>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">
-                                    Repayment Amount (KES) - Max: {selectedLoan.outstandingBalance.toLocaleString()}
-                                </label>
-                                <div className="relative">
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        min="0.01"
-                                        max={selectedLoan.outstandingBalance}
-                                        value={repaymentAmount}
-                                        onChange={(e) => setRepaymentAmount(e.target.value)}
-                                        className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                                        placeholder="0.00"
-                                        required
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => setRepaymentAmount(selectedLoan.outstandingBalance.toString())}
-                                        className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-cyan-100 text-cyan-700 rounded-lg text-xs font-bold uppercase hover:bg-cyan-200"
-                                    >
-                                        Max
-                                    </button>
-                                </div>
-                                {repaymentAmount && parseFloat(repaymentAmount) > selectedLoan.outstandingBalance && (
-                                    <p className="text-red-600 text-xs mt-1 font-bold">⚠ Amount exceeds outstanding balance</p>
-                                )}
-                            </div>
-
-                            {}
-                            {repaymentAmount && parseFloat(repaymentAmount) > 0 && isRepaymentValid && (
-                                <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-2">
-                                    <h4 className="font-black text-green-900 text-sm uppercase">Payment Allocation</h4>
-                                    <div className="grid grid-cols-2 gap-2 text-sm text-green-800">
-                                        <div>To Penalty:</div>
-                                        <div className="font-bold text-right">KES {repaymentAllocation.penalty.toLocaleString()}</div>
-
-                                        <div>To Interest:</div>
-                                        <div className="font-bold text-right">KES {repaymentAllocation.interest.toLocaleString()}</div>
-
-                                        <div>To Principal:</div>
-                                        <div className="font-bold text-right">KES {repaymentAllocation.principal.toLocaleString()}</div>
+                                        <div className="text-slate-900 font-black border-t pt-2">Total:</div>
+                                        <div className="font-black text-right border-t pt-2">KES {selectedLoan.outstandingBalance.toLocaleString()}</div>
                                     </div>
                                 </div>
-                            )}
 
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">Description</label>
-                                <textarea
-                                    value={repaymentDescription}
-                                    onChange={(e) => setRepaymentDescription(e.target.value)}
-                                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                                    placeholder="Payment notes..."
-                                    rows={2}
-                                    required
-                                />
-                            </div>
-                        </>
-                    )}
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">
+                                        Repayment Amount (KES) - Max: {selectedLoan.outstandingBalance.toLocaleString()}
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            min="0.01"
+                                            max={selectedLoan.outstandingBalance}
+                                            value={repaymentAmount}
+                                            onChange={(e) => setRepaymentAmount(e.target.value)}
+                                            className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                            placeholder="0.00"
+                                            required
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setRepaymentAmount(selectedLoan.outstandingBalance.toString())}
+                                            className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-cyan-100 text-cyan-700 rounded-lg text-xs font-bold uppercase hover:bg-cyan-200"
+                                        >
+                                            Max
+                                        </button>
+                                    </div>
+                                    {repaymentAmount && parseFloat(repaymentAmount) > selectedLoan.outstandingBalance && (
+                                        <p className="text-red-600 text-xs mt-1 font-bold">⚠ Amount exceeds outstanding balance</p>
+                                    )}
+                                </div>
 
-                    <button
-                        type="submit"
-                        disabled={loading || !isRepaymentValid}
-                        className="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-3 rounded-xl font-black uppercase text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                        {loading && <LoaderIcon className="w-4 h-4 animate-spin" />}
-                        {loading ? 'Processing...' : 'Submit Repayment'}
-                    </button>
-                </form>
-            )}
+                                {repaymentAmount && parseFloat(repaymentAmount) > 0 && isRepaymentValid && (
+                                    <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-2">
+                                        <h4 className="font-black text-green-900 text-sm uppercase">Payment Allocation</h4>
+                                        <div className="grid grid-cols-2 gap-2 text-sm text-green-800">
+                                            <div>To Penalty:</div>
+                                            <div className="font-bold text-right">KES {repaymentAllocation.penalty.toLocaleString()}</div>
+
+                                            <div>To Interest:</div>
+                                            <div className="font-bold text-right">KES {repaymentAllocation.interest.toLocaleString()}</div>
+
+                                            <div>To Principal:</div>
+                                            <div className="font-bold text-right">KES {repaymentAllocation.principal.toLocaleString()}</div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Description</label>
+                                    <textarea
+                                        value={repaymentDescription}
+                                        onChange={(e) => setRepaymentDescription(e.target.value)}
+                                        className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                        placeholder="Payment notes..."
+                                        rows={2}
+                                        required
+                                    />
+                                </div>
+                            </>
+                        )}
+
+                        <SubmitButton
+                            isPending={loading}
+                            disabled={!isRepaymentValid}
+                            label="Submit Repayment"
+                            pendingLabel="Processing..."
+                            className="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-3 rounded-xl font-black uppercase text-sm transition-colors"
+                        />
+                    </form>
+                )}
+            </div>
         </div>
     )
 }

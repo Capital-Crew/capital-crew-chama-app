@@ -101,7 +101,7 @@ export async function createTransferRequest(data: {
 }
 
 
-export async function approveTransfer(requestId: string, notes?: string) {
+export async function approveTransfer(requestId: string, notes?: string, idempotencyKey?: string) {
     const session = await auth()
 
     // Strict Admin Check
@@ -110,8 +110,8 @@ export async function approveTransfer(requestId: string, notes?: string) {
         return { error: 'Unauthorized: Only administrators can approve transfers.' }
     }
 
-    try {
-        const result = await db.$transaction(async (tx) => {
+    const businessLogic = async () => {
+        return await db.$transaction(async (tx) => {
             const request = await tx.transferRequest.findUnique({
                 where: { id: requestId },
                 include: { approvals: true }
@@ -123,7 +123,8 @@ export async function approveTransfer(requestId: string, notes?: string) {
             // Check if already voted
             const existingVote = request.approvals.find(a => a.approverId === session.user.id)
             if (existingVote) {
-                throw new Error('You have already voted on this request.')
+                // If it's the exact same vote, we can consider it success (idempotent)
+                return { success: true }
             }
 
             // Record Approval
@@ -136,14 +137,9 @@ export async function approveTransfer(requestId: string, notes?: string) {
                 }
             })
 
-
-            // Re-fetch approvals to be safe? Or validation logic:
-            // Previous approvals + Current one.
             const totalApprovals = request.approvals.filter(a => a.status === ApprovalStatus.APPROVED).length + 1
 
             if (totalApprovals >= 2) {
-                // EXECUTE TRANSACTION
-                // 1. Post to Ledger
                 const je = await AccountingEngine.postJournalEntry({
                     transactionDate: new Date(),
                     referenceType: 'MANUAL_ADJUSTMENT',
@@ -166,9 +162,8 @@ export async function approveTransfer(requestId: string, notes?: string) {
                             description: request.description
                         }
                     ]
-                }, tx as any) // Type cast if needed for transaction client
+                }, tx as any)
 
-                // 2. Update Request Status
                 await tx.transferRequest.update({
                     where: { id: requestId },
                     data: {
@@ -176,25 +171,34 @@ export async function approveTransfer(requestId: string, notes?: string) {
                         ledgerEntryId: je.id
                     }
                 })
-            } else {
-                // Just update status to indicate progress? 
-                // Currently status is PENDING until EXECUTED.
             }
 
             return { success: true }
         })
+    }
+
+    try {
+        let result: any
+        if (idempotencyKey) {
+            result = await withIdempotency({
+                key: idempotencyKey,
+                path: 'approveTransfer',
+                businessLogic
+            })
+        } else {
+            result = await businessLogic()
+        }
 
         revalidatePath('/accounting/transfers')
-        revalidatePath('/accounts') // Ensure balances update!
+        revalidatePath('/accounts')
         return result
-
     } catch (error: any) {
         return { error: error.message || 'Failed to approve transfer' }
     }
 }
 
 
-export async function rejectTransfer(requestId: string, notes: string) {
+export async function rejectTransfer(requestId: string, notes: string, idempotencyKey?: string) {
     const session = await auth()
     // Strict Admin Check
     const allowedRoles = ['CHAIRPERSON', 'TREASURER', 'SECRETARY', 'SYSTEM_ADMIN']
@@ -202,27 +206,43 @@ export async function rejectTransfer(requestId: string, notes: string) {
         return { error: 'Unauthorized' }
     }
 
-    try {
-        await db.transferRequest.update({
-            where: { id: requestId },
-            data: {
-                status: TransferStatus.REJECTED
-            }
-        })
+    const businessLogic = async () => {
+        await db.$transaction(async (tx) => {
+            await tx.transferRequest.update({
+                where: { id: requestId },
+                data: {
+                    status: TransferStatus.REJECTED
+                }
+            })
 
-        await db.transferApproval.create({
-            data: {
-                transferRequestId: requestId,
-                approverId: session.user.id!,
-                status: ApprovalStatus.REJECTED,
-                notes
-            }
+            await tx.transferApproval.create({
+                data: {
+                    transferRequestId: requestId,
+                    approverId: session.user.id!,
+                    status: ApprovalStatus.REJECTED,
+                    notes
+                }
+            })
         })
+        return { success: true }
+    }
+
+    try {
+        let result: any
+        if (idempotencyKey) {
+            result = await withIdempotency({
+                key: idempotencyKey,
+                path: 'rejectTransfer',
+                businessLogic
+            })
+        } else {
+            result = await businessLogic()
+        }
 
         revalidatePath('/accounting/transfers')
-        return { success: true }
+        return result
     } catch (error: any) {
-        return { error: error.message }
+        return { error: error.message || 'Failed to reject transfer' }
     }
 }
 

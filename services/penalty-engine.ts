@@ -33,7 +33,10 @@ export class PenaltyService {
             },
             include: {
                 loan: {
-                    include: { member: true }
+                    include: { 
+                        member: true,
+                        loanProduct: true
+                    }
                 }
             }
         })
@@ -56,23 +59,22 @@ export class PenaltyService {
     }
 
     private static async applyPenalty(item: RepaymentInstallment & { loan: any }) {
-        // 3. Calculate Penalty Amount
+        // 1. Calculate Base Amount (Outstanding Principal + Interest)
         const principalDue = new Prisma.Decimal(item.principalDue)
         const interestDue = new Prisma.Decimal(item.interestDue)
         const principalPaid = new Prisma.Decimal(item.principalPaid)
         const interestPaid = new Prisma.Decimal(item.interestPaid)
 
-        // Base Amount = (Due - Paid) -> Outstanding for this installment
         const outstandingPrincipal = principalDue.sub(principalPaid)
         const outstandingInterest = interestDue.sub(interestPaid)
         const baseAmount = outstandingPrincipal.add(outstandingInterest)
 
-        if (baseAmount.lte(0)) {
-            // Should be marked paid? Skip for now.
-            return
-        }
+        if (baseAmount.lte(0)) return
 
-        const penaltyRate = new Prisma.Decimal(item.loan.penaltyRate || 5.0)
+        // 3. Calculate Penalty Amount
+        // User Preference: Exclusively use Loan Product Template (LoanProduct.defaultPenaltyRate)
+        // Fallback to loan.penaltyRate or 5.0 only if product is missing
+        const penaltyRate = new Prisma.Decimal(item.loan.loanProduct?.defaultPenaltyRate || item.loan.penaltyRate || 5.0)
         const penaltyAmount = baseAmount.mul(penaltyRate).div(100)
 
         if (penaltyAmount.lte(0)) return

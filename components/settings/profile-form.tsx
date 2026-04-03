@@ -7,7 +7,6 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Loader2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import {
     Form,
     FormControl,
@@ -24,6 +23,9 @@ import { cn } from "@/lib/utils";
 import { AvatarSelector } from "./AvatarSelector";
 import { getAvatarUrl, getInitials } from "@/lib/avatar-utils";
 import { toast } from "@/lib/toast";
+import { useFormAction } from "@/hooks/useFormAction";
+import { SubmitButton } from "@/components/ui/SubmitButton";
+import { FormError } from "@/components/ui/FormError";
 
 const profileSchema = z.object({
     name: z.string().min(2, {
@@ -43,7 +45,7 @@ interface ProfileFormProps {
 export function ProfileForm({ user }: ProfileFormProps) {
     const router = useRouter();
     const [isUploading, setIsUploading] = useState(false);
-    const [isUpdating, setIsUpdating] = useState(false);
+    const { isPending: isUpdating, error, execute } = useFormAction();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const form = useForm<ProfileFormValues>({
@@ -56,16 +58,15 @@ export function ProfileForm({ user }: ProfileFormProps) {
     });
 
     async function onSubmit(data: ProfileFormValues) {
-        setIsUpdating(true);
-        const result = await updateProfile(data);
-        setIsUpdating(false);
-
-        if (result.error) {
-            toast.error("Error", result.error);
-        } else {
+        await execute(async () => {
+            const result = await updateProfile(data);
+            if (result.error) {
+                return { success: false, error: result.error };
+            }
             toast.success("Success", "Profile updated successfully");
             router.refresh();
-        }
+            return { success: true };
+        });
     }
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -128,51 +129,55 @@ export function ProfileForm({ user }: ProfileFormProps) {
             </div>
 
             <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 max-w-lg">
-                    <FormField
-                        control={form.control}
-                        name="name"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Full Name</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="Your name" {...field} />
-                                </FormControl>
-                                <FormDescription>
-                                    This is your public display name.
-                                </FormDescription>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
+                <div className="step-container">
+                    <FormError message={error} className="mb-6" />
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 max-w-lg">
+                        <FormField
+                            control={form.control}
+                            name="name"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Full Name</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="Your name" {...field} />
+                                    </FormControl>
+                                    <FormDescription>
+                                        This is your public display name.
+                                    </FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
 
-                    <div className="grid gap-2">
-                        <FormLabel>Email</FormLabel>
-                        <Input value={user?.email || ""} disabled className="bg-muted text-muted-foreground opacity-100" />
-                        <p className="text-[0.8rem] text-muted-foreground">
-                            Email cannot be changed contact admin for assistance.
-                        </p>
-                    </div>
+                        <div className="grid gap-2">
+                            <FormLabel>Email</FormLabel>
+                            <Input value={user?.email || ""} disabled className="bg-muted text-muted-foreground opacity-100" />
+                            <p className="text-[0.8rem] text-muted-foreground">
+                                Email cannot be changed contact admin for assistance.
+                            </p>
+                        </div>
 
-                    <FormField
-                        control={form.control}
-                        name="contact"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Phone Number</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="+254..." {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
+                        <FormField
+                            control={form.control}
+                            name="contact"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Phone Number</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="+254..." {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
 
-                    <Button type="submit" disabled={isUpdating}>
-                        {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Save changes
-                    </Button>
-                </form>
+                        <SubmitButton
+                            isPending={isUpdating}
+                            label="Save changes"
+                            pendingLabel="Saving..."
+                        />
+                    </form>
+                </div>
             </Form>
         </div>
     );

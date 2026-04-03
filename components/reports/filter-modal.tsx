@@ -12,7 +12,9 @@ import {
 import { type Report, type FilterOptions, getColorClasses, ICON_MAP } from '@/lib/report-types'
 import { getFilterOptionsAction } from '@/app/actions/reporting-actions'
 import { DatePickerField } from '@/components/ui/date-picker-field'
-import { Loader2, Search } from 'lucide-react'
+import { Loader2, Search, X } from 'lucide-react'
+import { SubmitButton } from '@/components/ui/SubmitButton'
+import { FormError } from '@/components/ui/FormError'
 
 interface FilterModalProps {
     open: boolean
@@ -124,7 +126,7 @@ export function FilterModal({ open, onOpenChange, report, onPreview, loading, er
                 </div>
 
                 {}
-                <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
+                <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1 step-container">
                     {}
                     {needsDateRange && (
                         <div className="grid grid-cols-2 gap-3">
@@ -228,11 +230,7 @@ export function FilterModal({ open, onOpenChange, report, onPreview, loading, er
                     )}
 
                     {}
-                    {error && (
-                        <div className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-xl px-3 py-2">
-                            {error}
-                        </div>
-                    )}
+                    <FormError message={error} className="mt-2" />
                 </div>
 
                 {}
@@ -243,22 +241,13 @@ export function FilterModal({ open, onOpenChange, report, onPreview, loading, er
                     >
                         Cancel
                     </button>
-                    <button
+                    <SubmitButton
+                        isPending={loading}
+                        label="Preview Report"
+                        pendingLabel="Generating…"
                         onClick={handleSubmit}
-                        disabled={loading}
-                        className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-bold text-white transition-all
-                            ${loading ? 'opacity-60 cursor-not-allowed' : 'hover:opacity-90 active:scale-[0.98]'}
-                            bg-slate-900 dark:bg-white dark:text-slate-900`}
-                    >
-                        {loading ? (
-                            <span className="flex items-center justify-center gap-2">
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                Generating…
-                            </span>
-                        ) : (
-                            'Preview Report'
-                        )}
-                    </button>
+                        className="flex-1 rounded-xl text-sm font-bold bg-slate-900 dark:bg-white dark:text-slate-900"
+                    />
                 </DialogFooter>
             </DialogContent>
         </Dialog>

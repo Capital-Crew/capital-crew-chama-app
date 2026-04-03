@@ -5,6 +5,7 @@ import { db } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
 import { MemberStats as DetailedMemberStats, LoanPortfolioItem } from '@/types/member-dashboard';
 import { serializePrisma } from '@/lib/serialization';
+import { getLoanPenaltyBalance } from '@/lib/accounting/AccountingEngine';
 
 
 // --- Types ---
@@ -317,7 +318,8 @@ export async function getDetailedMemberStats(memberId: string): Promise<{ stats:
             principalDue: principalDue,
             interestDue: interestDue,
             totalDue: totalDue,
-            isArrears: isArrears
+            isArrears: isArrears,
+            unpaidPenalty: await getLoanPenaltyBalance(loan.id)
         };
     }));
 
@@ -662,7 +664,8 @@ export async function getLoanPortfolio(memberId: string) {
         // Remap specArrears to the `arrears` field the table expects, without colliding with the internal `arrears` variable above
         return {
             ...baseLoan,
-            arrears: baseLoan.specArrears
+            arrears: baseLoan.specArrears,
+            unpaidPenalty: await getLoanPenaltyBalance(loan.id)
         };
     }));
 
@@ -727,11 +730,8 @@ export async function getMemberFullDetail(memberId: string) {
     const { calculateCurrentMonthStatus } = await import('./contribution-engine');
 
 
-    // Resolve User for penalties
-    const user = await db.user.findUnique({ where: { memberId } });
-
     // Parallelize all major dashboard fetches
-    const [stats, contributions, portfolio, member, contributionStatus, unpaidPenalties, attendanceHistory] = await Promise.all([
+    const [stats, contributions, portfolio, member, contributionStatus, attendanceHistory] = await Promise.all([
         getDetailedMemberStats(memberId),
         getContributionHistory(memberId),
         getLoanPortfolio(memberId),
@@ -739,15 +739,11 @@ export async function getMemberFullDetail(memberId: string) {
             where: { id: memberId },
             include: {
                 contactInfo: true,
-                nextOfKin: true
+                nextOfKin: true,
+                user: true
             }
         }),
         calculateCurrentMonthStatus(memberId),
-        user ? db.attendanceFine.findMany({
-            where: { userId: user.id, status: 'PENDING' },
-            include: { meeting: true },
-            orderBy: { createdAt: 'desc' }
-        }) : Promise.resolve([]),
         db.meetingAttendee.findMany({
             where: { memberId },
             include: { meeting: true },
@@ -756,6 +752,16 @@ export async function getMemberFullDetail(memberId: string) {
     ]);
 
     if (!stats || !member) return null;
+
+    // Use the user from the member relation
+    const user = member.user;
+
+    // Resolve unpaid penalties if user exists
+    const unpaidPenalties = user ? await db.attendanceFine.findMany({
+        where: { userId: user.id, status: 'PENDING' },
+        include: { meeting: true },
+        orderBy: { createdAt: 'desc' }
+    }) : [];
 
 
     return serializePrisma({
@@ -768,7 +774,11 @@ export async function getMemberFullDetail(memberId: string) {
             status: member.status,
             contributionArrears: Number(member.contributionArrears || 0),
             penaltyArrears: Number(member.penaltyArrears || 0),
-            userId: user?.id
+            userId: user?.id,
+            user: user ? {
+                id: user.id,
+                image: user.image
+            } : null
         },
         stats: stats.stats,
         contributions: contributions,

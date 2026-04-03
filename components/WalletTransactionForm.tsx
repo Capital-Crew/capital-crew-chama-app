@@ -2,6 +2,9 @@
 
 import React, { useState } from 'react'
 import { PlusCircleIcon } from 'lucide-react'
+import { useFormAction } from '@/hooks/useFormAction'
+import { SubmitButton } from '@/components/ui/SubmitButton'
+import { FormError } from '@/components/ui/FormError'
 
 interface TransactionFormProps {
     memberId: string
@@ -11,25 +14,21 @@ interface TransactionFormProps {
 
 export function WalletTransactionForm({ memberId, memberName, onSuccess }: TransactionFormProps) {
     const [isOpen, setIsOpen] = useState(false)
-    const [loading, setLoading] = useState(false)
-    const [error, setError] = useState('')
+    const { isPending: loading, error, execute } = useFormAction()
     const [success, setSuccess] = useState(false)
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault()
+        const currentForm = e.currentTarget
+        const formData = new FormData(currentForm)
 
-        const formData = new FormData(e.currentTarget)
-
-        const payload = {
-            type: formData.get('type'),
-            amount: parseFloat(formData.get('amount') as string),
-            description: formData.get('description'),
-            relatedLoanId: formData.get('relatedLoanId') || undefined
-        }
-
-        try {
-            setLoading(true)
-            setError('')
+        await execute(async () => {
+            const payload = {
+                type: formData.get('type'),
+                amount: parseFloat(formData.get('amount') as string),
+                description: formData.get('description'),
+                relatedLoanId: formData.get('relatedLoanId') || undefined
+            }
 
             const response = await fetch(`/api/wallet/${memberId}/transaction`, {
                 method: 'POST',
@@ -40,7 +39,7 @@ export function WalletTransactionForm({ memberId, memberName, onSuccess }: Trans
             const data = await response.json()
 
             if (!response.ok) {
-                throw new Error(data.error || 'Failed to create transaction')
+                return { success: false, error: data.error || 'Failed to create transaction' }
             }
 
             setSuccess(true)
@@ -49,11 +48,9 @@ export function WalletTransactionForm({ memberId, memberName, onSuccess }: Trans
                 setSuccess(false)
                 onSuccess?.()
             }, 1500)
-        } catch (err: any) {
-            setError(err.message)
-        } finally {
-            setLoading(false)
-        }
+
+            return { success: true }
+        })
     }
 
     return (
@@ -68,22 +65,18 @@ export function WalletTransactionForm({ memberId, memberName, onSuccess }: Trans
 
             {isOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 step-container">
                         <h3 className="text-xl font-black text-slate-900 mb-4">
                             New Transaction for {memberName}
                         </h3>
 
                         {success && (
-                            <div className="bg-green-50 text-green-700 px-4 py-3 rounded-xl mb-4 font-bold">
+                            <div className="bg-green-50 text-green-700 px-4 py-3 rounded-xl mb-4 font-bold animate-in fade-in zoom-in duration-300">
                                 ✓ Transaction created successfully!
                             </div>
                         )}
 
-                        {error && (
-                            <div className="bg-red-50 text-red-700 px-4 py-3 rounded-xl mb-4">
-                                {error}
-                            </div>
-                        )}
+                        <FormError message={error} />
 
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
@@ -146,17 +139,17 @@ export function WalletTransactionForm({ memberId, memberName, onSuccess }: Trans
                             </div>
 
                             <div className="flex gap-3 pt-2">
-                                <button
-                                    type="submit"
-                                    disabled={loading || success}
-                                    className="flex-1 bg-cyan-500 text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-cyan-500/20 hover:bg-cyan-600 transition-all disabled:opacity-50"
-                                >
-                                    {loading ? 'Creating...' : success ? 'Created!' : 'Create Transaction'}
-                                </button>
+                                <SubmitButton
+                                    isPending={loading}
+                                    label={success ? 'Created!' : 'Create Transaction'}
+                                    pendingLabel="Creating..."
+                                    className="flex-1 py-4 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-cyan-500/20"
+                                    disabled={success}
+                                />
                                 <button
                                     type="button"
-                                    onClick={() => { setIsOpen(false); setError(''); }}
-                                    className="px-6 py-4 rounded-2xl text-slate-600 font-bold hover:bg-slate-100 transition-all"
+                                    onClick={() => { setIsOpen(false); }}
+                                    className="px-6 py-4 rounded-2xl text-slate-600 font-bold hover:bg-slate-100 transition-all font-sans"
                                 >
                                     Cancel
                                 </button>

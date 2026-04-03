@@ -7,7 +7,12 @@ import { UserRole } from "@prisma/client"
 import { getCurrentUserPermissions } from "@/app/actions/user-permissions"
 import { protectPage } from "@/lib/with-module-protection"
 
-export default async function MembersPage() {
+interface PageProps {
+    searchParams: Promise<{ id?: string }>
+}
+
+export default async function MembersPage({ searchParams }: PageProps) {
+    const { id: queryId } = await searchParams;
     const session = await auth();
 
     if (!session?.user) {
@@ -46,8 +51,8 @@ export default async function MembersPage() {
 
     let initialDetail = null;
     if (members.length > 0) {
-        // Optimization: For Admins, fetch first member. For Members, it's already their ID so fetch that.
-        const targetId = isPrivileged ? members[0].id : memberId;
+        // Priority: 1. URL Query ID (Admin directory) 2. Auth memberId (Member view) 3. First member (Admin default)
+        const targetId = queryId || (isPrivileged ? members[0].id : memberId);
         if (targetId) {
             initialDetail = await getMemberFullDetail(targetId);
         }

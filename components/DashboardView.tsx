@@ -80,10 +80,10 @@ export function DashboardView({ stats, personalDetail, ledgerKPIs }: Props) {
                     {}
                     <div>
                         <h1 className="text-xl md:text-2xl font-black text-slate-900 uppercase tracking-tight mb-1 md:mb-2">
-                            Financial Performance
+                            Dashboard Overview
                         </h1>
                         <p className="text-xs md:text-base text-slate-500 font-medium">
-                            Real-time insights and growth trends
+                            Group financial performance and trends.
                         </p>
                     </div>
 

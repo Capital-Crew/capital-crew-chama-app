@@ -6,7 +6,8 @@ import { useState } from 'react';
 import { UserPermissions } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Clock, CheckCircle2, AlertCircle, ChevronDown, ChevronUp, ChevronRight, Receipt, Activity, XCircle, Calendar, MessageSquare } from 'lucide-react';
+import { Clock, CheckCircle2, AlertCircle, ChevronDown, ChevronUp, ChevronRight, Receipt, Activity, XCircle, Calendar, MessageSquare, Loader2 } from 'lucide-react';
+import { useFormAction } from '@/hooks/useFormAction';
 import { MemberQuickStats } from './MemberQuickStats';
 import { NextOfKinManager } from './NextOfKinManager';
 import { PremiumTabs } from '../shared/PremiumTabs';
@@ -74,7 +75,10 @@ export function MemberProfileView({
             lastName: member.name?.split(' ').slice(1).join(' ') || '',
             fullName: member.name || '',
             memberNumber: parseInt(member.memberNumber) || 0,
-            status: member.status
+            status: member.status,
+            email: member.email,
+            phone: member.contact,
+            image: member.user?.image
         },
         financials: {
             memberSavings: stats?.memberSavings || 0,
@@ -86,102 +90,89 @@ export function MemberProfileView({
         }
     };
 
+
+
+    const { execute, isPending: isProcessingAction } = useFormAction();
+
+    const handleOnboardingAction = async (actionType: 'APPROVE' | 'ACTIVATE' | 'DEACTIVATE') => {
+        const actionLabel = actionType === 'APPROVE' ? 'approve' : actionType === 'ACTIVATE' ? 'activate' : 'deactivate';
+        const confirmMsg = actionType === 'DEACTIVATE' 
+            ? `Deactivate ${member.name}? This will close their account and restrict access.`
+            : actionType === 'APPROVE' 
+                ? `Approve ${member.name} as a member?`
+                : `Activate ${member.name}? This will grant full system access.`;
+
+        if (!window.confirm(confirmMsg)) return;
+
+        await execute(async () => {
+            let res;
+            if (actionType === 'APPROVE') res = await approveMemberAction(member.id);
+            else if (actionType === 'ACTIVATE') res = await activateMemberAction(member.id);
+            else res = await deactivateMemberAction(member.id);
+
+            if (res.success) {
+                toast.success(`Member ${actionLabel}d successfully`);
+                router.refresh();
+                return { success: true };
+            } else {
+                return { success: false, error: res.error || `Failed to ${actionLabel}` };
+            }
+        });
+    };
+
     return (
-        <div className="bg-white min-h-full flex flex-col">
+        <div className="bg-white min-h-full flex flex-col font-sans">
             {}
-            <div className="px-4 md:px-8 pt-6 md:pt-8 border-b border-slate-100">
-                <h1 className="text-2xl md:text-3xl font-black text-slate-900 mb-4">Member Profile</h1>
-            </div>
+            <div className="px-4 md:px-8 pt-6 md:pt-8 border-b border-slate-100 pb-6 bg-slate-50/30">
+                <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                    <h1 className="text-2xl md:text-4xl font-black text-[#0A192F] tracking-tighter uppercase italic">
+                        {member.name} <span className="text-[#00c2e0] block md:inline text-sm md:text-xl align-middle md:ml-2 not-italic">MEMBER #{member.memberNumber}</span>
+                    </h1>
+                    
+                    {/* Header Actions */}
+                    <div className="flex items-center gap-3 w-full md:w-auto">
+                        {member.status === 'PENDING' && (isSystemAdmin || currentUserPermissions?.canApproveMember) && (
+                            <button
+                                disabled={isProcessingAction}
+                                onClick={() => handleOnboardingAction('APPROVE')}
+                                className="flex-1 md:flex-none bg-[#00c2e0] text-[#0A192F] px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-cyan-400 transition-all active:scale-95 shadow-lg shadow-cyan-900/10 flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                                {isProcessingAction ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                                Approve
+                            </button>
+                        )}
 
+                        {member.status === 'APPROVED' && (isSystemAdmin || currentUserPermissions?.canActivateMember) && (
+                            <button
+                                disabled={isProcessingAction}
+                                onClick={() => handleOnboardingAction('ACTIVATE')}
+                                className="flex-1 md:flex-none bg-emerald-500 text-white px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-400 transition-all active:scale-95 shadow-lg shadow-emerald-900/10 flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                                {isProcessingAction ? <Loader2 className="w-3 h-3 animate-spin" /> : <Activity className="w-4 h-4" />}
+                                Activate
+                            </button>
+                        )}
 
-            {}
-            {member.status === 'ACTIVE' && isSystemAdmin && (
-                <div className="px-4 md:px-8 mt-4">
-                    <div className="flex justify-end">
-                        <button
-                            onClick={async () => {
-                                if (!window.confirm(`Deactivate ${member.name}? This will close their account and restrict access.`)) return;
-                                const res = await deactivateMemberAction(member.id);
-                                if (res.success) {
-                                    toast.success('Member deactivated successfully');
-                                    router.refresh();
-                                } else {
-                                    toast.error(res.error || 'Failed to deactivate');
-                                }
-                            }}
-                            className="w-full md:w-auto bg-red-600 text-white px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-red-500 transition-all active:scale-95 shadow-lg shadow-red-900/10 flex items-center justify-center gap-2"
-                        >
-                            <XCircle className="w-4 h-4" /> Deactivate Account
-                        </button>
+                        {member.status === 'ACTIVE' && isSystemAdmin && (
+                            <button
+                                disabled={isProcessingAction}
+                                onClick={() => handleOnboardingAction('DEACTIVATE')}
+                                className="flex-1 md:flex-none bg-white border-2 border-red-100 text-red-600 px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-50 transition-all active:scale-95 shadow-lg shadow-red-900/5 flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                                {isProcessingAction ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-4 h-4" />} 
+                                Deactivate
+                            </button>
+                        )}
                     </div>
                 </div>
-            )}
+            </div>
 
-            <div className="px-4 md:px-8 mt-4 md:mt-8 mb-8 flex flex-col xl:flex-row justify-between items-start gap-4">
+            <div className="px-4 md:px-8 mt-6 md:mt-10 mb-12">
                 <MemberQuickStats
+                    memberId={member.id}
                     stats={quickStatsData}
                     onViewLoans={() => setActiveTab('loans')}
                 />
-
-                {}
-                {(isSystemAdmin ||
-                    (member.status === 'PENDING' && currentUserPermissions?.canApproveMember) ||
-                    (member.status === 'APPROVED' && currentUserPermissions?.canActivateMember)) &&
-                    ['PENDING', 'APPROVED'].includes(member.status) && (
-                        <div className="flex-1 w-full xl:w-auto">
-                            <div className="bg-slate-900 rounded-3xl p-6 md:p-8 text-white shadow-xl shadow-slate-200 border border-white/10">
-                                <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-sm">
-                                            <Activity className="w-6 h-6 text-cyan-400" />
-                                        </div>
-                                        <div>
-                                            <h3 className="text-lg font-black uppercase tracking-tight">Onboarding Action</h3>
-                                            <p className="text-slate-400 text-xs font-bold mt-1">
-                                                Current Status: <span className="text-cyan-400">{member.status}</span>
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    {member.status === 'PENDING' && (isSystemAdmin || currentUserPermissions?.canApproveMember) && (
-                                        <button
-                                            onClick={async () => {
-                                                if (!window.confirm(`Approve ${member.name} as a member?`)) return;
-                                                const res = await approveMemberAction(member.id);
-                                                if (res.success) {
-                                                    toast.success('Member approved successfully');
-                                                    router.refresh();
-                                                } else {
-                                                    toast.error(res.error || 'Failed to approve');
-                                                }
-                                            }}
-                                            className="w-full md:w-auto bg-cyan-500 text-slate-900 px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-cyan-400 transition-all active:scale-95 shadow-lg shadow-cyan-900/20 flex items-center justify-center gap-2"
-                                        >
-                                            <CheckCircle2 className="w-4 h-4" /> Approve Member
-                                        </button>
-                                    )}
-
-                                    {member.status === 'APPROVED' && (isSystemAdmin || currentUserPermissions?.canActivateMember) && (
-                                        <button
-                                            onClick={async () => {
-                                                if (!window.confirm(`Activate ${member.name}? This will grant full system access.`)) return;
-                                                const res = await activateMemberAction(member.id);
-                                                if (res.success) {
-                                                    toast.success('Member activated successfully');
-                                                    router.refresh();
-                                                } else {
-                                                    toast.error(res.error || 'Failed to activate');
-                                                }
-                                            }}
-                                            className="w-full md:w-auto bg-green-500 text-white px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-green-400 transition-all active:scale-95 shadow-lg shadow-green-900/20 flex items-center justify-center gap-2"
-                                        >
-                                            <Activity className="w-4 h-4" /> Activate Member
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    )}
             </div>
 
             {}
@@ -559,8 +550,8 @@ function ResponsiveLoansList({ loans, onLoanClick }: { loans: any[], onLoanClick
                                             }`}>
                                             {loan.status || 'Active'}
                                         </div>
-                                        <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest ${getRiskBucketColor(getRiskBucket(loan.daysInArrears))}`}>
-                                            {getRiskBucket(loan.daysInArrears)}
+                                        <div className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest bg-red-50 text-red-600 border border-red-100">
+                                            Penalty: {formatCurrency(loan.unpaidPenalty || 0)}
                                         </div>
                                     </div>
                                 </div>
@@ -594,12 +585,12 @@ function ResponsiveLoansList({ loans, onLoanClick }: { loans: any[], onLoanClick
                                 <thead className="bg-slate-50 text-slate-500 font-bold border-b border-slate-200">
                                     <tr>
                                         <th className="py-3 px-6">Loan No</th>
-                                        <th className="py-3 px-6">Product</th>
-                                        <th className="py-3 px-6">Class</th>
-                                        <th className="py-3 px-6 text-right">Approved</th>
-                                        <th className="py-3 px-6 text-right">Balance</th>
-                                        <th className="py-3 px-6 text-right" style={{ color: '#D97706' }}>Monthly Due</th>
+                                        <th className="py-3 px-6">Product Type</th>
+                                        <th className="py-3 px-6 text-right">Approved Amount</th>
+                                        <th className="py-3 px-6 text-right">Loan Balance</th>
                                         <th className="py-3 px-6 text-right" style={{ color: '#DC2626' }}>Arrears</th>
+                                        <th className="py-3 px-6 text-right">Penalty</th>
+                                        <th className="py-3 px-6 text-right" style={{ color: '#D97706' }}>Monthly Due</th>
                                         <th className="py-3 px-6 text-right">Next Payment</th>
                                         <th className="py-3 px-6 text-center">Action</th>
                                     </tr>
@@ -612,11 +603,6 @@ function ResponsiveLoansList({ loans, onLoanClick }: { loans: any[], onLoanClick
                                         >
                                             <td className="py-4 px-6 font-bold text-slate-700">{loan.loanNumber}</td>
                                             <td className="py-4 px-6 font-medium text-slate-600">{loan.productName}</td>
-                                            <td className="py-4 px-6">
-                                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest ${getRiskBucketColor(getRiskBucket(loan.daysInArrears))}`}>
-                                                    {getRiskBucket(loan.daysInArrears)}
-                                                </span>
-                                            </td>
                                             <td className="py-4 px-6 text-right text-slate-500">{formatCurrency(loan.approvedAmount)}</td>
                                             <td className="py-4 px-6 text-right">
                                                 <Link
@@ -626,11 +612,14 @@ function ResponsiveLoansList({ loans, onLoanClick }: { loans: any[], onLoanClick
                                                     {formatCurrency(loan.totalLoanBalance)}
                                                 </Link>
                                             </td>
-                                            <td className="py-4 px-6 text-right font-bold" style={{ color: '#D97706' }}>
-                                                KES {Number(loan.monthlyDue || 0).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                            </td>
                                             <td className="py-4 px-6 text-right font-bold" style={{ color: '#DC2626' }}>
                                                 KES {Number(loan.arrears || 0).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </td>
+                                            <td className="py-4 px-6 text-right font-bold text-red-600">
+                                                {formatCurrency(loan.unpaidPenalty || 0)}
+                                            </td>
+                                            <td className="py-4 px-6 text-right font-bold" style={{ color: '#D97706' }}>
+                                                KES {Number(loan.monthlyDue || 0).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </td>
                                             <td className="py-4 px-6 text-right text-slate-600">{loan.nextExpectedDate ? format(new Date(loan.nextExpectedDate), 'dd-MMM-yyyy') : '-'}</td>
                                             <td className="py-4 px-6 text-center">

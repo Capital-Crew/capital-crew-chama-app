@@ -1,11 +1,13 @@
 'use client'
 
 import React, { useState, useMemo } from 'react';
-import { Search, UserPlus, Users, ChevronRight } from 'lucide-react';
+import { Search, UserPlus, Users, ChevronRight, UserCheck } from 'lucide-react';
 import { MemberProfileView } from './MemberProfileView';
 import { getMemberFullDetail } from '@/app/actions/member-dashboard-actions';
 import { createUserAccount } from '@/app/actions';
-import { PlusCircleIcon } from '@/components/icons';
+import { useFormAction } from '@/hooks/useFormAction';
+import { SubmitButton } from '@/components/ui/SubmitButton';
+import { FormError } from '@/components/ui/FormError';
 
 interface MemberManagementMasterProps {
     initialMembers: any[];
@@ -19,7 +21,7 @@ export function MemberManagementMaster({ initialMembers, initialDetail, userRole
     const [searchQuery, setSearchQuery] = useState('');
     const [loadingId, setLoadingId] = useState<string | null>(null);
     const [isEnrollOpen, setIsEnrollOpen] = useState(false);
-    const [enrollError, setEnrollError] = useState('');
+    const { isPending: isEnrolling, error: enrollError, execute } = useFormAction();
 
     const canEnroll = ['CHAIRPERSON', 'SYSTEM_ADMIN'].includes(userRole || '');
 
@@ -42,6 +44,15 @@ export function MemberManagementMaster({ initialMembers, initialDetail, userRole
             setLoadingId(null);
         }
     };
+
+    async function handleEnroll(formData: FormData) {
+        await execute(async () => {
+            await createUserAccount(formData);
+            setIsEnrollOpen(false);
+            window.location.reload();
+            return { success: true };
+        });
+    }
 
     return (
         <div className="flex flex-col h-[calc(100vh-160px)] bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm">
@@ -162,54 +173,60 @@ export function MemberManagementMaster({ initialMembers, initialDetail, userRole
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden p-8 animate-in zoom-in-95 duration-200">
                         <h3 className="text-xl font-black text-slate-900 mb-4 tracking-tight uppercase italic">New Member Enrollment</h3>
-                        {enrollError && <div className="bg-red-50 text-red-600 px-4 py-3 rounded-xl mb-4 text-sm font-bold border border-red-100">{enrollError}</div>}
-                        <form action={async (formData) => {
-                            try {
-                                setEnrollError('');
-                                await createUserAccount(formData);
-                                setIsEnrollOpen(false);
-                                // Refresh list would be good here, but for now we rely on revalidate
-                                window.location.reload();
-                            } catch (e: any) {
-                                setEnrollError(e.message || 'Failed to create account');
-                            }
-                        }} className="space-y-4">
-                            <div>
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 ml-1">Full Name</label>
-                                <input name="name" required className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-black focus:ring-4 focus:ring-cyan-500/10 transition-all" />
-                            </div>
-                            <div>
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 ml-1">Contact / Phone</label>
-                                <input name="contact" required className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-black focus:ring-4 focus:ring-cyan-500/10 transition-all" />
-                            </div>
-                            <div>
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 ml-1">Email Address</label>
-                                <input name="email" type="email" required className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-black focus:ring-4 focus:ring-cyan-500/10 transition-all" />
-                            </div>
-
-                            <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex gap-3">
-                                <div className="text-blue-500 shrink-0 mt-1">
-                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
+                        
+                        <div className="step-container">
+                            <FormError message={enrollError} className="mb-4" />
+                            <form action={handleEnroll} className="space-y-4">
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 ml-1">Full Name</label>
+                                    <input name="name" required className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-black focus:ring-4 focus:ring-cyan-500/10 transition-all" />
                                 </div>
-                                <p className="text-[10px] font-bold text-blue-600 leading-normal">
-                                    A default password <span className="font-mono bg-blue-100 px-1 rounded">CapitalCrew@2024</span> will be assigned. The member must change it upon first login.
-                                </p>
-                            </div>
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 ml-1">Contact / Phone</label>
+                                    <input name="contact" required className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-black focus:ring-4 focus:ring-cyan-500/10 transition-all" />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 ml-1">Email Address</label>
+                                    <input name="email" type="email" required className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-black focus:ring-4 focus:ring-cyan-500/10 transition-all" />
+                                </div>
 
-                            <div>
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 ml-1">Member Role</label>
-                                <select name="role" className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-black focus:ring-4 focus:ring-cyan-500/10 transition-all appearance-none cursor-pointer">
-                                    <option value="MEMBER">Active Member</option>
-                                    <option value="SECRETARY">Secretary</option>
-                                    <option value="TREASURER">Treasurer</option>
-                                    <option value="CHAIRPERSON">Chairperson</option>
-                                </select>
-                            </div>
-                            <div className="flex gap-4 pt-2">
-                                <button type="button" onClick={() => { setIsEnrollOpen(false); setEnrollError(''); }} className="flex-1 text-xs font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors">Cancel</button>
-                                <button type="submit" className="flex-[2] bg-cyan-500 text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-cyan-500/20 hover:bg-cyan-600 transition-all">Enroll Member</button>
-                            </div>
-                        </form>
+                                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex gap-3">
+                                    <div className="text-blue-500 shrink-0 mt-1">
+                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" /></svg>
+                                    </div>
+                                    <p className="text-[10px] font-bold text-blue-600 leading-normal">
+                                        A default password <span className="font-mono bg-blue-100 px-1 rounded">CapitalCrew@2024</span> will be assigned. The member must change it upon first login.
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 ml-1">Member Role</label>
+                                    <select name="role" className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-black focus:ring-4 focus:ring-cyan-500/10 transition-all appearance-none cursor-pointer">
+                                        <option value="MEMBER">Active Member</option>
+                                        <option value="SECRETARY">Secretary</option>
+                                        <option value="TREASURER">Treasurer</option>
+                                        <option value="CHAIRPERSON">Chairperson</option>
+                                    </select>
+                                </div>
+                                <div className="flex gap-4 pt-2">
+                                    <button 
+                                        type="button" 
+                                        onClick={() => { setIsEnrollOpen(false); }} 
+                                        disabled={isEnrolling}
+                                        className="flex-1 text-xs font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors disabled:opacity-50"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <SubmitButton
+                                        isPending={isEnrolling}
+                                        label="Enroll Member"
+                                        pendingLabel="Enrolling..."
+                                        icon={<UserCheck className="w-4 h-4 mr-2" />}
+                                        className="flex-[2] bg-cyan-500 text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-cyan-500/20 hover:bg-cyan-600"
+                                    />
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
             )}

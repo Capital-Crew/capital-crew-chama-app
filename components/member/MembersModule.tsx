@@ -33,8 +33,22 @@ export function MembersModule({ initialMembers, initialDetail, userRole, current
     const [isLoadContributionOpen, setIsLoadContributionOpen] = useState(false);
     const [enrollError, setEnrollError] = useState('');
 
+    // Sync state with prop if it changes (e.g. on back navigation)
+    React.useEffect(() => {
+        if (initialDetail) {
+            setSelectedDetail(initialDetail);
+            // On mobile, if we have an ID in the URL, we should show the profile
+            if (window.innerWidth < 768) {
+                setViewMode('PROFILE');
+            }
+        }
+    }, [initialDetail]);
+
     // HANDLERS
     const handleSelectMember = async (id: string) => {
+        // Update URL search params to preserve state on back navigation
+        router.push(`/members?id=${id}`, { scroll: false });
+
         if (id === selectedDetail?.member?.id) {
             // Already selected, just switch view on mobile
             setViewMode('PROFILE');
@@ -99,7 +113,7 @@ export function MembersModule({ initialMembers, initialDetail, userRole, current
                 {}
                 <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                     <h2 className="text-sm font-black text-slate-800 uppercase tracking-wide flex items-center gap-2">
-                        <Users className="w-4 h-4 text-cyan-500" /> Directory
+                        <Users className="w-4 h-4 text-cyan-500" /> Members
                     </h2>
                     <div className="flex gap-2">
                         {isAdmin && (

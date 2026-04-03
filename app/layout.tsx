@@ -26,6 +26,8 @@ export const viewport = {
   initialScale: 1,
 };
 
+import { ProgressBar, ProgressBarProvider } from "react-transition-progress";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -43,9 +45,12 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            {children}
-            <Toaster />
-            <GlobalNotification />
+            <ProgressBarProvider>
+              <ProgressBar className="fixed h-1 bg-[#00c2e0] top-0 z-[9999] shadow-[0_0_10px_rgba(0,194,224,0.5)]" />
+              {children}
+              <Toaster />
+              <GlobalNotification />
+            </ProgressBarProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

@@ -11,7 +11,7 @@ import { db } from '@/lib/db'
 import { auth } from '@/auth'
 import { serializeFinancials, Serialized } from "@/lib/safe-serialization"
 
-export async function getDashboardStats(): Promise<Serialized<any>> {
+export async function getDashboardStatsSync(): Promise<Serialized<any>> {
     const session = await auth()
     if (!session) {
         throw new Error('Unauthorized')
@@ -28,7 +28,8 @@ export async function getDashboardStats(): Promise<Serialized<any>> {
     // 2. Parallel Fetching of Data
     const [
         contributionsAgg,
-        loanPortfolioAgg,
+        loansAmountAgg,
+        repaymentsAgg,
         delinquentInstallments,
         missedTrackers
     ] = await Promise.all([
@@ -40,15 +41,21 @@ export async function getDashboardStats(): Promise<Serialized<any>> {
             _sum: { debitAmount: true, creditAmount: true }
         }),
 
-        // B. Total Outstanding Loans
-        prisma.ledgerAccount.aggregate({
-            where: {
-                productMappings: { some: { accountType: 'LOAN_PORTFOLIO' } }
-            },
-            _sum: { balance: true }
+        // B. Total Outstanding Loans (Calculated from Loan records as source of truth)
+        prisma.loan.aggregate({
+            where: { status: { in: ['ACTIVE', 'OVERDUE'] } },
+            _sum: { amount: true }
+        }),
+        // C. Total Repayments (to subtract from disbursements)
+        prisma.loanTransaction.findMany({
+          where: {
+            type: 'REPAYMENT',
+            loan: { status: { in: ['ACTIVE', 'OVERDUE'] } }
+          },
+          select: { principalAmount: true }
         }),
 
-        // C. Delinquent Loan Installments (passed due date and not fully paid)
+        // D. Delinquent Loan Installments (passed due date and not fully paid)
         prisma.repaymentInstallment.findMany({
             where: {
                 dueDate: { lt: new Date() },
@@ -66,7 +73,7 @@ export async function getDashboardStats(): Promise<Serialized<any>> {
             orderBy: { dueDate: 'asc' }
         }),
 
-        // D. Contribution Arrears (from MonthlyTracker)
+        // E. Contribution Arrears (from MonthlyTracker)
         prisma.monthlyTracker.findMany({
             where: {
                 balance: { gt: 0 },
@@ -83,7 +90,8 @@ export async function getDashboardStats(): Promise<Serialized<any>> {
 
     // 1. Financial Totals
     const totalContributions = Number(contributionsAgg._sum.creditAmount || 0) - Number(contributionsAgg._sum.debitAmount || 0)
-    const outstandingLoans = Number(loanPortfolioAgg._sum.balance || 0)
+    const totalRepaidPrincipal = (repaymentsAgg as any[]).reduce((sum, r) => sum + Number(r.principalAmount || 0), 0)
+    const outstandingLoans = Number(loansAmountAgg._sum.amount || 0) - totalRepaidPrincipal
 
     // 2. Aggregate Delinquent Loans
     const loanArrearsMap = new Map<string, any>()

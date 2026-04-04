@@ -434,6 +434,7 @@ enum ReferenceType {
   REVERSAL
   WELFARE_DISBURSEMENT
   EXPENSE_PAYOUT
+  CONTRIBUTION_PENALTY_ACCRUAL
   BULK_PAYOUT
   PENALTY
   MEETING_FINES
@@ -612,6 +613,7 @@ model Member {
   user              User?
   wallet            Wallet?
   loans             Loan[]
+  contributions     Contribution[]
   loanApprovals     LoanApproval[]
   shareTransactions ShareTransaction[]
   incomes           Income[]
@@ -1940,6 +1942,7 @@ enum MonthlyTrackerStatus {
   PAID
   PARTIAL
   PENDING
+  OVERDUE
 }
 
 model MonthlyTracker {
@@ -1965,6 +1968,59 @@ model MonthlyTracker {
   @@unique([memberId, month, year]) // One tracker per month per member
   @@index([memberId])
   @@index([status])
+}
+
+model ContributionProduct {
+  id                String         @id @default(cuid())
+  name              String
+  scheduledAmount   Float
+  frequency         String         // MONTHLY | WEEKLY | QUARTERLY
+  fineEnabled       Boolean        @default(true)
+  flatFee           Float          @default(0)   // e.g. 200
+  dailyRatePercent  Float          @default(0)   // e.g. 0.5 = 0.5% per day
+  contributions     Contribution[]
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+}
+
+model Contribution {
+  id                String              @id @default(cuid())
+  memberId          String
+  productId         String
+  walletId          String
+  scheduledAmount   Float
+  amountPaid        Float               @default(0)
+  dueDate           DateTime
+  paidAt            DateTime?
+  status            MonthlyTrackerStatus @default(PENDING)
+  
+  flatFeeApplied    Float               @default(0)
+  dailyRateApplied  Float               @default(0)
+  fineStartDate     DateTime?
+  
+  member            Member              @relation(fields: [memberId], references: [id])
+  product           ContributionProduct @relation(fields: [productId], references: [id])
+  fineSnapshots     FineSnapshot[]
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([status, dueDate])
+  @@index([memberId, dueDate])
+}
+
+model FineSnapshot {
+  id              String       @id @default(cuid())
+  contributionId  String
+  snapshotDate    DateTime
+  daysPastDue     Int
+  flatFee         Float
+  dailyPenalty    Float
+  totalFine       Float
+  contribution    Contribution @relation(fields: [contributionId], references: [id])
+  createdAt       DateTime     @default(now())
+
+  @@unique([contributionId, snapshotDate])
+  @@index([contributionId])
 }
 
 model ContributionTransaction {

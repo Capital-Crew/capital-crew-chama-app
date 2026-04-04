@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { MemberStats as DetailedMemberStats, LoanPortfolioItem } from '@/types/member-dashboard';
 import { serializePrisma } from '@/lib/serialization';
 import { getLoanPenaltyBalance } from '@/lib/accounting/AccountingEngine';
+import { calculateContributionFine } from '@/lib/fines/calculateContributionFine';
 
 
 // --- Types ---
@@ -167,7 +168,9 @@ export async function getDetailedMemberStats(memberId: string): Promise<{ stats:
         normalShares,
         fosaShares,
         loansRaw,
-        contributionTxCount
+        contributionTxCount,
+        attendanceFinesRaw,
+        contributionsRaw
     ] = await Promise.all([
         WalletService.getWalletBalance(memberId), // Savings (Account 2200)
         getAccountBalance(memberId, '3011', 'CREDIT'), // Contributions (Account 3011)
@@ -192,8 +195,41 @@ export async function getDetailedMemberStats(memberId: string): Promise<{ stats:
                 referenceId: memberId,
                 referenceType: { in: ['SHARE_CONTRIBUTION', 'OPENING_BALANCE'] }
             }
+        }),
+        // Fetch Attendance Fines
+        db.attendanceFine.aggregate({
+            _sum: { amount: true },
+            where: {
+                user: { memberId },
+                status: 'PENDING'
+            }
+        }),
+        // Fetch Contributions with Fines
+        db.contribution.findMany({
+            where: {
+                memberId,
+                status: { in: ['PENDING', 'PARTIAL', 'OVERDUE'] }
+            },
+            include: { product: true }
         })
     ]);
+
+    const meetingFinesTotal = Number(attendanceFinesRaw._sum.amount || 0);
+
+    // Calculate Contribution Fines dynamically for real-time display
+    const contributionFinesTotal = contributionsRaw.reduce((sum, c) => {
+        const fine = calculateContributionFine({
+            contributionId: c.id,
+            dueDate: c.dueDate,
+            scheduledAmount: c.scheduledAmount,
+            amountPaid: c.amountPaid,
+            status: c.status,
+            flatFeeApplied: c.flatFeeApplied || c.product.flatFee,
+            dailyRateApplied: c.dailyRateApplied || c.product.dailyRatePercent,
+            fineEnabled: c.product.fineEnabled,
+        });
+        return sum + fine.totalFine;
+    }, 0);
 
     const legacyShares = Number(member.shareContributions) || 0;
     const shareCapital = ledgerShareCapital > 0 ? ledgerShareCapital : legacyShares;
@@ -398,7 +434,9 @@ export async function getDetailedMemberStats(memberId: string): Promise<{ stats:
             loanPenalty: loanPenalty,
             totalLoanArrears: totalArrears,
             monthlyDue: nextMonthDue,
-            totalDue: totalDue
+            totalDue: totalDue,
+            meetingFines: meetingFinesTotal,
+            contributionLatenessFines: contributionFinesTotal
         },
         loans: loansList
     };

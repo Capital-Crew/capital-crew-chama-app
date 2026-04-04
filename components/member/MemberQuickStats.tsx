@@ -25,6 +25,8 @@ interface MemberQuickStatsProps {
             contributions?: number
             cumulativeContributions?: number
             outstandingLoans?: number
+            meetingFines?: number
+            contributionLatenessFines?: number
         }
     }
     onViewLoans?: () => void
@@ -246,6 +248,18 @@ export function MemberQuickStats({ memberId, stats, onViewLoans }: MemberQuickSt
                                 valueColor="text-orange-600"
                                 isLink
                                 onClick={onViewLoans}
+                            />
+                            <DetailRow 
+                                label="Meetings Fines" 
+                                value={formatCurrency(stats.financials.meetingFines || 0)} 
+                                subValue="Unpaid Attendance Penalties"
+                                valueColor="text-red-500"
+                            />
+                            <DetailRow 
+                                label="Contribution lateness Fines" 
+                                value={formatCurrency(stats.financials.contributionLatenessFines || 0)} 
+                                subValue="Accrued Lateness Penalties"
+                                valueColor="text-red-600"
                             />
                         </div>
                     </div>

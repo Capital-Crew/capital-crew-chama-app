@@ -26,13 +26,18 @@ export class WaterfallAllocation {
     static async allocate(
         loanId: string,
         amount: number,
-        tx: PrismaTransaction
+        tx: PrismaTransaction,
+        options: {
+            type?: 'REPAYMENT' | 'WAIVER',
+            description?: string
+        } = {}
     ): Promise<{
         penalty: number;
         interest: number;
         principal: number;
         overpayment: number;
     }> {
+        const { type = 'REPAYMENT', description } = options;
         // Convert to Decimal for precise calculations
         const amountDecimal = new Prisma.Decimal(amount);
 
@@ -42,7 +47,7 @@ export class WaterfallAllocation {
                 loanId,
                 isFullyPaid: false
             },
-            orderBy: { dueDate: 'asc' }
+            orderBy: { installmentNumber: 'asc' } // Changed from dueDate to installmentNumber for strict sequencing
         });
 
         let remaining = amountDecimal;
@@ -98,9 +103,9 @@ export class WaterfallAllocation {
             await this.updateSchedule(tx, schedule);
         }
 
-        // 3. Handle Excess (Overpayment)
+        // 3. Handle Excess (Overpayment) - Only for Repayments
         let overpayment = new Prisma.Decimal(0);
-        if (remaining.gt(0)) {
+        if (remaining.gt(0) && type === 'REPAYMENT') {
             // Record overpayment as additional principal payment
             await tx.loan.update({
                 where: { id: loanId },
@@ -116,12 +121,20 @@ export class WaterfallAllocation {
         }
 
         // 4. Record the Transaction
+        const finalDescription = description || (type === 'WAIVER' 
+            ? `Waiver with Waterfall Allocation (P: ${totalPenalty.toFixed(2)}, I: ${totalInterest.toFixed(2)}, Pr: ${totalPrincipal.toFixed(2)})`
+            : `Wallet Repayment with Waterfall Allocation (P: ${totalPenalty.toFixed(2)}, I: ${totalInterest.toFixed(2)}, Pr: ${totalPrincipal.toFixed(2)})`);
+
         await tx.loanTransaction.create({
             data: {
                 loanId,
-                type: 'REPAYMENT',
+                type: type,
                 amount: amountDecimal,
-                description: `Wallet Repayment with Waterfall Allocation (P: ${totalPenalty.toFixed(2)}, I: ${totalInterest.toFixed(2)}, Pr: ${totalPrincipal.toFixed(2)})`
+                principalAmount: totalPrincipal,
+                interestAmount: totalInterest,
+                penaltyAmount: totalPenalty,
+                description: finalDescription,
+                postedAt: new Date()
             }
         });
 

@@ -184,6 +184,22 @@ export const postLoanAdjustment = withAudit(
         try {
             ctx.beginStep('Post Adjustment Transaction');
             await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+                let allocation = {
+                    penalty: 0,
+                    interest: 0,
+                    principal: 0,
+                    overpayment: 0
+                };
+
+                if (adjustmentType === 'decrease') {
+                    // Use Waterfall Allocation for waivers
+                    const { WaterfallAllocation } = await import('@/lib/strategies/waterfall-allocation');
+                    allocation = await WaterfallAllocation.allocate(loan.id, amount, tx, {
+                        type: 'WAIVER',
+                        description: `Waiver Adjustment: ${description} (Waterfall applied)`
+                    });
+                }
+
                 const journal = await tx.ledgerTransaction.create({
                     data: {
                         transactionDate: new Date(),
@@ -213,40 +229,74 @@ export const postLoanAdjustment = withAudit(
                                     creditAmount: 0,
                                     description: `Manual Waiver/Adjustment - ${loan.loanApplicationNumber}`
                                 },
-                                {
-                                    ledgerAccount: { connect: { id: targetAssetAccount.id } },
+                                // For decreases, we now follow the waterfall allocation for the CR side
+                                ...(allocation.penalty > 0 ? [{
+                                    ledgerAccount: { connect: { code: mappings.RECEIVABLE_LOAN_PENALTY || '1320' } },
                                     debitAmount: 0,
-                                    creditAmount: amount,
-                                    description: `Waiver Ref: ${loan.loanApplicationNumber}`
-                                }
+                                    creditAmount: allocation.penalty,
+                                    description: `Waiver Applied: Penalty - ${loan.loanApplicationNumber}`
+                                }] : []),
+                                ...(allocation.interest > 0 ? [{
+                                    ledgerAccount: { connect: { id: interestAcc!.id } },
+                                    debitAmount: 0,
+                                    creditAmount: allocation.interest,
+                                    description: `Waiver Applied: Interest - ${loan.loanApplicationNumber}`
+                                }] : []),
+                                ...(allocation.principal > 0 ? [{
+                                    ledgerAccount: { connect: { id: portfolioAcc!.id } },
+                                    debitAmount: 0,
+                                    creditAmount: allocation.principal,
+                                    description: `Waiver Applied: Principal - ${loan.loanApplicationNumber}`
+                                }] : [])
                             ]
                         }
                     }
                 })
 
-                await tx.loanTransaction.create({
-                    data: {
-                        loanId: loan.id,
-                        type: adjustmentType === 'increase' ? (category === AdjustmentCategory.INTEREST ? 'INTEREST' : 'PENALTY') : 'WAIVER',
-                        amount: amount,
-                        description: description,
-                        referenceId: journal.id,
-                        postedAt: new Date(),
-                        principalAmount: (adjustmentType === 'decrease' && targetAssetAccount.id === portfolioAcc?.id) ? amount : 0,
-                        interestAmount: (targetAssetAccount.id === interestAcc?.id) ? amount : 0,
-                        penaltyAmount: (adjustmentType === 'increase' && category === AdjustmentCategory.PENALTY) ? amount : 0,
-                    }
+                if (adjustmentType === 'increase') {
+                    await tx.loanTransaction.create({
+                        data: {
+                            loanId: loan.id,
+                            type: category === AdjustmentCategory.INTEREST ? 'INTEREST' : 'PENALTY',
+                            amount: amount,
+                            description: description,
+                            referenceId: journal.id,
+                            postedAt: new Date(),
+                            principalAmount: 0,
+                            interestAmount: (targetAssetAccount.id === interestAcc?.id) ? amount : 0,
+                            penaltyAmount: (category === AdjustmentCategory.PENALTY) ? amount : 0,
+                        }
+                    })
+                    
+                    // We need to update the balance for increases manually since Waterfall isn't used
+                    const { LoanBalanceService } = await import('@/services/loan-balance')
+                    await LoanBalanceService.updateLoanBalance(loan.id, tx)
+                } else {
+                    // Update the newly created WAIVER transaction with the reference to the journal entry
+                    // WaterfallAllocation already created the transaction, let's update its referenceId
+                    await tx.loanTransaction.updateMany({
+                        where: { 
+                            loanId: loan.id,
+                            referenceId: null,
+                            type: 'WAIVER',
+                            amount: amount
+                        },
+                        data: {
+                            referenceId: journal.id
+                        }
+                    })
+                }
+
+                const updatedLoan = await tx.loan.findUnique({
+                    where: { id: loan.id },
+                    select: { outstandingBalance: true, status: true }
                 })
 
-                const { LoanBalanceService } = await import('@/services/loan-balance')
-                const verifiedBalance = await LoanBalanceService.updateLoanBalance(loan.id, tx)
-
-                if (verifiedBalance.eq(0)) {
+                if (updatedLoan && new Prisma.Decimal(updatedLoan.outstandingBalance).eq(0)) {
                     await tx.loan.update({
                         where: { id: loan.id },
                         data: {
-                            status: 'CLEARED',
-                            outstandingBalance: new Prisma.Decimal(0)
+                            status: 'CLEARED'
                         }
                     })
 

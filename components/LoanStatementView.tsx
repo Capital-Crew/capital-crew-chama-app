@@ -8,10 +8,7 @@ import { AlertCircleIcon, FileTextIcon, Download, Printer, ArrowUpRight } from '
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 
-const RepaymentReceipt = dynamic(
-    () => import('@/components/receipts/RepaymentReceipt').then((mod) => mod.RepaymentReceipt),
-    { ssr: false }
-)
+import { RepaymentReceipt } from '@/components/receipts/RepaymentReceipt'
 
 const PDFDownloadLink = dynamic(
     () => import('@react-pdf/renderer').then((mod) => mod.PDFDownloadLink),

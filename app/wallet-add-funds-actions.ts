@@ -330,13 +330,31 @@ export const addLoanRepayment = withAudit(
             revalidatePath('/dashboard')
             revalidatePath(`/members/${input.memberId}`)
 
+            const receiptData = {
+                transactionId: journalEntry.id,
+                date: new Date(),
+                memberName: loan.member.name,
+                memberNumber: loan.member.memberNumber || 'N/A',
+                amount: input.amount,
+                loanNumber: loan.loanApplicationNumber,
+                loanProduct: loan.loanProduct.name,
+                remainingBalance: newOutstanding,
+                allocation: {
+                    penalty: allocation.paidPenalty,
+                    fees: allocation.paidFees,
+                    interest: allocation.paidInterest,
+                    principal: allocation.paidPrincipal
+                }
+            }
+
             return {
                 success: true,
                 journalEntryId: journalEntry.id,
                 allocation,
                 newOutstanding,
                 isFullyPaid,
-                loanStatus: isFullyPaid ? 'CLEARED' : loan.status
+                loanStatus: isFullyPaid ? 'CLEARED' : loan.status,
+                receiptData
             }
         }
 

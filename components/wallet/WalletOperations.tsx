@@ -3,11 +3,11 @@
 import React, { useState, useEffect } from 'react'
 import {
     addContribution,
-    addPenaltyPayment,
-    addLoanRepayment,
-    getActiveLoansByMember
+    addPenaltyPayment
 } from '@/app/wallet-add-funds-actions'
+import { LoanRepaymentForm } from './LoanRepaymentForm'
 import { initiatePayment } from '@/app/actions/payment-actions'
+import { getOutstandingNonLoanFines, paySelectedNonLoanFines, type FineItem } from '@/app/actions/fine-actions'
 import { getWalletBalance } from '@/app/wallet-actions'
 import { useSearchParams } from 'next/navigation'
 import {
@@ -28,6 +28,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useFormAction } from '@/hooks/useFormAction'
 import { SubmitButton } from '@/components/ui/SubmitButton'
 import { FormError } from '@/components/ui/FormError'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { formatCurrency } from '@/lib/currency'
+import { formatDate } from '@/lib/utils'
 
 // Types
 type MainTab = 'deposits' | 'repayments' | 'withdrawals'
@@ -74,19 +78,17 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
     const [penaltyAmount, setPenaltyAmount] = useState('')
     const [penaltyDescription, setPenaltyDescription] = useState('')
 
-    const [activeLoans, setActiveLoans] = useState<ActiveLoan[]>([])
-    const [selectedLoanId, setSelectedLoanId] = useState('')
-    const [selectedLoan, setSelectedLoan] = useState<ActiveLoan | null>(null)
-    const [repaymentAmount, setRepaymentAmount] = useState('')
-    const [repaymentDescription, setRepaymentDescription] = useState('')
-    const [repaymentAllocation, setRepaymentAllocation] = useState({ penalty: 0, fees: 0, interest: 0, principal: 0 })
-
     // Withdrawal Form State
     const [withdrawableBalance, setWithdrawableBalance] = useState(0)
     const [withdrawAmount, setWithdrawAmount] = useState('')
     const [withdrawDescription, setWithdrawDescription] = useState('')
     const [fetchingBalance, setFetchingBalance] = useState(false)
     const [profilePhone, setProfilePhone] = useState('')
+    
+    // Fines State
+    const [availableFines, setAvailableFines] = useState<FineItem[]>([])
+    const [selectedFineIds, setSelectedFineIds] = useState<Set<string>>(new Set())
+    const [fetchingFines, setFetchingFines] = useState(false)
 
     // Effects
     useEffect(() => {
@@ -102,8 +104,11 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
         }
         if (activeMainTab === 'deposits') {
             fetchProfilePhone()
+            if (activeSubTab === 'penalty') {
+                loadAvailableFines()
+            }
         }
-    }, [activeMainTab, memberId])
+    }, [activeMainTab, activeSubTab, memberId])
 
     const fetchProfilePhone = async () => {
         try {
@@ -115,59 +120,33 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
         } catch (err) {}
     }
 
-    // Loan Selection Logic - With REAL-TIME Refresh
-    useEffect(() => {
-        const loan = activeLoans.find(l => l.id === selectedLoanId)
-        if (!loan) {
-            setSelectedLoan(null)
-            setRepaymentAmount('')
-            return
-        }
-
-        // 1. Instant optimistic update from list
-        setSelectedLoan(loan)
-        setRepaymentAmount('')
-        calculateAllocation(loan, 0)
-
-        // 2. Fetch fresh balance in background (Real-time requirement)
-        const fetchFresh = async () => {
-            try {
-                const { getLoanFreshBalance } = await import('@/app/wallet-add-funds-actions')
-                const fresh = await getLoanFreshBalance(loan.id)
-
-                // If balance changed, update selectedLoan
-                if (fresh.outstandingBalance !== loan.outstandingBalance) {
-                    setSelectedLoan(prev => prev ? {
-                        ...prev,
-                        outstandingBalance: fresh.outstandingBalance,
-                        penaltyBalance: fresh.penaltyBalance,
-                        interestBalance: fresh.interestBalance,
-                        principalBalance: fresh.principalBalance,
-                        feesBalance: fresh.feesBalance
-                    } : null)
-
-                }
-            } catch (err) {
-            }
-        }
-        fetchFresh()
-
-    }, [selectedLoanId, activeLoans])
-
-    useEffect(() => {
-        if (selectedLoan && repaymentAmount) {
-            calculateAllocation(selectedLoan, parseFloat(repaymentAmount) || 0)
-        }
-    }, [repaymentAmount, selectedLoan])
-
-    // Helpers
-    const loadActiveLoans = async () => {
+    const loadAvailableFines = async () => {
+        setFetchingFines(true)
         try {
-            const loans = await getActiveLoansByMember(memberId)
-            setActiveLoans(loans)
-        } catch (error: any) {
-            setMessage({ type: 'error', text: error.message })
+            const data = await getOutstandingNonLoanFines(memberId)
+            setAvailableFines(data)
+        } catch (error) {
+            console.error("Failed to load fines", error)
+        } finally {
+            setFetchingFines(false)
         }
+    }
+
+    const handleFineSelect = (id: string) => {
+        const newSet = new Set(selectedFineIds)
+        if (newSet.has(id)) newSet.delete(id)
+        else newSet.add(id)
+        setSelectedIds(newSet)
+    }
+
+    const setSelectedIds = (newSet: Set<string>) => {
+        setSelectedFineIds(newSet)
+        const selected = availableFines.filter(f => newSet.has(f.id))
+        const total = selected.reduce((sum, f) => sum + f.amount, 0)
+        const desc = selected.map(f => f.reason).join(', ')
+        
+        setPenaltyAmount(total > 0 ? total.toString() : '')
+        setPenaltyDescription(desc)
     }
 
     const fetchWithdrawableBalance = async () => {
@@ -182,33 +161,8 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
         }
     }
 
-    const calculateAllocation = (loan: ActiveLoan, amount: number) => {
-        if (amount <= 0) {
-            setRepaymentAllocation({ penalty: 0, fees: 0, interest: 0, principal: 0 })
-            return
-        }
-
-        let remaining = amount
-        const allocation = { penalty: 0, fees: 0, interest: 0, principal: 0 }
-
-        // Waterfall: Penalty -> Fees -> Interest -> Principal
-        if (remaining > 0 && loan.penaltyBalance > 0) {
-            allocation.penalty = Math.min(remaining, loan.penaltyBalance)
-            remaining -= allocation.penalty
-        }
-        if (remaining > 0 && loan.feesBalance > 0) {
-            allocation.fees = Math.min(remaining, loan.feesBalance)
-            remaining -= allocation.fees
-        }
-        if (remaining > 0 && loan.interestBalance > 0) {
-            allocation.interest = Math.min(remaining, loan.interestBalance)
-            remaining -= allocation.interest
-        }
-        if (remaining > 0 && loan.principalBalance > 0) {
-            allocation.principal = Math.min(remaining, loan.principalBalance)
-            remaining -= allocation.principal
-        }
-        setRepaymentAllocation(allocation)
+    const calculateAllocation = (loan: any, amount: number) => {
+        // ... kept generic or removed if not used elsewhere
     }
 
     // Switch logic
@@ -260,25 +214,44 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
         e.preventDefault()
         setMessage(null)
         await execute(async () => {
-            await addPenaltyPayment({ memberId, amount: parseFloat(penaltyAmount), description: penaltyDescription })
-            setMessage({ type: 'success', text: 'Penalty payment successful!' })
-            setPenaltyAmount(''); setPenaltyDescription('')
-            onTransactionComplete?.() // Refresh wallet balance
-            return { success: true }
+            const amountNum = parseFloat(penaltyAmount)
+            if (isNaN(amountNum) || amountNum <= 0) throw new Error('Invalid amount')
+
+            if (selectedFineIds.size > 0) {
+                const selected = availableFines.filter(f => selectedFineIds.has(f.id))
+                const result = await paySelectedNonLoanFines({
+                    memberId,
+                    selections: selected.map(f => ({
+                        id: f.id,
+                        type: f.type,
+                        amount: f.amount,
+                        originalId: f.originalId,
+                        reason: f.reason
+                    })),
+                    paymentMethod: 'WALLET'
+                })
+                
+                if (result.success) {
+                    setMessage({ type: 'success', text: result.message || 'Fines settled successfully!' })
+                    setPenaltyAmount('')
+                    setPenaltyDescription('')
+                    setSelectedFineIds(new Set())
+                    loadAvailableFines()
+                    onTransactionComplete?.()
+                    return { success: true }
+                } else {
+                    return { success: false, error: result.message || 'Payment failed' }
+                }
+            } else {
+                await addPenaltyPayment({ memberId, amount: amountNum, description: penaltyDescription })
+                setMessage({ type: 'success', text: 'Penalty payment successful!' })
+                setPenaltyAmount(''); setPenaltyDescription('')
+                onTransactionComplete?.()
+                return { success: true }
+            }
         })
     }
 
-    const handleLoanRepayment = async (e: React.FormEvent) => {
-        e.preventDefault()
-        setMessage(null)
-        await execute(async () => {
-            const result = await addLoanRepayment({ memberId, loanId: selectedLoanId, amount: parseFloat(repaymentAmount), description: repaymentDescription })
-            setMessage({ type: 'success', text: `Repayment successful! Remaining: KES ${result.newOutstanding.toLocaleString()}` })
-            setRepaymentAmount(''); setRepaymentDescription(''); setSelectedLoanId(''); loadActiveLoans()
-            onTransactionComplete?.() // Refresh wallet balance
-            return { success: true }
-        })
-    }
 
     const handleWithdrawal = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -293,7 +266,6 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
     }
 
     // Render Helpers
-    const isRepaymentValid = selectedLoan && parseFloat(repaymentAmount) > 0 && parseFloat(repaymentAmount) <= selectedLoan.outstandingBalance
 
     return (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
@@ -459,17 +431,115 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
                                             <p className="text-xs text-red-700">Clear outstanding fines and penalties.</p>
                                         </div>
                                     </div>
+                                    
+                                    {fetchingFines ? (
+                                        <div className="flex flex-col items-center justify-center py-10 bg-slate-50/50 border border-dashed border-slate-200 rounded-2xl animate-pulse">
+                                            <div className="w-8 h-8 border-4 border-red-200 border-t-red-600 rounded-full animate-spin mb-3"></div>
+                                            <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest italic">Fetching Outstanding Fines...</span>
+                                        </div>
+                                    ) : availableFines.length > 0 ? (
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between px-1">
+                                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Select Outstanding Fines</label>
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => {
+                                                        if (selectedFineIds.size === availableFines.length) setSelectedIds(new Set())
+                                                        else setSelectedIds(new Set(availableFines.map(f => f.id)))
+                                                    }}
+                                                    className="text-[10px] font-bold text-blue-600 uppercase hover:underline disabled:opacity-50"
+                                                    disabled={loading}
+                                                >
+                                                    {selectedFineIds.size === availableFines.length ? 'Deselect All' : 'Select All'}
+                                                </button>
+                                            </div>
+                                            <div className="space-y-2 max-h-48 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
+                                                {availableFines.map(fine => (
+                                                    <div 
+                                                        key={fine.id}
+                                                        onClick={() => {
+                                                            if (loading) return;
+                                                            handleFineSelect(fine.id);
+                                                        }}
+                                                        className={`group flex items-center justify-between p-3 rounded-xl border-2 transition-all
+                                                            ${selectedFineIds.has(fine.id) 
+                                                                ? 'border-red-500 bg-red-50/10 shadow-sm shadow-red-50' 
+                                                                : 'border-slate-100 bg-white hover:border-slate-200'}`}
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="pointer-events-none">
+                                                                <Checkbox 
+                                                                    checked={selectedFineIds.has(fine.id)}
+                                                                    disabled={loading}
+                                                                    className="border-slate-300 data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600"
+                                                                />
+                                                            </div>
+                                                            <div className="flex flex-col">
+                                                                <span className="text-xs font-bold text-slate-900 leading-tight">{fine.reason}</span>
+                                                                <span className="text-[10px] text-slate-400 font-medium">{formatDate(fine.date)}</span>
+                                                            </div>
+                                                        </div>
+                                                        <span className="text-sm font-black text-red-600 tabular-nums bg-red-50 px-2 py-0.5 rounded-lg">
+                                                            {formatCurrency(fine.amount)}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center py-8 px-4 bg-slate-50 border border-slate-100 rounded-2xl text-center">
+                                            <div className="bg-green-100 p-2.5 rounded-full mb-3 shadow-inner shadow-green-200">
+                                                <CheckCircleIcon className="w-5 h-5 text-green-600" />
+                                            </div>
+                                            <h5 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-1">Clear as a Whistle!</h5>
+                                            <p className="text-[10px] text-slate-500 font-medium">You have no pending fines or penalties to clear.</p>
+                                        </div>
+                                    )}
 
                                     <form onSubmit={handlePenaltyPayment} className="space-y-4">
                                         <div>
-                                            <label className="text-xs font-bold uppercase text-slate-500 mb-1 block">Amount (KES)</label>
-                                            <input type="number" step="0.01" min="0.01" required value={penaltyAmount} onChange={e => setPenaltyAmount(e.target.value)}
-                                                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-red-500 focus:border-transparent font-bold text-slate-900" placeholder="0.00" />
+                                            <div className="flex items-center justify-between mb-1">
+                                                <label className="text-xs font-bold uppercase text-slate-500 block">Amount (KES)</label>
+                                                {selectedFineIds.size > 0 && (
+                                                    <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full animate-pulse border border-red-100">
+                                                        Locked to Selection
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <input 
+                                                type="number" 
+                                                step="0.01" 
+                                                min="0.01" 
+                                                required 
+                                                value={penaltyAmount} 
+                                                onChange={e => setPenaltyAmount(e.target.value)}
+                                                readOnly={selectedFineIds.size > 0}
+                                                className={`w-full px-4 py-3 rounded-xl border transition-all font-bold outline-none focus:ring-2 ${
+                                                    selectedFineIds.size > 0 
+                                                    ? 'bg-slate-50 border-red-200 text-slate-500 cursor-not-allowed' 
+                                                    : 'border-slate-300 focus:ring-red-500 text-slate-900'
+                                                }`} 
+                                                placeholder="0.00" 
+                                            />
+                                            {selectedFineIds.size > 0 && (
+                                                <p className="mt-1 text-[10px] text-slate-400 italic">Total of {selectedFineIds.size} selected item(s).</p>
+                                            )}
                                         </div>
                                         <div>
                                             <label className="text-xs font-bold uppercase text-slate-500 mb-1 block">Description</label>
-                                            <textarea required value={penaltyDescription} onChange={e => setPenaltyDescription(e.target.value)}
-                                                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Reason..." rows={2} />
+                                            <textarea 
+                                                required 
+                                                value={penaltyDescription} 
+                                                onChange={e => setPenaltyDescription(e.target.value)}
+                                                readOnly={selectedFineIds.size > 0}
+                                                className={`w-full px-4 py-3 rounded-xl border transition-all outline-none focus:ring-2 ${
+                                                    selectedFineIds.size > 0 
+                                                    ? 'bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed' 
+                                                    : 'border-slate-300 focus:ring-red-500 text-slate-900'
+                                                }`} 
+                                                placeholder="Reason..." 
+                                                rows={2} 
+                                            />
                                         </div>
                                         <SubmitButton
                                             isPending={loading}
@@ -484,104 +554,18 @@ export function WalletOperations({ memberId, userRole, onTransactionComplete }: 
                     </div>
                 )}
 
+
+
                 {}
                 {activeMainTab === 'repayments' && (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 step-container">
                         <div className="space-y-6">
-                            <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-                                <div className="bg-blue-100 p-2 rounded-full">
-                                    <TrendingUpIcon className="w-5 h-5 text-blue-600" />
-                                </div>
-                                <div>
-                                    <h4 className="text-sm font-bold text-blue-900">Loan Repayment</h4>
-                                    <p className="text-xs text-blue-700">Make repayments towards your active loans.</p>
-                                </div>
-                            </div>
-
-                            <form onSubmit={handleLoanRepayment} className="space-y-4">
-                                <div>
-                                    <label className="text-xs font-bold uppercase text-slate-500 mb-1 block">Select Loan</label>
-                                    <select
-                                        required
-                                        value={selectedLoanId}
-                                        onChange={e => setSelectedLoanId(e.target.value)}
-                                        className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent font-bold text-slate-900"
-                                    >
-                                        <option value="">-- Select Active Loan --</option>
-                                        {activeLoans.map(l => (
-                                            <option key={l.id} value={l.id}>
-                                                {l.loanApplicationNumber} - {l.productName} (Bal: {l.outstandingBalance.toLocaleString()})
-                                            </option>
-                                        ))}
-                                    </select>
-                                    {activeLoans.length === 0 && (
-                                        <p className="text-xs text-red-500 mt-1 font-bold">No active loans found.</p>
-                                    )}
-                                </div>
-
-                                {selectedLoan && (
-                                    <>
-                                        <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl grid grid-cols-2 gap-4">
-                                            <div>
-                                                <div className="text-xs text-slate-500 uppercase font-bold">Outstanding</div>
-                                                <div className="font-black text-slate-900">KES {selectedLoan.outstandingBalance.toLocaleString()}</div>
-                                            </div>
-                                            <div>
-                                                <div className="text-xs text-slate-500 uppercase font-bold">Allocated To</div>
-                                                <div className="text-xs font-medium text-slate-700">
-                                                    Pen: {repaymentAllocation.penalty} | Fees: {repaymentAllocation.fees} | Int: {repaymentAllocation.interest} | Prin: {repaymentAllocation.principal}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <label className="text-xs font-bold uppercase text-slate-500 mb-1 block">
-                                                Repayment Amount (Max: {selectedLoan.outstandingBalance.toLocaleString()})
-                                            </label>
-                                            <div className="relative">
-                                                <input
-                                                    type="number"
-                                                    step="0.01"
-                                                    min="0.01"
-                                                    max={selectedLoan.outstandingBalance}
-                                                    required
-                                                    value={repaymentAmount}
-                                                    onChange={e => setRepaymentAmount(e.target.value)}
-                                                    className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent font-bold text-slate-900"
-                                                    placeholder="0.00"
-                                                />
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setRepaymentAmount(selectedLoan.outstandingBalance.toString())}
-                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors uppercase tracking-wider"
-                                                >
-                                                    Max
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <label className="text-xs font-bold uppercase text-slate-500 mb-1 block">Notes / Reference</label>
-                                            <textarea
-                                                required
-                                                value={repaymentDescription}
-                                                onChange={e => setRepaymentDescription(e.target.value)}
-                                                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                placeholder="e.g. M-Pesa Ref..."
-                                                rows={2}
-                                            />
-                                        </div>
-                                    </>
-                                )}
-
-                                <SubmitButton
-                                    isPending={loading}
-                                    disabled={!selectedLoanId || !isRepaymentValid}
-                                    label="Submit Repayment"
-                                    pendingLabel="Processing..."
-                                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-black uppercase tracking-wide transition-all shadow-lg shadow-blue-200 mt-2"
-                                />
-                            </form>
+                        <LoanRepaymentForm 
+                            memberId={memberId}
+                            onSuccess={() => {
+                                onTransactionComplete?.()
+                            }}
+                        />
                         </div>
                     </div>
                 )}

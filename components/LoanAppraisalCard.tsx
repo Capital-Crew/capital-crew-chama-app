@@ -12,6 +12,7 @@ import { PostLoanButton } from './loans/PostLoanButton';
 import { toast } from '@/lib/toast';
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/ui/spinner";
 import dynamic from 'next/dynamic';
 import { useOptimisticAction } from '@/hooks/useOptimisticAction';

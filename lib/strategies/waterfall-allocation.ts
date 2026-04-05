@@ -29,7 +29,9 @@ export class WaterfallAllocation {
         tx: PrismaTransaction,
         options: {
             type?: 'REPAYMENT' | 'WAIVER',
-            description?: string
+            description?: string,
+            postedAt?: Date,
+            referenceId?: string
         } = {}
     ): Promise<{
         penalty: number;
@@ -128,6 +130,8 @@ export class WaterfallAllocation {
             ? `Waiver with Waterfall Allocation (P: ${totalPenalty.toFixed(2)}, I: ${totalInterest.toFixed(2)}, Pr: ${totalPrincipal.toFixed(2)})`
             : `Wallet Repayment with Waterfall Allocation (P: ${totalPenalty.toFixed(2)}, I: ${totalInterest.toFixed(2)}, Pr: ${totalPrincipal.toFixed(2)})`);
 
+        const { postedAt, referenceId } = options;
+
         await tx.loanTransaction.create({
             data: {
                 loanId,
@@ -137,7 +141,9 @@ export class WaterfallAllocation {
                 interestAmount: totalInterest,
                 penaltyAmount: totalPenalty,
                 description: finalDescription,
-                postedAt: new Date()
+                postedAt: postedAt || new Date(),
+                transactionDate: postedAt || new Date(),
+                referenceId: referenceId
             }
         });
 

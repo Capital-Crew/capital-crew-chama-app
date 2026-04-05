@@ -227,27 +227,7 @@ export const postLoanAdjustment = withAudit(
                     }
                 })
 
-                if (isBackdated) {
-                    const { TransactionReplayService } = await import('@/lib/services/TransactionReplayService');
-                    const txType = adjustmentType === 'decrease' ? 'WAIVER' : (category === AdjustmentCategory.INTEREST ? 'INTEREST' : 'PENALTY');
-                    
-                    await TransactionReplayService.insertBackdatedAdjustment(
-                        loan.id,
-                        txType as any,
-                        amount,
-                        effectiveDate,
-                        description,
-                        journal.id
-                    );
-
-                    // Replay handles everything: LoanTransaction creation, Waterfall allocation, Balance updates.
-                    // But we need to make sure the LedgerEntries for the decrease are created correctly.
-                    // Actually, Replay engine handles LoanTransaction and Installment records, 
-                    // but it doesn't currently create the ledger credits for backdated adjustments.
-                    // We need to fetch the allocation AFTER replay or calculate it before.
-                    
-                    // Let's use a simpler approach: Calculate allocation first, then post Ledger + Transaction + Replay.
-                }
+                // Note: Replay and Transaction creation is consolidated below to avoid double-posting
 
                 // Standard Flow (or Backdated but we calculate allocation manually for ledger)
                 let allocation = {
@@ -265,12 +245,13 @@ export const postLoanAdjustment = withAudit(
                     // Actually, if we use WaterfallAllocation now, it creates the credit ledger entries.
                     allocation = await WaterfallAllocation.allocate(loan.id, amount, tx, {
                         type: 'WAIVER',
-                        description: `Waiver Adjustment: ${description} (Waterfall applied)`,
-                        // We need to pass the journalId to the waterfall if we want it to link?
-                        // Actually waterfall creates its own LoanTransaction.
+                        description: `Waiver Adjustment: ${description}`,
+                        postedAt: effectiveDate,
+                        referenceId: journal.id
                     });
 
-                    // Update Ledger Entries based on allocation
+                    // --- Restore Ledger Entries based on allocation ---
+                    // The LedgerTransaction was created with only the DEBIT. We need to add the CREDITS now.
                     if (allocation.penalty > 0) {
                         await tx.ledgerEntry.create({
                             data: {
@@ -304,22 +285,6 @@ export const postLoanAdjustment = withAudit(
                             }
                         });
                     }
-
-                    // Update the newly created WAIVER transaction with the reference to the journal entry
-                    await tx.loanTransaction.updateMany({
-                        where: { 
-                            loanId: loan.id,
-                            referenceId: null,
-                            type: 'WAIVER',
-                            amount: amount,
-                            postedAt: { gte: new Date(new Date().getTime() - 60000) } // Recent one
-                        },
-                        data: {
-                            referenceId: journal.id,
-                            postedAt: effectiveDate,
-                            transactionDate: effectiveDate
-                        }
-                    })
                 } else {
                     // Increase Adjustment
                     await tx.loanTransaction.create({

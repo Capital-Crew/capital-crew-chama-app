@@ -58,7 +58,7 @@ export async function getDashboardStatsSync(): Promise<Serialized<any>> {
         // D. Delinquent Loan Installments (passed due date and not fully paid)
         prisma.repaymentInstallment.findMany({
             where: {
-                dueDate: { lt: new Date() },
+                dueDate: { lt: new Date(new Date().setHours(0, 0, 0, 0)) },
                 isFullyPaid: false,
                 loan: { status: { in: ['ACTIVE', 'OVERDUE'] } }
             },

@@ -25,7 +25,7 @@ export class InterestService {
         const daysInCurrentMonth = getDaysInMonth(now)
         const remainingDays = daysInCurrentMonth - now.getDate()
 
-        if (remainingDays <= 0) {
+        if (remainingDays <= 0 || loan.loanProduct?.interestType === 'FLAT') {
             await tx.loan.update({
                 where: { id: loanId },
                 data: {
@@ -149,9 +149,9 @@ export class InterestService {
 
                     // --- SKIP LOGIC ---
                     
-                    // 1. Skip Amortized Loans with Fixed Schedules
-                    // If amortization is EQUAL_INSTALLMENTS, interest is typically pre-calculated.
-                    if (currentLoan.loanProduct?.amortizationType === 'EQUAL_INSTALLMENTS') {
+                    // 1. Skip Amortized Loans with Fixed Schedules or FLAT interest
+                    // If amortization is EQUAL_INSTALLMENTS or interest is FLAT, interest is typically pre-calculated.
+                    if (currentLoan.loanProduct?.amortizationType === 'EQUAL_INSTALLMENTS' || currentLoan.loanProduct?.interestType === 'FLAT') {
                         await tx.loan.update({
                             where: { id: loan.id },
                             data: { nextInterestRunDate: startOfMonth(addMonths(now, 1)) }

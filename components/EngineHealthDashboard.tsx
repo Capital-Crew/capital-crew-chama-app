@@ -4,26 +4,38 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { AlertCircle, CheckCircle, Clock, Play, RefreshCw } from 'lucide-react'
-import { getEngineHealthStatus, triggerInterestEngine, triggerPenaltyEngine, getEngineExecutionHistory, initializeInterestDatesForExistingLoans, forceInterestRunForAllLoans } from '@/app/engine-health-actions'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { AlertCircle, CheckCircle, Clock, Play, RefreshCw, RotateCcw, History, ShieldAlert, Activity, Loader2 } from 'lucide-react'
+import { getEngineHealthStatus, triggerPenaltyEngine, initializeInterestDatesForExistingLoans, forceInterestRunForAllLoans } from '@/app/engine-health-actions'
+import { getInterestRuns, getRunDetails, reverseInterestRun, triggerInterestBatch } from '@/app/actions/interest-actions'
 import { formatDistanceToNow } from 'date-fns'
+import { formatCurrency } from '@/lib/utils'
+import { toast } from 'sonner'
 
 export function EngineHealthDashboard() {
     const [health, setHealth] = useState<any>(null)
-    const [history, setHistory] = useState<any[]>([])
+    const [interestRuns, setInterestRuns] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [triggering, setTriggering] = useState<string | null>(null)
     const [migrating, setMigrating] = useState(false)
+    
+    // Modal states
+    const [selectedRun, setSelectedRun] = useState<any>(null)
+    const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+    const [isLoadingDetails, setIsLoadingDetails] = useState(false)
+    const [isActionPending, setIsActionPending] = useState(false)
 
     const loadData = async () => {
         try {
-            const [healthData, historyData] = await Promise.all([
+            const [healthData, runsData] = await Promise.all([
                 getEngineHealthStatus(),
-                getEngineExecutionHistory(5)
+                getInterestRuns()
             ])
             setHealth(healthData)
-            setHistory(historyData)
+            setInterestRuns(runsData)
         } catch (error) {
+            console.error("Failed to load engine health", error)
         } finally {
             setLoading(false)
         }
@@ -31,87 +43,85 @@ export function EngineHealthDashboard() {
 
     useEffect(() => {
         loadData()
-        // Auto-refresh every 30 seconds
         const interval = setInterval(loadData, 30000)
         return () => clearInterval(interval)
     }, [])
 
-    const handleTrigger = async (engine: 'interest' | 'penalty') => {
-        setTriggering(engine)
-        try {
-            const result = engine === 'interest'
-                ? await triggerInterestEngine()
-                : await triggerPenaltyEngine()
+    const handleViewDetails = async (run: any) => {
+        setIsLoadingDetails(true)
+        setSelectedRun(run)
+        setIsDetailsOpen(true)
+        const details = await getRunDetails(run.id)
+        if (details) setSelectedRun(details)
+        setIsLoadingDetails(false)
+    }
 
+    const handleReverse = async (runId: string) => {
+        if (!confirm("Are you sure you want to reverse this entire batch run? This will undo all interest postings and ledger entries.")) return
+        
+        setIsActionPending(true)
+        const result = await reverseInterestRun(runId)
+        if (result.success) {
+            toast.success("Run reversed successfully")
+            loadData()
+            setIsDetailsOpen(false)
+        } else {
+            toast.error("Reversal failed: " + result.error)
+        }
+        setIsActionPending(false)
+    }
+
+    const handleTriggerMonthly = async () => {
+        setTriggering('interest')
+        try {
+            const result = await triggerInterestBatch()
             if (result.success) {
-                alert(`${engine === 'interest' ? 'Interest' : 'Penalty'} Engine executed successfully!\n\nResults: ${JSON.stringify(result.results, null, 2)}`)
+                toast.success(`Interest Engine executed successfully!\nProcessed ${result.results.success} loans.`)
+                loadData()
             } else {
-                alert(`Engine execution failed: ${result.error}`)
+                toast.error(`Engine execution failed: ${result.error}`)
             }
-            await loadData()
         } catch (error: any) {
-            alert(`Error: ${error.message}`)
+            toast.error(`Error: ${error.message}`)
         } finally {
             setTriggering(null)
         }
     }
 
-    const handleInitializeLoans = async () => {
-        if (!confirm('This will initialize interest dates for all existing active loans. Continue?')) {
-            return
-        }
-
-        setMigrating(true)
+    const handleTriggerPenalty = async () => {
+        setTriggering('penalty')
         try {
-            const result = await initializeInterestDatesForExistingLoans()
-
+            const result = await triggerPenaltyEngine()
             if (result.success) {
-                alert(`✅ Success!\n\n${result.message}\n\nYou can now run the Interest Engine to process these loans.`)
+                toast.success("Penalty Engine executed successfully")
+                loadData()
             } else {
-                alert(`❌ Failed: ${result.error}`)
+                toast.error(`Engine execution failed: ${result.error}`)
             }
         } catch (error: any) {
-            alert(`Error: ${error.message}`)
+            toast.error(`Error: ${error.message}`)
         } finally {
-            setMigrating(false)
+            setTriggering(null)
         }
     }
 
-    const handleForceRun = async () => {
-        if (!confirm('This will force ALL active loans to be processed by the Interest Engine immediately. Continue?')) {
-            return
-        }
-
-        try {
-            // First, set all loans to run now
-            const forceResult = await forceInterestRunForAllLoans()
-
-            if (!forceResult.success) {
-                alert(`❌ Failed to prepare loans: ${forceResult.error}`)
-                return
-            }
-
-            alert(`✅ ${forceResult.message}\n\nNow triggering Interest Engine...`)
-
-            // Then trigger the interest engine
-            setTriggering('interest')
-            const result = await triggerInterestEngine()
-
-            if (result.success) {
-                alert(`✅ Interest Engine executed successfully!\n\nResults: ${JSON.stringify(result.results, null, 2)}`)
-            } else {
-                alert(`❌ Engine execution failed: ${result.error}`)
-            }
-            await loadData()
-        } catch (error: any) {
-            alert(`Error: ${error.message}`)
-        } finally {
-            setTriggering(null)
+    const getStatusBadge = (status: string) => {
+        switch (status) {
+            case 'SUCCESS': return <Badge className="bg-green-100 text-green-700 border-green-200">Success</Badge>
+            case 'REVERSED': return <Badge className="bg-orange-100 text-orange-700 border-orange-200">Reversed</Badge>
+            case 'FAILED': return <Badge className="bg-red-100 text-red-700 border-red-200">Failed</Badge>
+            case 'PARTIAL_SUCCESS': return <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200">Partial Success</Badge>
+            default: return <Badge variant="outline">{status}</Badge>
         }
     }
 
     if (loading) {
-        return <div className="flex items-center justify-center p-8"><RefreshCw className="animate-spin" /></div>
+        return (
+            <div className="flex flex-col items-center justify-center p-20 space-y-4">
+                <RefreshCw className="h-10 w-10 animate-spin text-indigo-400" />
+                <p className="text-slate-400 font-medium">Syncing engine metrics...</p>
+            </div>
+        )
     }
 
     return (
@@ -119,130 +129,92 @@ export function EngineHealthDashboard() {
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                 <div className="text-center md:text-left">
                     <h2 className="text-2xl font-bold">Engine Health Dashboard</h2>
-                    <p className="text-sm text-muted-foreground">Monitor and control critical financial engines</p>
+                    <p className="text-sm text-muted-foreground">Monitor and manage automated interest accrual and penalty runs.</p>
                 </div>
-                <div className="flex w-full md:w-auto items-center justify-center gap-2">
-                    <Button
-                        onClick={handleInitializeLoans}
-                        variant="outline"
-                        size="sm"
-                        disabled={migrating}
-                        className="bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100"
-                    >
-                        {migrating ? (
-                            <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Initializing...</>
-                        ) : (
-                            <>Initialize Loans</>
-                        )}
-                    </Button>
-                    <Button
-                        onClick={loadData}
-                        variant="outline"
-                        size="sm"
-                        className="bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
-                    >
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Refresh
+                <div className="flex items-center gap-2">
+                    <Button onClick={loadData} variant="outline" size="sm" className="bg-white border-slate-200">
+                        <RefreshCw className="h-4 w-4 mr-2" /> Refresh
                     </Button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid gap-4 md:grid-cols-3">
                 {}
                 <Card>
-                    <CardHeader>
-                        <div className="flex items-center justify-between">
-                            <CardTitle className="text-lg">Interest Engine</CardTitle>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium flex items-center justify-between">
+                            Interest Engine
                             {health?.interestEngine?.status === 'operational' ? (
-                                <CheckCircle className="h-5 w-5 text-green-500" />
+                                <CheckCircle className="h-4 w-4 text-green-500" />
                             ) : (
-                                <AlertCircle className="h-5 w-5 text-yellow-500" />
+                                <AlertCircle className="h-4 w-4 text-yellow-500" />
                             )}
-                        </div>
-                        <CardDescription>Monthly interest accrual processor</CardDescription>
+                        </CardTitle>
+                        <CardDescription className="text-[10px]">Monthly execution logic</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="space-y-2">
-                            <div className="flex items-center justify-between text-sm">
-                                <span className="text-muted-foreground">Last Run:</span>
-                                <span className="font-medium">
-                                    {health?.interestEngine?.lastRun
-                                        ? formatDistanceToNow(new Date(health.interestEngine.lastRun), { addSuffix: true })
-                                        : 'Never'}
-                                </span>
-                            </div>
-                            <div className="flex items-center justify-between text-sm">
-                                <span className="text-muted-foreground">Active Loans:</span>
-                                <Badge variant="secondary">{health?.activeLoansCount || 0}</Badge>
-                            </div>
-                        </div>
-                        <div className="flex gap-2">
-                            <Button
-                                onClick={handleForceRun}
-                                disabled={triggering !== null}
-                                variant="destructive"
-                                className="flex-1"
-                            >
-                                {triggering === 'interest' ? (
-                                    <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Running...</>
-                                ) : (
-                                    <>Force Run All</>
-                                )}
-                            </Button>
-                            <Button
-                                onClick={() => handleTrigger('interest')}
-                                disabled={triggering !== null}
-                                className="flex-1"
-                            >
-                                {triggering === 'interest' ? (
-                                    <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Running...</>
-                                ) : (
-                                    <><Play className="h-4 w-4 mr-2" /> Run Now</>
-                                )}
-                            </Button>
-                        </div>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{interestRuns.length} Runs</div>
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                            Last: {health?.interestEngine?.lastRun ? formatDistanceToNow(new Date(health.interestEngine.lastRun), { addSuffix: true }) : 'Never'}
+                        </p>
+                        <Button 
+                            onClick={handleTriggerMonthly}
+                            disabled={triggering !== null}
+                            className="w-full mt-4 bg-indigo-600 text-white hover:bg-indigo-700 font-bold"
+                        >
+                            {triggering === 'interest' ? <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Running...</> : <><Play className="h-4 w-4 mr-2" /> Run Interest</>}
+                        </Button>
                     </CardContent>
                 </Card>
 
                 {}
                 <Card>
-                    <CardHeader>
-                        <div className="flex items-center justify-between">
-                            <CardTitle className="text-lg">Penalty Engine</CardTitle>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium flex items-center justify-between">
+                            Penalty Engine
                             {health?.penaltyEngine?.status === 'operational' ? (
-                                <CheckCircle className="h-5 w-5 text-green-500" />
+                                <CheckCircle className="h-4 w-4 text-green-500" />
                             ) : (
-                                <AlertCircle className="h-5 w-5 text-yellow-500" />
+                                <AlertCircle className="h-4 w-4 text-yellow-500" />
                             )}
-                        </div>
-                        <CardDescription>Daily overdue penalty processor</CardDescription>
+                        </CardTitle>
+                        <CardDescription className="text-[10px]">Daily overdue logic</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="space-y-2">
-                            <div className="flex items-center justify-between text-sm">
-                                <span className="text-muted-foreground">Last Run:</span>
-                                <span className="font-medium">
-                                    {health?.penaltyEngine?.lastRun
-                                        ? formatDistanceToNow(new Date(health.penaltyEngine.lastRun), { addSuffix: true })
-                                        : 'Never'}
-                                </span>
-                            </div>
-                            <div className="flex items-center justify-between text-sm">
-                                <span className="text-muted-foreground">Active Loans:</span>
-                                <Badge variant="secondary">{health?.activeLoansCount || 0}</Badge>
-                            </div>
-                        </div>
-                        <Button
-                            onClick={() => handleTrigger('penalty')}
+                    <CardContent>
+                        <div className="text-2xl font-bold">Operational</div>
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                            Last: {health?.penaltyEngine?.lastRun ? formatDistanceToNow(new Date(health.penaltyEngine.lastRun), { addSuffix: true }) : 'Never'}
+                        </p>
+                        <Button 
+                            onClick={handleTriggerPenalty}
                             disabled={triggering !== null}
-                            className="w-full"
+                            className="w-full mt-4"
                         >
-                            {triggering === 'penalty' ? (
-                                <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Running...</>
-                            ) : (
-                                <><Play className="h-4 w-4 mr-2" /> Run Now</>
-                            )}
+                            {triggering === 'penalty' ? <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Running...</> : <><Play className="h-4 w-4 mr-2" /> Run Penalty</>}
                         </Button>
+                    </CardContent>
+                </Card>
+
+                <Card className="bg-slate-50/50 border-dashed border-indigo-200">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-indigo-700 font-black">Safety Guard</CardTitle>
+                        <CardDescription className="text-[10px]">Ledger Integrity Control</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                        <div className="flex items-center gap-2 text-xs text-slate-600">
+                            <ShieldAlert className="h-4 w-4 text-green-600" />
+                            Atomic Reversal Ready
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-slate-600">
+                            <History className="h-4 w-4 text-indigo-600" />
+                            Full Batch Tracking Active
+                        </div>
+                        <button 
+                            onClick={initializeInterestDatesForExistingLoans}
+                            className="text-[10px] text-slate-400 hover:text-indigo-600 underline mt-2"
+                        >
+                            Repurpose Loan Dates
+                        </button>
                     </CardContent>
                 </Card>
             </div>
@@ -250,34 +222,131 @@ export function EngineHealthDashboard() {
             {}
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-lg">Recent Executions</CardTitle>
-                    <CardDescription>Last 5 engine runs</CardDescription>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                        <History className="h-5 w-5 text-indigo-500" /> 
+                        Interest Run History
+                    </CardTitle>
+                    <CardDescription>Click any run to view affected loans and reversal options.</CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <div className="space-y-2">
-                        {history.length === 0 ? (
-                            <p className="text-sm text-muted-foreground text-center py-4">No execution history yet</p>
-                        ) : (
-                            history.map((log) => (
-                                <div key={log.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 border rounded-lg transition-colors hover:bg-slate-50">
-                                    <div className="flex items-start sm:items-center gap-3">
-                                        <Clock className="h-4 w-4 text-muted-foreground mt-1 sm:mt-0 flex-shrink-0" />
-                                        <div>
-                                            <p className="text-sm font-medium">
-                                                {log.action === 'INTEREST_ENGINE_RUN' ? 'Interest Engine' : 'Penalty Engine'}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground break-all sm:break-normal">{log.details}</p>
-                                        </div>
-                                    </div>
-                                    <span className="text-xs text-muted-foreground pl-7 sm:pl-0">
-                                        {formatDistanceToNow(new Date(log.timestamp), { addSuffix: true })}
-                                    </span>
-                                </div>
-                            ))
-                        )}
+                <CardContent className="p-0">
+                    <div className="border-t">
+                        <Table>
+                            <TableHeader className="bg-slate-50/50">
+                                <TableRow>
+                                    <TableHead>Initialized At</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead className="text-right">Loans</TableHead>
+                                    <TableHead className="text-right">Total Interest</TableHead>
+                                    <TableHead className="text-right pr-6">Action</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {interestRuns.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={5} className="text-center py-10 text-muted-foreground italic">No historical runs recorded.</TableCell>
+                                    </TableRow>
+                                ) : (
+                                    interestRuns.map((run) => (
+                                        <TableRow 
+                                            key={run.id} 
+                                            className="hover:bg-slate-50/50 transition-colors cursor-pointer group"
+                                            onClick={() => handleViewDetails(run)}
+                                        >
+                                            <TableCell className="font-medium">{new Date(run.startedAt).toLocaleString()}</TableCell>
+                                            <TableCell>{getStatusBadge(run.status)}</TableCell>
+                                            <TableCell className="text-right">{run.affectedLoanCount}</TableCell>
+                                            <TableCell className="text-right font-bold text-indigo-600">{formatCurrency(run.totalInterest)}</TableCell>
+                                            <TableCell className="text-right pr-6">
+                                                <button className="text-xs text-slate-400 group-hover:text-indigo-600 underline">View</button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
                     </div>
                 </CardContent>
             </Card>
+
+            {}
+            <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+                <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            Run Details: {selectedRun && new Date(selectedRun.startedAt).toLocaleDateString()}
+                            {selectedRun && getStatusBadge(selectedRun.status)}
+                        </DialogTitle>
+                    </DialogHeader>
+
+                    {isLoadingDetails ? (
+                        <div className="flex flex-col items-center justify-center py-20 space-y-4">
+                            <Loader2 className="h-10 w-10 animate-spin text-indigo-200" />
+                            <p className="text-slate-400 text-sm italic">Retrieving loan breakdowns...</p>
+                        </div>
+                    ) : (
+                        <div className="flex-1 overflow-y-auto pr-2">
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg border border-slate-100">
+                                    <div>
+                                        <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Started At</p>
+                                        <p className="text-sm font-medium">{selectedRun?.startedAt ? new Date(selectedRun.startedAt).toLocaleString() : 'N/A'}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Total Accrual</p>
+                                        <p className="text-sm font-bold text-indigo-600">{formatCurrency(selectedRun?.totalInterest || 0)}</p>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <h4 className="text-xs font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                                        <Activity className="h-3 w-3" /> Affected Assets
+                                    </h4>
+                                    <div className="border rounded-lg overflow-hidden">
+                                        <Table>
+                                            <TableHeader className="bg-slate-50 text-[10px]">
+                                                <TableRow>
+                                                    <TableHead className="h-8 uppercase">Loan #</TableHead>
+                                                    <TableHead className="h-8 uppercase">Member</TableHead>
+                                                    <TableHead className="h-8 text-right uppercase">Amount</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {selectedRun?.postings?.map((p: any) => (
+                                                    <TableRow key={p.id} className="text-xs">
+                                                        <TableCell className="font-mono font-medium">{p.loan?.loanApplicationNumber}</TableCell>
+                                                        <TableCell className="font-medium text-slate-600">{p.loan?.member?.name}</TableCell>
+                                                        <TableCell className="text-right font-black text-slate-900">{formatCurrency(p.amount)}</TableCell>
+                                                    </TableRow>
+                                                )) || (
+                                                    <TableRow>
+                                                        <TableCell colSpan={3} className="text-center py-4 text-slate-400 italic">No detailed records found.</TableCell>
+                                                    </TableRow>
+                                                )}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <DialogFooter className="border-t pt-4 bg-slate-50 -mx-6 -mb-6 px-6 pb-6">
+                        <div className="flex justify-between w-full items-center">
+                            {selectedRun?.status !== 'REVERSED' && (
+                                <button 
+                                    onClick={() => handleReverse(selectedRun.id)}
+                                    disabled={isActionPending}
+                                    className="flex items-center gap-2 bg-red-50 text-red-600 border border-red-100 px-4 py-2 rounded-md hover:bg-red-100 transition-all font-black text-xs uppercase tracking-widest"
+                                >
+                                    {isActionPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
+                                    Reverse Entire Run
+                                </button>
+                            )}
+                            <button onClick={() => setIsDetailsOpen(false)} className="text-slate-400 text-xs font-bold hover:text-slate-600">CLOSE</button>
+                        </div>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

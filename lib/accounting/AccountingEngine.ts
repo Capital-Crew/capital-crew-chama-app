@@ -424,23 +424,35 @@ export async function getLoanOutstandingBalance(loanId: string, tx?: DbClient): 
 
     if (!loan) return 0;
 
-    // 2. Fetch entries by Reference ID (Strict Link)
+    // 2. Resolve specific Loan Asset Account Codes
+    const principalCode = await getSystemCode('EVENT_LOAN_REPAYMENT_PRINCIPAL' as SystemAccountType, client);
+    const legacyPrincipalCode = await getSystemCode('RECEIVABLES' as SystemAccountType, client).catch(() => null);
+    const interestCode = await getSystemCode('RECEIVABLE_LOAN_INTEREST' as SystemAccountType, client);
+    const penaltyCode = await getSystemCode('RECEIVABLE_LOAN_PENALTY' as SystemAccountType, client).catch(() => null);
+    const feeCode = await getSystemCode('RECEIVABLE_LOAN_FEES' as SystemAccountType, client).catch(() => null);
+
+    const validCodes = [principalCode, interestCode];
+    if (legacyPrincipalCode) validCodes.push(legacyPrincipalCode);
+    if (penaltyCode) validCodes.push(penaltyCode);
+    if (feeCode) validCodes.push(feeCode);
+
+    // 3. Fetch entries by Reference ID (Strict Link)
     const refEntries = await client.ledgerEntry.findMany({
         where: {
             ledgerTransaction: {
                 referenceId: loanId,
                 // isReversed: false
             },
-            ledgerAccount: { type: 'ASSET' }
+            ledgerAccount: { code: { in: validCodes } }
         },
         include: { ledgerAccount: true }
     });
 
-    // 3. Fetch entries by Keyword (Description Link)
+    // 4. Fetch entries by Keyword (Description Link)
     const keywordEntries = await client.ledgerEntry.findMany({
         where: {
             // ledgerTransaction: { isReversed: false },
-            ledgerAccount: { type: 'ASSET' },
+            ledgerAccount: { code: { in: validCodes } },
             description: { contains: loan.loanApplicationNumber }
         },
         include: { ledgerAccount: true }
@@ -624,10 +636,10 @@ export const AccountingService = {
 
 
         // 5. Post Journal Entry
-        return await AccountingEngine.postJournalEntry({
+        const journal = await AccountingEngine.postJournalEntry({
             transactionDate: new Date(),
             referenceType: eventType === 'INTEREST_ACCRUAL' ? 'LOAN_INTEREST_ACCRUAL' : 'LOAN_PENALTY_ACCRUAL',
-            referenceId: loan.id, // Or specific schedule item ID if passed? For now Loan ID.
+            referenceId: loan.id,
             description: `${eventType === 'INTEREST_ACCRUAL' ? 'Interest Accrual' : 'Penalty Applied'} - ${loan.loanApplicationNumber}`,
             createdBy: 'SYSTEM',
             createdByName: 'System',
@@ -646,5 +658,25 @@ export const AccountingService = {
                 }
             ]
         }, tx)
+
+        // 6. Create LoanTransaction for operational history and Replay Service
+        await tx.loanTransaction.create({
+            data: {
+                loanId: loan.id,
+                type: eventType === 'INTEREST_ACCRUAL' ? 'INTEREST' : 'PENALTY',
+                amount: new Prisma.Decimal(amount),
+                postedAt: new Date(),
+                transactionDate: new Date(),
+                description: `${eventType === 'INTEREST_ACCRUAL' ? 'Interest Accrual' : 'Penalty Applied'}`,
+                referenceId: journal.id,
+                // Allocation is 0 for accruals
+                principalAmount: 0,
+                interestAmount: eventType === 'INTEREST_ACCRUAL' ? amount : 0,
+                penaltyAmount: eventType === 'PENALTY_APPLIED' ? amount : 0,
+                feeAmount: 0
+            }
+        })
+
+        return journal
     }
 }

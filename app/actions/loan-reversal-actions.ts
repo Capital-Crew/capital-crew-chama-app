@@ -126,6 +126,11 @@ export const reverseLoanTransaction = withAudit(
                             })
                         }
                         journalLines.push({ accountCode: mappings.EVENT_LOAN_REPAYMENT_PRINCIPAL, debitAmount: 0, creditAmount: amount, description: `Reversal: Cancel Disbursement` })
+                    } else if (originalTx.type === 'PENALTY_APPLIED' || originalTx.type === 'PENALTY') {
+                        // REVERSED PENALTY: MUST REDUCE penaltyDue in schedule!
+                        // And reverse the Ledger (Dr Penalty Income / Cr Member Loan)
+                        journalLines.push({ accountCode: mappings.RECEIVABLE_LOAN_PENALTY, debitAmount: 0, creditAmount: amount, description: `Reversal: Penalty Applied` })
+                        journalLines.push({ accountCode: mappings.EVENT_LOAN_INTEREST_ACCRUAL, debitAmount: amount, creditAmount: 0, description: `Reversal: Cancel Penalty Income` })
                     }
 
                     if (journalLines.length > 0) {
@@ -142,6 +147,32 @@ export const reverseLoanTransaction = withAudit(
                     }
                 }
                 ctx.endStep('Execute GL Contra Reversal');
+
+                // NEW: Operational Rollback for Penalties
+                if (originalTx.type === 'PENALTY_APPLIED' || originalTx.type === 'PENALTY') {
+                    ctx.beginStep('Operational Penalty Rollback');
+                    // 1. Clear penaltyDue from ALL installments that might have been penalized by this transaction
+                    // (Usually just one, but we search by loanId and Amount for safety if no direct link)
+                    await tx.repaymentInstallment.updateMany({
+                        where: {
+                            loanId: originalTx.loanId,
+                            penaltyDue: originalTx.amount
+                        },
+                        data: {
+                            penaltyDue: 0
+                        }
+                    })
+
+                    // 2. Decrement Loan.penalties
+                    await tx.loan.update({
+                        where: { id: originalTx.loanId },
+                        data: {
+                            penalties: { decrement: Number(originalTx.amount) },
+                            current_balance: { decrement: Number(originalTx.amount) }
+                        }
+                    })
+                    ctx.endStep('Operational Penalty Rollback');
+                }
 
                 ctx.beginStep('Create Reversal Record');
                 await tx.loanTransaction.create({

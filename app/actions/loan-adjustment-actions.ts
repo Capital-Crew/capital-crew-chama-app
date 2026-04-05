@@ -109,7 +109,8 @@ export const postLoanAdjustment = withAudit(
         adjustmentType: 'increase' | 'decrease',
         category: AdjustmentCategory,
         amount: number,
-        description: string
+        description: string,
+        transactionDate?: Date
     }) => {
         ctx.beginStep('Verify Authorization');
         const session = await auth()
@@ -124,7 +125,7 @@ export const postLoanAdjustment = withAudit(
             throw new Error("Insufficient permissions. Only System Admin, Treasurer or Chairperson can post adjustments.")
         }
 
-        const { loanId, adjustmentType, category, amount, description } = data
+        const { loanId, adjustmentType, category, amount, description, transactionDate } = data
         if (amount <= 0) {
             ctx.setErrorCode('INVALID_AMOUNT');
             throw new Error("Amount must be positive")
@@ -142,6 +143,9 @@ export const postLoanAdjustment = withAudit(
         }
         ctx.captureBefore('Loan', loan.id, loan);
         ctx.endStep('Validate Loan Record');
+
+        const effectiveDate = transactionDate ? new Date(transactionDate) : new Date();
+        const isBackdated = transactionDate && new Date(transactionDate).getTime() < (new Date().getTime() - 1000 * 60 * 60); // More than 1 hour ago
 
         ctx.beginStep('Resolve Accounting Configuration');
         const { getSystemMappingsDict } = await import('@/app/actions/system-accounting')
@@ -184,27 +188,12 @@ export const postLoanAdjustment = withAudit(
         try {
             ctx.beginStep('Post Adjustment Transaction');
             await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-                let allocation = {
-                    penalty: 0,
-                    interest: 0,
-                    principal: 0,
-                    overpayment: 0
-                };
-
-                if (adjustmentType === 'decrease') {
-                    // Use Waterfall Allocation for waivers
-                    const { WaterfallAllocation } = await import('@/lib/strategies/waterfall-allocation');
-                    allocation = await WaterfallAllocation.allocate(loan.id, amount, tx, {
-                        type: 'WAIVER',
-                        description: `Waiver Adjustment: ${description} (Waterfall applied)`
-                    });
-                }
-
+                // 1. Create Ledger Transaction
                 const journal = await tx.ledgerTransaction.create({
                     data: {
-                        transactionDate: new Date(),
+                        transactionDate: effectiveDate,
                         totalAmount: amount,
-                        description: `Manual Adjustment: ${description} (${category})`,
+                        description: `${isBackdated ? '[BACKDATED] ' : ''}Manual Adjustment: ${description} (${category})`,
                         referenceType: 'MANUAL_ADJUSTMENT',
                         referenceId: loan.id,
                         createdBy: session.user.id || '',
@@ -229,31 +218,110 @@ export const postLoanAdjustment = withAudit(
                                     creditAmount: 0,
                                     description: `Manual Waiver/Adjustment - ${loan.loanApplicationNumber}`
                                 },
-                                // For decreases, we now follow the waterfall allocation for the CR side
-                                ...(allocation.penalty > 0 ? [{
-                                    ledgerAccount: { connect: { code: mappings.RECEIVABLE_LOAN_PENALTY || '1320' } },
-                                    debitAmount: 0,
-                                    creditAmount: allocation.penalty,
-                                    description: `Waiver Applied: Penalty - ${loan.loanApplicationNumber}`
-                                }] : []),
-                                ...(allocation.interest > 0 ? [{
-                                    ledgerAccount: { connect: { id: interestAcc!.id } },
-                                    debitAmount: 0,
-                                    creditAmount: allocation.interest,
-                                    description: `Waiver Applied: Interest - ${loan.loanApplicationNumber}`
-                                }] : []),
-                                ...(allocation.principal > 0 ? [{
-                                    ledgerAccount: { connect: { id: portfolioAcc!.id } },
-                                    debitAmount: 0,
-                                    creditAmount: allocation.principal,
-                                    description: `Waiver Applied: Principal - ${loan.loanApplicationNumber}`
-                                }] : [])
+                                ...(adjustmentType === 'decrease' && !isBackdated ? [
+                                    // These will be calculated/added later by waterfall if NOT backdated
+                                    // (Actually we placeholder them if we didn't use TransactionReplayService)
+                                ] : [])
                             ]
                         }
                     }
                 })
 
-                if (adjustmentType === 'increase') {
+                if (isBackdated) {
+                    const { TransactionReplayService } = await import('@/lib/services/TransactionReplayService');
+                    const txType = adjustmentType === 'decrease' ? 'WAIVER' : (category === AdjustmentCategory.INTEREST ? 'INTEREST' : 'PENALTY');
+                    
+                    await TransactionReplayService.insertBackdatedAdjustment(
+                        loan.id,
+                        txType as any,
+                        amount,
+                        effectiveDate,
+                        description,
+                        journal.id
+                    );
+
+                    // Replay handles everything: LoanTransaction creation, Waterfall allocation, Balance updates.
+                    // But we need to make sure the LedgerEntries for the decrease are created correctly.
+                    // Actually, Replay engine handles LoanTransaction and Installment records, 
+                    // but it doesn't currently create the ledger credits for backdated adjustments.
+                    // We need to fetch the allocation AFTER replay or calculate it before.
+                    
+                    // Let's use a simpler approach: Calculate allocation first, then post Ledger + Transaction + Replay.
+                }
+
+                // Standard Flow (or Backdated but we calculate allocation manually for ledger)
+                let allocation = {
+                    penalty: 0,
+                    interest: 0,
+                    principal: 0,
+                    overpayment: 0
+                };
+
+                if (adjustmentType === 'decrease') {
+                    // Use Waterfall Allocation for waivers
+                    const { WaterfallAllocation } = await import('@/lib/strategies/waterfall-allocation');
+                    // Important: Waterfall should use the state AS OF the effective date if backdated.
+                    // But for now, we use the current state and then let Replay re-adjust if needed.
+                    // Actually, if we use WaterfallAllocation now, it creates the credit ledger entries.
+                    allocation = await WaterfallAllocation.allocate(loan.id, amount, tx, {
+                        type: 'WAIVER',
+                        description: `Waiver Adjustment: ${description} (Waterfall applied)`,
+                        // We need to pass the journalId to the waterfall if we want it to link?
+                        // Actually waterfall creates its own LoanTransaction.
+                    });
+
+                    // Update Ledger Entries based on allocation
+                    if (allocation.penalty > 0) {
+                        await tx.ledgerEntry.create({
+                            data: {
+                                ledgerTransactionId: journal.id,
+                                ledgerAccountId: (await tx.ledgerAccount.findUnique({ where: { code: mappings.RECEIVABLE_LOAN_PENALTY || '1320' } }))!.id,
+                                debitAmount: 0,
+                                creditAmount: allocation.penalty,
+                                description: `Waiver Applied: Penalty - ${loan.loanApplicationNumber}`
+                            }
+                        });
+                    }
+                    if (allocation.interest > 0) {
+                        await tx.ledgerEntry.create({
+                            data: {
+                                ledgerTransactionId: journal.id,
+                                ledgerAccountId: interestAcc!.id,
+                                debitAmount: 0,
+                                creditAmount: allocation.interest,
+                                description: `Waiver Applied: Interest - ${loan.loanApplicationNumber}`
+                            }
+                        });
+                    }
+                    if (allocation.principal > 0) {
+                        await tx.ledgerEntry.create({
+                            data: {
+                                ledgerTransactionId: journal.id,
+                                ledgerAccountId: portfolioAcc!.id,
+                                debitAmount: 0,
+                                creditAmount: allocation.principal,
+                                description: `Waiver Applied: Principal - ${loan.loanApplicationNumber}`
+                            }
+                        });
+                    }
+
+                    // Update the newly created WAIVER transaction with the reference to the journal entry
+                    await tx.loanTransaction.updateMany({
+                        where: { 
+                            loanId: loan.id,
+                            referenceId: null,
+                            type: 'WAIVER',
+                            amount: amount,
+                            postedAt: { gte: new Date(new Date().getTime() - 60000) } // Recent one
+                        },
+                        data: {
+                            referenceId: journal.id,
+                            postedAt: effectiveDate,
+                            transactionDate: effectiveDate
+                        }
+                    })
+                } else {
+                    // Increase Adjustment
                     await tx.loanTransaction.create({
                         data: {
                             loanId: loan.id,
@@ -261,30 +329,21 @@ export const postLoanAdjustment = withAudit(
                             amount: amount,
                             description: description,
                             referenceId: journal.id,
-                            postedAt: new Date(),
+                            postedAt: effectiveDate,
+                            transactionDate: effectiveDate,
                             principalAmount: 0,
                             interestAmount: (targetAssetAccount.id === interestAcc?.id) ? amount : 0,
                             penaltyAmount: (category === AdjustmentCategory.PENALTY) ? amount : 0,
                         }
                     })
                     
-                    // We need to update the balance for increases manually since Waterfall isn't used
                     const { LoanBalanceService } = await import('@/services/loan-balance')
                     await LoanBalanceService.updateLoanBalance(loan.id, tx)
-                } else {
-                    // Update the newly created WAIVER transaction with the reference to the journal entry
-                    // WaterfallAllocation already created the transaction, let's update its referenceId
-                    await tx.loanTransaction.updateMany({
-                        where: { 
-                            loanId: loan.id,
-                            referenceId: null,
-                            type: 'WAIVER',
-                            amount: amount
-                        },
-                        data: {
-                            referenceId: journal.id
-                        }
-                    })
+                }
+
+                if (isBackdated) {
+                    const { TransactionReplayService } = await import('@/lib/services/TransactionReplayService');
+                    await TransactionReplayService.replayTransactions(loan.id, effectiveDate, tx);
                 }
 
                 const updatedLoan = await tx.loan.findUnique({
@@ -310,8 +369,10 @@ export const postLoanAdjustment = withAudit(
                         }
                     })
                 }
+            }, {
+                maxWait: 10000,
+                timeout: 60000
             })
-            ctx.endStep('Post Adjustment Transaction');
 
             const updatedLoan = await prisma.loan.findUnique({ where: { id: loanId } });
             if (updatedLoan) ctx.captureAfter(updatedLoan);

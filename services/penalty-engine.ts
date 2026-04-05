@@ -136,6 +136,9 @@ export class PenaltyService {
             })
 
             // E. Notify Member? (Optional, maybe later)
+        }, {
+            maxWait: 10000,
+            timeout: 60000
         })
     }
 }

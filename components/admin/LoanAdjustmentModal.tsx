@@ -6,9 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { AlertCircle, X } from 'lucide-react';
+import { AlertCircle, X, Calendar as CalendarIcon } from 'lucide-react';
 import { AdjustmentCategory } from '@/lib/types';
 import { searchLoans } from '@/app/actions/loan-adjustment-actions';
+import { Switch } from '@/components/ui/switch';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface LoanAdjustmentModalProps {
     isOpen: boolean;
@@ -22,6 +27,7 @@ interface LoanAdjustmentModalProps {
         amount: number;
         description: string;
         loanId: string;
+        transactionDate?: Date;
     }) => void;
 }
 
@@ -43,6 +49,8 @@ export function LoanAdjustmentModal({
     const [description, setDescription] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [isBackdated, setIsBackdated] = useState(false);
+    const [transactionDate, setTransactionDate] = useState<Date | undefined>(new Date());
 
     // Initialize if passed directly
     useEffect(() => {
@@ -113,6 +121,7 @@ export function LoanAdjustmentModal({
                 category: finalCategory as AdjustmentCategory,
                 amount: parseFloat(amount),
                 description,
+                transactionDate: isBackdated ? transactionDate : undefined,
             });
 
             // Reset form
@@ -124,6 +133,8 @@ export function LoanAdjustmentModal({
             setDescription('');
             setSelectedLoan(null);
             setSearchInput('');
+            setIsBackdated(false);
+            setTransactionDate(new Date());
             onClose();
         } catch (error) {
         } finally {
@@ -292,6 +303,48 @@ export function LoanAdjustmentModal({
                                     </div>
                                 </div>
                             ) : null}
+                        </div>
+
+                        <div className="space-y-4 p-4 bg-slate-50 border-2 border-slate-200 rounded-xl">
+                            <div className="flex items-center justify-between">
+                                <div className="space-y-0.5">
+                                    <label className="text-sm font-bold text-slate-700">Backdate Adjustment?</label>
+                                    <p className="text-xs text-slate-500 font-medium whitespace-nowrap">Neutralize subsequent penalties automatically</p>
+                                </div>
+                                <Switch
+                                    checked={isBackdated}
+                                    onCheckedChange={setIsBackdated}
+                                />
+                            </div>
+
+                            {isBackdated && (
+                                <div className="space-y-2 pt-2 border-t border-slate-200">
+                                    <label className="text-xs font-black text-slate-400 uppercase tracking-wider">Transaction Date</label>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant={"outline"}
+                                                className={cn(
+                                                    "w-full justify-start text-left font-bold py-6 rounded-xl border-2 border-slate-200 bg-white hover:bg-slate-50 transition-all",
+                                                    !transactionDate && "text-muted-foreground"
+                                                )}
+                                            >
+                                                <CalendarIcon className="mr-3 h-5 w-5 text-cyan-600" />
+                                                {transactionDate ? format(transactionDate, "PPP") : <span>Pick a date</span>}
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                            <Calendar
+                                                mode="single"
+                                                selected={transactionDate}
+                                                onSelect={setTransactionDate}
+                                                initialFocus
+                                                disabled={(date) => date > new Date()}
+                                            />
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
+                            )}
                         </div>
 
                         {}

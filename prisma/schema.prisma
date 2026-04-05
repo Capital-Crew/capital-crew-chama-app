@@ -852,7 +852,7 @@ model Loan {
   generalLedger      GeneralLedger[]
   guarantors         GuarantorMap[]
   transactions       LoanTransaction[] // NEW: Strict Loan Ledger
-
+  interestEngineRuns InterestEngineRun[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -927,6 +927,8 @@ model InterestPosting {
   type        InterestPostingType
 
   createdAt DateTime @default(now())
+  runId     String?
+  run       InterestEngineRun? @relation(fields: [runId], references: [id])
 
   // Prevent double-posting for the same period and type
   @@unique([loanId, periodMonth, periodYear, type])
@@ -1518,7 +1520,6 @@ model MeetingAttendee {
   @@index([memberId])
   @@index([meetingId])
 }
-
 enum ApologyStatus {
   PENDING
   APPROVED
@@ -1610,6 +1611,23 @@ model LoanApproval {
 
   @@index([loanId])
   @@index([approverId])
+}
+
+model InterestEngineRun {
+  id                String            @id @default(uuid())
+  startedAt         DateTime          @default(now())
+  completedAt       DateTime?
+  status            String            @default("RUNNING") // RUNNING, SUCCESS, FAILED, REVERSED
+  affectedLoanCount Int               @default(0)
+  totalInterest     Decimal           @default(0) @db.Decimal(19, 4)
+  error             String?
+  postings          InterestPosting[]
+  transactions      LoanTransaction[]
+  loanId            String?
+  loan              Loan?             @relation(fields: [loanId], references: [id])
+
+  @@index([status])
+  @@index([startedAt])
 }
 
 model LoanJourneyEvent {
@@ -1837,6 +1855,8 @@ model LoanTransaction {
   id     String @id @default(cuid())
   loanId String
   loan   Loan   @relation(fields: [loanId], references: [id])
+  runId  String?
+  run    InterestEngineRun? @relation(fields: [runId], references: [id])
 
   type   LoanTransactionType
   amount Decimal             @db.Decimal(15, 2)

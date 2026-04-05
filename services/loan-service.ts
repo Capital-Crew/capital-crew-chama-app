@@ -316,6 +316,9 @@ export class LoanService {
                 isFullyPaid,
                 finalStatus
             }
+        }, {
+            maxWait: 10000,
+            timeout: 60000
         })
 
         // ========================================
@@ -693,8 +696,8 @@ export class LoanService {
 
             return { success: true }
         }, {
-            maxWait: 5000,
-            timeout: 10000
+            maxWait: 10000,
+            timeout: 60000
         })
     }
 }

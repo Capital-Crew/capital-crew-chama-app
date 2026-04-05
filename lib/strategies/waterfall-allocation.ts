@@ -106,19 +106,22 @@ export class WaterfallAllocation {
         // 3. Handle Excess (Overpayment) - Only for Repayments
         let overpayment = new Prisma.Decimal(0);
         if (remaining.gt(0) && type === 'REPAYMENT') {
-            // Record overpayment as additional principal payment
-            await tx.loan.update({
-                where: { id: loanId },
-                data: {
-                    // This will be recalculated by LoanBalanceService, but we track it here
-                    current_balance: { decrement: remaining.toNumber() }
-                }
-            });
-
             overpayment = remaining;
             totalPrincipal = totalPrincipal.add(remaining);
             remaining = new Prisma.Decimal(0);
         }
+
+        // 4. Update Loan Record (Balance and Accrued Totals)
+        await tx.loan.update({
+            where: { id: loanId },
+            data: {
+                // Decrement current balance by total amount (P+I+Pen)
+                current_balance: { decrement: amountDecimal.toNumber() },
+                // Sync Accrued Totals
+                accruedInterestTotal: { decrement: totalInterest },
+                penalties: { decrement: totalPenalty }
+            }
+        });
 
         // 4. Record the Transaction
         const finalDescription = description || (type === 'WAIVER' 

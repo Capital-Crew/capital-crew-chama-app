@@ -27,8 +27,8 @@ export class TransactionReversalService {
     ) {
 
 
-        // Time Limit Check (7 Days)
-        const REVERSAL_WINDOW_DAYS = 7
+        // Time Limit Check (30 Days)
+        const REVERSAL_WINDOW_DAYS = 30
 
         try {
             return await db.$transaction(async (tx) => {

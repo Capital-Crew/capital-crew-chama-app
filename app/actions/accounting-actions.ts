@@ -663,7 +663,7 @@ export async function updateAccountType(accountId: string, newType: string) {
         throw new Error("Unauthorized");
     }
 
-    const validTypes = ['ASSET', 'LIABILITY', 'EQUITY', 'INCOME', 'EXPENSE'];
+    const validTypes = ['ASSET', 'LIABILITY', 'EQUITY', 'INCOME', 'REVENUE', 'EXPENSE'];
     if (!validTypes.includes(newType)) {
         throw new Error("Invalid account type");
     }

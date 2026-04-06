@@ -457,6 +457,11 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
 
     // We explicitly define the list of granular events...
     const allSystemTypes: SystemAccountType[] = [
+        'CASH_ON_HAND',
+        'RECEIVABLES',
+        'MEMBER_WALLET',
+        'CONTRIBUTIONS',
+        'REVENUE',
         // Income
         'INCOME_LOAN_INTEREST',
         'RECEIVABLE_LOAN_INTEREST',
@@ -471,7 +476,8 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
         'EVENT_CASH_WITHDRAWAL',
         'EVENT_LOAN_DISBURSEMENT',
         'EVENT_LOAN_REPAYMENT_PRINCIPAL',
-        'EVENT_SHARE_CONTRIBUTION'
+        'EVENT_SHARE_CONTRIBUTION',
+        'EVENT_MEETING_FINES'
     ] as any
     const mergedList = allSystemTypes.map(type => {
         const existing = mappings.find(m => m.type === type)
@@ -1087,7 +1093,9 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                                                     <Select
                                                         value={acc.type}
                                                         onValueChange={(value) => {
-                                                            const promise = updateAccountType(acc.id, value)
+                                                            const promise = updateAccountType(acc.id, value).then(() => {
+                                                               loadData();
+                                                            });
                                                             toast.promise(promise, {
                                                                 loading: 'Updating account type...',
                                                                 success: 'Account type and ledger corrected',

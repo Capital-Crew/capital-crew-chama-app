@@ -1098,7 +1098,7 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                                                         <SelectTrigger className={`w-[140px] h-8 text-xs font-bold border-0 ring-0 focus:ring-0 ${acc.type === 'ASSET' ? 'bg-blue-100/50 text-blue-700' :
                                                             acc.type === 'LIABILITY' ? 'bg-red-100/50 text-red-700' :
                                                                 acc.type === 'EQUITY' ? 'bg-purple-100/50 text-purple-700' :
-                                                                    acc.type === 'INCOME' ? 'bg-green-100/50 text-green-700' :
+                                                                    acc.type === 'INCOME' || acc.type === 'REVENUE' ? 'bg-emerald-100 text-emerald-700' :
                                                                         'bg-orange-100/50 text-orange-700'
                                                             }`}>
                                                             <SelectValue />
@@ -1108,6 +1108,7 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                                                             <SelectItem value="LIABILITY">LIABILITY</SelectItem>
                                                             <SelectItem value="EQUITY">EQUITY</SelectItem>
                                                             <SelectItem value="INCOME">INCOME</SelectItem>
+                                                            <SelectItem value="REVENUE">REVENUE</SelectItem>
                                                             <SelectItem value="EXPENSE">EXPENSE</SelectItem>
                                                         </SelectContent>
                                                     </Select>

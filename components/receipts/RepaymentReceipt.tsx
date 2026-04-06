@@ -163,20 +163,18 @@ export function RepaymentReceipt({ data }: { data: ReceiptData }) {
     return (
         <Document>
             <Page size="A5" style={styles.page}>
-                {}
+                { }
                 <View style={styles.header}>
-                    <Text style={styles.logoText}>CAPITAL CREW SACCO</Text>
+                    <Text style={styles.logoText}>CAPITAL CREW SHG</Text>
                     <View style={styles.companyInfo}>
-                        <Text>P.O. Box 1234, Nairobi</Text>
-                        <Text>Tel: +254 700 000000</Text>
-                        <Text>Email: info@capitalcrew.co.ke</Text>
+                        <Text>Email: capitalcrew@gmail.com</Text>
                     </View>
                 </View>
 
-                {}
+                { }
                 <Text style={styles.title}>Official Receipt</Text>
 
-                {}
+                { }
                 <View style={[styles.row, { justifyContent: 'space-between' }]}>
                     <View style={{ width: '48%' }}>
                         <Text style={{ ...styles.section, color: '#637381', fontSize: 9 }}>RECEIVED FROM:</Text>
@@ -191,7 +189,7 @@ export function RepaymentReceipt({ data }: { data: ReceiptData }) {
                     </View>
                 </View>
 
-                {}
+                { }
                 <View style={styles.table}>
                     <View style={styles.tableRow}>
                         <View style={styles.tableCol}>
@@ -239,7 +237,7 @@ export function RepaymentReceipt({ data }: { data: ReceiptData }) {
                     )}
                 </View>
 
-                {}
+                { }
                 <View style={styles.totalRow}>
                     <Text style={styles.totalLabel}>TOTAL AMOUNT PAID:</Text>
                     <Text style={styles.totalValue}>{formatCurrency(amount)}</Text>
@@ -249,7 +247,7 @@ export function RepaymentReceipt({ data }: { data: ReceiptData }) {
                     ({description})
                 </Text>
 
-                {}
+                { }
                 <View style={styles.footer}>
                     <Text>This is a system generated receipt and does not require a signature.</Text>
                     <Text>Capital Crew Sacco System • {format(new Date(), 'yyyy')}</Text>

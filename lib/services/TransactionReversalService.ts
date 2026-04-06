@@ -6,6 +6,7 @@ import { TransactionReplayService } from './TransactionReplayService'
 import { revalidatePath } from 'next/cache'
 
 export type ReversalType = 'LOAN' | 'SAVINGS' | 'SHARE' | 'EXPENSE'
+export const REVERSAL_WINDOW_DAYS = 30
 
 export class TransactionReversalService {
 
@@ -27,8 +28,7 @@ export class TransactionReversalService {
     ) {
 
 
-        // Time Limit Check (30 Days)
-        const REVERSAL_WINDOW_DAYS = 30
+        // Time Limit Check (Centralized)
 
         try {
             return await db.$transaction(async (tx) => {

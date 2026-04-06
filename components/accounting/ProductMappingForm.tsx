@@ -18,9 +18,9 @@ interface ProductMappingFormProps {
 }
 
 const MAPPING_TYPES = [
-    { key: 'INTEREST_INCOME', label: 'Interest Revenue Account', typeFilter: 'INCOME' },
+    { key: 'INTEREST_INCOME', label: 'Interest Revenue Account', typeFilter: ['INCOME', 'REVENUE'] },
     { key: 'INTEREST_RECEIVABLE', label: 'Interest Receivable Account', typeFilter: 'ASSET' },
-    { key: 'PENALTY_INCOME', label: 'Penalty Revenue Account', typeFilter: 'INCOME' },
+    { key: 'PENALTY_INCOME', label: 'Penalty Revenue Account', typeFilter: ['INCOME', 'REVENUE'] },
     { key: 'PENALTY_RECEIVABLE', label: 'Penalty Receivable Account', typeFilter: 'ASSET' },
     { key: 'LOAN_PORTFOLIO', label: 'Loan Portfolio Account', typeFilter: 'ASSET' },
     { key: 'FUND_SOURCE', label: 'Fund Source (Bank/Cash)', typeFilter: 'ASSET' }, // Could be Liability or Equity too depending on structure
@@ -76,6 +76,10 @@ export function ProductMappingForm({ productId, glAccounts, initialMappings = {}
                 {MAPPING_TYPES.map((field) => {
                     const filteredAccounts = glAccounts.filter(acc => {
                         if (field.key === 'FUND_SOURCE') return true // Allow all for Fund Source just in case
+                        
+                        if (Array.isArray(field.typeFilter)) {
+                            return field.typeFilter.includes(acc.type)
+                        }
                         return acc.type === field.typeFilter
                     })
 
@@ -100,7 +104,7 @@ export function ProductMappingForm({ productId, glAccounts, initialMappings = {}
                                     </option>
                                 ))}
                             </select>
-                            <p className="text-xs text-gray-400">Target Type: {field.typeFilter}</p>
+                            <p className="text-xs text-gray-400">Target Type: {Array.isArray(field.typeFilter) ? field.typeFilter.join(' / ') : field.typeFilter}</p>
                         </div>
                     )
                 })}

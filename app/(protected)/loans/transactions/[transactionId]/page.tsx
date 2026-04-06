@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import Link from 'next/link';
 import { GLEntriesTable } from '@/components/loans/GLEntriesTable';
 import { TransactionActionMenu } from '@/components/loans/TransactionActionMenu';
+import { BackButton } from '@/components/shared/BackButton';
 import { LoanTransaction } from '@/lib/types/loan-transaction';
 import { auth } from "@/auth"
 import { protectPage } from "@/lib/with-module-protection"
@@ -30,11 +31,11 @@ export default async function TransactionDetailsPage({ params }: PageProps) {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
             {}
             <div className="flex items-center text-sm text-slate-500">
-                <Link href={`/loans/${loan?.id}`} className="hover:text-teal-600 hover:underline">
-                    &larr; Back to Loan {loan?.loanApplicationNumber}
-                </Link>
-                <span className="mx-2">/</span>
-                <span className="font-semibold text-slate-700">Transaction Details</span>
+                <BackButton 
+                    label={`Back to Loan ${loan?.loanApplicationNumber}`}
+                    fallbackRoute={`/loans/${loan?.id}`}
+                    className="mb-0"
+                />
             </div>
 
             {}

@@ -4,6 +4,7 @@ import { auth } from '@/auth'
 import { db as prisma } from '@/lib/db'
 import { AccountingEngine } from '@/lib/accounting/AccountingEngine'
 import { TransactionReplayService } from '@/lib/services/TransactionReplayService'
+import { REVERSAL_WINDOW_DAYS } from '@/lib/services/TransactionReversalService'
 import { Prisma, AuditLogAction } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 import { getSystemMappingsDict } from '@/app/actions/system-accounting'
@@ -64,9 +65,9 @@ export const reverseLoanTransaction = withAudit(
 
                 const txDate = originalTx.transactionDate || originalTx.postedAt
                 const daysSince = differenceInDays(new Date(), txDate)
-                if (daysSince > 7) {
+                if (daysSince > REVERSAL_WINDOW_DAYS) {
                     ctx.setErrorCode('TIME_LIMIT_EXCEEDED');
-                    throw new Error(`Reversal time limit exceeded. Transaction is ${daysSince} days old (Limit: 7 days).`)
+                    throw new Error(`Reversal time limit exceeded. Transaction is ${daysSince} days old (Limit: ${REVERSAL_WINDOW_DAYS} days).`)
                 }
                 ctx.endStep('Validate Original Transaction');
 

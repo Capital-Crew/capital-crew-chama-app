@@ -49,7 +49,7 @@ export function UserRightsManagementModule({ users = [], modules = [], permissio
                     loanMultiplier: Number(settings.loanMultiplier),
                     processingFeePercent: Number(settings.processingFeePercent),
                     insuranceFeePercent: Number(settings.insuranceFeePercent),
-                    shareCapitalBoost: Number(settings.shareCapitalBoost),
+                    contributionBoost: Number(settings.contributionBoost),
                     penaltyRate: Number(settings.penaltyRate) || 5.0,
                     requiredApprovals: Number(settings.requiredApprovals) || 3,
                     requiredWelfareApprovals: Number(settings.requiredWelfareApprovals) || 3,

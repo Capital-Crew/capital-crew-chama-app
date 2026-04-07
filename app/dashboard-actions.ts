@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Dashboard Statistics Actions
  * 
  * Server actions for fetching group-wide dashboard metrics
@@ -19,10 +19,11 @@ export async function getDashboardStatsSync(): Promise<Serialized<any>> {
 
     const prisma = db as any
 
-    // 1. Fetch Members mapping
-    const allMembers = await prisma.member.findMany({
-        select: { id: true, name: true }
-    })
+    // 1. Fetch Members mapping and Settings
+    const [allMembers, settings] = await Promise.all([
+        prisma.member.findMany({ select: { id: true, name: true } }),
+        prisma.saccoSettings.findFirst()
+    ])
     const memberMap = new Map(allMembers.map((m: any) => [m.id, m.name]))
 
     // 2. Parallel Fetching of Data
@@ -110,6 +111,8 @@ export async function getDashboardStatsSync(): Promise<Serialized<any>> {
         } else {
             loanArrearsMap.set(loanId, {
                 loanId: inst.loanId,
+                loanMultiplier: Number(settings?.loanMultiplier || 3),
+                contributionBoost: Number(settings?.contributionBoost || 0),
                 loanNumber: inst.loan.loanApplicationNumber,
                 memberName: inst.loan.member.name,
                 memberId: inst.loan.member.id,

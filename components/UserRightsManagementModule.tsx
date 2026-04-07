@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import React, { useState, useEffect } from 'react';
 import { getSaccoSettings, updateSaccoSettings } from '@/app/sacco-settings-actions';
@@ -26,7 +26,7 @@ export function UserRightsManagementModule({ users = [], modules = [], permissio
         loanMultiplier: 3.0,
         processingFeePercent: 2.0,
         insuranceFeePercent: 1.0,
-        shareCapitalBoost: 500,
+        contributionBoost: 500,
         penaltyRate: 5.0,
         requiredApprovals: 3,
         requiredWelfareApprovals: 3,

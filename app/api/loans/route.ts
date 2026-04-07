@@ -140,11 +140,11 @@ export async function POST(request: NextRequest) {
                 status: 'APPLICATION', // Started as APPLICATION for review
 
                 // Appraisal fields
-                memberSharesAtApplication: appraisal.memberShares,
+                memberContributionsAtApplication: appraisal.memberContributions,
                 grossQualifyingAmount: appraisal.grossQualifyingAmount,
                 processingFee: appraisal.processingFee,
                 insuranceFee: appraisal.insuranceFee,
-                shareCapitalDeduction: appraisal.shareCapitalDeduction,
+                contributionDeduction: appraisal.contributionDeduction,
                 existingLoanOffset: appraisal.selectedLoansOffset,  // Fixed: use selectedLoansOffset
                 totalDeductions: appraisal.totalDeductions,
                 netDisbursementAmount: appraisal.netDisbursementAmount,
@@ -172,7 +172,7 @@ export async function POST(request: NextRequest) {
                 metadata: {
                     requestedAmount,
                     netDisbursementAmount: appraisal.netDisbursementAmount,
-                    memberShares: appraisal.memberShares
+                    memberContributions: appraisal.memberContributions
                 }
             }
         })

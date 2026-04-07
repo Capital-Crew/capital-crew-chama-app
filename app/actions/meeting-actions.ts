@@ -180,7 +180,7 @@ export async function processMeetingAttendance(input: {
                                     accountId: settings.meetingFeesGlId,
                                     debitAmount: 0,
                                     creditAmount: penaltyAmount,
-                                    description: `Penalty Income Recognition`
+                                    description: `Penalty Revenue Recognition`
                                 }
                             ]
                         }, tx);

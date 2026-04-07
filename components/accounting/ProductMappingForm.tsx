@@ -18,9 +18,9 @@ interface ProductMappingFormProps {
 }
 
 const MAPPING_TYPES = [
-    { key: 'INTEREST_INCOME', label: 'Interest Revenue Account', typeFilter: ['INCOME', 'REVENUE'] },
+    { key: 'INTEREST_INCOME', label: 'Interest Revenue Account', typeFilter: 'REVENUE' },
     { key: 'INTEREST_RECEIVABLE', label: 'Interest Receivable Account', typeFilter: 'ASSET' },
-    { key: 'PENALTY_INCOME', label: 'Penalty Revenue Account', typeFilter: ['INCOME', 'REVENUE'] },
+    { key: 'PENALTY_INCOME', label: 'Penalty Revenue Account', typeFilter: 'REVENUE' },
     { key: 'PENALTY_RECEIVABLE', label: 'Penalty Receivable Account', typeFilter: 'ASSET' },
     { key: 'LOAN_PORTFOLIO', label: 'Loan Portfolio Account', typeFilter: 'ASSET' },
     { key: 'FUND_SOURCE', label: 'Fund Source (Bank/Cash)', typeFilter: 'ASSET' }, // Could be Liability or Equity too depending on structure

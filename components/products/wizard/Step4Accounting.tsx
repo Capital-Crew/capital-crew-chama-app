@@ -19,7 +19,7 @@ export function Step4Accounting({ accounts }: Step4AccountingProps) {
 
 
     const assetAccounts = accounts.filter(a => a.type === 'ASSET');
-    const revenueAccounts = accounts.filter(a => a.type === 'REVENUE' || a.type === 'INCOME'); // Handle variation
+    const revenueAccounts = accounts.filter(a => a.type === 'REVENUE'); 
 
     const renderSelect = (name: keyof LoanProductWizardValues, label: string, filteredAccounts: Account[], placeholder: string) => (
         <div className="space-y-2">
@@ -60,7 +60,7 @@ export function Step4Accounting({ accounts }: Step4AccountingProps) {
                 <div className="space-y-4 border-b border-slate-100 pb-4">
                     <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Interest Mapping</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {renderSelect("interestIncomeAccountId", "Interest Income", revenueAccounts, "Select Revenue Account")}
+                        {renderSelect("interestRevenueAccountId", "Interest Revenue", revenueAccounts, "Select Revenue Account")}
                         {renderSelect("interestReceivableAccountId", "Interest Receivable", assetAccounts, "Select Asset Account")}
                     </div>
                 </div>
@@ -69,7 +69,7 @@ export function Step4Accounting({ accounts }: Step4AccountingProps) {
                 <div className="space-y-4">
                     <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Penalty Mapping</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {renderSelect("penaltyIncomeAccountId", "Penalty Income", revenueAccounts, "Select Revenue Account")}
+                        {renderSelect("penaltyRevenueAccountId", "Penalty Revenue", revenueAccounts, "Select Revenue Account")}
                         {renderSelect("penaltyReceivableAccountId", "Penalty Receivable", assetAccounts, "Select Asset Account")}
                     </div>
                 </div>

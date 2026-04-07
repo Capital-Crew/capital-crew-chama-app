@@ -24,7 +24,7 @@ export class MemberBalanceProjectionHandler {
                 data: {
                     memberId,
                     walletBalance: amount,
-                    shareCapital: 0,
+                    contributionBalance: 0,
                     totalLoansActive: 0,
                     totalLoansDisbursed: 0,
                     totalLoansOutstanding: 0,
@@ -61,9 +61,9 @@ export class MemberBalanceProjectionHandler {
     }
 
     /**
-     * Handle SHARE_CONTRIBUTION_MADE event
+     * Handle CONTRIBUTION_MADE event
      */
-    static async handleShareContribution(event: DomainEvent & { id: string; timestamp: Date }) {
+    static async handleMemberContribution(event: DomainEvent & { id: string; timestamp: Date }) {
         const { memberId, amount } = event.metadata
 
         const projection = await db.memberBalanceProjection.findUnique({
@@ -75,7 +75,7 @@ export class MemberBalanceProjectionHandler {
                 data: {
                     memberId,
                     walletBalance: 0,
-                    shareCapital: amount,
+                    contributionBalance: amount,
                     totalLoansActive: 0,
                     totalLoansDisbursed: 0,
                     totalLoansOutstanding: 0,
@@ -87,7 +87,7 @@ export class MemberBalanceProjectionHandler {
             await db.memberBalanceProjection.update({
                 where: { memberId },
                 data: {
-                    shareCapital: projection.shareCapital + amount,
+                    contributionBalance: projection.contributionBalance + amount,
                     lastEventId: event.id,
                     lastUpdated: event.timestamp
                 }
@@ -118,7 +118,7 @@ export class MemberBalanceProjectionHandler {
                 data: {
                     memberId: loan.memberId,
                     walletBalance: 0,
-                    shareCapital: 0,
+                    contributionBalance: 0,
                     totalLoansActive: 1,
                     totalLoansDisbursed: amount,
                     totalLoansOutstanding: amount,
@@ -207,8 +207,8 @@ export class MemberBalanceProjectionHandler {
                 case 'WALLET_WITHDRAWAL_MADE':
                     await this.handleWalletWithdrawal(event as any)
                     break
-                case 'SHARE_CONTRIBUTION_MADE':
-                    await this.handleShareContribution(event as any)
+                case 'CONTRIBUTION_MADE':
+                    await this.handleMemberContribution(event as any)
                     break
                 case 'LOAN_DISBURSED':
                     await this.handleLoanDisbursed(event as any)

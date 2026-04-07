@@ -142,7 +142,7 @@ export class ContributionsService {
                         description: `Transfer to Contributions`
                     },
                     {
-                        accountCode: (await getSystemMappingsDict()).EVENT_SHARE_CONTRIBUTION || '3011', // Credit Contributions (Member Fund)
+                        accountCode: (await getSystemMappingsDict()).EVENT_CONTRIBUTION_PAYMENT || '3011', // Credit Contributions (Member Fund)
                         debitAmount: 0,
                         creditAmount: amount,
                         description: `Share Contribution`
@@ -156,11 +156,11 @@ export class ContributionsService {
                 data: { ledgerTransactionId: journalEntry.id }
             });
 
-            // 6. Update member.shareContributions (Legacy field for compatibility)
+            // 6. Update member.contributionBalance (Legacy field for compatibility)
             await tx.member.update({
                 where: { id: memberId },
                 data: {
-                    shareContributions: {
+                    contributionBalance: {
                         increment: amount
                     }
                 }

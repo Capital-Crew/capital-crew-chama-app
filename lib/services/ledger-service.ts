@@ -26,7 +26,6 @@ export class LedgerService {
         LIABILITY: '2',
         EQUITY: '3',
         REVENUE: '4',
-        INCOME: '4',
         EXPENSE: '5'
     };
 
@@ -50,7 +49,7 @@ export class LedgerService {
         if (parentId) {
             const parent = await db.ledgerAccount.findUnique({ where: { id: parentId } });
             if (!parent) throw new Error('Parent ledger not found');
-            if (parent.type !== type && !(parent.type === 'INCOME' && type === 'REVENUE')) {
+            if (parent.type !== type) {
                 throw new Error(`Child ledger type (${type}) must match parent type (${parent.type})`);
             }
             if (!code.startsWith(parent.code)) {

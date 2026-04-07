@@ -81,17 +81,15 @@ export const directLoadLoan = withAudit(
                         disbursementDate: disbDate,
                         applicationDate: disbDate,
                         status: LoanStatus.ACTIVE,
-                        current_balance: amount,
-                        outstandingBalance: amount, // updated below after schedule
                         interestRate,
                         interestRatePerMonth: interestRate, // store monthly rate
                         dueDate: new Date(new Date(disbDate).setMonth(disbDate.getMonth() + installments)),
                         approvalVotes: [],
-                        memberSharesAtApplication: 0,
+                        memberContributionsAtApplication: 0,
                         grossQualifyingAmount: amount,
                         processingFee: 0,
                         insuranceFee: 0,
-                        shareCapitalDeduction: 0,
+                        contributionDeduction: 0,
                         existingLoanOffset: 0,
                         totalDeductions: 0,
                         netDisbursementAmount: amount,
@@ -123,16 +121,10 @@ export const directLoadLoan = withAudit(
                 })
 
                 // STEP 3: Compute total outstanding (principal + all interest)
-                const totalOutstanding = scheduleData.reduce(
-                    (sum, item) => sum + Number(item.principalDue) + Number(item.interestDue), 0
-                )
-                await tx.loan.update({
-                    where: { id: newLoan.id },
-                    data: {
-                        outstandingBalance: totalOutstanding,
-                        current_balance: totalOutstanding,
-                    }
-                })
+                // This is now purely via Ledger, no direct field update on Loan needed for authoritative balance
+                // but we can call updateLoanBalance to ensure the 1.0 (read-only) cache is populated if we ever re-add it.
+                const { LoanBalanceService } = await import('@/services/loan-balance')
+                await LoanBalanceService.updateLoanBalance(newLoan.id, tx)
 
                 // STEP 4: Balance B/F transaction entry
                 await tx.loanTransaction.create({
@@ -170,15 +162,13 @@ export const directLoadLoan = withAudit(
                                     accountId: loanPortfolioAcc.id,
                                     debitAmount: amount,
                                     creditAmount: 0,
-                                    description: `Loan Portfolio — Balance B/F`,
-                                    index: 0
+                                    description: `Loan Portfolio — Balance B/F`
                                 },
                                 {
                                     accountId: fundSourceAcc.id,
                                     debitAmount: 0,
                                     creditAmount: amount,
-                                    description: `Fund Source — Balance B/F`,
-                                    index: 1
+                                    description: `Fund Source — Balance B/F`
                                 }
                             ],
                             createdBy: actorId,

@@ -2,9 +2,9 @@ export interface MemberStats {
     // Column 1
     memberNumber: string;
     name: string;
-    shareCapital: number;
-    normalShares: number;
-    fosaShares: number;
+    contributionBalance: number;
+    normalContributions: number;
+    fosaContributions: number;
 
     // Real-time fields
     memberSavings?: number;
@@ -29,6 +29,10 @@ export interface MemberStats {
     totalLoanArrears: number;
     monthlyDue: number;
     totalDue: number;
+
+    // Fines
+    meetingFines: number;
+    contributionLatenessFines: number;
 }
 
 export interface LoanPortfolioItem {

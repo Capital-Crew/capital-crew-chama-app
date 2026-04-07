@@ -178,7 +178,7 @@ export async function getMonthlyTrends(): Promise<Serialized<any[]>> {
                     }
                 },
                 ledgerTransaction: {
-                    referenceType: 'SHARE_CONTRIBUTION',
+                    referenceType: 'CONTRIBUTION_PAYMENT',
                     isReversed: false,
                     transactionDate: {
                         gte: startDate,

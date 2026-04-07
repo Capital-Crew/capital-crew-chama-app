@@ -433,11 +433,11 @@ export function LoanApplicationForm({
                                         </span>
                                     </div>
 
-                                    {qualification.shareCapitalDeduction > 0 && (
+                                    {qualification.contributionDeduction > 0 && (
                                         <div className="flex justify-between items-center py-2 border-b border-slate-200/50 border-dashed">
                                             <span className="text-slate-600 font-bold">Contributions Deduction</span>
                                             <span className="font-black text-red-500 text-xs">
-                                                - KES {qualification.shareCapitalDeduction.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                - KES {qualification.contributionDeduction.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </span>
                                         </div>
                                     )}
@@ -475,7 +475,7 @@ export function LoanApplicationForm({
                                             KES {(
                                                 qualification.processingFee +
                                                 qualification.insuranceFee +
-                                                (qualification.shareCapitalDeduction || 0) +
+                                                (qualification.contributionDeduction || 0) +
                                                 (qualification.topUpFee || 0) +
                                                 (qualification.selectedLoansOffset || 0)
                                             ).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -497,7 +497,7 @@ export function LoanApplicationForm({
                                         (watchedAmount && parseFloat(watchedAmount) > 0 ? parseFloat(watchedAmount) : 0) -
                                         qualification.processingFee -
                                         qualification.insuranceFee -
-                                        (qualification.shareCapitalDeduction || 0) -
+                                        (qualification.contributionDeduction || 0) -
                                         (qualification.topUpFee || 0) -
                                         (qualification.selectedLoansOffset || 0)
                                     ).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

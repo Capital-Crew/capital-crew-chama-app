@@ -3,6 +3,7 @@ import { auth } from '@/auth'
 import { db as prisma } from '@/lib/db'
 import { serializeLoan } from '@/lib/serializers'
 import { getMemberContributionBalance } from '@/lib/accounting/AccountingEngine'
+import { Prisma } from '@prisma/client'
 
 /**
  * GET /api/loans/:id - Fetch full loan card with appraisal, approvals, and journey
@@ -96,21 +97,21 @@ export async function GET(
         // Ensure strictly numbers for deductions
         const processingFee = Number(loan.processingFee) || 0
         const insuranceFee = Number(loan.insuranceFee) || 0
-        const shareCapitalDeduction = Number(loan.shareCapitalDeduction) || 0
+        const contributionDeduction = Number(loan.contributionDeduction) || 0
 
-        const calculatedTotalDeductions = processingFee + insuranceFee + shareCapitalDeduction + calculatedOffset
+        const calculatedTotalDeductions = processingFee + insuranceFee + contributionDeduction + calculatedOffset
         const calculatedNetDisbursement = Number(loan.amount) - calculatedTotalDeductions
 
         // FIX: Handle classic negative equity bug
         // 1. If snapshot is negative, make it positive (historical fix)
-        let effectiveShares = Number(loan.memberSharesAtApplication)
-        if (effectiveShares < 0) effectiveShares = Math.abs(effectiveShares)
+        let effectiveContributions = Number(loan.memberContributionsAtApplication)
+        if (effectiveContributions < 0) effectiveContributions = Math.abs(effectiveContributions)
 
         // 2. If loan is PENDING, fetch fresh balance to ensure accuracy for appraisal
         if (loan.status === 'PENDING_APPROVAL') {
             try {
                 const freshBalance = await getMemberContributionBalance(loan.memberId)
-                if (freshBalance > 0) effectiveShares = freshBalance
+                if (freshBalance > 0) effectiveContributions = freshBalance
             } catch (e) {
             }
         }
@@ -133,15 +134,15 @@ export async function GET(
                 })),
 
                 // Override with dynamic calculations
-                memberSharesAtApplication: effectiveShares, // Use corrected value
-                existingLoanOffset: calculatedOffset,
-                totalDeductions: calculatedTotalDeductions,
-                netDisbursementAmount: calculatedNetDisbursement,
+                memberContributionsAtApplication: new Prisma.Decimal(effectiveContributions), // Use corrected value
+                existingLoanOffset: new Prisma.Decimal(calculatedOffset),
+                totalDeductions: new Prisma.Decimal(calculatedTotalDeductions),
+                netDisbursementAmount: new Prisma.Decimal(calculatedNetDisbursement),
 
                 approvalsCount,
                 currentUserHasApproved,
                 approvalsRequired: requiredApprovals
-            })
+            } as any)
         }
 
         // Fetch Active Workflow Request (if any)

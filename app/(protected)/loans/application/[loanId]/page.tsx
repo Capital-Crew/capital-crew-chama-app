@@ -72,16 +72,14 @@ export default async function LoanDraftPage({ params }: PageProps) {
     const serializedLoan = {
         ...loan,
         amount: Number(loan.amount || 0),
-        current_balance: Number(loan.current_balance || 0),
-        outstandingBalance: Number(loan.outstandingBalance || 0),
         interestRate: Number(loan.interestRate || 0),
         penalties: Number(loan.penalties || 0),
         // ... other decimals
-        memberSharesAtApplication: Number(loan.memberSharesAtApplication || 0),
+        memberContributionsAtApplication: Number(loan.memberContributionsAtApplication || 0),
         grossQualifyingAmount: Number(loan.grossQualifyingAmount || 0),
         processingFee: Number(loan.processingFee || 0),
         insuranceFee: Number(loan.insuranceFee || 0),
-        shareCapitalDeduction: Number(loan.shareCapitalDeduction || 0),
+        contributionDeduction: Number(loan.contributionDeduction || 0),
         existingLoanOffset: Number(loan.existingLoanOffset || 0),
         totalDeductions: Number(loan.totalDeductions || 0),
         netDisbursementAmount: Number(loan.netDisbursementAmount || 0),

@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-    getAllLedgers as getChartOfAccounts,
+    getAllLedgers,
     approveLedgerAction,
     closeLedgerAction,
     reactivateLedgerAction,
@@ -148,7 +148,7 @@ export function LedgerManager() {
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${ledger.type === 'ASSET' ? 'bg-blue-100 text-blue-700' :
                             ledger.type === 'LIABILITY' ? 'bg-amber-100 text-amber-700' :
                                 ledger.type === 'EQUITY' ? 'bg-purple-100 text-purple-700' :
-                                    ledger.type === 'REVENUE' || ledger.type === 'INCOME' ? 'bg-emerald-100 text-emerald-700' :
+                                                                ledger.type === 'REVENUE' ? 'bg-emerald-100 text-emerald-700' :
                                         'bg-rose-100 text-rose-700'
                             }`}>
                             {ledger.type}
@@ -287,7 +287,7 @@ export function LedgerManager() {
                                                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${ledger.type === 'ASSET' ? 'bg-blue-100 text-blue-700' :
                                                         ledger.type === 'LIABILITY' ? 'bg-amber-100 text-amber-700' :
                                                             ledger.type === 'EQUITY' ? 'bg-purple-100 text-purple-700' :
-                                                                ledger.type === 'REVENUE' || ledger.type === 'INCOME' ? 'bg-emerald-100 text-emerald-700' :
+                                                                                            ledger.type === 'REVENUE' ? 'bg-emerald-100 text-emerald-700' :
                                                                     'bg-rose-100 text-rose-700'
                                                         }`}>{ledger.type}</span>
                                                 </div>

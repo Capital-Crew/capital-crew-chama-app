@@ -21,9 +21,8 @@ interface MemberQuickStatsProps {
             image?: string
         }
         financials: {
-            memberSavings?: number
-            contributions?: number
-            cumulativeContributions?: number
+            savingsBalance?: number
+            contributionBalance?: number
             outstandingLoans?: number
             meetingFines?: number
             contributionLatenessFines?: number
@@ -113,8 +112,8 @@ export function MemberQuickStats({ memberId, stats, onViewLoans }: MemberQuickSt
         }
     }
 
-    const memberSavings = stats.financials.memberSavings ?? 0
-    const contributions = stats.financials.cumulativeContributions ?? stats.financials.contributions ?? 0
+    const savingsBalance = stats.financials.savingsBalance ?? 0
+    const contributionBalance = stats.financials.contributionBalance ?? 0
     const outstandingLoans = stats.financials.outstandingLoans ?? 0
 
     const initials = `${stats.identity.firstName[0]}${stats.identity.lastName[0]}`
@@ -230,15 +229,15 @@ export function MemberQuickStats({ memberId, stats, onViewLoans }: MemberQuickSt
                         
                         <div className="pt-4 mt-4 border-t border-slate-50 space-y-4">
                             <DetailRow 
-                                label="Member Savings" 
-                                value={formatCurrency(memberSavings)} 
+                                label="Savings Balance" 
+                                value={formatCurrency(savingsBalance)} 
                                 subValue="Available Wallet Balance"
                                 valueColor="text-blue-600"
                             />
                             <DetailRow 
-                                label="Contributions" 
-                                value={formatCurrency(contributions)} 
-                                subValue="Total Share Contributions"
+                                label="Total Contributions" 
+                                value={formatCurrency(contributionBalance)} 
+                                subValue="Capital Contributions"
                                 valueColor="text-emerald-600"
                             />
                             <DetailRow 

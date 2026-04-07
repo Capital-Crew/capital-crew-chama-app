@@ -273,20 +273,12 @@ export class LoanService {
                 await tx.loan.update({
                     where: { id: input.loanId },
                     data: {
-                        status: 'CLEARED',
-                        current_balance: 0,
-                        outstandingBalance: new Prisma.Decimal(0)
+                        status: 'CLEARED'
                     }
                 })
                 finalStatus = 'CLEARED'
             } else {
-                await tx.loan.update({
-                    where: { id: input.loanId },
-                    data: {
-                        current_balance: newOutstanding,
-                        outstandingBalance: newOutstanding
-                    }
-                })
+                // Status remains unchanged
             }
 
             // 10. Create loan journey event (atomic)
@@ -510,7 +502,7 @@ export class LoanService {
             // ... (Fees will be added below and accumulated into totalDeductionsCredit) ...
 
             // CREDIT: Processing Fees
-            const processingIncomeId = await getAccountId(mappings.INCOME_LOAN_PROCESSING_FEE!)
+            const processingIncomeId = await getAccountId(mappings.REVENUE_LOAN_PROCESSING_FEE!)
             if (loan.processingFee.gt(0) && processingIncomeId) {
                 journalLines.push({
                     accountId: processingIncomeId,
@@ -523,7 +515,7 @@ export class LoanService {
             }
 
             // CREDIT: Insurance Fees
-            const generalIncomeId = await getAccountId(mappings.INCOME_GENERAL_FEE!)
+            const generalIncomeId = await getAccountId(mappings.REVENUE_GENERAL_FEE!)
             if (loan.insuranceFee.gt(0) && generalIncomeId) {
                 journalLines.push({
                     accountId: generalIncomeId,
@@ -535,14 +527,14 @@ export class LoanService {
                 totalDeductionsCredit = totalDeductionsCredit.plus(loan.insuranceFee)
             }
 
-            // CREDIT: Share Capital Deduction
-            const shareCapitalId = await getAccountId(mappings.EVENT_SHARE_CONTRIBUTION!)
-            if (loan.shareCapitalDeduction.gt(0) && shareCapitalId) {
+            // CREDIT: Contribution Deduction
+            const shareCapitalId = await getAccountId(mappings.EVENT_CONTRIBUTION_PAYMENT!)
+            if (loan.contributionDeduction.gt(0) && shareCapitalId) {
                 journalLines.push({
                     accountId: shareCapitalId,
                     debitAmount: 0,
-                    creditAmount: loan.shareCapitalDeduction,
-                    description: `Share Capital Deduction`,
+                    creditAmount: loan.contributionDeduction,
+                    description: `Contribution Deduction`,
                     index: lineIndex++
                 })
             }
@@ -567,6 +559,7 @@ export class LoanService {
                 }
 
                 // Refinance Fee Income
+                const refinanceIncomeId = await getAccountId(mappings.REVENUE_REFINANCE_FEE!)
                 if (dRefinanceFee.gt(0) && (refinanceIncomeId || generalIncomeId)) {
                     journalLines.push({
                         accountId: refinanceIncomeId || generalIncomeId!,
@@ -580,7 +573,7 @@ export class LoanService {
             }
 
             // C. DERIVE Net Disbursement (Final Credit line to balance the entry)
-            const dDerivedNetDisbursement = principal.minus(totalDeductionsCredit)
+            const dDerivedNetDisbursement = (principal ? new Prisma.Decimal(principal) : new Prisma.Decimal(0)).minus(totalDeductionsCredit)
             const memberWalletId = await getAccountId(mappings.MEMBER_WALLET!)
 
             if (dDerivedNetDisbursement.gt(0) && memberWalletId) {
@@ -608,10 +601,10 @@ export class LoanService {
             const scheduleData = RepaymentCalculator.generateSchedule(
                 loan.id,
                 {
-                    principal: Number(loan.amount),
-                    interestRatePerMonth: Number(loan.interestRate),
-                    installments: loan.installments,
-                    amortizationType: (loan.loanProduct.amortizationType as any) || 'EQUAL_INSTALLMENTS'
+                    principal: Number(loan.amount || 0),
+                    interestRatePerMonth: Number(loan.interestRate || 0),
+                    installments: loan.installments || 12,
+                    amortizationType: (loan.loanProduct?.amortizationType as any) || 'EQUAL_INSTALLMENTS'
                 },
                 new Date()
             )
@@ -623,13 +616,12 @@ export class LoanService {
                 }))
             })
 
-            // 7. Update Status and Balances
+            // 7. Update Status
             await tx.loan.update({
                 where: { id: loanId },
                 data: {
                     status: LoanStatus.ACTIVE,
-                    disbursementDate: new Date(),
-                    outstandingBalance: new Prisma.Decimal(principal)
+                    disbursementDate: new Date()
                 }
             })
 
@@ -654,8 +646,7 @@ export class LoanService {
                         await tx.loan.update({
                             where: { id: topUp.oldLoanId },
                             data: {
-                                status: 'CLEARED',
-                                outstandingBalance: new Prisma.Decimal(0)
+                                status: 'CLEARED'
                             }
                         })
                         await tx.loanJourneyEvent.create({

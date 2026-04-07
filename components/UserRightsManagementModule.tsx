@@ -304,7 +304,7 @@ export function UserRightsManagementModule({ users = [], modules = [], permissio
                                                     className="w-full bg-slate-50 border-2 border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 rounded-xl px-4 py-3 text-sm font-medium transition-all outline-none"
                                                 >
                                                     <option value="">Select an Account</option>
-                                                    {expenseAccounts?.filter((acc: any) => acc.type === 'REVENUE' || acc.type === 'INCOME').map((acc: any) => (
+                                                    {expenseAccounts?.filter((acc: any) => acc.type === 'REVENUE').map((acc: any) => (
                                                         <option key={acc.id} value={acc.id}>{acc.code} - {acc.name}</option>
                                                     ))}
                                                 </select>

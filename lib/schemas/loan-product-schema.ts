@@ -52,9 +52,9 @@ export const step4Schema = z.object({
     // We expect Account IDs (UUIDs or CUIDs)
     fundSourceAccountId: z.string().min(1, "Fund Source is required"),
     loanPortfolioAccountId: z.string().min(1, "Loan Portfolio is required"),
-    interestIncomeAccountId: z.string().min(1, "Interest Income is required"),
+    interestRevenueAccountId: z.string().min(1, "Interest Revenue is required"),
     interestReceivableAccountId: z.string().min(1, "Interest Receivable is required"),
-    penaltyIncomeAccountId: z.string().min(1, "Penalty Income is required"),
+    penaltyRevenueAccountId: z.string().min(1, "Penalty Revenue is required"),
     penaltyReceivableAccountId: z.string().min(1, "Penalty Receivable is required"),
 });
 

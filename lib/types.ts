@@ -7,7 +7,7 @@ import {
     AuditLog as PrismaAuditLog,
     Notification as PrismaNotification,
     Expense as PrismaExpense,
-    Income as PrismaIncome,
+    Revenue as PrismaRevenue,
     ChargeTemplate as PrismaChargeTemplate,
     LoanStatus,
     ApprovalStatus,
@@ -24,9 +24,9 @@ import {
 export {
     LoanStatus, ApprovalStatus, RepaymentFrequencyType, InterestType,
     InterestCalculationPeriodType, AmortizationType, ChargeType,
-    ChargeCalculationType, UserRole, IncomeCategory, ExpenseCategory,
+    ChargeCalculationType, UserRole, ExpenseCategory,
     NotificationType, AuditLogAction, LedgerStatus, NormalBalance,
-    AccountingPeriodStatus, TransactionStatus
+    AccountingPeriodStatus, TransactionStatus, RevenueCategory
 } from '@prisma/client';
 
 export enum AdjustmentCategory {
@@ -103,7 +103,7 @@ export interface UserPermissions {
     canViewReportPAR: boolean;
     canViewReportTrialBalance: boolean;
     canViewReportBalanceSheet: boolean;
-    canViewReportIncomeStatement: boolean;
+    canViewReportRevenueStatement: boolean;
     canViewReportCashFlow: boolean;
     canViewReportProductProfitability: boolean;
     canViewReportFeeAnalysis: boolean;
@@ -131,7 +131,7 @@ export interface Member extends PrismaMember { }
 export interface Notification extends PrismaNotification { }
 export interface AuditLog extends PrismaAuditLog { }
 export interface Expense extends PrismaExpense { }
-export interface Income extends PrismaIncome { }
+export interface Revenue extends PrismaRevenue { }
 export interface ChargeTemplate extends PrismaChargeTemplate { }
 
 // Payment Gateway Types

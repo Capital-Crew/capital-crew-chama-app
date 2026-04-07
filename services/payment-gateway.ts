@@ -127,18 +127,18 @@ export class PaymentGateway {
                 }
 
                 // 2. Increment share contributions
-                const currentShares = new Prisma.Decimal(member.shareContributions);
+                const currentShares = new Prisma.Decimal(member.contributionBalance);
                 const newShares = currentShares.add(amountDecimal);
 
                 await tx.member.update({
                     where: { id: input.destinationId },
-                    data: { shareContributions: newShares.toNumber() }
+                    data: { contributionBalance: newShares.toNumber() }
                 });
 
                 newDestinationBalance = newShares.toNumber();
 
-                // 3. Create share transaction
-                await tx.shareTransaction.create({
+                // 3. Create contribution transaction
+                await tx.contributionTransaction.create({
                     data: {
                         memberId: input.destinationId,
                         type: 'CONTRIBUTION',
@@ -150,7 +150,7 @@ export class PaymentGateway {
                 });
 
                 // 4. Post to accounting ledger via PostingRules
-                const jeInput = PostingRules.shareContribution(
+                const jeInput = PostingRules.contributionPayment(
                     input.destinationId,
                     member.name,
                     input.amount,

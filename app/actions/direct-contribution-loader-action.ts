@@ -59,18 +59,18 @@ export const directLoadContribution = withAudit(
             const desc = description || 'Balance Brought Forward'
 
             await db.$transaction(async (tx) => {
-                // STEP 1: Update the legacy shareContributions cache for backwards compatibility
-                const currentLegacyBalance = Number(member.shareContributions || 0)
+                // STEP 1: Update the legacy contributionBalance cache for backwards compatibility
+                const currentLegacyBalance = Number(member.contributionBalance || 0)
                 await tx.member.update({
                     where: { id: memberId },
                     data: {
-                        shareContributions: new Prisma.Decimal(currentLegacyBalance + amount)
+                        contributionBalance: new Prisma.Decimal(currentLegacyBalance + amount)
                     }
                 })
 
                 // STEP 2: Post the GL Journal Entry (Debit Asset, Credit Contributions)
                 const mappings = await getSystemMappingsDict()
-                const journalEntry = PostingRules.shareContribution(
+                const journalEntry = PostingRules.contributionPayment(
                     memberId,
                     member.name,
                     amount,
@@ -84,8 +84,8 @@ export const directLoadContribution = withAudit(
 
                 const ledgerTrans = await AccountingEngine.postJournalEntry(journalEntry, tx as any)
 
-                // STEP 3: Create the immutable ShareTransaction record for the UI history
-                await tx.shareTransaction.create({
+                // STEP 3: Create the immutable ContributionTransaction record for the UI history
+                await tx.contributionTransaction.create({
                     data: {
                         memberId,
                         type: 'CONTRIBUTION',
@@ -94,7 +94,7 @@ export const directLoadContribution = withAudit(
                         createdAt: date,
                         createdBy: actorId,
                         creatorName: actorName,
-                        ledgerEntryId: ledgerTrans.id
+                        ledgerTransactionId: ledgerTrans.id
                     }
                 })
             }, {

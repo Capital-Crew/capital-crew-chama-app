@@ -380,11 +380,11 @@ export const applyForLoan = withAudit(
 
         ctx.beginStep('Appraisal Calculation');
         let appraisal = {
-            memberShares: 0,
+            memberContributions: 0,
             grossQualifyingAmount: 0,
             processingFee: 0,
             insuranceFee: 0,
-            shareCapitalDeduction: 0,
+            contributionDeduction: 0,
             selectedLoansOffset: 0,
             totalDeductions: 0,
             netDisbursementAmount: 0,
@@ -469,11 +469,11 @@ export const applyForLoan = withAudit(
                 amount: amount,
                 applicationDate: new Date(),
                 status: newStatus,
-                memberSharesAtApplication: appraisal.memberShares,
+                memberContributionsAtApplication: appraisal.memberContributions,
                 grossQualifyingAmount: appraisal.grossQualifyingAmount,
                 processingFee: appraisal.processingFee,
                 insuranceFee: appraisal.insuranceFee,
-                shareCapitalDeduction: appraisal.shareCapitalDeduction,
+                contributionDeduction: appraisal.contributionDeduction,
                 existingLoanOffset: appraisal.selectedLoansOffset,
                 totalDeductions: appraisal.totalDeductions,
                 netDisbursementAmount: appraisal.netDisbursementAmount,
@@ -939,9 +939,9 @@ export const toggleFeeExemption = withAudit(
             newInsuranceFee = enabled ? 0 : rawInsuranceFee
         }
 
-        const shareCapital = Number(loan.shareCapitalDeduction)
+        const contributionDeduction = Number(loan.contributionDeduction)
         const existingOffset = Number(loan.existingLoanOffset)
-        const totalDeductions = newProcessingFee + newInsuranceFee + shareCapital + existingOffset
+        const totalDeductions = newProcessingFee + newInsuranceFee + contributionDeduction + existingOffset
         const netDisbursement = Math.max(0, Number(loan.amount) - totalDeductions)
         ctx.endStep('Calculate New Fees');
 

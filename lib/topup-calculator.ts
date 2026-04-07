@@ -73,7 +73,7 @@ export function calculateTopUpDetails(
  * @param topUpCalculations - Array of top-up calculations
  * @param processingFee - Processing fee amount
  * @param insuranceFee - Insurance fee amount
- * @param shareCapitalDeduction - Share capital deduction amount
+ * @param contributionDeduction - Contribution deduction amount
  * @returns Validation result with net loan amount
  */
 export function validateNetLoan(
@@ -81,13 +81,13 @@ export function validateNetLoan(
     topUpCalculations: TopUpCalculation[],
     processingFee: number,
     insuranceFee: number,
-    shareCapitalDeduction: number
+    contributionDeduction: number
 ): { valid: boolean; netLoan: number; error?: string } {
     // Calculate total top-up offset
     const totalTopUpOffset = topUpCalculations.reduce((sum, calc) => sum + calc.totalOffset, 0)
 
     // Calculate total deductions
-    const totalDeductions = totalTopUpOffset + processingFee + insuranceFee + shareCapitalDeduction
+    const totalDeductions = totalTopUpOffset + processingFee + insuranceFee + contributionDeduction
 
     // Calculate net loan (what member actually receives)
     const netLoan = newLoanAmount - totalDeductions

@@ -398,14 +398,10 @@ export async function getMemberWalletBalance(memberId: string, tx?: DbClient): P
     return await AccountingEngine.getAccountBalance(wallet.glAccount.code, undefined, undefined, tx)
 }
 
+/**
+ * Member Contribution Balance (Total Non-Withdrawable)
+ */
 export async function getMemberContributionBalance(memberId: string, tx?: DbClient): Promise<number> {
-    const code = await getSystemCode('CONTRIBUTIONS' as SystemAccountType, tx)
-    return await AccountingEngine.getAccountBalance(code, memberId, undefined, tx)
-}
-
-// Member Share Capital Balance
-export async function getMemberShareBalance(memberId: string, tx?: DbClient): Promise<number> {
-    // Use CONTRIBUTIONS as the system account type for share capital
     const code = await getSystemCode('CONTRIBUTIONS' as SystemAccountType, tx)
     return await AccountingEngine.getAccountBalance(code, memberId, undefined, tx)
 }
@@ -595,16 +591,16 @@ export const AccountingService = {
         // 2. Resolve Mappings based on Event Type
         // We need 2 accounts: DEBIT and CREDIT
         let debitType: 'INTEREST_RECEIVABLE' | 'PENALTY_RECEIVABLE' | 'LOAN_PORTFOLIO'
-        let creditType: 'INTEREST_INCOME' | 'PENALTY_INCOME'
+        let creditType: 'INTEREST_REVENUE' | 'PENALTY_REVENUE'
 
         switch (eventType) {
             case 'INTEREST_ACCRUAL':
                 debitType = 'INTEREST_RECEIVABLE' // Asset
-                creditType = 'INTEREST_INCOME'    // Income
+                creditType = 'INTEREST_REVENUE'    // Revenue
                 break
             case 'PENALTY_APPLIED':
                 debitType = 'PENALTY_RECEIVABLE' // Asset (Or Portfolio if capitalized)
-                creditType = 'PENALTY_INCOME'    // Income
+                creditType = 'PENALTY_REVENUE'    // Revenue
                 break
             default:
                 throw new Error(`Unsupported loan event type: ${eventType}`)
@@ -654,7 +650,7 @@ export const AccountingService = {
                     accountCode: (creditMap as any).account.code,
                     debitAmount: 0,
                     creditAmount: amount,
-                    description: `${eventType} Income`
+                    description: `${eventType} Revenue`
                 }
             ]
         }, tx)

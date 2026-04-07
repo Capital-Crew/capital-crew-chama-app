@@ -3,7 +3,7 @@
 import { db } from '@/lib/db'
 
 import { revalidatePath } from 'next/cache'
-import { MemberStats as DetailedMemberStats, LoanPortfolioItem } from '@/types/member-dashboard';
+import { MemberStats as MemberDashboardStats, LoanPortfolioItem } from '@/types/member-dashboard';
 import { serializePrisma } from '@/lib/serialization';
 import { getLoanPenaltyBalance } from '@/lib/accounting/AccountingEngine';
 import { calculateContributionFine } from '@/lib/fines/calculateContributionFine';
@@ -11,7 +11,7 @@ import { calculateContributionFine } from '@/lib/fines/calculateContributionFine
 
 // --- Types ---
 
-export type MemberStats = {
+export type MemberFactBoxStats = {
     member: {
         id: string
         memberNumber: number
@@ -24,12 +24,14 @@ export type MemberStats = {
         beneficiaries: any[]
     }
     financials: {
-        shareCapital: number
+        contributionBalance: number
         savingsBalance: number
         loanBalance: number
         totalBorrowed: number
         totalPenaltiesPaid: number
-        sharesDue: number
+        contributionsDue: number
+        normalContributions: number
+        fosaContributions: number
     }
 }
 
@@ -64,7 +66,7 @@ async function getAccountBalance(memberId: string, accountCode: string, normalSi
  * Fetch detailed stats for the Member FactBox
  * Aggregates real-time financial data from the General Ledger.
  */
-export async function getMemberStats(memberId: string): Promise<MemberStats | null> {
+export async function getMemberStats(memberId: string): Promise<MemberFactBoxStats | null> {
     try {
         const member = await db.member.findUnique({
             where: { id: memberId },
@@ -80,9 +82,9 @@ export async function getMemberStats(memberId: string): Promise<MemberStats | nu
         // Import WalletService dynamically or statically
         const { WalletService } = await import('@/lib/services/WalletService')
 
-        const ledgerShareCapital = await getAccountBalance(memberId, '2100', 'CREDIT')
-        const legacyShares = Number(member.shareContributions) || 0
-        const shareCapital = ledgerShareCapital > 0 ? ledgerShareCapital : legacyShares
+        const ledgerContributionBalance = await getAccountBalance(memberId, '2100', 'CREDIT')
+        const legacyContributions = Number(member.contributionBalance) || 0
+        const contributionBalance = ledgerContributionBalance > 0 ? ledgerContributionBalance : legacyContributions
         const savingsBalance = await WalletService.getWalletBalance(memberId)
 
         // Loan Balance (Account 1200) - Debit Normal (Asset)
@@ -129,12 +131,14 @@ export async function getMemberStats(memberId: string): Promise<MemberStats | nu
                 })) || (member as any).beneficiaries || []
             },
             financials: {
-                shareCapital,
+                contributionBalance,
                 savingsBalance,
                 loanBalance,
-                sharesDue: 0,
+                contributionsDue: 0,
                 totalBorrowed: 0,
-                totalPenaltiesPaid: 0
+                totalPenaltiesPaid: 0,
+                normalContributions: 0,
+                fosaContributions: 0
             }
         }
     } catch (error) {
@@ -145,7 +149,7 @@ export async function getMemberStats(memberId: string): Promise<MemberStats | nu
 /**
  * Fetch Exact Member Stats for the Pixel-Perfect Dashboard
  */
-export async function getDetailedMemberStats(memberId: string): Promise<{ stats: DetailedMemberStats, loans: LoanPortfolioItem[] } | null> {
+export async function getDetailedMemberStats(memberId: string): Promise<{ stats: MemberDashboardStats, loans: LoanPortfolioItem[] } | null> {
     const { LoanScheduleCache } = await import('@/lib/services/LoanScheduleCache');
     const member = await db.member.findUnique({
         where: { id: memberId },
@@ -164,9 +168,9 @@ export async function getDetailedMemberStats(memberId: string): Promise<{ stats:
     const [
         savingsBalance,
         ledgerContributions,
-        ledgerShareCapital,
-        normalShares,
-        fosaShares,
+        ledgerContributionBalance,
+        normalContributions,
+        fosaContributions,
         loansRaw,
         contributionTxCount,
         attendanceFinesRaw,
@@ -174,7 +178,7 @@ export async function getDetailedMemberStats(memberId: string): Promise<{ stats:
     ] = await Promise.all([
         WalletService.getWalletBalance(memberId), // Savings (Account 2200)
         getAccountBalance(memberId, '3011', 'CREDIT'), // Contributions (Account 3011)
-        getAccountBalance(memberId, '2100', 'CREDIT'), // Share Capital
+        getAccountBalance(memberId, '2100', 'CREDIT'), // Contribution Balance (formerly Share Capital)
         getAccountBalance(memberId, '3012', 'CREDIT'), // Member Withdrawable Wallet
         getAccountBalance(memberId, '2000', 'CREDIT'), // FOSA Shares
         db.loan.findMany({
@@ -193,7 +197,7 @@ export async function getDetailedMemberStats(memberId: string): Promise<{ stats:
         db.ledgerTransaction.count({
             where: {
                 referenceId: memberId,
-                referenceType: { in: ['SHARE_CONTRIBUTION', 'OPENING_BALANCE'] }
+                referenceType: { in: ['CONTRIBUTION_PAYMENT', 'OPENING_BALANCE'] }
             }
         }),
         // Fetch Attendance Fines
@@ -231,9 +235,9 @@ export async function getDetailedMemberStats(memberId: string): Promise<{ stats:
         return sum + fine.totalFine;
     }, 0);
 
-    const legacyShares = Number(member.shareContributions) || 0;
-    const shareCapital = ledgerShareCapital > 0 ? ledgerShareCapital : legacyShares;
-    const contributionsBalance = contributionTxCount > 0 ? ledgerContributions : legacyShares;
+    const legacyContributions = Number(member.contributionBalance) || 0;
+    const contributionBalance = ledgerContributionBalance > 0 ? ledgerContributionBalance : legacyContributions;
+    const totalContributionsBalance = contributionTxCount > 0 ? ledgerContributions : legacyContributions;
 
     // Import statement processor for consistent balance calculation
     const { processTransactions } = await import('@/lib/statementProcessor');
@@ -269,11 +273,11 @@ export async function getDetailedMemberStats(memberId: string): Promise<{ stats:
             amount: Number(loan.amount),
             processingFee: Number(loan.processingFee),
             insuranceFee: Number(loan.insuranceFee),
-            shareCapitalDeduction: Number(loan.shareCapitalDeduction),
+            contributionDeduction: Number(loan.contributionDeduction),
             existingLoanOffset: Number(loan.existingLoanOffset),
             totalDeductions: Number(loan.totalDeductions),
             netDisbursementAmount: Number(loan.netDisbursementAmount),
-            memberSharesAtApplication: Number(loan.memberSharesAtApplication),
+            memberContributionsAtApplication: Number(loan.memberContributionsAtApplication),
             grossQualifyingAmount: Number(loan.grossQualifyingAmount),
             monthlyInstallment: loan.monthlyInstallment ? Number(loan.monthlyInstallment) : 0,
             accruedInterestTotal: loan.accruedInterestTotal ? Number(loan.accruedInterestTotal) : 0,
@@ -399,14 +403,14 @@ export async function getDetailedMemberStats(memberId: string): Promise<{ stats:
             ledgerAccount: { code: '3011' },
             ledgerTransaction: {
                 referenceId: memberId,
-                referenceType: { in: ['SHARE_CONTRIBUTION', 'OPENING_BALANCE'] },
+                referenceType: { in: ['CONTRIBUTION_PAYMENT', 'OPENING_BALANCE'] },
                 isReversed: false
             }
         }
     });
 
     const ledgerCumulative = Number(cumulativeContributionsRaw._sum.creditAmount || 0);
-    const cumulativeContributions = ledgerCumulative > 0 ? ledgerCumulative : legacyShares;
+    const cumulativeContributions = ledgerCumulative > 0 ? ledgerCumulative : legacyContributions;
 
     return {
         stats: {
@@ -415,12 +419,11 @@ export async function getDetailedMemberStats(memberId: string): Promise<{ stats:
 
             // Core Financials (Real-time)
             memberSavings: savingsBalance,     // Replaces manual aggregation
-            contributions: contributionsBalance, // Net Balance (for logic)
-            cumulativeContributions, // Total Contributed (for UI)
+            contributionBalance: contributionBalance, // Net Balance (for logic)
+            cumulativeContributions: cumulativeContributions, // Total Contributed (for UI)
 
-            shareCapital: shareCapital,
-            normalShares: normalShares,
-            fosaShares: fosaShares,
+            normalContributions: normalContributions,
+            fosaContributions: fosaContributions,
             currentAccountBalance: savingsBalance, // Use the proper balance
 
             dividendAmount: 0,
@@ -450,7 +453,7 @@ export async function getContributionHistory(memberId: string) {
     const entries = await db.ledgerTransaction.findMany({
         where: {
             referenceId: memberId,
-            referenceType: 'SHARE_CONTRIBUTION',
+            referenceType: 'CONTRIBUTION_PAYMENT',
             isReversed: false
         },
         orderBy: { transactionDate: 'desc' },
@@ -458,6 +461,9 @@ export async function getContributionHistory(memberId: string) {
             ledgerEntries: {
                 where: {
                     creditAmount: { gt: 0 }
+                },
+                include: {
+                    ledgerAccount: true
                 }
             }
         }
@@ -550,15 +556,15 @@ export async function getLoanPortfolio(memberId: string) {
             loanProductId: loan.loanProductId,
 
             // Financials
-            outstandingBalance: loan.outstandingBalance ? Number(loan.outstandingBalance) : 0,
+            outstandingBalance: statementBalance, // Use statement balance as authoritative
             amount: Number(loan.amount),
             processingFee: Number(loan.processingFee),
             insuranceFee: Number(loan.insuranceFee),
-            shareCapitalDeduction: Number(loan.shareCapitalDeduction),
+            contributionDeduction: Number(loan.contributionDeduction),
             existingLoanOffset: Number(loan.existingLoanOffset),
             totalDeductions: Number(loan.totalDeductions),
             netDisbursementAmount: Number(loan.netDisbursementAmount),
-            memberSharesAtApplication: Number(loan.memberSharesAtApplication),
+            memberContributionsAtApplication: Number(loan.memberContributionsAtApplication),
             grossQualifyingAmount: Number(loan.grossQualifyingAmount),
             monthlyInstallment: loan.monthlyInstallment ? Number(loan.monthlyInstallment) : 0,
             accruedInterestTotal: loan.accruedInterestTotal ? Number(loan.accruedInterestTotal) : 0,

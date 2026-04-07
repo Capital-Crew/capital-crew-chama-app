@@ -398,7 +398,7 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                         <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${ledger.type === 'ASSET' ? 'bg-blue-100 text-blue-700' :
                             ledger.type === 'LIABILITY' ? 'bg-amber-100 text-amber-700' :
                                 ledger.type === 'EQUITY' ? 'bg-purple-100 text-purple-700' :
-                                    ledger.type === 'REVENUE' || ledger.type === 'INCOME' ? 'bg-emerald-100 text-emerald-700' :
+                                    ledger.type === 'REVENUE' ? 'bg-emerald-100 text-emerald-700' :
                                         'bg-rose-100 text-rose-700'
                             }`}>
                             {ledger.type}
@@ -462,21 +462,22 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
         'MEMBER_WALLET',
         'CONTRIBUTIONS',
         'REVENUE',
-        // Income
-        'INCOME_LOAN_INTEREST',
+        // Revenue
+        'REVENUE_LOAN_INTEREST',
         'RECEIVABLE_LOAN_INTEREST',
-        'INCOME_LOAN_PENALTY',
+        'REVENUE_LOAN_PENALTY',
         'RECEIVABLE_LOAN_PENALTY',
-        'INCOME_LOAN_PROCESSING_FEE',
-        'INCOME_GENERAL_FEE',
-        'INCOME_REFINANCE_FEE',
+        'REVENUE_LOAN_PROCESSING_FEE',
+        'REVENUE_GENERAL_FEE',
+        'REVENUE_REFINANCE_FEE',
+        'RECEIVABLE_LOAN_FEES',
         // Assets/Wallet
         'EVENT_EXPENSE_PAYMENT',
         'EVENT_CASH_DEPOSIT',
         'EVENT_CASH_WITHDRAWAL',
         'EVENT_LOAN_DISBURSEMENT',
         'EVENT_LOAN_REPAYMENT_PRINCIPAL',
-        'EVENT_SHARE_CONTRIBUTION',
+        'EVENT_CONTRIBUTION_PAYMENT',
         'EVENT_MEETING_FINES'
     ] as any
     const mergedList = allSystemTypes.map(type => {
@@ -1106,7 +1107,7 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                                                         <SelectTrigger className={`w-[140px] h-8 text-xs font-bold border-0 ring-0 focus:ring-0 ${acc.type === 'ASSET' ? 'bg-blue-100/50 text-blue-700' :
                                                             acc.type === 'LIABILITY' ? 'bg-red-100/50 text-red-700' :
                                                                 acc.type === 'EQUITY' ? 'bg-purple-100/50 text-purple-700' :
-                                                                    acc.type === 'INCOME' || acc.type === 'REVENUE' ? 'bg-emerald-100 text-emerald-700' :
+                                                                    acc.type === 'REVENUE' ? 'bg-emerald-100 text-emerald-700' :
                                                                         'bg-orange-100/50 text-orange-700'
                                                             }`}>
                                                             <SelectValue />
@@ -1115,7 +1116,6 @@ export function AccountsModule({ members = [] }: { members?: any[] }) {
                                                             <SelectItem value="ASSET">ASSET</SelectItem>
                                                             <SelectItem value="LIABILITY">LIABILITY</SelectItem>
                                                             <SelectItem value="EQUITY">EQUITY</SelectItem>
-                                                            <SelectItem value="INCOME">INCOME</SelectItem>
                                                             <SelectItem value="REVENUE">REVENUE</SelectItem>
                                                             <SelectItem value="EXPENSE">EXPENSE</SelectItem>
                                                         </SelectContent>

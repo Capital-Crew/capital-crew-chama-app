@@ -59,10 +59,10 @@ export function registerEventHandlers() {
         ])
     })
 
-    // Share Events
-    EventBus.on('SHARE_CONTRIBUTION_MADE', async (event) => {
+    // Contribution Events
+    EventBus.on('CONTRIBUTION_MADE' as any, async (event) => {
         await Promise.all([
-            MemberBalanceProjectionHandler.handleShareContribution(event),
+            MemberBalanceProjectionHandler.handleMemberContribution(event),
             LegacyEventHandler.handleAuditLog(event)
         ])
     })

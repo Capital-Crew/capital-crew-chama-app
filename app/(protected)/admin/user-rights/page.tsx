@@ -41,7 +41,6 @@ export default async function UserRightsPage() {
             where: {
                 OR: [
                     { type: 'REVENUE' },
-                    { type: 'INCOME' },
                     { type: 'ASSET' }
                 ]
             },

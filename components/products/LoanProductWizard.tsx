@@ -60,7 +60,7 @@ export function LoanProductWizard({ accounts, initialData, productId }: LoanProd
         } else if (currentStep === 3) {
             stepIsValid = await trigger(["interestRatePerPeriod", "interestType", "amortizationType", "interestCalculationPeriodType", "defaultPenaltyRate", "gracePeriod"]);
         } else if (currentStep === 4) {
-            stepIsValid = await trigger(["fundSourceAccountId", "loanPortfolioAccountId", "interestIncomeAccountId", "interestReceivableAccountId", "penaltyIncomeAccountId", "penaltyReceivableAccountId"]);
+            stepIsValid = await trigger(["fundSourceAccountId", "loanPortfolioAccountId", "interestRevenueAccountId", "interestReceivableAccountId", "penaltyRevenueAccountId", "penaltyReceivableAccountId"]);
         }
 
         if (stepIsValid) {

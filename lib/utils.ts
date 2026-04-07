@@ -1,5 +1,5 @@
 import {
-    Loan, Income, IncomeCategory, LoanProduct, RepaymentScheduleItem, RepaymentStatus, NotificationType, LoanStatus,
+    Loan, Revenue, RevenueCategory, LoanProduct, RepaymentScheduleItem, RepaymentStatus, NotificationType, LoanStatus,
     RepaymentFrequencyType, InterestType, AmortizationType
 } from './types';
 import { type ClassValue, clsx } from "clsx";
@@ -37,12 +37,12 @@ export const formatDate = (dateString: string | Date): string => {
     });
 };
 
-export const calculateOutstandingBalance = (loan: Loan, incomes: Income[]): number => {
-    const totalPaidForLoan = incomes
+export const calculateOutstandingBalance = (loan: Loan, revenues: Revenue[]): number => {
+    const totalPaidForLoan = revenues
         .filter(i => i.loanId === loan.id)
-        .reduce((sum, income) => {
-            if (income.category !== IncomeCategory.MONTHLY_CONTRIBUTION && income.category !== IncomeCategory.NON_LOAN_PENALTY) {
-                return sum + Number(income.amount);
+        .reduce((sum, revenue) => {
+            if (revenue.category !== RevenueCategory.MONTHLY_CONTRIBUTION && revenue.category !== RevenueCategory.NON_LOAN_PENALTY) {
+                return sum + Number(revenue.amount);
             }
             return sum;
         }, 0);
@@ -53,16 +53,16 @@ export const calculateOutstandingBalance = (loan: Loan, incomes: Income[]): numb
     return Math.max(0, totalRepayable - totalPaidForLoan);
 };
 
-export const calculateAllOutstandingBalances = (memberId: string, loans: Loan[], incomes: Income[]): number => {
+export const calculateAllOutstandingBalances = (memberId: string, loans: Loan[], revenues: Revenue[]): number => {
     return loans
         .filter(l => l.memberId === memberId && (l.status === LoanStatus.ACTIVE || l.status === LoanStatus.OVERDUE))
-        .reduce((sum, loan) => sum + calculateOutstandingBalance(loan, incomes), 0);
+        .reduce((sum, loan) => sum + calculateOutstandingBalance(loan, revenues), 0);
 };
 
-export const calculateOutstandingPrincipal = (loan: Loan, incomes: Income[]): number => {
-    const totalPaidForRepayment = incomes
-        .filter(i => i.loanId === loan.id && i.category === IncomeCategory.LOAN_REPAYMENT)
-        .reduce((sum, income) => sum + Number(income.principalAmount || 0), 0);
+export const calculateOutstandingPrincipal = (loan: Loan, revenues: Revenue[]): number => {
+    const totalPaidForRepayment = revenues
+        .filter(i => i.loanId === loan.id && i.category === RevenueCategory.LOAN_REPAYMENT)
+        .reduce((sum, revenue) => sum + Number(revenue.principalAmount || 0), 0);
 
     return Math.max(0, Number(loan.amount) - totalPaidForRepayment);
 };
@@ -125,10 +125,10 @@ export const getNextLoanNumber = (lastLoanNumber: string | null | undefined): st
     }
 };
 
-export const calculateTotalContributions = (memberId: string, incomes: Income[]): number => {
-    return incomes
-        .filter(i => i.memberId === memberId && i.category === IncomeCategory.MONTHLY_CONTRIBUTION)
-        .reduce((sum, income) => sum + Number(income.amount), 0);
+export const calculateTotalContributions = (memberId: string, revenues: Revenue[]): number => {
+    return revenues
+        .filter(i => i.memberId === memberId && i.category === RevenueCategory.MONTHLY_CONTRIBUTION)
+        .reduce((sum, revenue) => sum + Number(revenue.amount), 0);
 };
 
 export const calculateLoanLimit = (totalContributions: number, multiplier: number): number => {

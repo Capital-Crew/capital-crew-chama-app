@@ -19,8 +19,8 @@ export async function getContributionHistory(memberId: string, sortOrder: 'asc' 
         throw new Error('Unauthorized')
     }
 
-    const transactions = await prisma.shareTransaction.findMany({
-        where: { memberId, isReversed: false },
+    const transactions = await prisma.contributionTransaction.findMany({
+        where: { memberId },
         orderBy: { createdAt: sortOrder },
         take: 50 // Limit to recent 50 transactions
     })
@@ -85,7 +85,7 @@ export async function getWithdrawableBalanceHistory(memberId: string, sortOrder:
 
 /**
  * Add funds to member's withdrawable balance (Cash Deposit)
- * This is different from Share Capital - it goes directly to withdrawable balance
+ * This is different from Member Contributions - it goes directly to withdrawable balance
  */
 export const addCashDeposit = withAudit(
     { actionType: AuditLogAction.WALLET_TRANSACTION_CREATED, domain: 'WALLET', apiRoute: '/api/wallet/deposit' },

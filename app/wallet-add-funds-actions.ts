@@ -77,14 +77,14 @@ export const addContribution = withAudit(
 
             const updatedMember = await prisma.member.findUnique({
                 where: { id: input.memberId },
-                select: { shareContributions: true }
+                select: { contributionBalance: true }
             })
             if (updatedMember) ctx.captureAfter(updatedMember);
 
             return {
                 success: true,
                 message: 'Contribution recorded successfully',
-                newShareBalance: Number(updatedMember?.shareContributions || 0)
+                newShareBalance: Number(updatedMember?.contributionBalance || 0)
             }
         }
 
@@ -140,9 +140,9 @@ export const addPenaltyPayment = withAudit(
             }
 
             const mappings = await getSystemMappingsDict()
-            if (!mappings.INCOME_LOAN_PENALTY) {
+            if (!mappings.REVENUE_LOAN_PENALTY) {
                 ctx.setErrorCode('SYSTEM_CONFIG_ERROR');
-                throw new Error('System mapping for INCOME_LOAN_PENALTY not found')
+                throw new Error('System mapping for REVENUE_LOAN_PENALTY not found')
             }
 
             const wallet = await WalletService.createWallet(input.memberId)
@@ -160,10 +160,10 @@ export const addPenaltyPayment = withAudit(
                         description: `${member.name} penalty withdrawal`
                     },
                     {
-                        accountCode: mappings.INCOME_LOAN_PENALTY,
+                        accountCode: mappings.REVENUE_LOAN_PENALTY,
                         debitAmount: 0,
                         creditAmount: input.amount,
-                        description: 'Penalty income received'
+                        description: 'Penalty revenue received'
                     }
                 ],
                 createdBy: session.user.id,
@@ -319,11 +319,12 @@ export const addLoanRepayment = withAudit(
                 }
             })
 
-            const updatedLoan = await prisma.loan.update({
-                where: { id: input.loanId },
-                data: { outstandingBalance: new Prisma.Decimal(newOutstanding) }
+            // Note: outstandingBalance is now derived from Ledger. 
+            // We only update status if fully paid (handled above).
+            const updatedLoan = await prisma.loan.findUnique({
+                where: { id: input.loanId }
             })
-            ctx.captureAfter(updatedLoan);
+            if (updatedLoan) ctx.captureAfter(updatedLoan);
 
             revalidatePath('/wallet')
             revalidatePath('/loans')

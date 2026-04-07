@@ -8,10 +8,10 @@ export async function postFineJournalEntry(input: {
   amount:         number
 }) {
   // DR  Fine Receivable  (Asset ↑)    — institution is owed
-  // CR  Fine Income      (Revenue ↑)  — income recognised daily
+  // CR  Fine Revenue     (Revenue ↑)  — revenue recognised daily
 
   // We use AccountingEngine to ensure double-entry validation and balance updates.
-  // Account codes 'FINE_RECEIVABLE' and 'FINE_INCOME' must be configured in the system.
+  // Account codes 'FINE_RECEIVABLE' and 'FINE_REVENUE' must be configured in the system.
 
   await AccountingEngine.postJournalEntry({
     transactionDate: input.date,
@@ -28,10 +28,10 @@ export async function postFineJournalEntry(input: {
         description: `Fine Receivable Accrual`
       },
       {
-        accountCode: 'FINE_INCOME',
+        accountCode: 'FINE_REVENUE',
         debitAmount: 0,
         creditAmount: input.amount,
-        description: `Fine Income Recognition`
+        description: `Fine Revenue Recognition`
       }
     ]
   });

@@ -49,7 +49,7 @@ interface LoanAppraisalProps {
     approvedAmount: number
     processingFee: number
     insuranceFee: number
-    shareCapitalDeduction: number
+    contributionDeduction: number
     existingLoanOffset: number
     totalDeductions: number
     netDisbursed: number
@@ -78,7 +78,7 @@ export function LoanAppraisalReport({
     approvedAmount,
     processingFee,
     insuranceFee,
-    shareCapitalDeduction,
+    contributionDeduction,
     existingLoanOffset,
     totalDeductions,
     netDisbursed
@@ -367,13 +367,13 @@ export function LoanAppraisalReport({
                                 </tr>
 
 
-                                {shareCapitalDeduction > 0 && (
+                                {contributionDeduction > 0 && (
                                     <tr>
                                         <td className="px-2 sm:px-4 py-2 text-slate-600 pl-6 sm:pl-8 relative">
                                             <span className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 w-2 h-0.5 bg-slate-300"></span>
-                                            Share Capital Boost
+                                            Contribution Deduction
                                         </td>
-                                        <td className="px-2 sm:px-4 py-2 text-right text-red-600 font-bold whitespace-nowrap">({formatCurrency(shareCapitalDeduction)})</td>
+                                        <td className="px-2 sm:px-4 py-2 text-right text-red-600 font-bold whitespace-nowrap">({formatCurrency(contributionDeduction)})</td>
                                     </tr>
                                 )}
 
@@ -489,7 +489,7 @@ export function LoanAppraisalReportExample() {
         approvedAmount: 258000.00,
         processingFee: 2580.00,
         insuranceFee: 1290.00,
-        shareCapitalDeduction: 0.00,
+        contributionDeduction: 0.00,
         existingLoanOffset: 133731.87,
         totalDeductions: 137601.87,
         netDisbursed: 124268.13

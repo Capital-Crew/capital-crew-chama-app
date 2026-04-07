@@ -27,7 +27,7 @@ function auditLog(userId: string, details: string, summary: string) {
     db.auditLog.create({
         data: {
             userId,
-            action: 'LOGIN',
+            action: 'USER_LOGIN' as any,
             details,
             summary,
             context: 'REPORTS',
@@ -90,11 +90,11 @@ export async function getBalanceSheetAction(asOfDate?: Date) {
     return safeSerialize(data)
 }
 
-export async function getIncomeStatementAction(asOfDate?: Date) {
+export async function getRevenueStatementAction(asOfDate?: Date) {
     const session = await auth()
     if (!session?.user) throw new Error("Unauthorized")
-    const data = await ReportingService.getFinancialStatements('INCOME_STATEMENT', asOfDate || new Date())
-    auditLog(session.user.id!, `Generated Income Statement`, 'Income Statement')
+    const data = await ReportingService.getFinancialStatements('REVENUE_STATEMENT', asOfDate || new Date())
+    auditLog(session.user.id!, `Generated Revenue Statement`, 'Revenue Statement')
     return safeSerialize(data)
 }
 
@@ -138,7 +138,7 @@ export async function getOperationalReportAction(startDate: Date, endDate: Date)
     return safeSerialize(data)
 }
 
-export async function getFinancialStatementAction(type: 'TRIAL_BALANCE' | 'BALANCE_SHEET' | 'INCOME_STATEMENT', asOfDate?: Date) {
+export async function getFinancialStatementAction(type: 'TRIAL_BALANCE' | 'BALANCE_SHEET' | 'REVENUE_STATEMENT', asOfDate?: Date) {
     const session = await auth()
     if (!session?.user) throw new Error("Unauthorized")
     const data = await ReportingService.getFinancialStatements(type, asOfDate || new Date())

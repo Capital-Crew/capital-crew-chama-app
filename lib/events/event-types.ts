@@ -32,6 +32,7 @@ export interface RepaymentMadeMetadata {
         penalty: number
         interest: number
         principal: number
+        fees?: number
     }
     newOutstanding: number
     isFullyPaid: boolean
@@ -61,8 +62,8 @@ export interface WalletWithdrawalMetadata {
     journalEntryId?: string
 }
 
-// Share Events
-export interface ShareContributionMetadata {
+// Contribution Events
+export interface MemberContributionMetadata {
     memberId: string
     amount: number
     journalEntryId: string
@@ -83,7 +84,7 @@ export type EventMetadata<T extends DomainEventType> =
     T extends 'LOAN_CLEARED' ? LoanClearedMetadata :
     T extends 'WALLET_DEPOSIT_MADE' ? WalletDepositMetadata :
     T extends 'WALLET_WITHDRAWAL_MADE' ? WalletWithdrawalMetadata :
-    T extends 'SHARE_CONTRIBUTION_MADE' ? ShareContributionMetadata :
+    T extends 'CONTRIBUTION_MADE' ? MemberContributionMetadata :
     T extends 'MEMBER_REGISTERED' ? MemberRegisteredMetadata :
     Record<string, any>
 
@@ -181,16 +182,16 @@ export class Events {
     }
 
     /**
-     * Share event helpers
+     * Contribution event helpers
      */
-    static shareContribution(
+    static memberContribution(
         memberId: string,
-        metadata: ShareContributionMetadata,
+        metadata: MemberContributionMetadata,
         actor: { id: string; name: string }
     ) {
         return this.create(
-            'SHARE_CONTRIBUTION_MADE',
-            'SHARE',
+            'CONTRIBUTION_MADE',
+            'CONTRIBUTION',
             memberId,
             metadata,
             actor

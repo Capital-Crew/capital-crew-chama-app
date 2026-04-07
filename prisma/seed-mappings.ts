@@ -14,7 +14,7 @@ export async function seedLedgerMappings() {
         { type: 'RECEIVABLES', accountCode: '1021' }, // Principal Loans to Members
         { type: 'MEMBER_WALLET', accountCode: '3012' }, // Member Withdrawable Wallet
         { type: 'CONTRIBUTIONS', accountCode: '3011' }, // Non-Withdrawable Deposits
-        { type: 'INCOME', accountCode: '4011' }, // Interest on Loans
+        { type: 'REVENUE', accountCode: '4011' }, // Interest on Loans (primary)
 
         // Event Mappings
         { type: 'EVENT_CASH_DEPOSIT', accountCode: '1011' }, // Dr Bank Account
@@ -22,17 +22,17 @@ export async function seedLedgerMappings() {
         { type: 'EVENT_EXPENSE_PAYMENT', accountCode: '1011' }, // Cr Bank Account
         { type: 'EVENT_LOAN_DISBURSEMENT', accountCode: '3012' }, // Cr Member Withdrawable Wallet
         { type: 'EVENT_LOAN_REPAYMENT_PRINCIPAL', accountCode: '1021' }, // Cr Principal Loans to Members
-        { type: 'EVENT_SHARE_CONTRIBUTION', accountCode: '3011' }, // Cr Non-Withdrawable Deposits
+        { type: 'EVENT_CONTRIBUTION_PAYMENT', accountCode: '3011' }, // Cr Member Contributions
 
-        // Income & Receivable Mappings
-        { type: 'INCOME_LOAN_INTEREST', accountCode: '4011' }, // Interest on Loans
+        // Revenue & Receivable Mappings
+        { type: 'REVENUE_LOAN_INTEREST', accountCode: '4011' }, // Interest on Loans
         { type: 'RECEIVABLE_LOAN_INTEREST', accountCode: '1022' }, // Interest Receivable
 
-        { type: 'INCOME_LOAN_PENALTY', accountCode: '4012' }, // Interest on Penalties
+        { type: 'REVENUE_LOAN_PENALTY', accountCode: '4012' }, // Penalty Revenue
         { type: 'RECEIVABLE_LOAN_PENALTY', accountCode: '1023' }, // Penalty Receivable
 
-        { type: 'INCOME_LOAN_PROCESSING_FEE', accountCode: '4021' }, // Processing Fees
-        { type: 'INCOME_GENERAL_FEE', accountCode: '4021' }, // Processing Fees (general)
+        { type: 'REVENUE_LOAN_PROCESSING_FEE', accountCode: '4021' }, // Processing Fees
+        { type: 'REVENUE_GENERAL_FEE', accountCode: '4021' }, // Processing Fees (general)
         { type: 'RECEIVABLE_LOAN_FEES', accountCode: '1024' }, // Fees Receivable
     ]
 

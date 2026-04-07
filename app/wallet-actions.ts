@@ -92,28 +92,33 @@ export async function getWalletBalance(memberId: string): Promise<Serialized<any
         throw new Error('Member not found')
     }
 
-    let walletBalance = 0
-    let shareContributions = 0
+    const { getMemberContributionBalance, getLoanOutstandingBalance } = await import('@/lib/accounting/AccountingEngine')
+
+    let contributionBalance = 0
+    let balance = 0
 
     try {
-        walletBalance = await WalletService.getWalletBalance(memberId)
-        shareContributions = Number(member.shareContributions) || 0
+        balance = await WalletService.getWalletBalance(memberId)
+        contributionBalance = await getMemberContributionBalance(memberId)
     } catch (error) {
-        shareContributions = Number(member.shareContributions) || 0
+        // Fallback for missing mappings, though unlikely in a seeded system
+        contributionBalance = Number(member.contributionBalance) || 0
     }
 
-    const balance = walletBalance
     const lockedAmount = 0
     const availableBalance = balance - lockedAmount
-    const activeLoansAmount = member.loans.reduce((sum: number, loan: any) => sum + Number(loan.outstandingBalance), 0)
+    
+    // Calculate authoritative loan balances from ledger
+    const loanBalances = await Promise.all(member.loans.map(loan => getLoanOutstandingBalance(loan.id)))
+    const activeLoansAmount = loanBalances.reduce((sum, bal) => sum + bal, 0)
 
     const settings = await prisma.saccoSettings.findFirst()
     const loanMultiplier = Number(settings?.loanMultiplier) || 3.0
-    const loanQualifyingPower = shareContributions * Number(loanMultiplier)
+    const loanQualifyingPower = contributionBalance * Number(loanMultiplier)
     const availableLoanLimit = Math.max(0, loanQualifyingPower - activeLoansAmount)
 
     return serializeFinancials({
-        shareContributions,
+        contributionBalance,
         loanQualifyingPower,
         balance,
         lockedAmount,

@@ -99,22 +99,16 @@ export class PenaltyService {
                 }
             })
 
-            // B. Update Loan Balance (Add penalty to total debt)
-            // Note: `current_balance` tracks total outstanding. Penalties increase it.
-            // Also track total penalties charged
+            // B. Update Loan Balance (Cache only)
+            // Note: Penalties are now authoritative in LedgerTransaction.
             await tx.loan.update({
                 where: { id: item.loanId },
                 data: {
-                    current_balance: { increment: penaltyAmount.toNumber() },
                     penalties: { increment: penaltyAmount.toNumber() }
                 }
             })
 
-            // C. Post Journal Entry (Dr Member Loan / Cr Penalty Income)
-            // We reuse AccountingEngine
-            // C. Post Journal Entry (Dr Member Loan / Cr Penalty Income)
-            // We reuse AccountingEngine
-            // C. Post Journal Entry (Dr Member Loan / Cr Penalty Income)
+            // C. Post Journal Entry (Dr Member Loan / Cr Penalty Revenue)
             // We reuse AccountingEngine
             await AccountingService.postLoanEvent(item.loanId, 'PENALTY_APPLIED', penaltyAmount.toNumber(), tx)
 

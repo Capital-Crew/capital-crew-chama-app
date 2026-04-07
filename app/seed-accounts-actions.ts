@@ -69,7 +69,7 @@ export const seedChartOfAccounts = withAudit(
             { code: '1000', name: 'ASSETS', type: 'ASSET' },
             { code: '2000', name: 'LIABILITIES', type: 'LIABILITY' },
             { code: '3000', name: 'CONTRIBUTIONS', type: 'LIABILITY' }, // Member funds are liabilities to the SACCO
-            { code: '4000', name: 'INCOME', type: 'INCOME' },
+            { code: '4000', name: 'REVENUE', type: 'REVENUE' },
             { code: '5000', name: 'EXPENSES', type: 'EXPENSE' },
             { code: '6000', name: 'EQUITY', type: 'EQUITY' },
         ]
@@ -92,9 +92,9 @@ export const seedChartOfAccounts = withAudit(
             // CONTRIBUTIONS
             { code: '3010', name: 'Deposits & Savings', type: 'LIABILITY', parent: '3000' },
             { code: '3020', name: 'Risk Funds', type: 'LIABILITY', parent: '3000' },
-            // INCOME
-            { code: '4010', name: 'Interest Income', type: 'INCOME', parent: '4000' },
-            { code: '4020', name: 'Fee Income', type: 'INCOME', parent: '4000' },
+            // REVENUE
+            { code: '4010', name: 'Interest Revenue', type: 'REVENUE', parent: '4000' },
+            { code: '4020', name: 'Fee Revenue', type: 'REVENUE', parent: '4000' },
             // EXPENSES
             { code: '5010', name: 'Operational Costs', type: 'EXPENSE', parent: '5000' },
             { code: '5020', name: 'Financial Costs', type: 'EXPENSE', parent: '5020' }, // Corrected parent
@@ -134,12 +134,12 @@ export const seedChartOfAccounts = withAudit(
             { code: '3012', name: 'Member Withdrawable Wallet', type: 'LIABILITY', parent: '3010' },
             // 3020 Risk Funds
             { code: '3021', name: 'Benevolent / Insurance Fund', type: 'LIABILITY', parent: '3020' },
-            // 4010 Interest Income
-            { code: '4011', name: 'Interest on Loans', type: 'INCOME', parent: '4010' },
-            { code: '4012', name: 'Interest on Penalties', type: 'INCOME', parent: '4010' },
-            // 4020 Fee Income
-            { code: '4021', name: 'Processing Fees', type: 'INCOME', parent: '4020' },
-            { code: '4022', name: 'Registration/Joining Fees', type: 'INCOME', parent: '4020' },
+            // 4010 Interest Revenue
+            { code: '4011', name: 'Interest on Loans', type: 'REVENUE', parent: '4010' },
+            { code: '4012', name: 'Interest on Penalties', type: 'REVENUE', parent: '4010' },
+            // 4020 Fee Revenue
+            { code: '4021', name: 'Processing Fees', type: 'REVENUE', parent: '4020' },
+            { code: '4022', name: 'Registration/Joining Fees', type: 'REVENUE', parent: '4020' },
             // 5010 Operational Costs
             { code: '5011', name: 'Hosting & Cloud Fees', type: 'EXPENSE', parent: '5010' },
             { code: '5012', name: 'Software Licenses', type: 'EXPENSE', parent: '5010' },

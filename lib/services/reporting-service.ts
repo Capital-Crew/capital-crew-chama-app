@@ -213,7 +213,7 @@ export class ReportingService {
      * 
      * Supports Trial Balance, Balance Sheet, and Income Statement based on Ledger data.
      */
-    static async getFinancialStatements(type: 'TRIAL_BALANCE' | 'BALANCE_SHEET' | 'INCOME_STATEMENT', asOfDate: Date = new Date()) {
+    static async getFinancialStatements(type: 'TRIAL_BALANCE' | 'BALANCE_SHEET' | 'REVENUE_STATEMENT', asOfDate: Date = new Date()) {
         const { AccountingEngine } = await import('@/lib/accounting/AccountingEngine')
 
         // 1. Fetch all accounts
@@ -332,7 +332,7 @@ export class ReportingService {
             }
         }
 
-        if (type === 'INCOME_STATEMENT') {
+        if (type === 'REVENUE_STATEMENT') {
             const revenue = statement.filter(a => a.type === 'REVENUE')
             const expenses = statement.filter(a => a.type === 'EXPENSE')
 
@@ -350,7 +350,7 @@ export class ReportingService {
                     items: expenses,
                     total: totalExpenses.toNumber()
                 },
-                netIncome: totalRevenue.minus(totalExpenses).toNumber()
+                netRevenue: totalRevenue.minus(totalExpenses).toNumber()
             }
         }
     }
@@ -476,12 +476,7 @@ export class ReportingService {
         const totalDisbursements = disbursements.reduce((s, d) => s.plus(new Decimal(d.amount.toString())), new Decimal(0))
 
         // Financing Activities
-        // Inflows: Member contributions (shares + wallet deposits)
-        const shares = await db.shareTransaction.findMany({
-            where: { type: 'CONTRIBUTION', isReversed: false, createdAt: { gte: start, lte: end } },
-        })
-        const totalShares = shares.reduce((s, sh) => s.plus(new Decimal(sh.amount.toString())), new Decimal(0))
-
+        // Inflows: Member contributions (wallet deposits + non-withdrawable contributions)
         const contributions = await db.contributionTransaction.findMany({
             where: { date: { gte: start, lte: end } },
         })
@@ -490,7 +485,7 @@ export class ReportingService {
         const operatingInflow = repaymentPrincipal.plus(repaymentInterest).plus(repaymentFees).plus(repaymentPenalties)
         const operatingOutflow = totalExpenses
         const investingOutflow = totalDisbursements
-        const financingInflow = totalShares.plus(totalContributions)
+        const financingInflow = totalContributions
 
         return {
             rows: [
@@ -499,7 +494,6 @@ export class ReportingService {
                 { category: 'Operating', description: 'Fees & Penalties Collected', inflow: repaymentFees.plus(repaymentPenalties).toNumber(), outflow: 0, net: repaymentFees.plus(repaymentPenalties).toNumber() },
                 { category: 'Operating', description: 'Expenses Paid', inflow: 0, outflow: totalExpenses.toNumber(), net: totalExpenses.neg().toNumber() },
                 { category: 'Investing', description: 'Loan Disbursements', inflow: 0, outflow: totalDisbursements.toNumber(), net: totalDisbursements.neg().toNumber() },
-                { category: 'Financing', description: 'Share Capital Contributions', inflow: totalShares.toNumber(), outflow: 0, net: totalShares.toNumber() },
                 { category: 'Financing', description: 'Member Contributions', inflow: totalContributions.toNumber(), outflow: 0, net: totalContributions.toNumber() },
             ],
             summary: {

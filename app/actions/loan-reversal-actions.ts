@@ -131,7 +131,7 @@ export const reverseLoanTransaction = withAudit(
                         // REVERSED PENALTY: MUST REDUCE penaltyDue in schedule!
                         // And reverse the Ledger (Dr Penalty Income / Cr Member Loan)
                         journalLines.push({ accountCode: mappings.RECEIVABLE_LOAN_PENALTY, debitAmount: 0, creditAmount: amount, description: `Reversal: Penalty Applied` })
-                        journalLines.push({ accountCode: mappings.EVENT_LOAN_INTEREST_ACCRUAL, debitAmount: amount, creditAmount: 0, description: `Reversal: Cancel Penalty Income` })
+                        journalLines.push({ accountCode: mappings.REVENUE_LOAN_PENALTY, debitAmount: amount, creditAmount: 0, description: `Reversal: Cancel Penalty Revenue` })
                     }
 
                     if (journalLines.length > 0) {
@@ -164,14 +164,7 @@ export const reverseLoanTransaction = withAudit(
                         }
                     })
 
-                    // 2. Decrement Loan.penalties
-                    await tx.loan.update({
-                        where: { id: originalTx.loanId },
-                        data: {
-                            penalties: { decrement: Number(originalTx.amount) },
-                            current_balance: { decrement: Number(originalTx.amount) }
-                        }
-                    })
+                    // 2. Decrement Loan.penalties is removed as field is deprecated
                     ctx.endStep('Operational Penalty Rollback');
                 }
 

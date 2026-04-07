@@ -88,8 +88,8 @@ const AppraisalDocument = ({ loan, member, product }: AppraisalProps) => (
                     <Text style={styles.value}>{Number(loan.insuranceFee).toLocaleString()}</Text>
                 </View>
                 <View style={styles.row}>
-                    <Text style={styles.label}>Share Capital Boost:</Text>
-                    <Text style={styles.value}>{Number(loan.shareCapitalDeduction).toLocaleString()}</Text>
+                    <Text style={styles.label}>Contribution Deduction:</Text>
+                    <Text style={styles.value}>{Number(loan.contributionDeduction).toLocaleString()}</Text>
                 </View>
                 <View style={styles.row}>
                     <Text style={[styles.label, { color: '#e53e3e' }]}>Loan Offset:</Text>

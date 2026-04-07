@@ -53,8 +53,8 @@ export async function seedChartOfAccounts() {
     const roots = [
         { code: '1000', name: 'ASSETS', type: 'ASSET' as const },
         { code: '2000', name: 'LIABILITIES', type: 'LIABILITY' as const },
-        { code: '3000', name: 'CONTRIBUTIONS', type: 'LIABILITY' as const }, // Member Funds are Liabilities to the Sacco
-        { code: '4000', name: 'INCOME', type: 'INCOME' as const },
+        { code: '3000', name: 'CONTRIBUTIONS', type: 'LIABILITY' as const }, 
+        { code: '4000', name: 'REVENUE', type: 'REVENUE' as const },
         { code: '5000', name: 'EXPENSES', type: 'EXPENSE' as const },
         { code: '6000', name: 'EQUITY', type: 'EQUITY' as const },
     ]
@@ -79,9 +79,9 @@ export async function seedChartOfAccounts() {
         { code: '3010', name: 'Deposits & Savings', type: 'LIABILITY' as const, parent: '3000' },
         { code: '3020', name: 'Risk Funds', type: 'LIABILITY' as const, parent: '3000' },
 
-        // INCOME
-        { code: '4010', name: 'Interest Income', type: 'INCOME' as const, parent: '4000' },
-        { code: '4020', name: 'Fee Income', type: 'INCOME' as const, parent: '4000' },
+        // REVENUE
+        { code: '4010', name: 'Interest Revenue', type: 'REVENUE' as const, parent: '4000' },
+        { code: '4020', name: 'Fee Revenue', type: 'REVENUE' as const, parent: '4000' },
 
         // EXPENSES
         { code: '5010', name: 'Operational Costs', type: 'EXPENSE' as const, parent: '5000' },
@@ -123,19 +123,19 @@ export async function seedChartOfAccounts() {
         { code: '2031', name: 'Unidentified Deposits', type: 'LIABILITY' as const, parent: '2030' },
 
         // 3010 Deposits
-        { code: '3011', name: 'Non-Withdrawable Deposits', type: 'LIABILITY' as const, parent: '3010' },
+        { code: '3011', name: 'Member Contributions', type: 'LIABILITY' as const, parent: '3010', description: 'Non-Withdrawable Member Funds' },
         { code: '3012', name: 'Member Withdrawable Wallet', type: 'LIABILITY' as const, parent: '3010' },
 
         // 3020 Risk Funds
         { code: '3021', name: 'Benevolent / Insurance Fund', type: 'LIABILITY' as const, parent: '3020' },
 
-        // 4010 Interest Income
-        { code: '4011', name: 'Interest on Loans', type: 'INCOME' as const, parent: '4010' },
-        { code: '4012', name: 'Interest on Penalties', type: 'INCOME' as const, parent: '4010' },
+        // 4010 Interest Revenue
+        { code: '4011', name: 'Interest on Loans', type: 'REVENUE' as const, parent: '4010' },
+        { code: '4012', name: 'Penalty Revenue', type: 'REVENUE' as const, parent: '4010' },
 
-        // 4020 Fee Income
-        { code: '4021', name: 'Processing Fees', type: 'INCOME' as const, parent: '4020' },
-        { code: '4022', name: 'Registration/Joining Fees', type: 'INCOME' as const, parent: '4020' },
+        // 4020 Fee Revenue
+        { code: '4021', name: 'Processing Fees', type: 'REVENUE' as const, parent: '4020' },
+        { code: '4022', name: 'Registration/Joining Fees', type: 'REVENUE' as const, parent: '4020' },
 
         // 5010 Ops Costs
         { code: '5011', name: 'Hosting & Cloud Fees', type: 'EXPENSE' as const, parent: '5010' },
@@ -156,17 +156,8 @@ export async function seedChartOfAccounts() {
         { code: '6011', name: 'Retained Earnings', type: 'EQUITY' as const, parent: '6010' },
         { code: '6012', name: 'Current Year P&L', type: 'EQUITY' as const, parent: '6010' },
 
-        // --- PRESERVE LEGENCY MAPPINGS IF NEEDED ---
-        // We add back standard mappings that the system might rely on if they aren't covered above.
-        // E.g. 1100 Cash on Hand (Might be duplicate of 1010? No, 1010 is "CashEq" header).
-        // User asked for specific accounts. I will ensure critical system defaults (like Wallet 2200) are handled.
-        // Wallet 2200 (Member Wallet) is NOT in the requested list.
-        // I should ADD IT under Liabilities -> Payables or Deposits to ensure system doesn't break.
-        // I will add it under 3010 Deposits & Savings (Member Funds) as "Withdrawable Wallet" (Code 2200 is legacy, should I rename to 3012?)
-        // The prompt says "Generate this EXACT hierarchy".
-        // BUT strict adherence might break the app which hardcodes '2200' in `seed-mappings.ts`.
-        // I will Create '2200 Member Wallet' as a separate Liability for backward compatibility with my recent mapping work, OR update mappings.
-        // For safety, I'll add '2200' separately at the end as "Legacy Wallet" so the app doesn't crash on `seed-mappings`.
+        // --- SYSTEM DEFAULTS ---
+        // Ensuring critical system defaults (like Wallet 3012) are handled.
     ]
 
     console.log('\n--- Seeding Children ---')

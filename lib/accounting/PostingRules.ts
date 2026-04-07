@@ -18,7 +18,7 @@ export class PostingRules {
         netDisbursementAmount: number
         processingFee: number
         insuranceFee: number
-        shareCapitalDeduction: number
+        contributionDeduction: number
         disbursementDate: Date
         memberId: string
     }, mappings: SystemMapping, createdBy: string, createdByName: string): JournalEntryInput {
@@ -44,7 +44,7 @@ export class PostingRules {
         // Processing fee
         if (loan.processingFee > 0) {
             lines.push({
-                accountCode: mappings.INCOME_LOAN_PROCESSING_FEE, // Income
+                accountCode: mappings.REVENUE_LOAN_PROCESSING_FEE, // Revenue
                 debitAmount: 0,
                 creditAmount: loan.processingFee,
                 description: 'Processing fee earned'
@@ -54,7 +54,7 @@ export class PostingRules {
         // Insurance fee
         if (loan.insuranceFee > 0) {
             lines.push({
-                accountCode: mappings.INCOME_GENERAL_FEE, // Income
+                accountCode: mappings.REVENUE_GENERAL_FEE, // Revenue
                 debitAmount: 0,
                 creditAmount: loan.insuranceFee,
                 description: 'Insurance fee earned'
@@ -62,11 +62,11 @@ export class PostingRules {
         }
 
         // Contribution boost
-        if (loan.shareCapitalDeduction > 0) {
+        if (loan.contributionDeduction > 0) {
             lines.push({
-                accountCode: mappings.CONTRIBUTIONS, // Asset
+                accountCode: mappings.CONTRIBUTIONS, // Liability
                 debitAmount: 0,
-                creditAmount: loan.shareCapitalDeduction,
+                creditAmount: loan.contributionDeduction,
                 description: 'Contribution boost'
             })
         }
@@ -182,10 +182,10 @@ export class PostingRules {
                     description: 'Interest accrued'
                 },
                 {
-                    accountCode: mappings.INCOME_LOAN_INTEREST, // Income
+                    accountCode: mappings.REVENUE_LOAN_INTEREST, // Revenue
                     debitAmount: 0,
                     creditAmount: amount,
-                    description: 'Interest income earned'
+                    description: 'Interest revenue earned'
                 }
             ],
             createdBy,
@@ -222,10 +222,10 @@ export class PostingRules {
                     description: reason
                 },
                 {
-                    accountCode: mappings.INCOME_LOAN_PENALTY, // Income
+                    accountCode: mappings.REVENUE_LOAN_PENALTY, // Revenue
                     debitAmount: 0,
                     creditAmount: amount,
-                    description: 'Penalty income earned'
+                    description: 'Penalty revenue earned'
                 }
             ],
             createdBy,
@@ -306,9 +306,9 @@ export class PostingRules {
     }
 
     /**
-     * SHARE CONTRIBUTION
+     * CONTRIBUTION PAYMENT
      */
-    static shareContribution(
+    static contributionPayment(
         memberId: string,
         memberName: string,
         amount: number,
@@ -319,9 +319,9 @@ export class PostingRules {
     ): JournalEntryInput {
         return {
             transactionDate: contributionDate,
-            referenceType: 'SHARE_CONTRIBUTION',
+            referenceType: 'CONTRIBUTION_PAYMENT',
             referenceId: memberId,
-            description: `Share contribution by ${memberName}`,
+            description: `Contribution by ${memberName}`,
             lines: [
                 {
                     accountCode: mappings.CASH_ON_HAND, // Asset
@@ -330,7 +330,7 @@ export class PostingRules {
                     description: 'Cash received'
                 },
                 {
-                    accountCode: mappings.CONTRIBUTIONS, // Asset
+                    accountCode: mappings.CONTRIBUTIONS, // Liability
                     debitAmount: 0,
                     creditAmount: amount,
                     description: `Contribution - ${memberName}`

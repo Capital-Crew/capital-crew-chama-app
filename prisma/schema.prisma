@@ -93,7 +93,7 @@ enum BatchPaymentStatus {
   FAILED
 }
 
-enum IncomeCategory {
+enum RevenueCategory {
   MONTHLY_CONTRIBUTION
   LOAN_REPAYMENT
   LOAN_PENALTY
@@ -381,7 +381,7 @@ model LedgerEntry {
   @@index([ledgerAccountId])
 }
 
-enum ShareTransactionType {
+enum ContributionTransactionType {
   CONTRIBUTION // Member contributes to share capital
   REVERSAL // Admin-approved reversal
 }
@@ -392,7 +392,6 @@ enum AccountType {
   EQUITY
   REVENUE
   EXPENSE
-  INCOME
 }
 
 enum LedgerStatus {
@@ -426,8 +425,8 @@ enum ReferenceType {
   LOAN_FEE_CHARGE
   SAVINGS_DEPOSIT
   SAVINGS_WITHDRAWAL
-  SHARE_CONTRIBUTION
-  SHARE_REVERSAL
+  CONTRIBUTION_PAYMENT
+  CONTRIBUTION_REVERSAL
   MANUAL_ADJUSTMENT
   OPENING_BALANCE
   MIGRATION
@@ -445,7 +444,7 @@ enum AggregateType {
   LOAN
   MEMBER
   WALLET
-  SHARE
+  CONTRIBUTION
   SYSTEM
 }
 
@@ -472,8 +471,8 @@ enum DomainEventType {
   WALLET_WITHDRAWAL_MADE
 
   // Share Events
-  SHARE_CONTRIBUTION_MADE
-  SHARE_CONTRIBUTION_REVERSED
+  CONTRIBUTION_MADE
+  CONTRIBUTION_REVERSED
 
   // System Events
   SYSTEM_MIGRATION
@@ -595,8 +594,8 @@ model Member {
   branchId String?
   branch   Branch? @relation(fields: [branchId], references: [id])
 
-  // SHARE CAPITAL (EQUITY)
-  shareContributions Decimal @default(0) @db.Decimal(19, 4)
+  // MEMBER CONTRIBUTIONS (EQUITY)
+  contributionBalance Decimal @default(0) @db.Decimal(19, 4)
 
   // NEW: Contribution Tracking
   contributionArrears Decimal @default(0) @db.Decimal(19, 4)
@@ -615,8 +614,7 @@ model Member {
   loans             Loan[]
   contributions     Contribution[]
   loanApprovals     LoanApproval[]
-  shareTransactions ShareTransaction[]
-  incomes           Income[]
+  revenues          Revenue[]
   notifications     Notification[]
   generalLedger     GeneralLedger[]
   guaranteedLoans   GuarantorMap[]
@@ -625,7 +623,7 @@ model Member {
 
   // NEW: Contributions Waterfall
   monthlyTrackers          MonthlyTracker[]
-  contributionTransactions ContributionTransaction[]
+  contributionTransactions ContributionTransaction[] @relation("MemberContributions")
 
   // Welfare Relations
   welfareRequisitions WelfareRequisition[] @relation("WelfareRequisitionMember")
@@ -787,11 +785,7 @@ model Loan {
 
   amount Decimal? @db.Decimal(19, 4)
 
-  /// @deprecated Legacy field. Do not use.
-  current_balance Decimal @default(0) @db.Decimal(19, 4) // Legacy
-
-  /// @deprecated Read-only cache. Use AccountingEngine for authoritative balance.
-  outstandingBalance Decimal @default(0) @db.Decimal(19, 4) // NEW: Strict Decimal Balance
+  // Autoritative Balance: Managed by AccountingEngine via LedgerTransaction
 
   applicationDate  DateTime?
   disbursementDate DateTime?
@@ -803,11 +797,11 @@ model Loan {
   status    LoanStatus @default(PENDING_APPROVAL)
 
   // Loan Appraisal Calculation Fields
-  memberSharesAtApplication Decimal @default(0) @db.Decimal(19, 4)
-  grossQualifyingAmount     Decimal @default(0) @db.Decimal(19, 4)
-  processingFee             Decimal @default(0) @db.Decimal(19, 4)
-  insuranceFee              Decimal @default(0) @db.Decimal(19, 4)
-  shareCapitalDeduction     Decimal @default(0) @db.Decimal(19, 4)
+  memberContributionsAtApplication Decimal @default(0) @db.Decimal(19, 4)
+  grossQualifyingAmount            Decimal @default(0) @db.Decimal(19, 4)
+  processingFee                    Decimal @default(0) @db.Decimal(19, 4)
+  insuranceFee                     Decimal @default(0) @db.Decimal(19, 4)
+  contributionDeduction            Decimal @default(0) @db.Decimal(19, 4)
   existingLoanOffset        Decimal @default(0) @db.Decimal(19, 4)
   totalDeductions           Decimal @default(0) @db.Decimal(19, 4)
   netDisbursementAmount     Decimal @default(0) @db.Decimal(19, 4)
@@ -1195,18 +1189,19 @@ model ExpenseApproval {
   @@unique([expenseId, userId])
 }
 
-model Income {
-  id              String         @id @default(cuid())
-  date            DateTime
+model Revenue {
+  id              String          @id @default(cuid())
+  date            DateTime        @default(now())
   memberId        String
-  member          Member         @relation(fields: [memberId], references: [id])
-  amount          Decimal        @db.Decimal(19, 4)
-  category        IncomeCategory
+  member          Member          @relation(fields: [memberId], references: [id])
+  amount          Decimal         @db.Decimal(19, 4)
+  category        RevenueCategory
   description     String
   loanId          String?
   transactionId   String
-  principalAmount Decimal?       @db.Decimal(19, 4)
-  interestAmount  Decimal?       @db.Decimal(19, 4)
+
+  principalAmount Decimal?        @db.Decimal(19, 4)
+  interestAmount  Decimal?        @db.Decimal(19, 4)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1293,33 +1288,37 @@ model ReversalLog {
   timestamp  DateTime @default(now())
 }
 
-// ShareTransaction - Immutable record of share capital contributions
-model ShareTransaction {
+// ContributionTransaction - Immutable record of contributions (formerly shares)
+model ContributionTransaction {
   id       String @id @default(cuid())
   memberId String
-  member   Member @relation(fields: [memberId], references: [id])
+  member   Member @relation("MemberContributions", fields: [memberId], references: [id])
 
-  type        ShareTransactionType // CONTRIBUTION, REVERSAL
-  amount      Decimal              @db.Decimal(19, 4) // Always positive
+  walletId String?
+  wallet   Wallet? @relation(fields: [walletId], references: [id])
+
+  type        ContributionTransactionType // CONTRIBUTION, REVERSAL
+  amount      Decimal                     @db.Decimal(19, 4) // Always positive
   description String
 
   // Audit & Immutability
   createdAt   DateTime @default(now())
-  createdBy   String // User ID who created
-  creatorName String
+  createdBy   String?  @default("")
+  creatorName String?  @default("")
   isReversed  Boolean  @default(false)
   reversalId  String?  @unique // If reversed, points to reversal transaction
   reverses    String?  @unique // If this is a reversal, points to original
 
   // Accounting Link
-  ledgerEntryId String?        @unique
-  ledgerEntry   GeneralLedger?
+  ledgerTransaction   GeneralLedger?
+  ledgerTransactionId String?        @unique
 
   // Metadata
   metadata Json?
 
   @@index([memberId, createdAt])
 }
+
 
 enum WalletStatus {
   ACTIVE
@@ -1394,8 +1393,8 @@ model GeneralLedger {
   walletTransactionId String?            @unique
   walletTransaction   WalletTransaction? @relation(fields: [walletTransactionId], references: [id])
 
-  shareTransactionId String?           @unique
-  shareTransaction   ShareTransaction? @relation(fields: [shareTransactionId], references: [id])
+  contributionTransactionId String?                 @unique
+  contributionTransaction   ContributionTransaction? @relation(fields: [contributionTransactionId], references: [id])
 
   loanId String?
   loan   Loan?   @relation(fields: [loanId], references: [id])
@@ -1420,7 +1419,7 @@ model SaccoSettings {
   loanMultiplier       Decimal @default(3.0) @db.Decimal(5, 2)
   processingFeePercent Decimal @default(0.0) @db.Decimal(5, 2)
   insuranceFeePercent  Decimal @default(0.0) @db.Decimal(5, 2)
-  shareCapitalBoost    Decimal @default(0.0) @db.Decimal(5, 2)
+  contributionBoost    Decimal @default(0.0) @db.Decimal(5, 2)
   requiredApprovals    Int     @default(3) // Number of approvals needed for loan disbursement
 
   // NEW: Loan Top-Up Settings
@@ -1572,31 +1571,7 @@ model AttendanceFine {
 
 // Legacy tables preserved to avoid data loss. 
 // Do not delete these models unless you have migrated or no longer need the data.
-model LegacyAttendance {
-  id          String   @id @default(cuid())
-  meetingId   String?
-  userId      String?
-  memberId    String?
-  status      String?
-  minutesLate Int?     @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("Attendance")
-}
-
-model LegacyPenaltyBill {
-  id        String   @id @default(cuid())
-  meetingId String?
-  userId    String?
-  amount    Decimal  @db.Decimal(19, 4)
-  reason    String?
-  status    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("PenaltyBill")
-}
+// Removed LegacyAttendance and LegacyPenaltyBill
 
 model LoanApproval {
   id         String         @id @default(cuid())
@@ -1721,7 +1696,7 @@ model MemberBalanceProjection {
 
   // Balances
   walletBalance Float @default(0)
-  shareCapital  Float @default(0)
+  contributionBalance Float @default(0)
 
   // Loan Summary
   totalLoansActive      Int   @default(0)
@@ -1773,9 +1748,9 @@ enum PenaltyStatus {
 // ========================================
 
 enum ProductAccountingType {
-  INTEREST_INCOME
-  FEE_INCOME
-  PENALTY_INCOME
+  INTEREST_REVENUE
+  FEE_REVENUE
+  PENALTY_REVENUE
   LOAN_PORTFOLIO
   INTEREST_RECEIVABLE
   PENALTY_RECEIVABLE
@@ -1789,16 +1764,16 @@ enum SystemAccountType {
   EVENT_CASH_WITHDRAWAL
   EVENT_LOAN_DISBURSEMENT
   EVENT_LOAN_REPAYMENT_PRINCIPAL
-  EVENT_SHARE_CONTRIBUTION
+  EVENT_CONTRIBUTION_PAYMENT
 
-  // Income Events
-  INCOME_LOAN_INTEREST
+  // Revenue Events
+  REVENUE_LOAN_INTEREST
   RECEIVABLE_LOAN_INTEREST
-  INCOME_LOAN_PENALTY
+  REVENUE_LOAN_PENALTY
   RECEIVABLE_LOAN_PENALTY
-  INCOME_LOAN_PROCESSING_FEE
-  INCOME_GENERAL_FEE
-  INCOME_REFINANCE_FEE
+  REVENUE_LOAN_PROCESSING_FEE
+  REVENUE_GENERAL_FEE
+  REVENUE_REFINANCE_FEE
   RECEIVABLE_LOAN_FEES
   EVENT_MEETING_FINES
 
@@ -1808,7 +1783,6 @@ enum SystemAccountType {
   MEMBER_WALLET
   CONTRIBUTIONS
   REVENUE
-  INCOME
 }
 
 model SystemAccountingMapping {
@@ -2043,26 +2017,6 @@ model FineSnapshot {
   @@index([contributionId])
 }
 
-model ContributionTransaction {
-  id String @id @default(cuid())
-
-  memberId String
-  member   Member @relation(fields: [memberId], references: [id])
-
-  walletId String
-  wallet   Wallet @relation(fields: [walletId], references: [id])
-
-  amount Decimal  @db.Decimal(19, 4)
-  date   DateTime @default(now())
-
-  // Link to Ledger for audit
-  ledgerTransactionId String? @unique
-
-  createdAt DateTime @default(now())
-
-  @@index([memberId])
-  @@index([walletId])
-}
 
 // ========================================
 // WELFARE MODULE

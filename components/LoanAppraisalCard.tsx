@@ -58,11 +58,11 @@ interface LoanData {
     }
 
     // Appraisal fields
-    memberSharesAtApplication: number
+    memberContributionsAtApplication: number
     grossQualifyingAmount: number
     processingFee: number
     insuranceFee: number
-    shareCapitalDeduction: number
+    contributionDeduction: number
     existingLoanOffset: number
     totalDeductions: number
     netDisbursementAmount: number
@@ -336,9 +336,9 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                                         memberNo={loan.member.memberNumber.toString()}
                                         memberName={loan.member.name}
                                         amountApplied={loan.amount}
-                                        memberContribution={loan.memberSharesAtApplication}
+                                        memberContribution={loan.memberContributionsAtApplication}
                                         maxAvailable={loan.grossQualifyingAmount}
-                                        depositsMultiplier={loan.memberSharesAtApplication > 0 ? Number((loan.grossQualifyingAmount / loan.memberSharesAtApplication).toFixed(2)) : 0}
+                                        depositsMultiplier={loan.memberContributionsAtApplication > 0 ? Number((loan.grossQualifyingAmount / loan.memberContributionsAtApplication).toFixed(2)) : 0}
                                         loanBalance={loan.existingLoanOffset}
                                         topUpAmount={loan.existingLoanOffset}
                                         balanceAfterTopup={0}
@@ -359,7 +359,7 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                                         approvedAmount={loan.amount}
                                         processingFee={loan.processingFee}
                                         insuranceFee={loan.insuranceFee}
-                                        shareCapitalDeduction={loan.shareCapitalDeduction}
+                                        contributionDeduction={loan.contributionDeduction}
                                         existingLoanOffset={loan.existingLoanOffset}
                                         totalDeductions={loan.totalDeductions}
                                         netDisbursed={loan.netDisbursementAmount}

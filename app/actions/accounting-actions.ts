@@ -440,17 +440,18 @@ export const reverseJournalEntryAction = withAudit({ actionType: AuditLogAction.
         )
 
         // Handle Side Effects
-        if (originalEntry.referenceType === 'SHARE_CONTRIBUTION') {
+        if (originalEntry.referenceType === 'CONTRIBUTION_PAYMENT' || originalEntry.referenceType === 'SAVINGS_DEPOSIT') {
             const amount = originalEntry.ledgerEntries.reduce((sum, line) => sum + Number(line.creditAmount), 0)
             if (originalEntry.referenceId) {
                 await tx.member.update({
                     where: { id: originalEntry.referenceId },
-                    data: { shareContributions: { decrement: amount } }
+                    data: { contributionBalance: { decrement: amount } }
                 })
             }
-            await tx.shareTransaction.updateMany({
-                where: { ledgerEntryId: originalEntry.id },
-                data: { isReversed: true, reversalId: reversalEntry.id }
+            // Note: shareTransaction replaced by contributionTransaction or generic ledger
+            await tx.contributionTransaction.updateMany({
+                where: { ledgerTransactionId: originalEntry.id },
+                data: { isReversed: true }
             })
         } else if (originalEntry.referenceType === 'LOAN_REPAYMENT') {
             if (originalEntry.referenceId) {
@@ -663,7 +664,7 @@ export async function updateAccountType(accountId: string, newType: string) {
         throw new Error("Unauthorized");
     }
 
-    const validTypes = ['ASSET', 'LIABILITY', 'EQUITY', 'INCOME', 'REVENUE', 'EXPENSE'];
+    const validTypes = ['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE'];
     if (!validTypes.includes(newType)) {
         throw new Error("Invalid account type");
     }

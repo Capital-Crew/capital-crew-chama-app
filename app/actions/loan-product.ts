@@ -37,8 +37,8 @@ export const createLoanProductWizard = withAudit(
             repaymentEvery, repaymentFrequencyType,
             interestRatePerPeriod, interestType, interestCalculationPeriodType, amortizationType,
             defaultPenaltyRate, gracePeriod,
-            fundSourceAccountId, loanPortfolioAccountId, interestIncomeAccountId,
-            interestReceivableAccountId, penaltyIncomeAccountId, penaltyReceivableAccountId
+            fundSourceAccountId, loanPortfolioAccountId, interestRevenueAccountId,
+            interestReceivableAccountId, penaltyRevenueAccountId, penaltyReceivableAccountId
         } = validated.data;
         ctx.endStep('Validate Input and Data');
 
@@ -82,9 +82,9 @@ export const createLoanProductWizard = withAudit(
 
             await createMapping("FUND_SOURCE", fundSourceAccountId);
             await createMapping("LOAN_PORTFOLIO", loanPortfolioAccountId);
-            await createMapping("INTEREST_INCOME", interestIncomeAccountId);
+            await createMapping("INTEREST_REVENUE", interestRevenueAccountId);
             await createMapping("INTEREST_RECEIVABLE", interestReceivableAccountId);
-            await createMapping("PENALTY_INCOME", penaltyIncomeAccountId);
+            await createMapping("PENALTY_REVENUE", penaltyRevenueAccountId);
             await createMapping("PENALTY_RECEIVABLE", penaltyReceivableAccountId);
             ctx.endStep('Create Accounting Mappings');
 
@@ -131,8 +131,8 @@ export const updateLoanProductWizard = withAudit(
             repaymentEvery, repaymentFrequencyType,
             interestRatePerPeriod, interestType, interestCalculationPeriodType, amortizationType,
             defaultPenaltyRate, gracePeriod,
-            fundSourceAccountId, loanPortfolioAccountId, interestIncomeAccountId,
-            interestReceivableAccountId, penaltyIncomeAccountId, penaltyReceivableAccountId
+            fundSourceAccountId, loanPortfolioAccountId, interestRevenueAccountId,
+            interestReceivableAccountId, penaltyRevenueAccountId, penaltyReceivableAccountId
         } = validated.data;
         ctx.captureBefore('ProductData', id, { id }); // Metadata only, raw SQL bypasses fetch
         ctx.endStep('Validate Input and Data');
@@ -180,9 +180,9 @@ export const updateLoanProductWizard = withAudit(
 
             await createMapping("FUND_SOURCE", fundSourceAccountId);
             await createMapping("LOAN_PORTFOLIO", loanPortfolioAccountId);
-            await createMapping("INTEREST_INCOME", interestIncomeAccountId);
+            await createMapping("INTEREST_REVENUE", interestRevenueAccountId);
             await createMapping("INTEREST_RECEIVABLE", interestReceivableAccountId);
-            await createMapping("PENALTY_INCOME", penaltyIncomeAccountId);
+            await createMapping("PENALTY_REVENUE", penaltyRevenueAccountId);
             await createMapping("PENALTY_RECEIVABLE", penaltyReceivableAccountId);
             ctx.endStep('Update Accounting Mappings');
 

@@ -1,0 +1,134 @@
+﻿System Modules: [
+  {
+    "id": "cmnnacrpz0000tml090rr0eoa",
+    "key": "DASHBOARD",
+    "name": "Dashboard",
+    "description": null,
+    "createdAt": "2026-04-06T14:28:37.841Z",
+    "updatedAt": "2026-04-06T14:28:37.841Z"
+  },
+  {
+    "id": "cmnnacs0l0001tml0ztwoz03i",
+    "key": "APPROVALS",
+    "name": "Approvals Management",
+    "description": null,
+    "createdAt": "2026-04-06T14:28:38.230Z",
+    "updatedAt": "2026-04-06T14:28:38.230Z"
+  },
+  {
+    "id": "cmnnacs4s0002tml0op2i25vd",
+    "key": "MEMBERS",
+    "name": "Members Management",
+    "description": null,
+    "createdAt": "2026-04-06T14:28:38.380Z",
+    "updatedAt": "2026-04-06T14:28:38.380Z"
+  },
+  {
+    "id": "cmnnacs8x0003tml0xamgnj2c",
+    "key": "LOANS",
+    "name": "Loans Management",
+    "description": null,
+    "createdAt": "2026-04-06T14:28:38.529Z",
+    "updatedAt": "2026-04-06T14:28:38.529Z"
+  },
+  {
+    "id": "cmnnacsd20004tml044dtc43o",
+    "key": "WALLET",
+    "name": "My Wallet & Savings",
+    "description": null,
+    "createdAt": "2026-04-06T14:28:38.678Z",
+    "updatedAt": "2026-04-06T14:28:38.678Z"
+  },
+  {
+    "id": "cmnnacsh90005tml0da3jan3l",
+    "key": "WELFARE",
+    "name": "Welfare Module",
+    "description": null,
+    "createdAt": "2026-04-06T14:28:38.829Z",
+    "updatedAt": "2026-04-06T14:28:38.829Z"
+  },
+  {
+    "id": "cmnnacslg0006tml0z8d1k7z1",
+    "key": "MEETINGS",
+    "name": "Meetings & Attendance",
+    "description": null,
+    "createdAt": "2026-04-06T14:28:38.980Z",
+    "updatedAt": "2026-04-06T14:28:38.980Z"
+  },
+  {
+    "id": "cmnnacspk0007tml0bmtrz7mo",
+    "key": "EXPENSES",
+    "name": "Expense Management",
+    "description": null,
+    "createdAt": "2026-04-06T14:28:39.129Z",
+    "updatedAt": "2026-04-06T14:28:39.129Z"
+  },
+  {
+    "id": "cmnnacstu0008tml08qopi8hl",
+    "key": "REPORTS_HUB",
+    "name": "Reports & Analytics",
+    "description": null,
+    "createdAt": "2026-04-06T14:28:39.282Z",
+    "updatedAt": "2026-04-06T14:28:39.282Z"
+  },
+  {
+    "id": "cmnnacsy00009tml05olfj5cr",
+    "key": "ACCOUNTS",
+    "name": "Accounting & Ledgers",
+    "description": null,
+    "createdAt": "2026-04-06T14:28:39.432Z",
+    "updatedAt": "2026-04-06T14:28:39.432Z"
+  },
+  {
+    "id": "cmnnact2s000atml09afm9xy9",
+    "key": "ADMIN",
+    "name": "System Administration",
+    "description": null,
+    "createdAt": "2026-04-06T14:28:39.604Z",
+    "updatedAt": "2026-04-06T14:28:39.604Z"
+  },
+  {
+    "id": "cmnnact7t000btml0k5owy3eg",
+    "key": "AUDIT",
+    "name": "Audit Logs",
+    "description": null,
+    "createdAt": "2026-04-06T14:28:39.785Z",
+    "updatedAt": "2026-04-06T14:28:39.785Z"
+  }
+]
+Permissions for SYSTEM_ADMIN: [
+  'DASHBOARD',   'APPROVALS',
+  'MEMBERS',     'LOANS',
+  'WALLET',      'WELFARE',
+  'MEETINGS',    'EXPENSES',
+  'REPORTS_HUB', 'ACCOUNTS',
+  'ADMIN',       'AUDIT'
+]
+Permissions for CHAIRPERSON: [
+  'DASHBOARD',   'APPROVALS',
+  'MEMBERS',     'LOANS',
+  'WALLET',      'WELFARE',
+  'MEETINGS',    'EXPENSES',
+  'REPORTS_HUB', 'ACCOUNTS',
+  'ADMIN',       'AUDIT'
+]
+Permissions for TREASURER: [
+  'DASHBOARD',   'APPROVALS',
+  'MEMBERS',     'LOANS',
+  'WALLET',      'WELFARE',
+  'MEETINGS',    'EXPENSES',
+  'REPORTS_HUB', 'ACCOUNTS',
+  'ADMIN',       'AUDIT'
+]
+Permissions for SECRETARY: [
+  'DASHBOARD',
+  'APPROVALS',
+  'MEMBERS',
+  'LOANS',
+  'WALLET',
+  'WELFARE',
+  'MEETINGS',
+  'EXPENSES',
+  'REPORTS_HUB'
+]
+Permissions for MEMBER: [ 'DASHBOARD', 'LOANS', 'WALLET', 'MEETINGS', 'EXPENSES' ]

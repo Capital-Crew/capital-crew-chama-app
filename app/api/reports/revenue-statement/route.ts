@@ -25,10 +25,10 @@ export async function GET(req: NextRequest) {
             basis: searchParams.get('basis') || 'CASH'
         })
 
-        const report = await AccountingService.getIncomeStatement(query.startDate, query.endDate, query.basis)
+        const report = await AccountingService.getRevenueStatement(query.startDate, query.endDate, query.basis)
 
         return NextResponse.json({ report })
     } catch (error) {
-        return handleApiError(error, 'Income Statement GET')
+        return handleApiError(error, 'Revenue Statement GET')
     }
 }

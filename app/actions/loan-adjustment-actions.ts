@@ -43,7 +43,6 @@ export async function searchLoans(query: string) {
         select: {
             id: true,
             loanApplicationNumber: true,
-            outstandingBalance: true,
             amount: true,
             member: {
                 select: {
@@ -85,7 +84,7 @@ export async function searchLoans(query: string) {
             ? statementRows[statementRows.length - 1].runningBalance
             : 0;
 
-        const finalBalance = mappedTransactions.length > 0 ? statementBalance : Number(loan.outstandingBalance || 0);
+        const finalBalance = mappedTransactions.length > 0 ? statementBalance : 0;
 
         return {
             id: loan.id,
@@ -160,11 +159,11 @@ export const postLoanAdjustment = withAudit(
             switch (category) {
                 case AdjustmentCategory.PENALTY:
                 case AdjustmentCategory.BOUNCED_CHEQUE:
-                    contraAccountCode = getCode('INCOME_LOAN_PENALTY') || '4100'
+                    contraAccountCode = getCode('REVENUE_LOAN_PENALTY') || '4012'
                     break;
                 case AdjustmentCategory.LEGAL_FEE:
                 case AdjustmentCategory.RECOVERY_COST:
-                    contraAccountCode = getCode('INCOME_GENERAL_FEE') || '4100'
+                    contraAccountCode = getCode('REVENUE_GENERAL_FEE') || '4021'
                     break;
                 default:
                     contraAccountCode = '4100'
@@ -311,12 +310,15 @@ export const postLoanAdjustment = withAudit(
                     await TransactionReplayService.replayTransactions(loan.id, effectiveDate, tx);
                 }
 
-                const updatedLoan = await tx.loan.findUnique({
-                    where: { id: loan.id },
-                    select: { outstandingBalance: true, status: true }
-                })
+                const { getLoanPrincipalBalance, getLoanInterestBalance, getLoanPenaltyBalance, getLoanFeeBalance } =
+                    await import('@/lib/accounting/AccountingEngine');
+                const p = await getLoanPrincipalBalance(loan.id);
+                const i = await getLoanInterestBalance(loan.id);
+                const pen = await getLoanPenaltyBalance(loan.id);
+                const f = await getLoanFeeBalance(loan.id);
+                const currentBalance = p + i + pen + f;
 
-                if (updatedLoan && new Prisma.Decimal(updatedLoan.outstandingBalance).eq(0)) {
+                if (currentBalance <= 0.01) {
                     await tx.loan.update({
                         where: { id: loan.id },
                         data: {

@@ -97,7 +97,7 @@ export class MemberReadService {
                 status: true,
                 branch: { select: { name: true } },
                 wallet: { select: { glAccount: { select: { balance: true } } } },
-                shareContributions: true
+                contributionBalance: true
             }
         })
         return member

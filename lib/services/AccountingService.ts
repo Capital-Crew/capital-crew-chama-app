@@ -3,13 +3,13 @@ import { Prisma } from '@prisma/client'
 import { Decimal } from 'decimal.js'
 import { LedgerService } from './ledger-service'
 
-export interface IncomeStatement {
-    interestIncome: Decimal
-    feeIncome: Decimal
-    penaltyIncome: Decimal
+export interface RevenueStatement {
+    interestRevenue: Decimal
+    feeRevenue: Decimal
+    penaltyRevenue: Decimal
     totalRevenue: Decimal
     loanLossProvisions: Decimal
-    netIncome: Decimal
+    netRevenue: Decimal
 }
 
 export interface BalanceSheet {
@@ -33,10 +33,10 @@ export interface BalanceSheet {
 
 export class AccountingService {
     /**
-     * Income Statement (P&L)
+     * Revenue Statement (P&L)
      * Mirrors Fineract logic: sum portions from LoanTransactions.
      */
-    static async getIncomeStatement(startDate: Date, endDate: Date, basis: 'CASH' | 'ACCRUAL' = 'CASH'): Promise<IncomeStatement> {
+    static async getRevenueStatement(startDate: Date, endDate: Date, basis: 'CASH' | 'ACCRUAL' = 'CASH'): Promise<RevenueStatement> {
         // For Cash Basis, we look at REPAYMENT transactions
         // For Accrual Basis, we look at INTEREST and PENALTY accrual transactions (if implemented as such)
 
@@ -60,24 +60,24 @@ export class AccountingService {
             }
         })
 
-        const interestIncome = new Decimal(aggregations._sum.interestAmount?.toString() || '0')
-        const feeIncome = new Decimal(aggregations._sum.feeAmount?.toString() || '0')
-        const penaltyIncome = new Decimal(aggregations._sum.penaltyAmount?.toString() || '0')
-        const totalRevenue = interestIncome.plus(feeIncome).plus(penaltyIncome)
+        const interestRevenue = new Decimal(aggregations._sum.interestAmount?.toString() || '0')
+        const feeRevenue = new Decimal(aggregations._sum.feeAmount?.toString() || '0')
+        const penaltyRevenue = new Decimal(aggregations._sum.penaltyAmount?.toString() || '0')
+        const totalRevenue = interestRevenue.plus(feeRevenue).plus(penaltyRevenue)
 
         // Expense: Loan Loss Provisioning (Simplified for now - can be calculated based on PAR buckets)
         // PAR (Portfolio At Risk) logic would go here
         const loanLossProvisions = new Decimal(0) // Placeholder
 
-        const netIncome = totalRevenue.minus(loanLossProvisions)
+        const netRevenue = totalRevenue.minus(loanLossProvisions)
 
         return {
-            interestIncome,
-            feeIncome,
-            penaltyIncome,
+            interestRevenue,
+            feeRevenue,
+            penaltyRevenue,
             totalRevenue,
             loanLossProvisions,
-            netIncome
+            netRevenue
         }
     }
 
@@ -138,10 +138,10 @@ export class AccountingService {
         const totalLiabilities = memberSavings
 
         // 4. Equity
-        const currentYearProfit = (await this.getIncomeStatement(
+        const currentYearProfit = (await this.getRevenueStatement(
             new Date(asOfDate.getFullYear(), 0, 1),
             asOfDate
-        )).netIncome
+        )).netRevenue
 
         const totalAssets = netLoanPortfolio.plus(cashAndBank)
         const retainedEarnings = totalAssets.minus(totalLiabilities).minus(currentYearProfit)

@@ -79,7 +79,7 @@ export class BalanceChecker {
      * Validate that a debit operation won't cause an overdraft
      * 
      * For ASSET accounts: Debits increase balance (always OK)
-     * For LIABILITY/INCOME accounts: Debits decrease balance (check if sufficient)
+     * For LIABILITY/REVENUE accounts: Debits decrease balance (check if sufficient)
      */
     static async validateDebit(
         accountCode: string,
@@ -98,7 +98,7 @@ export class BalanceChecker {
             return
         }
 
-        // For LIABILITY and INCOME accounts, debits decrease balance
+        // For LIABILITY and REVENUE accounts, debits decrease balance
         // Check if sufficient balance exists
         const currentBalance = await this.getAccountBalance(accountCode, tx)
 
@@ -116,7 +116,7 @@ export class BalanceChecker {
      * Validate that a credit operation won't cause an overdraft
      * 
      * For ASSET accounts: Credits decrease balance (check if sufficient)
-     * For LIABILITY/INCOME accounts: Credits increase balance (always OK)
+     * For LIABILITY/REVENUE accounts: Credits increase balance (always OK)
      */
     static async validateCredit(
         accountCode: string,
@@ -130,8 +130,8 @@ export class BalanceChecker {
             throw new Error(`Account ${accountCode} not found`)
         }
 
-        // For LIABILITY and INCOME accounts, credits increase balance - always allowed
-        if (account.type === 'LIABILITY' || account.type === 'INCOME') {
+        // For LIABILITY and REVENUE accounts, credits increase balance - always allowed
+        if (account.type === 'LIABILITY' || account.type === 'REVENUE') {
             return
         }
 

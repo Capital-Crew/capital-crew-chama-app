@@ -96,7 +96,7 @@ export function LedgerForm({ onClose, onSuccess, existingLedgers }: LedgerFormPr
                         <div className="form-control w-full">
                             <label className="label font-bold text-slate-700">Account Category</label>
                             <select {...register('type')} className="select select-bordered w-full rounded-xl">
-                                {Object.values(AccountType).filter(t => t !== 'INCOME').map(t => (
+                                {Object.values(AccountType).map(t => (
                                     <option key={t} value={t}>{t}</option>
                                 ))}
                             </select>

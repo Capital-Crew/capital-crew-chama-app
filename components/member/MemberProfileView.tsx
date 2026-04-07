@@ -81,13 +81,12 @@ export function MemberProfileView({
             image: member.user?.image
         },
         financials: {
-            memberSavings: stats?.memberSavings || 0,
-            cumulativeContributions: stats?.cumulativeContributions || 0,
+            contributionBalance: stats?.contributionBalance || 0,
             outstandingLoans: stats?.outstandingLoans || stats?.totalOutstandingBalance || 0,
             meetingFines: stats?.meetingFines || 0,
             contributionLatenessFines: stats?.contributionLatenessFines || 0,
             // Legacy fallbacks
-            totalContributions: stats?.cumulativeContributions || 0,
+            totalContributions: stats?.contributionBalance || 0,
             cumulativeLoanBalance: stats?.outstandingLoans || 0
         }
     };

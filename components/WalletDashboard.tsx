@@ -9,7 +9,7 @@ import { SubmitButton } from '@/components/ui/SubmitButton'
 import { FormError } from '@/components/ui/FormError'
 
 interface WalletBalance {
-    shareContributions?: number
+    contributionBalance?: number
     balance: number
     availableBalance?: number
     totalContributions?: number
@@ -149,7 +149,7 @@ export function WalletDashboard({ memberId }: { memberId: string }) {
         return `KES ${amount.toLocaleString()}`
     }
 
-    const shareCapital = walletData.shareContributions ?? walletData.totalContributions ?? 0
+    const shareCapital = walletData.contributionBalance ?? walletData.totalContributions ?? 0
     const availBalance = walletData.availableBalance ?? walletData.balance
 
     return (

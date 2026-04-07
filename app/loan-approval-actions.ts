@@ -66,6 +66,12 @@ export const toggleConcurrentExemption = withAudit(
                     ...currentExemptions,
                     allowConcurrentApplication: allowed,
                 },
+                memberContributionsAtApplication: (() => {
+                    let effectiveContributions = Number(loan.memberContributionsAtApplication);
+                    if (effectiveContributions < 0) effectiveContributions = Math.abs(effectiveContributions);
+                    // Assuming freshBalance is available in scope or logic context
+                    return effectiveContributions;
+                })(),
             },
         });
         ctx.captureAfter(updatedLoan);
@@ -295,13 +301,15 @@ export const disburseLoanToWallet = withAudit(
                 const dPrincipal = new Prisma.Decimal(loan.amount || 0).toDecimalPlaces(2);
                 const dProcessingFee = new Prisma.Decimal(loan.processingFee || 0).toDecimalPlaces(2);
                 const dInsuranceFee = new Prisma.Decimal(loan.insuranceFee || 0).toDecimalPlaces(2);
-                const dShareDeduction = new Prisma.Decimal(loan.shareCapitalDeduction || 0).toDecimalPlaces(2);
+                const dContributionDeduction = new Prisma.Decimal(loan.contributionDeduction || 0).toDecimalPlaces(2);
 
                 // Check if loan has already been disbursed
-                const existingBalance = Number(loan.outstandingBalance);
-                if (existingBalance > 0) {
+                // Authoritative balance is now in LedgerTransaction
+                const { getLoanOutstandingBalance } = await import("@/lib/accounting/AccountingEngine");
+                const initialBalance = await getLoanOutstandingBalance(loanId, tx);
+                if (new Prisma.Decimal(initialBalance).gt(0)) {
                     ctx.setErrorCode('ALREADY_DISBURSED');
-                    throw new Error(`Loan already disbursed. Balance: ${existingBalance}`);
+                    throw new Error(`Loan already disbursed. Balance: ${initialBalance}`);
                 }
                 ctx.endStep('Calculate Disbursements and Deductions');
 
@@ -339,8 +347,8 @@ export const disburseLoanToWallet = withAudit(
                 // B. CREDIT: Fees
                 if (dProcessingFee.gt(0)) {
                     finalJournalLines.push({
-                        accountId: await getAccountIdLocal(getCode("INCOME_LOAN_PROCESSING_FEE")),
-                        accountType: "INCOME",
+                        accountId: await getAccountIdLocal(getCode("REVENUE_LOAN_PROCESSING_FEE")),
+                        accountType: "REVENUE",
                         description: "Processing Fee",
                         debitAmount: 0, creditAmount: dProcessingFee, index: idx++,
                     });
@@ -349,8 +357,8 @@ export const disburseLoanToWallet = withAudit(
 
                 if (dInsuranceFee.gt(0)) {
                     finalJournalLines.push({
-                        accountId: await getAccountIdLocal(getCode("INCOME_GENERAL_FEE")),
-                        accountType: "INCOME",
+                        accountId: await getAccountIdLocal(getCode("REVENUE_GENERAL_FEE")),
+                        accountType: "REVENUE",
                         description: "Insurance Fee",
                         debitAmount: 0, creditAmount: dInsuranceFee, index: idx++,
                     });
@@ -394,14 +402,11 @@ export const disburseLoanToWallet = withAudit(
                     },
                 });
 
-                const strictBalance = await LoanBalanceService.updateLoanBalance(loanId, tx);
-
+                const finalBalance = await LoanBalanceService.updateLoanBalance(loanId, tx);
                 const updatedLoan = await tx.loan.update({
                     where: { id: loanId },
                     data: {
                         status: "ACTIVE",
-                        current_balance: strictBalance.toNumber(),
-                        outstandingBalance: strictBalance,
                         disbursementDate: new Date(),
                     },
                 });
@@ -473,8 +478,8 @@ async function getAccountId(tx: any, code: string) {
     if (code === "1200") name = "Loan Portfolio";
     if (code === "2000") name = "Member Deposits / Wallets";
     if (code === "3012") name = "Member Withdrawable Wallet";
-    if (code === "4000") name = "Processing Fee Income";
-    if (code === "4200") name = "Insurance Fee Income";
+    if (code === "4000") name = "Processing Fee Revenue";
+    if (code === "4200") name = "Insurance Fee Revenue";
 
     try {
         const newAcc = await tx.ledgerAccount.create({
@@ -499,11 +504,11 @@ function getDefaultCode(type: string) {
     switch (type) {
         case "LOAN_PORTFOLIO":
             return "1021"; // Principal Loans to Members
-        case "FEE_INCOME":
+        case "FEE_REVENUE":
             return "4021"; // Processing Fees
-        case "INTEREST_INCOME":
+        case "INTEREST_REVENUE":
             return "4011"; // Interest on Loans
-        case "PENALTY_INCOME":
+        case "PENALTY_REVENUE":
             return "4012"; // Interest on Penalties
         default:
             return "9999";

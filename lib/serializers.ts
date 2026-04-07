@@ -6,7 +6,7 @@ import { Loan, Member } from '@prisma/client'
 export function serializeMember<T extends Partial<Member>>(member: T): T {
     return {
         ...member,
-        shareContributions: member.shareContributions ? Number(member.shareContributions) : 0,
+        contributionBalance: (member as any).contributionBalance ? Number((member as any).contributionBalance) : 0,
         contributionArrears: member.contributionArrears ? Number(member.contributionArrears) : 0,
         penaltyArrears: member.penaltyArrears ? Number(member.penaltyArrears) : 0,
         welfareArrears: (member as any).welfareArrears ? Number((member as any).welfareArrears) : 0,
@@ -37,11 +37,11 @@ export function serializeLoan<T extends Partial<Loan>>(loan: T): T {
         penalties: loan.penalties ? Number(loan.penalties) : 0, // Legacy support
         processingFee: loan.processingFee ? Number(loan.processingFee) : 0,
         insuranceFee: loan.insuranceFee ? Number(loan.insuranceFee) : 0,
-        shareCapitalDeduction: loan.shareCapitalDeduction ? Number(loan.shareCapitalDeduction) : 0,
+        contributionDeduction: loan.contributionDeduction ? Number(loan.contributionDeduction) : 0,
         existingLoanOffset: loan.existingLoanOffset ? Number(loan.existingLoanOffset) : 0,
         totalDeductions: loan.totalDeductions ? Number(loan.totalDeductions) : 0,
         netDisbursementAmount: loan.netDisbursementAmount ? Number(loan.netDisbursementAmount) : 0,
-        memberSharesAtApplication: loan.memberSharesAtApplication ? Number(loan.memberSharesAtApplication) : 0,
+        memberContributionsAtApplication: loan.memberContributionsAtApplication ? Number(loan.memberContributionsAtApplication) : 0,
         grossQualifyingAmount: loan.grossQualifyingAmount ? Number(loan.grossQualifyingAmount) : 0,
         monthlyInstallment: loan.monthlyInstallment ? Number(loan.monthlyInstallment) : 0,
         accruedInterestTotal: loan.accruedInterestTotal ? Number(loan.accruedInterestTotal) : 0,

@@ -8,7 +8,7 @@ export interface CreditSnapshot {
     memberId: string
     memberName: string
     memberNumber: string
-    shareCapital: number
+    contributionBalance: number
     currentExposure: number
     grossLimit: number
     netQualifyingAmount: number
@@ -44,7 +44,7 @@ export async function calculateBorrowingPower(memberId: string): Promise<CreditS
 
     // Total Savings: Qualifying Contributions (GL 1200)
     // This is the correct consolidated balance to use for Credit Limits
-    const shareCapital = truncateToDecimals(await getMemberContributionBalance(memberId).catch(() => 0))
+    const contributionBalance = truncateToDecimals(await getMemberContributionBalance(memberId).catch(() => 0))
 
     const loanLimitMultiplier = truncateToDecimals(Number(settings.loanMultiplier))
 
@@ -86,14 +86,14 @@ export async function calculateBorrowingPower(memberId: string): Promise<CreditS
         currentExposure = addMoney(currentExposure, Math.max(0, loanBalance));
     }
 
-    const grossLimit = truncateToDecimals(shareCapital * loanLimitMultiplier)
+    const grossLimit = truncateToDecimals(contributionBalance * loanLimitMultiplier)
     const netQualifyingAmount = Math.max(0, subtractMoney(grossLimit, currentExposure))
 
     return {
         memberId: member.id,
         memberName: member.name,
         memberNumber: `MB-${member.memberNumber.toString().padStart(3, '0')}`,
-        shareCapital,
+        contributionBalance,
         currentExposure,
         grossLimit,
         netQualifyingAmount,

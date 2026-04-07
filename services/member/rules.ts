@@ -32,7 +32,7 @@ export class MemberRules {
 
         const guarantor = await db.member.findUnique({
             where: { id: guarantorId },
-            select: { status: true, shareContributions: true }
+            select: { status: true, contributionBalance: true }
         })
 
         if (!guarantor) {

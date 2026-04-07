@@ -79,7 +79,7 @@ export async function processTransfer(
         // 6. Create audit log
         const auditDetails = validatedInput.destinationType === 'LOAN_REPAYMENT'
             ? `Loan repayment: KES ${validatedInput.amount.toLocaleString()} (P: ${result.allocation?.penalty || 0}, I: ${result.allocation?.interest || 0}, Pr: ${result.allocation?.principal || 0})`
-            : `Share contribution: KES ${validatedInput.amount.toLocaleString()}`;
+            : `Contribution payment: KES ${validatedInput.amount.toLocaleString()}`;
 
         await db.auditLog.create({
             data: {

@@ -8,9 +8,9 @@ import { auth } from '@/auth'
 
 // Validation Schema
 const MappingSchema = z.object({
-    INTEREST_INCOME: z.string().min(1, 'Required'),
+    INTEREST_REVENUE: z.string().min(1, 'Required'),
     INTEREST_RECEIVABLE: z.string().min(1, 'Required'),
-    PENALTY_INCOME: z.string().min(1, 'Required'),
+    PENALTY_REVENUE: z.string().min(1, 'Required'),
     PENALTY_RECEIVABLE: z.string().min(1, 'Required'),
     LOAN_PORTFOLIO: z.string().min(1, 'Required'),
     FUND_SOURCE: z.string().min(1, 'Required'),

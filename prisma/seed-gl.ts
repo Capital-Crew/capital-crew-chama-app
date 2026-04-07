@@ -33,9 +33,9 @@ async function seedGLAccounts() {
         },
         {
             code: '4100',
-            name: 'Income',
+            name: 'Revenue',
             type: AccountType.REVENUE,
-            description: 'Interest income, fees, and penalties'
+            description: 'Interest revenue, fees, and penalties'
         }
     ]
 

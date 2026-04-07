@@ -19,7 +19,7 @@ export async function getSaccoSettings() {
                 loanMultiplier: 3.0,
                 processingFeePercent: 2.0,
                 insuranceFeePercent: 1.0,
-                shareCapitalBoost: 500,
+                contributionBoost: 500,
                 penaltyRate: 5.0,
                 rescheduleFeePercent: 0.0,
                 requiredApprovalsReschedule: 3,
@@ -51,7 +51,7 @@ export const updateSaccoSettings = withAudit(
         const loanMultiplier = parseFloat(formData.get('loanMultiplier') as string) || 0
         const processingFeePercent = parseFloat(formData.get('processingFeePercent') as string) || 0
         const insuranceFeePercent = parseFloat(formData.get('insuranceFeePercent') as string) || 0
-        const shareCapitalBoost = parseFloat(formData.get('shareCapitalBoost') as string) || 0
+        const contributionBoost = parseFloat(formData.get('contributionBoost') as string) || 0
         const penaltyRate = parseFloat(formData.get('penaltyRate') as string) || 0
         const rescheduleFeePercent = parseFloat(formData.get('rescheduleFeePercent') as string) || 0
         const refinanceFeePercentage = parseFloat(formData.get('refinanceFeePercentage') as string) || 0
@@ -75,7 +75,7 @@ export const updateSaccoSettings = withAudit(
         const meetingReceivableGlId = formData.get('meetingReceivableGlId') as string || null
 
         // Validate inputs
-        if (loanMultiplier < 0 || processingFeePercent < 0 || insuranceFeePercent < 0 || shareCapitalBoost < 0 || penaltyRate < 0 || rescheduleFeePercent < 0 || refinanceFeePercentage < 0 || welfareMonthlyContribution < 0 || welfareCurrentBalance < 0 || monthlyContributionAmount < 1 || latePaymentPenalty < 0 || penaltyAbsentAmount < 0 || penaltyLateAmount < 0) {
+        if (loanMultiplier < 0 || processingFeePercent < 0 || insuranceFeePercent < 0 || contributionBoost < 0 || penaltyRate < 0 || rescheduleFeePercent < 0 || refinanceFeePercentage < 0 || welfareMonthlyContribution < 0 || welfareCurrentBalance < 0 || monthlyContributionAmount < 1 || latePaymentPenalty < 0 || penaltyAbsentAmount < 0 || penaltyLateAmount < 0) {
             ctx.setErrorCode('INVALID_INPUTS');
             throw new Error('All values must be non-negative, and monthly contribution must be at least 1')
         }
@@ -97,7 +97,7 @@ export const updateSaccoSettings = withAudit(
             loanMultiplier,
             processingFeePercent,
             insuranceFeePercent,
-            shareCapitalBoost,
+            contributionBoost,
             penaltyRate,
             rescheduleFeePercent,
             refinanceFeePercentage,
@@ -145,7 +145,7 @@ function serializeSettings(s: any) {
         loanMultiplier: Number(s.loanMultiplier),
         processingFeePercent: Number(s.processingFeePercent),
         insuranceFeePercent: Number(s.insuranceFeePercent),
-        shareCapitalBoost: Number(s.shareCapitalBoost),
+        contributionBoost: Number(s.contributionBoost),
         penaltyRate: Number(s.penaltyRate),
         rescheduleFeePercent: Number(s.rescheduleFeePercent),
         refinanceFeePercentage: Number(s.refinanceFeePercentage),
@@ -163,7 +163,7 @@ function serializeSettings(s: any) {
 /**
  * Calculate Loan Qualification
  * 
- * CRITICAL: Uses SHARE CAPITAL (member.shareContributions), NOT wallet balance
+ * CRITICAL: Uses MEMBER CONTRIBUTIONS (Account 1200), NOT wallet balance
  * This enforces the core SACCO principle: loans are qualified by equity ownership
  * 
  * @param memberId - Member ID
@@ -227,7 +227,7 @@ export async function calculateLoanQualification(memberId: string, loansToOffset
 
     const processingFee = exemptProcessing ? 0 : calculatePercentage(baseAmount, Number(settings.processingFeePercent))
     const insuranceFee = exemptInsurance ? 0 : calculatePercentage(baseAmount, Number(settings.insuranceFeePercent))
-    const shareCapitalDeduction = truncateToDecimals(Number(settings.shareCapitalBoost) || 0)
+    const contributionDeduction = truncateToDecimals(Number(settings.contributionBoost) || 0)
 
     // Cast member to any to access duplicate loans property
     const memberWithLoans = member as any;
@@ -321,7 +321,7 @@ export async function calculateLoanQualification(memberId: string, loansToOffset
     }
 
     // Calculate deductions (fees only - NOT including loan offsets)
-    const feeDeductions = addMoney(addMoney(addMoney(processingFee, insuranceFee), shareCapitalDeduction), topUpFee)
+    const feeDeductions = addMoney(addMoney(addMoney(processingFee, insuranceFee), contributionDeduction), topUpFee)
 
     // Total deductions includes both fees AND loan offsets
     const totalDeductions = addMoney(feeDeductions, selectedLoansOffset)
@@ -329,12 +329,12 @@ export async function calculateLoanQualification(memberId: string, loansToOffset
     const netDisbursementAmount = Math.max(0, subtractMoney(baseAmount, totalDeductions))
 
     return {
-        memberShares: memberContributions,
+        memberContributions: memberContributions,
         grossQualifyingAmount: grossQualifyingAmount,
         totalExposure: totalExposure,
         processingFee: processingFee,
         insuranceFee: insuranceFee,
-        shareCapitalDeduction: shareCapitalDeduction,
+        contributionDeduction: contributionDeduction,
         topUpFee: topUpFee,
         selectedLoansOffset: selectedLoansOffset,
         totalDeductions: totalDeductions,

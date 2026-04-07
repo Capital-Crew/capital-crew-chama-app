@@ -51,31 +51,24 @@ export async function getMemberRealtimeStats(memberId: string): Promise<Serializ
                 }
             }
         })
-        // Liabilities/Equity (Shares/Deposits) are Credit Normal. Balance = Credit - Debit.
+        // Liabilities/Equity (Contributions/Deposits) are Credit Normal. Balance = Credit - Debit.
         const credit = Number(result._sum.creditAmount || 0)
         const debit = Number(result._sum.debitAmount || 0)
         return credit - debit
     }
 
     // Parallel fetch for speed
-    const [shareCapital, walletBalance, loans] = await Promise.all([
-        getLedgerBalance('3011'), // Contributions & Loans
+    // 1021: Principal, 1022: Interest Receivable, 1023: Penalty Receivable
+    const [contributionBalance, walletBalance, principalBalance, interestBalance, penaltyBalance] = await Promise.all([
+        getLedgerBalance('3011'), // Contributions (Non-Withdrawable)
         getLedgerBalance('3012'), // Member Withdrawable Wallet
-        db.loan.aggregate({
-            _sum: {
-                current_balance: true
-            },
-            where: {
-                memberId: memberId,
-                status: {
-                    in: ['ACTIVE', 'OVERDUE']
-                }
-            }
-        })
+        getLedgerBalance('1021'), // Principal Loans to Members
+        getLedgerBalance('1022'), // Interest Receivable
+        getLedgerBalance('1023'), // Penalty Receivable
     ])
 
-    const totalContributions = shareCapital + walletBalance
-    const cumulativeLoanBalance = loans._sum.current_balance || 0
+    const totalContributions = contributionBalance + walletBalance
+    const cumulativeLoanBalance = principalBalance + interestBalance + penaltyBalance
 
     // Fallback name logic if details not populated
     let name = member.name
@@ -93,7 +86,7 @@ export async function getMemberRealtimeStats(memberId: string): Promise<Serializ
         financials: {
             // Individual balances for real-time display
             memberSavings: walletBalance,           // Member Withdrawable Wallet (3012)
-            contributions: shareCapital,             // Share Capital (3011)
+            contributions: contributionBalance,      // Contribution Balance (3011)
             outstandingLoans: cumulativeLoanBalance, // Sum of active loans
 
             // Legacy combined values (kept for backward compatibility)

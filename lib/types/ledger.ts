@@ -10,8 +10,7 @@ export enum AccountType {
     LIABILITY = 'LIABILITY',
     EQUITY = 'EQUITY',
     REVENUE = 'REVENUE',
-    EXPENSE = 'EXPENSE',
-    INCOME = 'INCOME'
+    EXPENSE = 'EXPENSE'
 }
 
 export enum NormalBalance {

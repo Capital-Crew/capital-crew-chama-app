@@ -24,8 +24,7 @@ export class MemberReadService {
                         id: true,
                         loanApplicationNumber: true,
                         status: true,
-                        amount: true,
-                        current_balance: true
+                        amount: true
                     }
                 }
             }

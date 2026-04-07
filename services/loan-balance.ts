@@ -25,15 +25,8 @@ export class LoanBalanceService {
         const { getLoanOutstandingBalance } = await import('@/lib/accounting/AccountingEngine');
         const newBalance = await getLoanOutstandingBalance(loanId, tx);
 
-        // 2. Update the Loan Record
-        await tx.loan.update({
-            where: { id: loanId },
-            data: {
-                outstandingBalance: newBalance,
-                // Legacy field support
-                current_balance: newBalance
-            }
-        });
+        // 2. The Loan Record no longer carries a cached balance.
+        // Balances are now strictly derived from the Ledger.
 
         return new Prisma.Decimal(newBalance);
     }

@@ -19,8 +19,7 @@ export async function GET(
         const loans = await prisma.loan.findMany({
             where: {
                 memberId,
-                current_balance: { gt: 0 },
-                status: { in: ['ACTIVE'] }
+                status: { in: ['ACTIVE', 'OVERDUE'] }
             },
             include: {
                 loanProduct: {

@@ -125,7 +125,7 @@ export function mapLoanToTableRow(loan: LoanWithRelations): MemberLoanTableRow {
             return sum + (pDue - pPaid) + (iDue - iPaid);
         }, 0);
     } else {
-        offsetBalance = toSafeNumber(loan.current_balance);
+        offsetBalance = 0; // current_balance column removed from DB
     }
 
     const penalties = toSafeNumber(loan.penalties);

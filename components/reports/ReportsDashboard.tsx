@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
@@ -17,7 +17,7 @@ import {
     getPARReportAction,
     getTrialBalanceAction,
     getBalanceSheetAction,
-    getIncomeStatementAction,
+    getRevenueStatementAction,
     getCashFlowAction,
     getProductProfitabilityAction,
     getFeeAnalysisAction,
@@ -28,21 +28,21 @@ import { PreviewModal } from './preview-modal'
 import { ExportModal } from './export-modal'
 import { UserPermissions } from '@/lib/types'
 
-// ── Permission Mapping ──
+// â”€â”€ Permission Mapping â”€â”€
 const PERMISSION_MAP: Record<string, keyof UserPermissions> = {
     'loan-disbursement': 'canViewReportLoanDisbursement',
     'active-loan-portfolio': 'canViewReportActivePortfolio',
     'delinquency-par': 'canViewReportPAR',
     'trial-balance': 'canViewReportTrialBalance',
     'balance-sheet': 'canViewReportBalanceSheet',
-    'income-statement': 'canViewReportIncomeStatement',
+    'revenue-statement': 'canViewReportRevenueStatement',
     'cash-flow': 'canViewReportCashFlow',
     'product-profitability': 'canViewReportProductProfitability',
     'fee-analysis': 'canViewReportFeeAnalysis',
     'net-interest-margin': 'canViewReportNetInterestMargin',
 }
 
-// ── Action dispatcher ──
+// â”€â”€ Action dispatcher â”€â”€
 async function fetchReport(report: Report, filters: FilterOptions) {
     const startDate = filters.startDate || new Date(new Date().getFullYear(), 0, 1)
     const endDate = filters.endDate || new Date()
@@ -59,8 +59,8 @@ async function fetchReport(report: Report, filters: FilterOptions) {
             return getTrialBalanceAction(asOfDate)
         case 'getBalanceSheet':
             return getBalanceSheetAction(asOfDate)
-        case 'getIncomeStatement':
-            return getIncomeStatementAction(asOfDate)
+        case 'getRevenueStatement':
+            return getRevenueStatementAction(asOfDate)
         case 'getCashFlow':
             return getCashFlowAction(startDate, endDate)
         case 'getProductProfitability':
@@ -74,7 +74,7 @@ async function fetchReport(report: Report, filters: FilterOptions) {
     }
 }
 
-// ── Normalize data into rows array ──
+// â”€â”€ Normalize data into rows array â”€â”€
 function normalizeRows(data: any, report: Report): any[] {
     if (data?.rows) return data.rows
     if (data?.breakdown) return data.breakdown
@@ -176,7 +176,7 @@ export function ReportsDashboard() {
                         Reports Hub
                     </h1>
                     <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-                        Financial insights & analytics — Click any report to generate
+                        Financial insights & analytics â€” Click any report to generate
                     </p>
                 </div>
             </div>
@@ -214,7 +214,7 @@ export function ReportsDashboard() {
                                             </div>
                                         </div>
                                         <div className={`absolute bottom-2.5 right-3 text-xs font-medium ${colors.text} opacity-0 group-hover:opacity-100 transition-opacity duration-200`}>
-                                            Generate →
+                                            Generate â†’
                                         </div>
                                     </button>
                                 )

@@ -1,4 +1,4 @@
-import {
+﻿import {
     FileText,
     TrendingUp,
     ShieldAlert,
@@ -140,7 +140,7 @@ export function getColorClasses(color: ReportColor): ColorClasses {
 
 
 export const REPORTS: Report[] = [
-    // ── Loan Reports ──
+    // â”€â”€ Loan Reports â”€â”€
     {
         id: 'loan-disbursement',
         title: 'Loan Disbursement Report',
@@ -196,7 +196,7 @@ export const REPORTS: Report[] = [
         ],
     },
 
-    // ── Financial Accounting ──
+    // â”€â”€ Financial Accounting â”€â”€
     {
         id: 'trial-balance',
         title: 'Trial Balance Report',
@@ -229,13 +229,13 @@ export const REPORTS: Report[] = [
         ],
     },
     {
-        id: 'income-statement',
-        title: 'Income Statement Report',
+        id: 'revenue-statement',
+        title: 'Revenue Statement Report',
         description: 'Revenue, expenses, and net income for a selected period.',
         category: 'financial',
         color: 'orange',
         icon: 'DollarSign',
-        actionKey: 'getIncomeStatement',
+        actionKey: 'getRevenueStatement',
         filters: ['asOfDate'],
         columns: [
             { key: 'category', label: 'Type' },
@@ -261,7 +261,7 @@ export const REPORTS: Report[] = [
         ],
     },
 
-    // ── Profitability ──
+    // â”€â”€ Profitability â”€â”€
     {
         id: 'product-profitability',
         title: 'Product Profitability Report',

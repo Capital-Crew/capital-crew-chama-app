@@ -140,6 +140,15 @@ export async function createUserAccount(formData: FormData) {
             },
         })
 
+        // Create MemberContact with email so it appears on the member's profile
+        await tx.memberContact.create({
+            data: {
+                memberId: member.id,
+                email,
+                mobile: contact,
+            },
+        })
+
         // Define Permissions based on Role
         let userPermissions = {}
         if (role === 'MEMBER') {

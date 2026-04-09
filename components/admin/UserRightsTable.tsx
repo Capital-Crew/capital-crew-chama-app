@@ -8,6 +8,7 @@ import { UserRole } from '@prisma/client'
 import { Search, Shield, Edit2, AlertCircle, CheckCircle, XCircle, Key, Lock, Wallet, User as UserIcon, AlertTriangle, FileTextIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { assignUsername } from '@/app/actions/user-actions'
+import { ResetPasswordButton } from '@/components/admin/ResetPasswordButton'
 
 // Define Permission Types locally or import if available
 interface UserPermissions {
@@ -382,6 +383,7 @@ export function UserRightsTable({ users: initialUsers, permissions = [] }: UserR
                                     </td>
                                     <td className="text-right pr-6">
                                         <div className="flex justify-end gap-2">
+                                            <ResetPasswordButton userId={user.id} userName={user.name} />
                                             <button
                                                 className="btn btn-ghost btn-xs text-slate-500 hover:text-[#00c2e0] hover:bg-cyan-50"
                                                 onClick={() => handleManagePermissions(user)}

@@ -62,7 +62,7 @@ export async function resetUserPassword(inputId: string) {
             `;
             await EmailService.sendEmail(user.email, subject, html);
         }
-        return { success: true, message: `Password reset. Please share the temporary password with the user securely.` };
+        return { success: true, tempPassword, message: `Password reset. Please share the temporary password with the user securely.` };
 
     } catch (e) {
         return { error: "Failed to reset password." };

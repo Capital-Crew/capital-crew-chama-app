@@ -229,6 +229,67 @@ enum LoanEventType {
   LOAN_TOPPED_UP
 }
 
+enum LoanNoteStatus {
+  DRAFT
+  PENDING_APPROVAL
+  OPEN
+  CLOSED
+  ACTIVE
+  MATURED_AND_SETTLED
+  RECALLED
+  REJECTED
+  UNDER_SUBSCRIBED
+}
+
+enum RepaymentMode {
+  AT_MATURITY
+  COUPON
+  EMI_FLAT
+  EMI_REDUCING
+}
+
+enum SubscriberType {
+  USER
+  GROUP
+}
+
+enum ProposalStatus {
+  DRAFT
+  PENDING_COMMITTEE_APPROVAL
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum CLNPaymentStatus {
+  UPCOMING
+  AWAITING_SUFFICIENCY_CHECK
+  AWAITING_CONFIRMATION
+  FLOATER_CONFIRMED
+  EXECUTING
+  PAID
+  EXECUTION_FAILED
+  SHORTFALL
+  GRACE_PERIOD
+  IN_DISPUTE
+}
+
+enum CLNDisbursementStatus {
+  PENDING
+  PAID
+  FAILED
+  REVERSED
+}
+
+enum CLNPaymentType {
+  DIVIDEND
+  DIVIDEND_STUB
+  PRINCIPAL
+  PRINCIPAL_AND_DIVIDEND
+  EMI
+  EMI_STUB
+}
+
 // ========================================
 // CORE LEDGER MODELS (Phase 1)
 // ========================================
@@ -284,7 +345,8 @@ model LedgerAccount {
   creditTransfers TransferRequest[] @relation("TransferCredit")
 
   // Wallet Link
-  wallets Wallet[]
+  wallets      Wallet[]
+  groupWallets GroupWallet[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -437,6 +499,10 @@ enum ReferenceType {
   BULK_PAYOUT
   PENALTY
   MEETING_FINES
+  CLN_SUBSCRIPTION
+  CLN_PAYMENT
+  CLN_ESCROW_RELEASE
+  CLN_RECALL_REFUND
 }
 
 // Event Sourcing Enums
@@ -477,6 +543,13 @@ enum DomainEventType {
   // System Events
   SYSTEM_MIGRATION
   SYSTEM_ADJUSTMENT
+
+  // CLN Events
+  CLN_CREATED
+  CLN_APPROVED
+  CLN_SUBSCRIPTION_PLACED
+  CLN_PAYMENT_EXECUTED
+  CLN_ESCROW_RELEASED
 }
 
 // Models
@@ -539,6 +612,11 @@ model User {
   pendingTransactions PendingTransaction[]
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
+
+  // CLN Relations
+  floaterNotes          LoanNote[]             @relation("FloaterNotes")
+  loanNoteSubscriptions LoanNoteSubscription[] @relation("UserSubscriptions")
+  committeeMemberships  GroupCommitteeMember[]
 }
 
 // NEW ENUMS
@@ -1783,6 +1861,7 @@ enum SystemAccountType {
   MEMBER_WALLET
   CONTRIBUTIONS
   REVENUE
+  EVENT_CLN_ESCROW
 }
 
 model SystemAccountingMapping {
@@ -2265,6 +2344,7 @@ enum EntityType {
   EXPENSE
   WELFARE
   ACCOUNT_TRANSFER
+  LOAN_NOTE
 }
 
 enum ApprovalAction {
@@ -2459,3 +2539,296 @@ model EmailNotificationLog {
 
   @@unique([loanId, templateType]) // enforces deduplication
 }
+
+model BusinessCalendar {
+  calendarDate  DateTime @id @db.Date
+  isBusinessDay Boolean  @default(true)
+  note          String?
+
+  @@map("business_calendar")
+}
+
+model Group {
+  id         String   @id @default(cuid())
+  name       String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  wallet             GroupWallet?
+  riskConfig         GroupRiskConfig?
+  committeeMembers   GroupCommitteeMember[]
+  investmentProposals GroupInvestmentProposal[]
+  subscriptions      LoanNoteSubscription[]
+
+  @@map("groups")
+}
+
+model GroupWallet {
+  id             String   @id @default(cuid())
+  groupId        String   @unique
+  group          Group    @relation(fields: [groupId], references: [id])
+  balance        Decimal  @default(0.00) @db.Decimal(15, 2)
+  minReservePct  Decimal  @default(30.00) @db.Decimal(5, 2)
+  allowNegative  Boolean  @default(false)
+
+  // Core Banking Link
+  glAccountId String? // The underlying Liability Ledger Account
+  glAccount   LedgerAccount? @relation(fields: [glAccountId], references: [id])
+
+  version   Int      @default(1)
+  updatedAt DateTime @updatedAt
+
+  @@map("group_wallets")
+}
+
+model GroupRiskConfig {
+  id                   String   @id @default(cuid())
+  groupId              String   @unique
+  group                Group    @relation(fields: [groupId], references: [id])
+  maxAllocationPct     Decimal  @default(20.00) @db.Decimal(5, 2)
+  maxFloaterExposurePct Decimal  @default(30.00) @db.Decimal(5, 2)
+  minTreasuryReservePct Decimal  @default(30.00) @db.Decimal(5, 2)
+  updatedAt            DateTime @updatedAt
+
+  @@map("group_risk_config")
+}
+
+model GroupCommitteeMember {
+  id        String   @id @default(cuid())
+  groupId   String
+  group     Group    @relation(fields: [groupId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  role      String   @default("MEMBER") // "CHAIR" | "MEMBER"
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([groupId, userId])
+  @@map("group_committee_members")
+}
+
+model GroupInvestmentProposal {
+  id                String         @id @default(cuid())
+  groupId           String
+  group             Group          @relation(fields: [groupId], references: [id])
+  loanNoteId        String
+  loanNote          LoanNote       @relation(fields: [loanNoteId], references: [id])
+  proposedBy        String
+  proposedAmount    Decimal        @db.Decimal(15, 2)
+  treasuryBalanceAtProposal Decimal @db.Decimal(15, 2)
+  pctOfTreasury     Decimal        @db.Decimal(5, 2)
+  postInvestmentBalance Decimal    @db.Decimal(15, 2)
+  reserveAfterInvestment Decimal   @db.Decimal(5, 2)
+  floaterExposurePct Decimal?      @db.Decimal(5, 2)
+  status            ProposalStatus @default(PENDING_COMMITTEE_APPROVAL)
+  rejectionReason   String?        @db.Text
+  expiresAt         DateTime
+  businessDate      DateTime       @db.Date
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  votes             GroupInvestmentProposalVote[]
+
+  @@map("group_investment_proposals")
+}
+
+model GroupInvestmentProposalVote {
+  id          String   @id @default(cuid())
+  proposalId  String
+  proposal    GroupInvestmentProposal @relation(fields: [proposalId], references: [id])
+  voterId     String
+  vote        String // "APPROVE" | "REJECT"
+  comment     String?  @db.Text
+  votedAt     DateTime @default(now())
+
+  @@unique([proposalId, voterId])
+  @@map("group_investment_proposal_votes")
+}
+
+model EscrowAccount {
+  id           String   @id @default(cuid())
+  loanNoteId   String   @unique
+  loanNote     LoanNote @relation(fields: [loanNoteId], references: [id])
+  balance      Decimal  @default(0.00) @db.Decimal(15, 2)
+  version      Int      @default(1)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("escrow_accounts")
+}
+
+model LoanNote {
+  id                      String         @id @default(cuid())
+  referenceNo             String         @unique
+  title                   String
+  floaterId               String
+  floater                 User           @relation("FloaterNotes", fields: [floaterId], references: [id])
+  requesterName           String
+  requesterRelationship   String?
+  purpose                 String         @db.Text
+  supportDocUrl           String?
+  totalAmount             Decimal        @db.Decimal(15, 2)
+  subscribedAmount        Decimal        @default(0.00) @db.Decimal(15, 2)
+  minSubscription         Decimal        @db.Decimal(15, 2)
+  maxSubscription         Decimal?       @db.Decimal(15, 2)
+  interestRate            Decimal        @db.Decimal(5, 2)
+  tenorValue              Int
+  tenorUnit               String         @default("months")
+  repaymentMode           RepaymentMode
+  paymentIntervalMonths   Int?
+  subscriptionDeadline    DateTime       @db.Date
+  closureDate             DateTime?      @db.Date
+  maturityDate            DateTime?      @db.Date
+  collateral              String?        @db.Text
+  repaymentSource         String         @db.Text
+  additionalNotes         String?        @db.Text
+  status                  LoanNoteStatus @default(PENDING_APPROVAL)
+  adminReviewComment      String?        @db.Text
+  totalInterestObligation Decimal?       @db.Decimal(15, 2)
+  totalPrincipalOwed      Decimal?       @db.Decimal(15, 2)
+  totalFloaterObligation  Decimal?       @db.Decimal(15, 2)
+  escrowReleased          Boolean        @default(false)
+  escrowReleasedAt        DateTime?
+  escrowReleasedBy        String?
+  escrowReleaseComment    String?        @db.Text
+  submissionVersion       Int            @default(0)
+  cancellationCount       Int            @default(0)
+  version                 Int            @default(1)
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
+
+  escrow                  EscrowAccount?
+  subscriptions           LoanNoteSubscription[]
+  paymentSchedule         LoanNotePaymentSchedule[]
+  proposals               GroupInvestmentProposal[]
+  disbursements           LoanNotePaymentDisbursement[]
+  auditLogs               LoanNoteAuditLog[]
+  escrowLedger            EscrowLedger[] @relation("LoanNoteEscrowLedger")
+
+  @@map("loan_notes")
+}
+
+model LoanNoteSubscription {
+  id                  String         @id @default(cuid())
+  loanNoteId          String
+  loanNote            LoanNote       @relation(fields: [loanNoteId], references: [id])
+  subscriberType      SubscriberType @default(USER)
+  subscriberId        String?
+  user                User?          @relation("UserSubscriptions", fields: [subscriberId], references: [id])
+  groupId             String?
+  group               Group?         @relation(fields: [groupId], references: [id])
+  amount              Decimal        @db.Decimal(15, 2)
+  sharePct            Decimal?       @db.Decimal(8, 6)
+  totalInterestDue    Decimal?       @db.Decimal(15, 2)
+  totalExpectedPayout Decimal?       @db.Decimal(15, 2)
+  walletDebited       Boolean        @default(false)
+  floaterCredited     Boolean        @default(false)
+  fullySettled        Boolean        @default(false)
+  status              String         @default("ACTIVE") // "ACTIVE" | "REFUNDED" | "SETTLED"
+  subscribedAt        DateTime       @default(now())
+  businessDate        DateTime       @db.Date
+  settledAt           DateTime?
+  version             Int            @default(1)
+
+  disbursements       LoanNotePaymentDisbursement[]
+  escrowLedger        EscrowLedger[]
+
+  @@map("loan_note_subscriptions")
+}
+
+model LoanNotePaymentSchedule {
+  id                    String           @id @default(cuid())
+  loanNoteId            String
+  loanNote              LoanNote         @relation(fields: [loanNoteId], references: [id])
+  eventNumber           Int
+  paymentType           CLNPaymentType
+  dueDate               DateTime         @db.Date
+  periodLabel           String?
+  groupAmount           Decimal          @db.Decimal(15, 2)
+  principalComponent    Decimal          @default(0.00) @db.Decimal(15, 2)
+  interestComponent     Decimal          @default(0.00) @db.Decimal(15, 2)
+  openingBalance        Decimal?         @db.Decimal(15, 2)
+  closingBalance        Decimal?         @db.Decimal(15, 2)
+  isStubPeriod          Boolean          @default(false)
+  stubPeriodMonths      Int?
+  status                CLNPaymentStatus @default(UPCOMING)
+  sufficiencyCheckedAt  DateTime?
+  floaterWalletAtCheck  Decimal?         @db.Decimal(15, 2)
+  floaterConfirmed      Boolean          @default(false)
+  floaterConfirmedAt    DateTime?
+  adminConfirmed        Boolean          @default(false)
+  adminConfirmedAt      DateTime?
+  executedAt            DateTime?
+  gracePeriodDueDate    DateTime?        @db.Date
+  gracePeriodGrantedBy  String?
+  gracePeriodReason     String?          @db.Text
+  disputeRaisedBy       String?
+  disputeReason         String?          @db.Text
+  disputeResolvedAt     DateTime?
+  version               Int              @default(1)
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  disbursements         LoanNotePaymentDisbursement[]
+
+  @@unique([loanNoteId, eventNumber])
+  @@map("loan_note_payment_schedule")
+}
+
+model LoanNotePaymentDisbursement {
+  id                   String                @id @default(cuid())
+  paymentScheduleId    String
+  schedule             LoanNotePaymentSchedule @relation(fields: [paymentScheduleId], references: [id])
+  loanNoteId           String
+  loanNote             LoanNote              @relation(fields: [loanNoteId], references: [id])
+  subscriptionId       String
+  subscription         LoanNoteSubscription  @relation(fields: [subscriptionId], references: [id])
+  subscriberType       SubscriberType
+  subscriberId         String?
+  groupId              String?
+  paymentType          CLNPaymentType
+  exactAmount          Decimal               @db.Decimal(18, 6)
+  amount               Decimal               @db.Decimal(15, 2)
+  principalComponent   Decimal               @default(0.00) @db.Decimal(15, 2)
+  interestComponent    Decimal               @default(0.00) @db.Decimal(15, 2)
+  isResidualRecipient  Boolean               @default(false)
+  residualAmount       Decimal?              @default(0.00) @db.Decimal(15, 2)
+  walletCredited       Boolean               @default(false)
+  creditedAt           DateTime?
+  businessDate         DateTime              @db.Date
+  status               CLNDisbursementStatus @default(PENDING)
+
+  @@map("loan_note_payment_disbursements")
+}
+
+model EscrowLedger {
+  id              String   @id @default(cuid())
+  loanNoteId      String
+  loanNote        LoanNote @relation("LoanNoteEscrowLedger", fields: [loanNoteId], references: [id])
+  subscriptionId  String?
+  subscription    LoanNoteSubscription? @relation(fields: [subscriptionId], references: [id])
+  ledgerTxId      String?
+  amount          Decimal  @db.Decimal(15, 2)
+  direction       String   @db.VarChar(10) // "IN" | "OUT"
+  reason          String
+  performedBy     String?
+  businessDate    DateTime @db.Date
+  createdAt       DateTime @default(now())
+
+  @@map("escrow_ledger")
+}
+
+model LoanNoteAuditLog {
+  id           String   @id @default(cuid())
+  loanNoteId   String
+  loanNote     LoanNote @relation(fields: [loanNoteId], references: [id])
+  action       String
+  performedBy  String
+  notes        String?  @db.Text
+  metadata     Json?
+  businessDate DateTime @db.Date
+  createdAt    DateTime @default(now())
+
+  @@map("loan_note_audit_log")
+}
+

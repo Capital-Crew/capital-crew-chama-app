@@ -40,7 +40,7 @@ interface LoanManagementProps {
 
 export function LoanManagement({ loans, members, products, currentUserId, currentMemberId, userRole, creditSnapshot, loanDraft }: LoanManagementProps) {
     const router = useRouter();
-    const [activeTab, setActiveTab] = useState<'application' | 'approvals' | 'approved' | 'disbursed'>('application');
+    const [activeTab, setActiveTab] = useState<'application' | 'approvals' | 'approved' | 'disbursed' | 'cancelled'>('application');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedLoanId, setSelectedLoanId] = useState<string | null>(null);
     const [isCreating, setIsCreating] = useState(false);
@@ -95,11 +95,18 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
             : null
         , [loans, currentMemberId]);
 
-    const otherApplications = useMemo(() => loans.filter(l =>
-        String(l.status) === 'REJECTED' ||
-        String(l.status) === 'CANCELLED' ||
-        String(l.status) === 'WRITTEN_OFF'
-    ), [loans]);
+    const cancelledLoans = useMemo(() => {
+        const c = loans.filter(l =>
+            String(l.status) === 'REJECTED' ||
+            String(l.status) === 'CANCELLED' ||
+            String(l.status) === 'WRITTEN_OFF'
+        );
+
+        if (userRole === 'MEMBER' && currentMemberId) {
+            return c.filter(l => l.memberId === currentMemberId);
+        }
+        return c;
+    }, [loans, userRole, currentMemberId]);
 
     const pendingApprovals = useMemo(() =>
         loans.filter(l => String(l.status) === 'PENDING_APPROVAL'),
@@ -134,10 +141,11 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
 
     const getActiveData = () => {
         switch (activeTab) {
-            case 'application': return otherApplications; // Only show non-drafts here? Or separate drafts?
+            case 'application': return drafts; // Strictly Drafts
             case 'approvals': return pendingApprovals;
             case 'approved': return approvedLoans;
             case 'disbursed': return disbursedLoans;
+            case 'cancelled': return cancelledLoans;
             default: return [];
         }
     };
@@ -225,7 +233,8 @@ export function LoanManagement({ loans, members, products, currentUserId, curren
                         { id: 'application', label: 'Drafts', badge: drafts.length },
                         { id: 'approvals', label: 'Pending', badge: pendingApprovals.length },
                         { id: 'approved', label: 'Approved', badge: approvedLoans.length },
-                        { id: 'disbursed', label: 'Disbursed', badge: disbursedLoans.length }
+                        { id: 'disbursed', label: 'Disbursed', badge: disbursedLoans.length },
+                        { id: 'cancelled', label: 'Cancelled', badge: cancelledLoans.length }
                     ]}
                     activeTab={activeTab}
                     onChange={(id) => setActiveTab(id as any)}

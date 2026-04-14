@@ -36,7 +36,7 @@ export default async function SystemAdminPage() {
         );
     }
 
-    const [products, members, welfareTypesRes, welfareReqsRes, expenseAccounts, apologies] = await Promise.all([
+    const [products, members, welfareTypesRes, welfareReqsRes, expenseAccounts, apologies, resWf] = await Promise.all([
         prisma.loanProduct.findMany({
             // Fetch ALL products so we can toggle active state, not just active ones
             orderBy: { name: 'asc' }
@@ -72,9 +72,14 @@ export default async function SystemAdminPage() {
                 }
             },
             orderBy: { createdAt: 'desc' }
+        }),
+        prisma.workflowDefinition.findUnique({
+            where: { entityType: 'LOAN_NOTE' as any },
+            include: { stages: { orderBy: { stepNumber: 'asc' } } }
         })
     ])
 
+    const workflow = resWf || null;
     const welfareTypes: any[] = welfareTypesRes?.success ? (welfareTypesRes.data || []) : []
     const requisitions: any[] = welfareReqsRes?.success ? (welfareReqsRes.data || []) : []
 
@@ -122,6 +127,7 @@ export default async function SystemAdminPage() {
                 welfareRequisitions={serializedRequisitions}
                 expenseAccounts={serializedExpenseAccounts}
                 apologies={apologies as any}
+                workflow={workflow}
             />
         </div>
     )

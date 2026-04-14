@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { HeartHandshake, Activity, Mail, Loader2 } from 'lucide-react';
+import { HeartHandshake, Activity, Mail, Loader2, TrendingUpIcon } from 'lucide-react';
 
 import {
     DashboardIcon, MembersIcon, LoansIcon, ExpensesIcon,
@@ -146,6 +146,8 @@ export function AppSidebar({ user, approvalCount = 0, pendingLoanCount = 0 }: { 
                 })}
 
                 {canAccess('WALLET') && renderNavItem({ icon: <WalletIcon />, label: "My Wallet", href: "/wallet", active: pathname === '/wallet' })}
+                
+                {renderNavItem({ icon: <TrendingUpIcon />, label: "Note Market", href: "/loan-notes", active: pathname === '/loan-notes' })}
 
                 {canAccess('WELFARE') && renderNavItem({ icon: <HeartHandshake />, label: "Welfare", href: "/welfare", active: pathname.startsWith('/welfare') })}
 

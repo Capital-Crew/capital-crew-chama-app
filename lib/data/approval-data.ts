@@ -42,15 +42,25 @@ export async function getPendingApprovals() {
     const userRole = session.user.role || 'MEMBER'
     const userPermissions = (session.user as any).permissions
 
-    // Fetch all pending
-    const requests = await db.approvalRequest.findMany({
+    // Fetch all pending legacy requests
+    const legacyRequests = await db.approvalRequest.findMany({
         where: { status: 'PENDING' },
         orderBy: { createdAt: 'desc' },
     })
 
+    // Fetch all pending universal workflow requests
+    const workflowRequests = await db.workflowRequest.findMany({
+        where: { status: 'PENDING' },
+        include: {
+            currentStage: true,
+            workflow: true
+        },
+        orderBy: { createdAt: 'desc' },
+    })
+
     // Fetch related entities for rich display
-    const enrichedRequests = await Promise.all(
-        requests.map(async (req) => {
+    const enrichedLegacy = await Promise.all(
+        legacyRequests.map(async (req) => {
             let entityDetails: any = null
 
             try {
@@ -108,24 +118,6 @@ export async function getPendingApprovals() {
                             createdAt: true
                         }
                     })
-                } else if (req.type === 'EXPENSE') {
-                    // Add expense details if needed
-                    entityDetails = null
-                } else if (req.type === 'WELFARE') {
-                    entityDetails = await db.loan.findUnique({
-                        where: { id: req.referenceId },
-                        select: {
-                            id: true,
-                            loanApplicationNumber: true,
-                            amount: true,
-                            member: {
-                                select: {
-                                    name: true,
-                                    memberNumber: true
-                                }
-                            }
-                        }
-                    })
                 }
             } catch (error) {
             }
@@ -138,8 +130,58 @@ export async function getPendingApprovals() {
         })
     )
 
-    // Filter out nulls (requests where user has already voted)
-    return enrichedRequests.filter(req => req !== null)
+    const enrichedWorkflow = await Promise.all(
+        workflowRequests.map(async (req) => {
+            let entityDetails: any = null
+            let description = ""
+            let requesterName = ""
+
+            try {
+                if (req.entityType === 'LOAN_NOTE') {
+                    const note = await db.loanNote.findUnique({
+                        where: { id: req.entityId },
+                        include: { floater: true }
+                    })
+
+                    if (note) {
+                        entityDetails = {
+                            ...note,
+                            amount: note.totalAmount, // Map for UI compatibility
+                        }
+                        description = `Investment Note: ${note.title} (Target: KES ${note.totalAmount.toLocaleString()})`
+                        requesterName = note.floater.name || 'Unknown'
+                    }
+                }
+            } catch (error) {}
+
+            // Permissions Check: Can the current user act on this stage?
+            const canApprove = req.currentStage ? hasPermission(userRole, req.currentStage.requiredRole as any, userPermissions) : false;
+
+            return {
+                id: req.id,
+                type: req.entityType as any,
+                referenceId: req.entityId,
+                referenceTable: req.entityType === 'LOAN_NOTE' ? 'loan_notes' : 'Unknown',
+                requesterId: req.requesterId,
+                requesterName: requesterName,
+                description: description,
+                amount: entityDetails?.amount || 0,
+                status: 'PENDING',
+                requiredPermission: req.currentStage?.requiredRole || 'SYSTEM_ADMIN',
+                createdAt: req.createdAt,
+                updatedAt: req.updatedAt,
+                entityDetails,
+                canApprove,
+                isWorkflowRequest: true // Flag for processor
+            }
+        })
+    )
+
+    // Filter out nulls and combine
+    const allRequests = [...enrichedLegacy, ...enrichedWorkflow].filter(req => req !== null)
+    
+    // Sort combined list by date desc
+    return (allRequests as any[]).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 }
 
 

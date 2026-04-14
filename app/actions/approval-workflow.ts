@@ -10,12 +10,12 @@ import { withAudit } from '@/lib/with-audit'
  * Universal Workflow Workflow Transition Handler
  * @param entityType 'LOAN' | 'MEMBER' | 'EXPENSE'
  * @param entityId ID of the entity
- * @param action 'SEND' | 'CANCEL'
+ * @param action 'SEND' | 'CANCEL' | 'APPROVE' | 'REJECT'
  */
 export async function handleWorkflowTransition(
     entityType: EntityType,
     entityId: string,
-    action: 'SEND' | 'CANCEL'
+    action: 'SEND' | 'CANCEL' | 'APPROVE' | 'REJECT'
 ) {
     const session = await auth()
     if (!session?.user) return { error: 'Unauthorized' }
@@ -26,7 +26,9 @@ export async function handleWorkflowTransition(
     try {
         // 1. Switch Logic based on Entity Type
         if (entityType === 'LOAN') {
-            return await handleLoanTransition(entityId, action, actorId, actorName || 'Unknown User')
+            return await handleLoanTransition(entityId, action as any, actorId, actorName || 'Unknown User')
+        } else if (entityType as any === 'LOAN_NOTE') {
+            return await handleLoanNoteTransition(entityId, action, actorId, actorName || 'Unknown User')
         } else if (entityType === 'MEMBER') {
             return { error: 'Member workflow not yet implemented' }
         } else if (entityType === 'WELFARE') {
@@ -228,5 +230,186 @@ export async function getApprovalHistory(entityType: EntityType, entityId: strin
     })
     return history
 }
+
+export const handleLoanNoteTransition = withAudit(
+    { actionType: AuditLogAction.LOAN_STATUS_CHANGED as any, domain: 'LOAN' as any, apiRoute: '/api/workflow/loan-note' },
+    async (ctx, noteId: string, action: 'SEND' | 'CANCEL' | 'APPROVE' | 'REJECT', actorId: string, actorName: string) => {
+        ctx.beginStep('Retrieve Loan Note');
+        const note = await prisma.loanNote.findUnique({ where: { id: noteId } })
+        if (!note) throw new Error('Loan Note not found')
+        ctx.captureBefore('LoanNote', note.id, note);
+        ctx.endStep('Retrieve Loan Note');
+
+        if (action === 'SEND') {
+            if (!['DRAFT', 'REJECTED'].includes(note.status)) {
+                throw new Error('Note must be in DRAFT or REJECTED stage to send.')
+            }
+
+            const nextVersion = (note.version || 0) + 1
+
+            const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+                await tx.loanNote.update({
+                    where: { id: noteId },
+                    data: {
+                        status: 'PENDING_APPROVAL' as any,
+                        version: nextVersion
+                    }
+                })
+
+                // FETCH UNIVERSAL WORKFLOW ENGINE DEFINITION
+                const workflow = await tx.workflowDefinition.findFirst({
+                    where: { entityType: 'LOAN_NOTE' as any },
+                    include: { stages: { orderBy: { stepNumber: 'asc' } } }
+                });
+
+                if (!workflow || workflow.stages.length === 0) {
+                    throw new Error('No active workflow governance defined for Loan Notes.');
+                }
+
+                const firstStage = workflow.stages[0];
+
+                // CREATE UNIVERSAL WORKFLOW REQUEST
+                await tx.workflowRequest.create({
+                    data: {
+                        workflowId: workflow.id,
+                        entityType: 'LOAN_NOTE' as any,
+                        entityId: noteId,
+                        requesterId: note.floaterId,
+                        currentStageId: (workflow as any).stages[0].id,
+                        status: 'PENDING' as any,
+                        version: nextVersion
+                    }
+                })
+
+                await tx.loanNoteAuditLog.create({
+                    data: {
+                        loanNoteId: noteId,
+                        action: 'SUBMITTED',
+                        performedBy: actorName,
+                        notes: `Submitted for approval - Version ${nextVersion}`,
+                        businessDate: new Date()
+                    }
+                })
+
+                return { success: true }
+            })
+
+            revalidatePath('/loan-notes')
+            revalidatePath(`/loan-notes/${noteId}`)
+            return result
+        }
+
+        if (action === 'CANCEL') {
+            if (note.status !== 'PENDING_APPROVAL') throw new Error('Cannot cancel a processed note.')
+
+            const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+                await tx.loanNote.update({
+                    where: { id: noteId },
+                    data: {
+                        status: 'DRAFT' as any,
+                        cancellationCount: { increment: 1 }
+                    }
+                })
+
+                const req = await tx.workflowRequest.findFirst({
+                    where: { entityId: noteId, entityType: 'LOAN_NOTE' as any }
+                })
+                if (req) await tx.workflowRequest.delete({ where: { id: req.id } })
+
+                return { success: true }
+            })
+
+            revalidatePath('/loan-notes')
+            revalidatePath(`/loan-notes/${noteId}`)
+            return result
+        }
+
+        if (action === 'APPROVE') {
+            if (note.status !== 'PENDING_APPROVAL') throw new Error('No pending approval request found.')
+
+            const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+                await tx.loanNote.update({
+                    where: { id: noteId },
+                    data: {
+                        status: 'OPEN' as any, // Transition to LIVE for subscription
+                    }
+                })
+
+                const req = await tx.workflowRequest.findFirst({
+                    where: { entityId: noteId, entityType: 'LOAN_NOTE' as any, status: 'PENDING' }
+                })
+
+                if (req) {
+                    await tx.workflowRequest.update({
+                        where: { id: req.id },
+                        data: { status: 'APPROVED' }
+                    })
+
+                    await tx.workflowAction.create({
+                        data: {
+                            requestId: req.id,
+                            stageId: req.currentStageId || '',
+                            actorId: actorId,
+                            action: 'APPROVED',
+                            notes: 'Board Approved'
+                        }
+                    })
+                }
+
+                await tx.loanNoteAuditLog.create({
+                    data: {
+                        loanNoteId: noteId,
+                        action: 'APPROVED',
+                        performedBy: actorName,
+                        notes: 'Board signature confirmed. Note is now OPEN.',
+                        businessDate: new Date()
+                    }
+                })
+
+                return { success: true }
+            })
+
+            revalidatePath('/loan-notes')
+            revalidatePath(`/loan-notes/${noteId}`)
+            return result
+        }
+
+        if (action === 'REJECT') {
+            const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+                await tx.loanNote.update({
+                    where: { id: noteId },
+                    data: { status: 'REJECTED' as any }
+                })
+
+                const req = await tx.workflowRequest.findFirst({
+                    where: { entityId: noteId, entityType: 'LOAN_NOTE' as any, status: 'PENDING' }
+                })
+
+                if (req) {
+                    await tx.workflowRequest.update({
+                        where: { id: req.id },
+                        data: { status: 'REJECTED' }
+                    })
+
+                    await tx.workflowAction.create({
+                        data: {
+                            requestId: req.id,
+                            stageId: req.currentStageId || '',
+                            actorId: actorId,
+                            action: 'REJECTED',
+                            notes: 'Board Rejected'
+                        }
+                    })
+                }
+
+                return { success: true }
+            })
+
+            revalidatePath('/loan-notes')
+            revalidatePath(`/loan-notes/${noteId}`)
+            return result
+        }
+    }
+)
 
 

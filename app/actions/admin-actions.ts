@@ -32,7 +32,7 @@ export async function resetUserPassword(inputId: string) {
         // Generate temporary password
         // Use secure cryptographically strong generation
         const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789#@";
-        const bytes = randomBytes(8);
+        const bytes = randomBytes(12);
         const tempPassword = Array.from(bytes)
             .map(b => chars[b % chars.length])
             .join('');

@@ -31,8 +31,8 @@ export async function getMembers() {
 
     // Filter Logic
     const whereClause = isPrivileged
-        ? {} // No filter
-        : { id: memberId }; // Strict filter to own ID
+        ? { name: { not: "System Administrator" } } // Exclude System Administrator for privileged users
+        : { id: memberId, name: { not: "System Administrator" } }; // Standard filter + exclude System Admin
 
     // Security Check: If restricted and no memberId, return empty or throw
     if (!isPrivileged && !memberId) {

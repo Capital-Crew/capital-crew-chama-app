@@ -17,7 +17,17 @@ import {
     AmortizationType,
     ChargeType,
     ChargeCalculationType,
-    UserRole
+    UserRole,
+    LoanNote as PrismaLoanNote,
+    LoanNoteSubscription as PrismaLoanNoteSubscription,
+    Group as PrismaGroup,
+    GroupWallet as PrismaGroupWallet,
+    GroupRiskConfig as PrismaGroupRiskConfig,
+    GroupInvestmentProposal as PrismaGroupInvestmentProposal,
+    GroupInvestmentProposalVote as PrismaGroupInvestmentProposalVote,
+    LoanNotePaymentSchedule as PrismaLoanNotePaymentSchedule,
+    Wallet as PrismaWallet,
+    LedgerAccount as PrismaLedgerAccount
 } from '@prisma/client';
 
 // Re-export Enums for frontend use
@@ -113,6 +123,7 @@ export interface UserPermissions {
 // Extended Models
 export interface User extends Omit<PrismaUser, 'permissions'> {
     permissions: UserPermissions;
+    wallet?: Wallet;
 }
 
 export interface Loan extends Omit<PrismaLoan, 'repaymentSchedule' | 'approvalVotes' | 'feeExemptions' | 'productSnapshot' | 'applicationDate'> {
@@ -132,7 +143,37 @@ export interface Notification extends PrismaNotification { }
 export interface AuditLog extends PrismaAuditLog { }
 export interface Expense extends PrismaExpense { }
 export interface Revenue extends PrismaRevenue { }
-export interface ChargeTemplate extends PrismaChargeTemplate { }
+export interface LedgerAccount extends PrismaLedgerAccount { }
+export interface Wallet extends PrismaWallet { 
+    glAccount?: LedgerAccount;
+}
+
+export interface LoanNote extends PrismaLoanNote {
+    subscriptions?: LoanNoteSubscription[];
+    paymentSchedule?: LoanNotePaymentSchedule[];
+}
+
+export interface LoanNoteSubscription extends PrismaLoanNoteSubscription {
+    user?: User;
+}
+
+export interface Group extends PrismaGroup { 
+    wallet?: GroupWallet;
+    riskConfig?: GroupRiskConfig;
+    investmentProposals?: GroupInvestmentProposal[];
+}
+export interface GroupWallet extends PrismaGroupWallet { 
+    glAccount?: LedgerAccount;
+}
+export interface GroupRiskConfig extends PrismaGroupRiskConfig { }
+export interface GroupInvestmentProposal extends PrismaGroupInvestmentProposal { 
+    loanNote?: LoanNote;
+    votes?: GroupInvestmentProposalVote[];
+}
+export interface GroupInvestmentProposalVote extends PrismaGroupInvestmentProposalVote { }
+export interface LoanNotePaymentSchedule extends PrismaLoanNotePaymentSchedule { 
+    loanNote?: LoanNote;
+}
 
 // Payment Gateway Types
 export type DestinationType = 'LOAN_REPAYMENT' | 'CONTRIBUTION';

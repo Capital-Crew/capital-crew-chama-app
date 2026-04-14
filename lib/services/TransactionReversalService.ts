@@ -6,7 +6,7 @@ import { TransactionReplayService } from './TransactionReplayService'
 import { revalidatePath } from 'next/cache'
 
 export type ReversalType = 'LOAN' | 'SAVINGS' | 'SHARE' | 'EXPENSE'
-export const REVERSAL_WINDOW_DAYS = 30
+export const REVERSAL_WINDOW_DAYS = 90
 
 export class TransactionReversalService {
 

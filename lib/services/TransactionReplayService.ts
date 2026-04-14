@@ -256,15 +256,8 @@ export class TransactionReplayService {
                 totalPaid = totalPaid.add(inst.principalPaid).add(inst.interestPaid).add(inst.penaltyPaid).add(inst.feesPaid)
             }
 
-            const outstandingBalance = totalDue.sub(totalPaid)
-
-            await prisma.loan.update({
-                where: { id: loanId },
-                data: { 
-                    outstandingBalance,
-                    current_balance: outstandingBalance
-                }
-            })
+            // Balance is now derived from AccountingEngine via ledger transactions.
+            // No direct Loan model update needed.
 
             return {
                 installmentsUpdated: modifiedInstallments.length,

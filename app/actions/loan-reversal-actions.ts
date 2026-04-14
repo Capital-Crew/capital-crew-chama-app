@@ -187,6 +187,53 @@ export const reverseLoanTransaction = withAudit(
                 })
                 ctx.endStep('Create Reversal Record');
 
+                // Disbursement Reversal: Cancel the loan entirely
+                if (originalTx.type === 'DISBURSEMENT') {
+                    ctx.beginStep('Cancel Loan (Disbursement Reversed)');
+
+                    // 1. Set loan status to CANCELLED and clear cached penalties
+                    await tx.loan.update({
+                        where: { id: originalTx.loanId },
+                        data: {
+                            status: 'CANCELLED',
+                            penalties: 0,
+                        }
+                    })
+
+                    // 2. Void all installments
+                    await tx.repaymentInstallment.updateMany({
+                        where: { loanId: originalTx.loanId },
+                        data: {
+                            principalDue: 0,
+                            interestDue: 0,
+                            penaltyDue: 0,
+                            feeDue: 0,
+                            principalPaid: 0,
+                            interestPaid: 0,
+                            penaltyPaid: 0,
+                            feesPaid: 0,
+                            isFullyPaid: true,
+                        }
+                    })
+
+                    // 3. Mark all other active transactions on this loan as reversed
+                    //    (e.g. penalties that were applied after disbursement)
+                    await tx.loanTransaction.updateMany({
+                        where: {
+                            loanId: originalTx.loanId,
+                            isReversed: false,
+                            type: { notIn: ['REVERSAL'] },
+                            id: { not: originalTx.id },
+                        },
+                        data: {
+                            isReversed: true,
+                            reversedAt: new Date(),
+                        }
+                    })
+
+                    ctx.endStep('Cancel Loan (Disbursement Reversed)');
+                }
+
                 ctx.beginStep('Trigger Replay Engine');
                 await TransactionReplayService.replayTransactions(originalTx.loanId, undefined, tx)
                 ctx.endStep('Trigger Replay Engine');

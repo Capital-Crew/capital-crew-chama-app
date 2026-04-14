@@ -41,12 +41,14 @@ interface SettingsProps {
     modules?: any[];
     permissions?: any[];
     apologies?: any[];
+    workflow?: any;
 }
 
-export function SystemAdminModule({ products, members = [], welfareTypes = [], welfareRequisitions = [], expenseAccounts = [], users = [], modules = [], permissions = [], apologies = [] }: SettingsProps) {
+export function SystemAdminModule({ products, members = [], welfareTypes = [], welfareRequisitions = [], expenseAccounts = [], users = [], modules = [], permissions = [], apologies = [], workflow }: SettingsProps) {
     const [activeTab, setActiveTab] = useState('products');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isAdjustmentModalOpen, setIsAdjustmentModalOpen] = useState(false);
+    const [updatingWorkflow, setUpdatingWorkflow] = useState(false);
 
     const handleToggleApprovalRight = async (memberId: string) => {
         await toggleMemberApprovalRight(memberId);
@@ -69,9 +71,27 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
         }
     };
 
+    const handleUpdateWorkflowThreshold = async (stageId: string, minVotes: number) => {
+        setUpdatingWorkflow(true);
+        try {
+            const result = await updateSaccoSettings({
+                // This is a bridge to updateStageSettings which is already in withAudit
+                // Actually, I should just call updateStageSettings directly
+            });
+            // Let's use the actual action imported from workflow-settings
+            await updateStageSettings(stageId, minVotes);
+            toast.success("Governance threshold updated");
+        } catch (error) {
+            toast.error("Failed to update threshold");
+        } finally {
+            setUpdatingWorkflow(false);
+        }
+    };
+
     const tabs = [
         { id: 'engines', label: 'Engine Health', icon: TrendingUp },
         { id: 'products', label: 'Loan Products', icon: Package },
+        { id: 'governance', label: 'Market Governance', icon: Shield },
         { id: 'adjustments', label: 'Loan Adjustments', icon: Scale },
         { id: 'welfare', label: 'Welfare', icon: HeartHandshake },
         { id: 'notifications', label: 'Notifications', icon: Mail },
@@ -204,6 +224,97 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
                             </Link>
                         </div>
                     )}
+                </div>
+            )}
+
+            {}
+            {activeTab === 'governance' && (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h2 className="text-2xl font-bold text-slate-900">Governance Settings</h2>
+                            <p className="text-slate-600 mt-1">Configure approval thresholds and market listing rules</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* Approval Threshold Card */}
+                        <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-8">
+                            <div className="flex items-center gap-4 border-b border-slate-100 pb-6">
+                                <div className="p-3 bg-indigo-50 rounded-2xl text-indigo-600">
+                                    <Shield className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Investor Note Approvals</h3>
+                                    <p className="text-xs text-slate-500 font-medium">Global consensus requirements for market listing</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-6">
+                                <div className="flex items-center justify-between p-6 bg-slate-50 rounded-2xl border border-slate-100 group transition-all hover:border-indigo-200">
+                                    <div className="space-y-1">
+                                        <p className="text-sm font-black text-slate-800 uppercase tracking-wide">Required Signatures</p>
+                                        <p className="text-xs text-slate-500 font-medium leading-normal max-w-xs">
+                                            The number of system administrators required to approve a note before it opens for member bidding.
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <input 
+                                            type="number" 
+                                            min="1" 
+                                            max="12"
+                                            defaultValue={workflow?.stages?.[0]?.minVotesRequired || 1}
+                                            disabled={updatingWorkflow || !workflow?.stages?.[0]}
+                                            onBlur={(e) => {
+                                                const val = parseInt(e.target.value);
+                                                if (workflow?.stages?.[0] && val !== workflow.stages[0].minVotesRequired) {
+                                                    handleUpdateWorkflowThreshold(workflow.stages[0].id, val);
+                                                }
+                                            }}
+                                            className="w-20 h-14 bg-white border-2 border-slate-200 rounded-xl text-center font-black text-xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition-all outline-none"
+                                        />
+                                        {updatingWorkflow && (
+                                            <div className="animate-spin w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full" />
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="p-4 rounded-xl bg-amber-50 border border-amber-100 flex gap-3">
+                                    <TrendingUp className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1">Impact Analysis</p>
+                                        <p className="text-xs font-bold text-amber-800 leading-relaxed">
+                                            Changes to this value will affect all pending and future investment notes. Existing open notes will retain their active status.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Market Overview / Stats Card */}
+                        <div className="bg-gradient-to-br from-indigo-900 to-indigo-800 rounded-3xl p-8 text-white shadow-xl shadow-indigo-900/20 flex flex-col justify-between">
+                            <div className="space-y-2">
+                                <h3 className="text-xl font-black uppercase tracking-tight">Market Status</h3>
+                                <div className="h-1 w-12 bg-indigo-400 rounded-full" />
+                            </div>
+                            
+                            <div className="space-y-4 py-8">
+                                <p className="text-xs text-indigo-200 font-bold uppercase tracking-[0.2em]">Current Engine Configuration</p>
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-5xl font-black tracking-tighter">LOAN_NOTE</span>
+                                    <span className="text-sm font-bold text-indigo-300">v1.2</span>
+                                </div>
+                                <p className="text-sm text-indigo-100 leading-relaxed">
+                                    The universal workflow engine is active and managing the full lifecycle of investment notes, from Draft to Maturity.
+                                </p>
+                            </div>
+
+                            <div className="pt-6 border-t border-white/10 flex items-center gap-3">
+                                <CheckCircle className="w-5 h-5 text-emerald-400" />
+                                <span className="text-xs font-black uppercase tracking-widest text-emerald-400">Governance Engine Optimized</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
 

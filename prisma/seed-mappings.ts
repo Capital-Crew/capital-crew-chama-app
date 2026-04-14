@@ -34,6 +34,7 @@ export async function seedLedgerMappings() {
         { type: 'REVENUE_LOAN_PROCESSING_FEE', accountCode: '4021' }, // Processing Fees
         { type: 'REVENUE_GENERAL_FEE', accountCode: '4021' }, // Processing Fees (general)
         { type: 'RECEIVABLE_LOAN_FEES', accountCode: '1024' }, // Fees Receivable
+        { type: 'EVENT_CLN_ESCROW', accountCode: 'ESCROW-CLN' }, // Investment Note Escrow
     ]
 
     for (const map of mappings) {

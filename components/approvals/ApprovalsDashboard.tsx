@@ -6,7 +6,7 @@ import { ApprovalRequest } from '@prisma/client'
 import { format } from 'date-fns'
 import { LoanAppraisalCard } from '@/components/LoanAppraisalCard'
 import { MemberDetailsCard } from './MemberDetailsCard'
-import { UserCheck, FileText, DollarSign, Users, ChevronRight, Check, X, Loader2, Calendar, Hash, Percent } from 'lucide-react'
+import { UserCheck, FileText, DollarSign, Users, ChevronRight, Check, X, Loader2, Calendar, Hash, Percent, ActivityIcon } from 'lucide-react'
 import { processApproval } from '@/app/actions/approval-actions'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -15,6 +15,7 @@ import { useOptimisticAction } from '@/hooks/useOptimisticAction'
 // Icon mapping
 const TYPE_ICONS = {
     'LOAN': DollarSign,
+    'LOAN_NOTE': ActivityIcon,
     'MEMBER': Users,
     'EXPENSE': FileText,
     'WELFARE': Users,
@@ -23,6 +24,7 @@ const TYPE_ICONS = {
 
 const TYPE_COLORS = {
     'LOAN': 'from-blue-400 to-blue-600',
+    'LOAN_NOTE': 'from-amber-400 to-amber-600',
     'MEMBER': 'from-purple-400 to-purple-600',
     'EXPENSE': 'from-emerald-400 to-emerald-600',
     'WELFARE': 'from-pink-400 to-pink-600',
@@ -101,7 +103,7 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
         <div className="space-y-6 font-sans">
             {}
             <div className="flex items-center gap-3 overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide">
-                {['ALL', 'LOAN', 'MEMBER', 'EXPENSE'].map(f => (
+                {['ALL', 'LOAN', 'LOAN_NOTE', 'MEMBER', 'EXPENSE'].map(f => (
                     <button
                         key={f}
                         onClick={() => setFilter(f)}
@@ -112,7 +114,7 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
                                 : 'bg-white text-slate-500 border border-slate-100 hover:bg-slate-50'
                         )}
                     >
-                        {f === 'ALL' ? 'All Requests' : f + 's'}
+                        {f === 'ALL' ? 'All Requests' : f === 'LOAN_NOTE' ? 'Investment Notes' : f + 's'}
                     </button>
                 ))}
             </div>
@@ -149,6 +151,7 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
                                         <span className={cn(
                                             "px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider bg-slate-50 text-slate-500",
                                             req.type === 'LOAN' && "bg-blue-50 text-blue-600",
+                                            (req.type as any) === 'LOAN_NOTE' && "bg-amber-50 text-amber-600",
                                             req.type === 'MEMBER' && "bg-purple-50 text-purple-600",
                                             req.type === 'EXPENSE' && "bg-emerald-50 text-emerald-600"
                                         )}>

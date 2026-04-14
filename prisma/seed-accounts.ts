@@ -158,6 +158,7 @@ export async function seedChartOfAccounts() {
 
         // --- SYSTEM DEFAULTS ---
         // Ensuring critical system defaults (like Wallet 3012) are handled.
+        { code: 'ESCROW-CLN', name: 'Investment Note Escrow', type: 'LIABILITY' as const, parent: '2030' },
     ]
 
     console.log('\n--- Seeding Children ---')

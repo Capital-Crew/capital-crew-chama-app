@@ -1,3 +1,4 @@
+import { AppError, ErrorCodes } from '@/lib/errors';
 import { db } from '@/lib/db';
 import { Prisma } from '@prisma/client';
 import { WaterfallAllocation } from '@/lib/strategies/waterfall-allocation';
@@ -49,7 +50,7 @@ export class PaymentGateway {
     static async processPayment(input: PaymentGatewayInput): Promise<PaymentGatewayResult> {
         // Validate amount
         if (input.amount <= 0) {
-            throw new Error('Payment amount must be greater than zero');
+            throw new AppError('Payment amount must be greater than zero', 400, ErrorCodes.INVALID_INPUT);
         }
 
         // Fetch System Mappings (Cached/Optimized)
@@ -62,7 +63,7 @@ export class PaymentGateway {
         const amountDecimal = new Prisma.Decimal(input.amount);
 
         // ========================================
-        // ATOMIC TRANSACTION
+        // ATOMIC TRANSACTION WITH SERIALIZABLE ISOLATION
         // ========================================
         const result = await db.$transaction(async (tx) => {
             // ========================================
@@ -76,14 +77,16 @@ export class PaymentGateway {
             });
 
             if (!wallet) {
-                throw new Error('Wallet not found');
+                throw new AppError('Wallet not found', 404, ErrorCodes.RECORD_NOT_FOUND);
             }
 
             // 2. Verify sufficient balance
             const currentBalance = new Prisma.Decimal(wallet.glAccount.balance);
             if (currentBalance.lt(amountDecimal)) {
-                throw new Error(
-                    `Insufficient balance. Available: KES ${currentBalance.toFixed(2)}, Required: KES ${amountDecimal.toFixed(2)}`
+                throw new AppError(
+                    `Insufficient balance. Available: KES ${currentBalance.toFixed(2)}, Required: KES ${amountDecimal.toFixed(2)}`,
+                    422,
+                    ErrorCodes.INSUFFICIENT_FUNDS
                 );
             }
 
@@ -123,7 +126,7 @@ export class PaymentGateway {
                 });
 
                 if (!member) {
-                    throw new Error('Member not found');
+                    throw new AppError('Member not found', 404, ErrorCodes.RECORD_NOT_FOUND);
                 }
 
                 // 2. Increment share contributions
@@ -176,11 +179,11 @@ export class PaymentGateway {
                 });
 
                 if (!loan) {
-                    throw new Error('Loan not found');
+                    throw new AppError('Loan not found', 404, ErrorCodes.RECORD_NOT_FOUND);
                 }
 
                 if (!['ACTIVE', 'OVERDUE', 'DISBURSED'].includes(loan.status)) {
-                    throw new Error(`Cannot repay loan with status: ${loan.status}`);
+                    throw new AppError(`Cannot repay loan with status: ${loan.status}`, 422, ErrorCodes.INVALID_STATUS);
                 }
 
                 // 2. Apply waterfall allocation
@@ -249,7 +252,7 @@ export class PaymentGateway {
                 journalEntryNumber,
                 newDestinationBalance
             };
-        });
+        }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
         // ========================================
         // RETURN RESULT

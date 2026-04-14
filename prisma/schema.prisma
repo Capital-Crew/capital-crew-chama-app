@@ -2832,3 +2832,23 @@ model LoanNoteAuditLog {
   @@map("loan_note_audit_log")
 }
 
+
+model ErrorAuditLog {
+  id               String   @id @default(cuid())
+  errorCode        String
+  technicalMessage String
+  stack            String?
+  userId           String?
+  requestId        String   @unique
+  endpoint         String?
+  method           String?
+  correlationId    String?
+  affectedEntityId String?
+  metadata         Json?
+  timestamp        DateTime @default(now())
+
+  @@index([errorCode])
+  @@index([requestId])
+  @@index([userId])
+  @@index([timestamp])
+}

@@ -1,51 +1,71 @@
+import winston from 'winston';
+
 /**
- * Production-ready Structured Logger
- * Currently wraps console but provides a central point for PII sanitization
- * and future integration with observability tools (Sentry/Pino/Winston).
+ * Production-ready Structured Logger using Winston.
+ * Implements PII redaction and JSON output for financial safety.
  */
 
-type LogLevel = 'info' | 'warn' | 'error' | 'debug';
+const PII_FIELDS = ['password', 'cvv', 'pan', 'ssn', 'accountNumber', 'pin', 'secret'];
 
-class Logger {
-    private isProduction = process.env.NODE_ENV === 'production';
-
-    private sanitize(message: string): string {
-        // Basic PII masking (Emails)
-        return message.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[EMAIL_REDACTED]');
-    }
-
-    private format(level: LogLevel, message: string, data?: any) {
-        const timestamp = new Date().toISOString();
-        const sanitizedMessage = this.sanitize(message);
-
-        const logObj = {
-            timestamp,
-            level: level.toUpperCase(),
-            message: sanitizedMessage,
-            ...(data && { data })
-        };
-
-        if (this.isProduction) {
-            return JSON.stringify(logObj);
+/**
+ * Custom format to redact sensitive fields from log objects.
+ */
+const redactFormat = winston.format((info) => {
+    const redactValue = (val: any): any => {
+        if (typeof val === 'string') {
+            // Basic masking for strings that look like emails (already partially implemented in previous logger)
+            return val.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[EMAIL_REDACTED]');
         }
-        return logObj;
-    }
+        return val;
+    };
 
-    info(message: string, data?: any) {
-    }
+    const redactObject = (obj: any): any => {
+        if (typeof obj !== 'object' || obj === null) return redactValue(obj);
+        
+        const newObj = Array.isArray(obj) ? [] : {};
+        for (const key in obj) {
+            if (PII_FIELDS.some(field => key.toLowerCase().includes(field.toLowerCase()))) {
+                (newObj as any)[key] = '[REDACTED]';
+            } else if (typeof obj[key] === 'object') {
+                (newObj as any)[key] = redactObject(obj[key]);
+            } else {
+                (newObj as any)[key] = redactValue(obj[key]);
+            }
+        }
+        return newObj;
+    };
 
-    warn(message: string, data?: any) {
+    // Apply redaction to the entire metadata object
+    if (info.metadata) {
+        info.metadata = redactObject(info.metadata);
     }
-
-    error(message: string, data?: any) {
-        // TODO: replace with structured logger
-        console.error(this.format('error', message, data));
-    }
-
-    debug(message: string, data?: any) {
-        if (!this.isProduction) {
+    
+    // Also check the root object (excluding internal winston fields)
+    for (const key in info) {
+        if (['level', 'message', 'timestamp', 'requestId', 'userId', 'endpoint', 'method', 'errorCode'].includes(key)) continue;
+        if (PII_FIELDS.some(field => key.toLowerCase().includes(field.toLowerCase()))) {
+            (info as any)[key] = '[REDACTED]';
         }
     }
-}
 
-export const logger = new Logger();
+    return info;
+});
+
+const loggerInstance = winston.createLogger({
+    level: process.env.NODE_ENV === 'production' ? 'error' : 'debug',
+    format: winston.format.combine(
+        winston.format.timestamp(),
+        redactFormat(),
+        winston.format.json()
+    ),
+    transports: [
+        new winston.transports.Console()
+    ],
+});
+
+export const logger = {
+    info: (message: string, meta?: any) => loggerInstance.info(message, meta),
+    warn: (message: string, meta?: any) => loggerInstance.warn(message, meta),
+    error: (message: string, meta?: any) => loggerInstance.error(message, meta),
+    debug: (message: string, meta?: any) => loggerInstance.debug(message, meta),
+};

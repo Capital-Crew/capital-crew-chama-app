@@ -38,13 +38,21 @@ export function PostReturnsModal({ isOpen, onClose, note }: PostReturnsModalProp
     // Initial event selection
     useEffect(() => {
         if (isOpen && note.paymentSchedule) {
-            // Auto-select the first UPCOMING or SHORTFALL event that is due
             const now = new Date();
-            const dueEvent = note.paymentSchedule.find(evt => 
+            // 1. Try to find the first due event
+            let initialEvent = note.paymentSchedule.find(evt => 
                 (evt.status === 'UPCOMING' || evt.status === 'SHORTFALL') && 
                 new Date(evt.dueDate) <= now
             );
-            if (dueEvent) setSelectedEventId(dueEvent.id);
+            
+            // 2. If nothing is due, pick the first actionable one (early payment)
+            if (!initialEvent) {
+                initialEvent = note.paymentSchedule.find(evt => 
+                    evt.status === 'UPCOMING' || evt.status === 'SHORTFALL'
+                );
+            }
+            
+            if (initialEvent) setSelectedEventId(initialEvent.id);
         }
     }, [isOpen, note.paymentSchedule]);
 
@@ -125,17 +133,20 @@ export function PostReturnsModal({ isOpen, onClose, note }: PostReturnsModalProp
                                 {note.paymentSchedule.map((evt: any) => {
                                     const isDue = new Date(evt.dueDate) <= new Date();
                                     const isActionable = evt.status === 'UPCOMING' || evt.status === 'SHORTFALL';
+                                    const isPending = evt.status === 'AWAITING_CONFIRMATION';
                                     const isSelected = selectedEventId === evt.id;
+                                    const canSelect = evt.status !== 'PAID';
 
                                     return (
                                         <button
                                             key={evt.id}
-                                            disabled={!isDue || !isActionable}
+                                            disabled={!canSelect}
                                             onClick={() => setSelectedEventId(evt.id)}
                                             className={cn(
-                                                "flex items-center justify-between p-4 rounded-2xl border-2 transition-all text-left",
-                                                isSelected ? "border-indigo-600 bg-indigo-50/50" : "border-slate-100 hover:border-slate-200 bg-white",
-                                                (!isDue || !isActionable) && "opacity-50 grayscale cursor-not-allowed border-dashed"
+                                                "flex items-center justify-between p-4 rounded-2xl border-2 transition-all text-left relative overflow-hidden",
+                                                isSelected ? "border-indigo-600 bg-indigo-50/50" : "border-slate-100 hover:border-slate-200 bg-white shadow-sm",
+                                                !canSelect && "opacity-50 grayscale cursor-not-allowed border-dashed",
+                                                !isDue && isActionable && "border-amber-100 bg-amber-50/20"
                                             )}
                                         >
                                             <div className="flex items-center gap-3">
@@ -147,13 +158,19 @@ export function PostReturnsModal({ isOpen, onClose, note }: PostReturnsModalProp
                                                 </div>
                                                 <div>
                                                     <p className="text-xs font-black text-[#0F172A] uppercase leading-none">{evt.periodLabel}</p>
-                                                    <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">Due {new Date(evt.dueDate).toLocaleDateString()}</p>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <p className="text-[9px] font-bold text-slate-400 uppercase">Due {new Date(evt.dueDate).toLocaleDateString()}</p>
+                                                        {!isDue && isActionable && (
+                                                            <span className="text-[7px] font-black text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded uppercase tracking-tighter">Early Payout</span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 {evt.status === 'PAID' && <CheckCircle2Icon className="w-4 h-4 text-emerald-500" />}
                                                 {evt.status === 'UPCOMING' && isDue && <ClockIcon className="w-4 h-4 text-amber-500" />}
-                                                {evt.status === 'AWAITING_CONFIRMATION' && <Loader2Icon className="w-4 h-4 text-indigo-500 animate-spin" />}
+                                                {isPending && <Loader2Icon className="w-4 h-4 text-indigo-500 animate-spin" />}
+                                                {evt.status === 'SHORTFALL' && <AlertCircleIcon className="w-4 h-4 text-rose-500" />}
                                             </div>
                                         </button>
                                     );
@@ -249,16 +266,25 @@ export function PostReturnsModal({ isOpen, onClose, note }: PostReturnsModalProp
 
                     {/* Footer / Section 3 */}
                     <DialogFooter className="p-8 bg-slate-50 border-t border-slate-100 flex-col sm:flex-col gap-6">
-                        <div className="flex items-start gap-4 p-5 bg-white rounded-2xl border border-slate-200">
+                        <div className={cn(
+                            "flex items-start gap-4 p-5 rounded-2xl border transition-all",
+                            selectedEvent?.status === 'AWAITING_CONFIRMATION' ? "bg-indigo-50/50 border-indigo-100" : "bg-white border-slate-200"
+                        )}>
                             <Checkbox 
                                 id="confirm" 
                                 checked={isConfirmed}
                                 onCheckedChange={(val) => setIsConfirmed(!!val)}
-                                disabled={!preview?.isSufficient}
+                                disabled={!preview?.isSufficient || selectedEvent?.status === 'AWAITING_CONFIRMATION'}
                                 className="mt-1 w-5 h-5 rounded-lg border-2"
                             />
                             <label htmlFor="confirm" className="text-xs font-bold text-slate-600 leading-relaxed cursor-pointer select-none">
-                                I confirm the above disbursement amounts are correct and I authorise <span className="text-[#0F172A] font-black"><Money amount={preview?.totalAmount || 0} /></span> to be deducted from my wallet upon admin approval.
+                                {selectedEvent?.status === 'AWAITING_CONFIRMATION' ? (
+                                    <span className="text-indigo-600">This payment is already <span className="font-black uppercase">Pending Approval</span> from the system administrator.</span>
+                                ) : (
+                                    <>
+                                        I confirm the above disbursement amounts are correct and I authorise <span className="text-[#0F172A] font-black"><Money amount={preview?.totalAmount || 0} /></span> to be deducted from my wallet upon admin approval.
+                                    </>
+                                )}
                             </label>
                         </div>
                         
@@ -271,13 +297,17 @@ export function PostReturnsModal({ isOpen, onClose, note }: PostReturnsModalProp
                                 Cancel
                             </Button>
                             <Button 
-                                disabled={!isConfirmed || !preview?.isSufficient || isSubmitting}
+                                disabled={!isConfirmed || !preview?.isSufficient || isSubmitting || selectedEvent?.status === 'AWAITING_CONFIRMATION'}
                                 onClick={handleSubmit}
-                                className="flex-[2] h-16 rounded-[24px] bg-[#0F172A] hover:bg-[#1E293B] text-white font-black text-sm tracking-widest active:scale-95 transition-all shadow-xl shadow-slate-900/20 group"
+                                className={cn(
+                                    "flex-[2] h-16 rounded-[24px] font-black text-sm tracking-widest active:scale-95 transition-all shadow-xl shadow-slate-900/20 group",
+                                    selectedEvent?.status === 'AWAITING_CONFIRMATION' ? "bg-slate-300 cursor-not-allowed" : "bg-[#0F172A] hover:bg-[#1E293B] text-white"
+                                )}
                             >
                                 {isSubmitting ? <Loader2Icon className="w-5 h-5 animate-spin" /> : (
                                     <span className="flex items-center gap-3">
-                                        Send for Approval <ArrowRightIcon className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                        {selectedEvent?.status === 'AWAITING_CONFIRMATION' ? 'Awaiting Approval' : 'Send for Approval'} 
+                                        {selectedEvent?.status !== 'AWAITING_CONFIRMATION' && <ArrowRightIcon className="w-5 h-5 group-hover:translate-x-1 transition-transform" />}
                                     </span>
                                 )}
                             </Button>

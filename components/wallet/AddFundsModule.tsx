@@ -26,6 +26,7 @@ export function AddFundsModule({ memberId, userRole }: { memberId: string; userR
     const [activeTab, setActiveTab] = useState<DepositType>('share')
     const { isPending: loading, error, execute, reset } = useFormAction()
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+    const [isSubmitted, setIsSubmitted] = useState(false)
 
     // Share Capital state
     const [shareAmount, setShareAmount] = useState('')
@@ -69,6 +70,7 @@ export function AddFundsModule({ memberId, userRole }: { memberId: string; userR
         setActiveTab(id as DepositType)
         reset()
         setMessage(null)
+        setIsSubmitted(false) // Allow new submission on tab switch
     }
 
     const loadActiveLoans = async () => {
@@ -110,6 +112,7 @@ export function AddFundsModule({ memberId, userRole }: { memberId: string; userR
 
     const handleShareContribution = async (e: React.FormEvent) => {
         e.preventDefault()
+        if (isSubmitted) return;
         setMessage(null)
 
         await execute(async (idempotencyKey) => {
@@ -126,12 +129,14 @@ export function AddFundsModule({ memberId, userRole }: { memberId: string; userR
             })
             setShareAmount('')
             setShareDescription('')
+            setIsSubmitted(true);
             return { success: true }
         }, { useIdempotency: true })
     }
 
     const handlePenaltyPayment = async (e: React.FormEvent) => {
         e.preventDefault()
+        if (isSubmitted) return;
         setMessage(null)
 
         await execute(async (idempotencyKey) => {
@@ -148,12 +153,14 @@ export function AddFundsModule({ memberId, userRole }: { memberId: string; userR
             })
             setPenaltyAmount('')
             setPenaltyDescription('')
+            setIsSubmitted(true);
             return { success: true }
         }, { useIdempotency: true })
     }
 
     const handleLoanRepayment = async (e: React.FormEvent) => {
         e.preventDefault()
+        if (isSubmitted) return;
         setMessage(null)
 
         await execute(async (idempotencyKey) => {
@@ -174,6 +181,7 @@ export function AddFundsModule({ memberId, userRole }: { memberId: string; userR
             setSelectedLoanId('')
             setRepaymentAmount('')
             setRepaymentDescription('')
+            setIsSubmitted(true);
             loadActiveLoans() // Reload to update balances
             return { success: true }
         }, { useIdempotency: true })
@@ -224,9 +232,10 @@ export function AddFundsModule({ memberId, userRole }: { memberId: string; userR
                                 min="0.01"
                                 value={shareAmount}
                                 onChange={(e) => setShareAmount(e.target.value)}
-                                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent disabled:bg-slate-50 disabled:text-slate-500"
                                 placeholder="0.00"
                                 required
+                                disabled={loading || isSubmitted}
                             />
                         </div>
 
@@ -235,16 +244,18 @@ export function AddFundsModule({ memberId, userRole }: { memberId: string; userR
                             <textarea
                                 value={shareDescription}
                                 onChange={(e) => setShareDescription(e.target.value)}
-                                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent disabled:bg-slate-50 disabled:text-slate-500"
                                 placeholder="Purpose of contribution..."
                                 rows={3}
                                 required
+                                disabled={loading || isSubmitted}
                             />
                         </div>
 
                         <SubmitButton
                             isPending={loading}
-                            label="Add Contribution"
+                            disabled={isSubmitted}
+                            label={isSubmitted ? "Contribution Recorded" : "Add Contribution"}
                             pendingLabel="Processing..."
                             className="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-3 rounded-xl font-black uppercase text-sm transition-colors"
                         />
@@ -261,9 +272,10 @@ export function AddFundsModule({ memberId, userRole }: { memberId: string; userR
                                 min="0.01"
                                 value={penaltyAmount}
                                 onChange={(e) => setPenaltyAmount(e.target.value)}
-                                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent disabled:bg-slate-50 disabled:text-slate-500"
                                 placeholder="0.00"
                                 required
+                                disabled={loading || isSubmitted}
                             />
                         </div>
 
@@ -272,16 +284,18 @@ export function AddFundsModule({ memberId, userRole }: { memberId: string; userR
                             <textarea
                                 value={penaltyDescription}
                                 onChange={(e) => setPenaltyDescription(e.target.value)}
-                                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent disabled:bg-slate-50 disabled:text-slate-500"
                                 placeholder="Reason for penalty/fine payment..."
                                 rows={3}
                                 required
+                                disabled={loading || isSubmitted}
                             />
                         </div>
 
                         <SubmitButton
                             isPending={loading}
-                            label="Pay Penalty/Fine"
+                            disabled={isSubmitted}
+                            label={isSubmitted ? "Fine Paid" : "Pay Penalty/Fine"}
                             pendingLabel="Processing..."
                             className="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-3 rounded-xl font-black uppercase text-sm transition-colors"
                         />
@@ -335,17 +349,20 @@ export function AddFundsModule({ memberId, userRole }: { memberId: string; userR
                                             type="number"
                                             step="0.01"
                                             min="0.01"
+                                            min="0.01"
                                             max={selectedLoan.outstandingBalance}
                                             value={repaymentAmount}
                                             onChange={(e) => setRepaymentAmount(e.target.value)}
-                                            className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                            className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent disabled:bg-slate-50 disabled:text-slate-500"
                                             placeholder="0.00"
                                             required
+                                            disabled={loading || isSubmitted}
                                         />
                                         <button
                                             type="button"
                                             onClick={() => setRepaymentAmount(selectedLoan.outstandingBalance.toString())}
-                                            className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-cyan-100 text-cyan-700 rounded-lg text-xs font-bold uppercase hover:bg-cyan-200"
+                                            disabled={loading || isSubmitted}
+                                            className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-cyan-100 text-cyan-700 rounded-lg text-xs font-bold uppercase hover:bg-cyan-200 disabled:opacity-50"
                                         >
                                             Max
                                         </button>
@@ -376,10 +393,11 @@ export function AddFundsModule({ memberId, userRole }: { memberId: string; userR
                                     <textarea
                                         value={repaymentDescription}
                                         onChange={(e) => setRepaymentDescription(e.target.value)}
-                                        className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                        className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent disabled:bg-slate-50 disabled:text-slate-500"
                                         placeholder="Payment notes..."
                                         rows={2}
                                         required
+                                        disabled={loading || isSubmitted}
                                     />
                                 </div>
                             </>
@@ -387,8 +405,8 @@ export function AddFundsModule({ memberId, userRole }: { memberId: string; userR
 
                         <SubmitButton
                             isPending={loading}
-                            disabled={!isRepaymentValid}
-                            label="Submit Repayment"
+                            disabled={!isRepaymentValid || isSubmitted}
+                            label={isSubmitted ? "Repayment Processed" : "Submit Repayment"}
                             pendingLabel="Processing..."
                             className="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-3 rounded-xl font-black uppercase text-sm transition-colors"
                         />

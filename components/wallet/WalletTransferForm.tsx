@@ -38,14 +38,16 @@ export function WalletTransferForm({
     const [amount, setAmount] = useState('');
     const [description, setDescription] = useState('');
     const [result, setResult] = useState<any>(null);
+    const [isSubmitted, setIsSubmitted] = useState(false);
 
     const { execute, isPending: loading, error } = useFormAction();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (isSubmitted) return;
         setResult(null);
 
-        await execute(async () => {
+        await execute(async (idempotencyKey) => {
             const amountNum = parseFloat(amount);
 
             if (isNaN(amountNum) || amountNum <= 0) {
@@ -67,17 +69,19 @@ export function WalletTransferForm({
                     destinationType,
                     destinationId: destinationType === 'CONTRIBUTION' ? memberId : destinationId,
                     amount: amountNum,
-                    description: description || undefined
+                    description: description || undefined,
+                    idempotencyKey
                 });
 
                 setResult(transferResult);
                 setAmount('');
                 setDescription('');
+                setIsSubmitted(true); // Lock the form on success
                 return { success: true };
             } catch (err: any) {
                 return { success: false, error: err.message || 'An error occurred during transfer' };
             }
-        });
+        }, { useIdempotency: true });
     };
 
     return (
@@ -121,6 +125,7 @@ export function WalletTransferForm({
                                     setDestinationId('');
                                 }}
                                 className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-700 appearance-none focus:ring-4 focus:ring-cyan-500/10 transition-all outline-none"
+                                disabled={loading || isSubmitted}
                             >
                                 <option value="LOAN_REPAYMENT">Loan Repayment</option>
                                 <option value="CONTRIBUTION">Share Contribution</option>
@@ -129,7 +134,7 @@ export function WalletTransferForm({
                         </div>
                     </div>
 
-                    {}
+                    {/* Amount */}
                     <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Volume (KES)</label>
                         <input
@@ -141,11 +146,12 @@ export function WalletTransferForm({
                             step="0.01"
                             className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-lg font-black text-slate-800 placeholder:text-slate-200 focus:ring-4 focus:ring-cyan-500/10 transition-all outline-none"
                             required
+                            disabled={loading || isSubmitted}
                         />
                     </div>
                 </div>
 
-                {}
+                {/* Destination Dropdown (Loans) */}
                 {destinationType === 'LOAN_REPAYMENT' && (
                     <div className="space-y-2 animate-in fade-in slide-in-from-left-2 duration-300">
                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Target Account / Loan</label>
@@ -155,6 +161,7 @@ export function WalletTransferForm({
                                 onChange={(e) => setDestinationId(e.target.value)}
                                 className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-700 appearance-none focus:ring-4 focus:ring-cyan-500/10 transition-all outline-none"
                                 required
+                                disabled={loading || isSubmitted}
                             >
                                 <option value="">-- Select active loan --</option>
                                 {activeLoans.map((loan) => (
@@ -168,7 +175,7 @@ export function WalletTransferForm({
                     </div>
                 )}
 
-                {}
+                {/* Description */}
                 <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Reference Notes</label>
                     <textarea
@@ -177,13 +184,15 @@ export function WalletTransferForm({
                         placeholder="Internal notes for tracking..."
                         rows={3}
                         className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-700 placeholder:text-slate-200 focus:ring-4 focus:ring-cyan-500/10 transition-all outline-none resize-none"
+                        disabled={loading || isSubmitted}
                     />
                 </div>
 
                 <div className="pt-4">
                     <SubmitButton
                         isPending={loading}
-                        label="Execute Transfer"
+                        disabled={isSubmitted}
+                        label={isSubmitted ? "Transfer Executed" : "Execute Transfer"}
                         pendingLabel="Authorizing..."
                         icon={<ArrowRightLeft className="w-4 h-4 mr-2" />}
                         className="w-full bg-[#0A192F] hover:bg-cyan-600 text-white py-5 rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-2xl shadow-slate-200 transition-all duration-500"

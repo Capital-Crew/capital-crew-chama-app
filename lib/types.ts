@@ -105,6 +105,7 @@ export interface UserPermissions {
     canEnrollMembers: boolean;
     canApproveMember: boolean;
     canActivateMember: boolean;
+    canApproveLoanNotes: boolean;
     canManageLedger: boolean; // Added for Ledger Management
 
     // Granular Report Permissions

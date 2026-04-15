@@ -522,15 +522,17 @@ export async function submitReturnsForApproval(data: {
                         throw new Error(`Insufficient funds. Required: ${preview.totalAmount}, Available: ${preview.floaterBalance}`);
                     }
 
-                    // Success Transition: UPCOMING -> AWAITING_SUFFICIENCY_CHECK -> AWAITING_CONFIRMATION
-                    // We combine these because the check just happened and passed
+                    // Success Transition: UPCOMING -> AWAITING_COMMITTEE_APPROVAL
                     const updated = await tx.loanNotePaymentSchedule.update({
                         where: { id: scheduleId },
                         data: { 
-                            status: 'AWAITING_CONFIRMATION',
-                            // In a real system, you might record the breakdown snapshot here if needed
+                            status: 'AWAITING_COMMITTEE_APPROVAL' as any,
                         }
                     });
+
+                    // INITIATE UNIVERSAL WORKFLOW
+                    const { initiateWorkflow } = await import('@/app/actions/workflow-engine');
+                    await initiateWorkflow('LOAN_NOTE_PAYMENT' as any, scheduleId, session.user.id!);
 
                     await tx.loanNoteAuditLog.create({
                         data: {
@@ -619,9 +621,13 @@ export async function submitEarlySettlementRequest(data: {
                             principalComponent: new Decimal(preview.remainingPrincipal),
                             interestComponent: new Decimal(preview.interestToDate),
                             periodLabel: 'FINAL SETTLEMENT (LUMP SUM)',
-                            status: 'AWAITING_CONFIRMATION'
+                            status: 'AWAITING_COMMITTEE_APPROVAL' as any
                         }
                     });
+
+                    // INITIATE UNIVERSAL WORKFLOW
+                    const { initiateWorkflow } = await import('@/app/actions/workflow-engine');
+                    await initiateWorkflow('LOAN_NOTE_SETTLEMENT' as any, finalEvent.id, session.user.id!);
 
                     // c. Cancel the rest of the schedule
                     const otherEventIds = note.paymentSchedule.filter(e => e.id !== finalEvent.id).map(e => e.id);

@@ -67,6 +67,7 @@ export function LoanRepaymentForm({ memberId, initialLoanId, onSuccess, onCancel
     const [refreshingBalance, setRefreshingBalance] = useState(false)
     const [receiptData, setReceiptData] = useState<ReceiptData | null>(null)
     const [isMounted, setIsMounted] = useState(false)
+    const [isSubmitted, setIsSubmitted] = useState(false)
 
     useEffect(() => {
         setIsMounted(true)
@@ -167,9 +168,18 @@ export function LoanRepaymentForm({ memberId, initialLoanId, onSuccess, onCancel
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+        if (isSubmitted) return;
         setMessage(null)
         
-        await execute(async () => {
+        await execute(async (idempotencyKey) => {
+            const result = await addLoanRepayment({
+                memberId,
+                loanId: selectedLoanId,
+                amount: parseFloat(repaymentAmount),
+                description: repaymentDescription,
+                idempotencyKey
+            })
+
             if (result && 'error' in result) {
                 return { success: false, error: (result as any).error }
             }
@@ -177,6 +187,7 @@ export function LoanRepaymentForm({ memberId, initialLoanId, onSuccess, onCancel
             setMessage({ type: 'success', text: `Repayment successful! Remaining: KES ${result.newOutstanding.toLocaleString()}` })
             setRepaymentAmount('')
             setRepaymentDescription('')
+            setIsSubmitted(true); // Lock form on success
             
             onSuccess?.(result.newOutstanding)
             
@@ -188,7 +199,7 @@ export function LoanRepaymentForm({ memberId, initialLoanId, onSuccess, onCancel
             loadActiveLoans()
             
             return { success: true }
-        })
+        }, { useIdempotency: true })
     }
 
     const isRepaymentValid = selectedLoan && parseFloat(repaymentAmount) > 0 && parseFloat(repaymentAmount) <= selectedLoan.outstandingBalance
@@ -272,7 +283,7 @@ export function LoanRepaymentForm({ memberId, initialLoanId, onSuccess, onCancel
                     <div className="relative group">
                         <select
                             required
-                            disabled={fetchingLoans || refreshingBalance}
+                            disabled={fetchingLoans || refreshingBalance || loading || isSubmitted}
                             value={selectedLoanId}
                             onChange={e => setSelectedLoanId(e.target.value)}
                             className="w-full appearance-none px-5 py-4 rounded-2xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500/50 transition-all outline-none font-bold text-slate-800 pr-12 disabled:opacity-50"
@@ -328,17 +339,18 @@ export function LoanRepaymentForm({ memberId, initialLoanId, onSuccess, onCancel
                                     type="number"
                                     step="0.01"
                                     min="0.01"
-                                    max={selectedLoan.outstandingBalance}
                                     required
                                     value={repaymentAmount}
                                     onChange={e => setRepaymentAmount(e.target.value)}
                                     className="w-full px-6 py-5 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400/50 transition-all outline-none font-black text-2xl text-slate-800 placeholder:text-slate-200"
                                     placeholder="0.00"
+                                    disabled={loading || isSubmitted}
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setRepaymentAmount(selectedLoan.outstandingBalance.toString())}
-                                    className="absolute right-3 top-3 bottom-3 px-6 bg-[#0A192F] text-white hover:bg-cyan-600 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all shadow-lg active:scale-95 group-hover:shadow-blue-500/20"
+                                    disabled={loading || isSubmitted}
+                                    className="absolute right-3 top-3 bottom-3 px-6 bg-[#0A192F] text-white hover:bg-cyan-600 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all shadow-lg active:scale-95 group-hover:shadow-blue-500/20 disabled:opacity-50"
                                 >
                                     MAX
                                 </button>
@@ -353,6 +365,7 @@ export function LoanRepaymentForm({ memberId, initialLoanId, onSuccess, onCancel
                                 className="w-full px-6 py-4 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all outline-none text-sm font-bold text-slate-700 placeholder:text-slate-200 resize-none"
                                 placeholder="Add payment reference or internal notes..."
                                 rows={2}
+                                disabled={loading || isSubmitted}
                             />
                         </div>
                     </div>
@@ -370,8 +383,8 @@ export function LoanRepaymentForm({ memberId, initialLoanId, onSuccess, onCancel
                     )}
                     <SubmitButton
                         isPending={loading}
-                        disabled={!selectedLoanId || !isRepaymentValid || refreshingBalance}
-                        label="Authorize Payment"
+                        disabled={!selectedLoanId || !isRepaymentValid || refreshingBalance || isSubmitted}
+                        label={isSubmitted ? "Repayment Processed" : "Authorize Payment"}
                         pendingLabel="Processing..."
                         className={cn(
                             "py-5 bg-[#0A192F] hover:bg-blue-600 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] transition-all shadow-xl shadow-slate-200",

@@ -49,6 +49,7 @@ export default async function LoanNoteDetailPage(props: { params: Promise<{ id: 
                 note={note as any} 
                 userId={session.user.id!}
                 userRole={session.user.role}
+                userPermissions={userWithMember?.permissions}
                 walletBalance={Number(userWithMember?.member?.wallet?.glAccount?.balance || 0)}
             />
         </div>

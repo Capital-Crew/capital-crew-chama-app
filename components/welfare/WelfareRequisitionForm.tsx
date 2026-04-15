@@ -110,13 +110,14 @@ export function WelfareRequisitionForm({ welfareTypes, members }: WelfareRequisi
             }
         }
 
-        await execute(async () => {
+        await execute(async (idempotencyKey) => {
             const res = await createWelfareRequisition({
                 welfareTypeId: selectedTypeId,
                 memberId: selectedMemberId,
                 amount: amtNum,
                 reason,
-                customFieldData: customData
+                customFieldData: customData,
+                idempotencyKey
             })
 
             if (res.success) {
@@ -135,7 +136,7 @@ export function WelfareRequisitionForm({ welfareTypes, members }: WelfareRequisi
             } else {
                 return { success: false, error: res.error || 'Failed to submit requisition' }
             }
-        })
+        }, { useIdempotency: true })
     }
 
     if (isSuccess) {
@@ -168,7 +169,7 @@ export function WelfareRequisitionForm({ welfareTypes, members }: WelfareRequisi
                     {}
                     <div className="space-y-2">
                         <Label>Beneficiary (Member)</Label>
-                        <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
+                        <Select value={selectedMemberId} onValueChange={setSelectedMemberId} disabled={isSubmitting}>
                             <SelectTrigger>
                                 <SelectValue placeholder="Select beneficiary member" />
                             </SelectTrigger>
@@ -196,7 +197,7 @@ export function WelfareRequisitionForm({ welfareTypes, members }: WelfareRequisi
 
                     <div className="space-y-2">
                         <Label>Benefit Type</Label>
-                        <Select value={selectedTypeId} onValueChange={setSelectedTypeId}>
+                        <Select value={selectedTypeId} onValueChange={setSelectedTypeId} disabled={isSubmitting}>
                             <SelectTrigger>
                                 <SelectValue placeholder="Select benefit type" />
                             </SelectTrigger>
@@ -224,6 +225,7 @@ export function WelfareRequisitionForm({ welfareTypes, members }: WelfareRequisi
                             placeholder="0.00"
                             min="0"
                             step="0.01"
+                            disabled={isSubmitting}
                         />
                     </div>
 
@@ -233,6 +235,7 @@ export function WelfareRequisitionForm({ welfareTypes, members }: WelfareRequisi
                             value={reason}
                             onChange={e => setReason(e.target.value)}
                             placeholder="Provide details about your request..."
+                            disabled={isSubmitting}
                         />
                     </div>
 
@@ -253,6 +256,7 @@ export function WelfareRequisitionForm({ welfareTypes, members }: WelfareRequisi
                                             value={customData[field.id] || ''}
                                             onChange={e => setCustomData({ ...customData, [field.id]: e.target.value })}
                                             required={field.isRequired}
+                                            disabled={isSubmitting}
                                         />
                                     )}
 
@@ -262,6 +266,7 @@ export function WelfareRequisitionForm({ welfareTypes, members }: WelfareRequisi
                                             value={customData[field.id] || ''}
                                             onChange={e => setCustomData({ ...customData, [field.id]: e.target.value })}
                                             required={field.isRequired}
+                                            disabled={isSubmitting}
                                         />
                                     )}
 
@@ -274,6 +279,7 @@ export function WelfareRequisitionForm({ welfareTypes, members }: WelfareRequisi
                                                         "w-full justify-start text-left font-normal",
                                                         !customData[field.id] && "text-muted-foreground"
                                                     )}
+                                                    disabled={isSubmitting}
                                                 >
                                                     <CalendarIcon className="mr-2 h-4 w-4" />
                                                     {customData[field.id] ? format(new Date(customData[field.id]), "PPP") : <span>Pick a date</span>}
@@ -285,6 +291,7 @@ export function WelfareRequisitionForm({ welfareTypes, members }: WelfareRequisi
                                                     selected={customData[field.id] ? new Date(customData[field.id]) : undefined}
                                                     onSelect={(date) => setCustomData({ ...customData, [field.id]: date?.toISOString() })}
                                                     initialFocus
+                                                    disabled={isSubmitting}
                                                 />
                                             </PopoverContent>
                                         </Popover>
@@ -294,6 +301,7 @@ export function WelfareRequisitionForm({ welfareTypes, members }: WelfareRequisi
                                         <Select
                                             value={customData[field.id] || ''}
                                             onValueChange={val => setCustomData({ ...customData, [field.id]: val })}
+                                            disabled={isSubmitting}
                                         >
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Select option" />

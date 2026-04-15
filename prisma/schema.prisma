@@ -264,6 +264,7 @@ enum ProposalStatus {
 enum CLNPaymentStatus {
   UPCOMING
   AWAITING_SUFFICIENCY_CHECK
+  AWAITING_COMMITTEE_APPROVAL
   AWAITING_CONFIRMATION
   FLOATER_CONFIRMED
   EXECUTING
@@ -1514,6 +1515,12 @@ model SaccoSettings {
   // NEW: Workflow Settings
   requiredApprovalsReschedule Int @default(3)
   requiredApprovalsTopUp      Int @default(3)
+  
+  // NEW: CLN Governance Settings
+  clnFloaterSelfApproval      Boolean @default(true)
+  requiredApprovalsCLN        Int @default(1) // Listing
+  requiredApprovalsCLNPayment  Int @default(2) // Returns
+  requiredApprovalsCLNSettlement Int @default(2) // Settlement
 
   // Welfare Settings
   requiredWelfareApprovals   Int     @default(2)
@@ -2253,6 +2260,8 @@ enum ApprovalType {
   EXPENSE
   MEMBER
   WELFARE
+  LOAN_NOTE_PAYMENT
+  LOAN_NOTE_SETTLEMENT
   OTHER
 }
 
@@ -2345,6 +2354,8 @@ enum EntityType {
   WELFARE
   ACCOUNT_TRANSFER
   LOAN_NOTE
+  LOAN_NOTE_PAYMENT
+  LOAN_NOTE_SETTLEMENT
 }
 
 enum ApprovalAction {

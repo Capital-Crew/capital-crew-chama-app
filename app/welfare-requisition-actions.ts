@@ -8,6 +8,7 @@ import { getSystemMappingsDict } from "@/app/actions/system-accounting"
 import { WalletService } from "@/lib/services/WalletService"
 import { withAudit } from "@/lib/with-audit"
 import { AuditLogAction } from "@prisma/client"
+import { withIdempotency } from "@/lib/idempotency"
 
 export type WelfareRequisitionFormData = {
     welfareTypeId: string
@@ -15,6 +16,7 @@ export type WelfareRequisitionFormData = {
     amount: number
     reason: string
     customFieldData: Record<string, any>
+    idempotencyKey?: string
 }
 
 
@@ -35,69 +37,81 @@ export const createWelfareRequisition = withAudit(
         }
         ctx.endStep('Verify Authorization');
 
-        try {
-            ctx.beginStep('Validate and Fetch Member');
-            if (data.amount <= 0) {
-                ctx.setErrorCode('INVALID_AMOUNT');
-                return { success: false, error: 'Amount must be greater than zero' }
-            }
-
-            let beneficiaryName = ''
-            if (data.memberId) {
-                const member = await prisma.member.findUnique({
-                    where: { id: data.memberId },
-                    select: { name: true }
-                })
-                if (member) beneficiaryName = member.name
-            }
-            ctx.endStep('Validate and Fetch Member');
-
-            ctx.beginStep('Generate Requisition Number');
-            const date = new Date()
-            const yearMonth = date.toISOString().slice(0, 7).replace('-', '')
-
-            const count = await prisma.welfareRequisition.count({
-                where: {
-                    requisitionNumber: {
-                        startsWith: `WR-${yearMonth}`
-                    }
+        const businessLogic = async () => {
+            try {
+                ctx.beginStep('Validate and Fetch Member');
+                if (data.amount <= 0) {
+                    ctx.setErrorCode('INVALID_AMOUNT');
+                    return { success: false, error: 'Amount must be greater than zero' }
                 }
-            })
 
-            const sequence = (count + 1).toString().padStart(3, '0')
-            const requisitionNumber = `WR-${yearMonth}-${sequence}`
-            ctx.endStep('Generate Requisition Number');
+                let beneficiaryName = ''
+                if (data.memberId) {
+                    const member = await prisma.member.findUnique({
+                        where: { id: data.memberId },
+                        select: { name: true }
+                    })
+                    if (member) beneficiaryName = member.name
+                }
+                ctx.endStep('Validate and Fetch Member');
 
-            ctx.beginStep('Create Requisition');
-            const requisition = await prisma.welfareRequisition.create({
-                data: {
-                    requisitionNumber,
-                    welfareTypeId: data.welfareTypeId,
-                    memberId: data.memberId,
-                    beneficiaryName: beneficiaryName || 'Unknown',
-                    amount: data.amount,
-                    reason: data.reason,
-                    customFieldData: data.customFieldData,
-                    status: 'PENDING',
-                    createdById: session.user.id,
-                    journeyEvents: {
-                        create: {
-                            eventType: 'CREATED',
-                            description: `Requisition created by ${session.user.name || 'Admin'} for ${beneficiaryName}`,
-                            actorId: session.user.id
+                ctx.beginStep('Generate Requisition Number');
+                const date = new Date()
+                const yearMonth = date.toISOString().slice(0, 7).replace('-', '')
+
+                const count = await prisma.welfareRequisition.count({
+                    where: {
+                        requisitionNumber: {
+                            startsWith: `WR-${yearMonth}`
                         }
                     }
-                }
-            })
-            ctx.captureAfter(requisition);
-            ctx.endStep('Create Requisition');
+                })
 
-            revalidatePath('/welfare')
-            return { success: true, data: requisition }
-        } catch (error: any) {
-            ctx.setErrorCode('DATABASE_ERROR');
-            return { success: false, error: error.message }
+                const sequence = (count + 1).toString().padStart(3, '0')
+                const requisitionNumber = `WR-${yearMonth}-${sequence}`
+                ctx.endStep('Generate Requisition Number');
+
+                ctx.beginStep('Create Requisition');
+                const requisition = await prisma.welfareRequisition.create({
+                    data: {
+                        requisitionNumber,
+                        welfareTypeId: data.welfareTypeId,
+                        memberId: data.memberId,
+                        beneficiaryName: beneficiaryName || 'Unknown',
+                        amount: data.amount,
+                        reason: data.reason,
+                        customFieldData: data.customFieldData,
+                        status: 'PENDING',
+                        createdById: session.user.id,
+                        journeyEvents: {
+                            create: {
+                                eventType: 'CREATED',
+                                description: `Requisition created by ${session.user.name || 'Admin'} for ${beneficiaryName}`,
+                                actorId: session.user.id
+                            }
+                        }
+                    }
+                })
+                ctx.captureAfter(requisition);
+                ctx.endStep('Create Requisition');
+
+                revalidatePath('/welfare')
+                return { success: true, data: requisition }
+            } catch (error: any) {
+                ctx.setErrorCode('DATABASE_ERROR');
+                return { success: false, error: error.message }
+            }
         }
+
+        if (data.idempotencyKey) {
+            return await withIdempotency({
+                key: data.idempotencyKey,
+                path: 'createWelfareRequisition',
+                businessLogic
+            })
+        }
+
+        return await businessLogic()
     }
 );
 

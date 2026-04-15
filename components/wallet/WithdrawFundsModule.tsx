@@ -11,6 +11,7 @@ export function WithdrawFundsModule({ memberId }: { memberId: string }) {
     const { isPending: loading, error, execute } = useFormAction()
     const [fetchingBalance, setFetchingBalance] = useState(true)
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+    const [isSubmitted, setIsSubmitted] = useState(false)
 
     const [withdrawableBalance, setWithdrawableBalance] = useState(0)
     const [amount, setAmount] = useState('')
@@ -35,13 +36,15 @@ export function WithdrawFundsModule({ memberId }: { memberId: string }) {
 
     const handleWithdrawal = async (e: React.FormEvent) => {
         e.preventDefault()
+        if (isSubmitted) return;
         setMessage(null)
 
-        await execute(async () => {
+        await execute(async (idempotencyKey) => {
             const result = await withdrawFunds({
                 memberId,
                 amount: parseFloat(amount),
-                description
+                description,
+                idempotencyKey
             })
 
             setMessage({
@@ -50,9 +53,10 @@ export function WithdrawFundsModule({ memberId }: { memberId: string }) {
             })
             setAmount('')
             setDescription('')
+            setIsSubmitted(true) // Lock the form on success
             fetchBalance() // Refresh balance
             return { success: true }
-        })
+        }, { useIdempotency: true })
     }
 
     const setMaxAmount = () => {
@@ -122,12 +126,12 @@ export function WithdrawFundsModule({ memberId }: { memberId: string }) {
                                     }`}
                                 placeholder="0.00"
                                 required
-                                disabled={withdrawableBalance === 0}
+                                disabled={withdrawableBalance === 0 || loading || isSubmitted}
                             />
                             <button
                                 type="button"
                                 onClick={setMaxAmount}
-                                disabled={withdrawableBalance === 0}
+                                disabled={withdrawableBalance === 0 || loading || isSubmitted}
                                 className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-cyan-100 text-cyan-700 rounded-lg text-xs font-bold uppercase hover:bg-cyan-200 disabled:opacity-50"
                             >
                                 Max
@@ -156,13 +160,14 @@ export function WithdrawFundsModule({ memberId }: { memberId: string }) {
                             placeholder="Reason for withdrawal..."
                             rows={3}
                             required
+                            disabled={loading || isSubmitted}
                         />
                     </div>
 
                     <SubmitButton
                         isPending={loading}
-                        disabled={!isValid || fetchingBalance}
-                        label="Withdraw Funds"
+                        disabled={!isValid || fetchingBalance || isSubmitted}
+                        label={isSubmitted ? "Withdrawal Processed" : "Withdraw Funds"}
                         pendingLabel="Processing..."
                         className="w-full bg-cyan-500 hover:bg-cyan-600 text-white py-3 rounded-xl font-black uppercase text-sm transition-colors"
                     />

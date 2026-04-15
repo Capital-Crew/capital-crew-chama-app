@@ -12,6 +12,7 @@ import { db } from '@/lib/db';
 import { PaymentGateway, type PaymentGatewayInput, type PaymentGatewayResult } from '@/services/payment-gateway';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
+import { withIdempotency } from '@/lib/idempotency';
 
 
 const ProcessTransferSchema = z.object({
@@ -19,7 +20,8 @@ const ProcessTransferSchema = z.object({
     destinationType: z.enum(['LOAN_REPAYMENT', 'CONTRIBUTION'] as const),
     destinationId: z.string().min(1, 'Destination ID is required'),
     amount: z.number().positive('Amount must be greater than zero'),
-    description: z.string().optional()
+    description: z.string().optional(),
+    idempotencyKey: z.string().optional()
 });
 
 type ProcessTransferInput = z.infer<typeof ProcessTransferSchema>;
@@ -48,59 +50,71 @@ export async function processTransfer(
             throw new Error('User not found');
         }
 
-        // 4. Verify wallet ownership (security check)
-        const wallet = await db.wallet.findUnique({
-            where: { id: validatedInput.walletId },
-            include: { member: true }
-        });
+        const businessLogic = async () => {
+            // 4. Verify wallet ownership (security check)
+            const wallet = await db.wallet.findUnique({
+                where: { id: validatedInput.walletId },
+                include: { glAccount: true, member: true }
+            });
 
-        if (!wallet) {
-            throw new Error('Wallet not found');
-        }
+            if (!wallet) {
+                throw new Error('Wallet not found');
+            }
 
-        // Only allow users to transfer from their own wallet (unless admin)
-        if (wallet.memberId !== user.memberId && user.role !== 'CHAIRPERSON') {
-            throw new Error('You can only transfer from your own wallet');
-        }
+            // Only allow users to transfer from their own wallet (unless admin)
+            if (wallet.memberId !== user.memberId && user.role !== 'CHAIRPERSON') {
+                throw new Error('You can only transfer from your own wallet');
+            }
 
-        // 5. Process payment via gateway
-        const gatewayInput: PaymentGatewayInput = {
-            walletId: validatedInput.walletId,
-            destinationType: validatedInput.destinationType,
-            destinationId: validatedInput.destinationId,
-            amount: validatedInput.amount,
-            userId: session.user.id,
-            userName: user.member?.name || user.name || 'System',
-            description: validatedInput.description
+            // 5. Process payment via gateway
+            const gatewayInput: PaymentGatewayInput = {
+                walletId: validatedInput.walletId,
+                destinationType: validatedInput.destinationType,
+                destinationId: validatedInput.destinationId,
+                amount: validatedInput.amount,
+                userId: session.user.id,
+                userName: user.member?.name || user.name || 'System',
+                description: validatedInput.description
+            };
+
+            const result = await PaymentGateway.processPayment(gatewayInput);
+
+            // 6. Create audit log
+            const auditDetails = validatedInput.destinationType === 'LOAN_REPAYMENT'
+                ? `Loan repayment: KES ${validatedInput.amount.toLocaleString()} (P: ${result.allocation?.penalty || 0}, I: ${result.allocation?.interest || 0}, Pr: ${result.allocation?.principal || 0})`
+                : `Contribution payment: KES ${validatedInput.amount.toLocaleString()}`;
+
+            await db.auditLog.create({
+                data: {
+                    userId: session.user.id,
+                    action: 'WALLET_TRANSACTION_CREATED',
+                    details: auditDetails
+                }
+            });
+
+            // 7. Revalidate UI cache & Loan Schedule Cache
+            if (validatedInput.destinationType === 'LOAN_REPAYMENT') {
+                const { LoanScheduleCache } = await import('@/lib/services/LoanScheduleCache')
+                await LoanScheduleCache.invalidateCache(validatedInput.destinationId)
+            }
+            revalidatePath('/wallet');
+            revalidatePath('/loans');
+            revalidatePath('/dashboard');
+            revalidatePath('/accounts');
+            revalidatePath('/member/dashboard');
+
+            return result;
         };
 
-        const result = await PaymentGateway.processPayment(gatewayInput);
-
-        // 6. Create audit log
-        const auditDetails = validatedInput.destinationType === 'LOAN_REPAYMENT'
-            ? `Loan repayment: KES ${validatedInput.amount.toLocaleString()} (P: ${result.allocation?.penalty || 0}, I: ${result.allocation?.interest || 0}, Pr: ${result.allocation?.principal || 0})`
-            : `Contribution payment: KES ${validatedInput.amount.toLocaleString()}`;
-
-        await db.auditLog.create({
-            data: {
-                userId: session.user.id,
-                action: 'WALLET_TRANSACTION_CREATED',
-                details: auditDetails
-            }
-        });
-
-        // 7. Revalidate UI cache & Loan Schedule Cache
-        if (validatedInput.destinationType === 'LOAN_REPAYMENT') {
-            const { LoanScheduleCache } = await import('@/lib/services/LoanScheduleCache')
-            await LoanScheduleCache.invalidateCache(validatedInput.destinationId)
+        if (validatedInput.idempotencyKey) {
+            return await withIdempotency({
+                key: validatedInput.idempotencyKey,
+                path: 'processTransfer',
+                businessLogic
+            });
         }
-        revalidatePath('/wallet');
-        revalidatePath('/loans');
-        revalidatePath('/dashboard');
-        revalidatePath('/accounts');
-        revalidatePath('/member/dashboard');
 
-        return result;
+        return await businessLogic();
 
     } catch (error) {
         // Handle errors gracefully

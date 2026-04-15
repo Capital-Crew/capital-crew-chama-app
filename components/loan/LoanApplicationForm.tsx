@@ -80,6 +80,7 @@ export function LoanApplicationForm({
     const [qualification, setQualification] = useState<any>(null);
     const [calculatingQualification, setCalculatingQualification] = useState(false);
     const [calcError, setCalcError] = useState<string | null>(null);
+    const [isSubmitted, setIsSubmitted] = useState(false);
 
     // Status check for read-only mode or auto-save disable
     const isPendingDraft = initialData?.status &&
@@ -100,7 +101,7 @@ export function LoanApplicationForm({
     const { status: autoSaveStatus, lastSaved, error: autoSaveError, save: saveDraft } = useFormAutoSave({
         watch,
         debounceMs: 1000,
-        enabled: !isPendingDraft,
+        enabled: !isPendingDraft && !isSubmitted,
         onSave: async (data: any) => {
             if (initialData?.id) {
                 const { updateLoanDraft } = await import('@/app/actions/loan-application-actions');
@@ -171,10 +172,17 @@ export function LoanApplicationForm({
     }, [debouncedMemberId, selectedLoansToOffset, debouncedAmount, feeExemptions]);
 
     async function handleFormAction(formData: FormData) {
-        await execute(async () => {
+        if (isSubmitted) return;
+
+        await execute(async (idempotencyKey) => {
             const memberId = watchedMemberId || currentMemberId;
             if (memberId && !formData.get('memberId')) {
                 formData.set('memberId', memberId);
+            }
+
+            // Append idempotency key to form data for backend tracking
+            if (idempotencyKey) {
+                formData.append('idempotencyKey', idempotencyKey);
             }
 
             const res = await applyForLoan(null, formData);
@@ -182,11 +190,12 @@ export function LoanApplicationForm({
                 return { success: false, error: res.error };
             }
 
+            setIsSubmitted(true);
             toast.success('Loan application submitted successfully!');
             reset();
             handleSuccess();
             return { success: true };
-        });
+        }, { useIdempotency: true });
     }
 
     return (

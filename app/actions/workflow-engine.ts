@@ -26,12 +26,24 @@ async function checkWorkflowPermission(user: any, request: any): Promise<boolean
 
     // 2. Granular Permissions Check
     const userPermissions = user.permissions;
+    const isNoteWorkflow = ['LOAN_NOTE', 'LOAN_NOTE_PAYMENT', 'LOAN_NOTE_SETTLEMENT'].includes(request.entityType);
+
+    // Special: Floater (Owner) can always vote on their own note
+    if (isNoteWorkflow && user.id === request.requesterId) return true;
+
     if (userPermissions) {
         if (Array.isArray(userPermissions)) {
             if (userPermissions.includes("APPROVE_LOANS") || userPermissions.includes("ALL")) return true;
+            if (isNoteWorkflow && userPermissions.includes("APPROVE_LOAN_NOTES")) return true;
         } else if (typeof userPermissions === "object") {
             const p = userPermissions as any;
             if (p["APPROVE_LOANS"] === true || p["canApprove"] === true || p["ALL"] === true) return true;
+            if (isNoteWorkflow && p["APPROVE_LOAN_NOTES"] === true) {
+                // Also check if they are Chairperson/Treasurer as requested by user
+                if (['CHAIRPERSON', 'TREASURER'].includes(user.role)) return true;
+                // If they have the specific right but aren't those roles, still allow if granted
+                return true; 
+            }
         }
     }
 
@@ -153,6 +165,7 @@ export async function processWorkflowAction(requestId: string, action: ApprovalA
     if (!request.currentStage) throw new Error("System Error: Request has no current stage")
 
     // 2. Permission Check
+    const isNoteWorkflow = ['LOAN_NOTE', 'LOAN_NOTE_PAYMENT', 'LOAN_NOTE_SETTLEMENT'].includes(request.entityType);
     const isAuthorized = await checkWorkflowPermission(user, request);
     if (!isAuthorized) {
         throw new Error(`Unauthorized: You need to be a ${request.currentStage.requiredRole} to perform this action.`)
@@ -233,6 +246,19 @@ export async function processWorkflowAction(requestId: string, action: ApprovalA
             const approvalCount = approvedActions.length;
             const minVotes = request.currentStage!.minVotesRequired || 1
 
+            // Quorum Logic for Loan Notes (Respecting Floater Self-Approval Setting)
+            let effectiveApprovalCount = approvalCount;
+            if (isNoteWorkflow) {
+                const settings = await tx.saccoSettings.findFirst();
+                const allowFloaterSelfApproval = (settings as any)?.clnFloaterSelfApproval ?? true;
+
+                if (!allowFloaterSelfApproval) {
+                    // Filter out the requester from the count
+                    const independentApprovals = approvedActions.filter(a => a.actorId !== request.requesterId);
+                    effectiveApprovalCount = independentApprovals.length;
+                }
+            }
+
             // NEW ADMIN CHECK
             let adminVoted = true; // Default true for non-loan entities
             if (request.entityType === 'LOAN') {
@@ -240,7 +266,7 @@ export async function processWorkflowAction(requestId: string, action: ApprovalA
                 adminVoted = approvedActions.some(a => adminRoles.includes(a.actor.role));
             }
 
-            if (approvalCount >= minVotes && adminVoted) {
+            if (effectiveApprovalCount >= minVotes && adminVoted) {
                 // THRESHOLD MET: Move to Next Stage
                 const currentStep = request.currentStage!.stepNumber
                 const allStages = request.workflow.stages // Ordered asc
@@ -274,6 +300,23 @@ export async function processWorkflowAction(requestId: string, action: ApprovalA
                             where: { id: request.entityId },
                             data: { status: 'ACTIVE' }
                         })
+                    } else if (request.entityType as any === 'LOAN_NOTE') {
+                        await tx.loanNote.update({
+                            where: { id: request.entityId },
+                            data: { status: 'OPEN' as any }
+                        })
+                    } else if (request.entityType as any === 'LOAN_NOTE_PAYMENT' || (request.entityType as any) === 'LOAN_NOTE_SETTLEMENT') {
+                        // For payments and settlements, the final stage approval means
+                        // the schedule is now ready for Payout Execution.
+                        const schedule = await tx.loanNotePaymentSchedule.findUnique({
+                            where: { id: request.entityId }
+                        });
+                        if (schedule) {
+                            await tx.loanNotePaymentSchedule.update({
+                                where: { id: request.entityId },
+                                data: { status: 'AWAITING_CONFIRMATION' }
+                            });
+                        }
                     } else if (request.entityType === 'EXPENSE') {
                         const { finalizeExpense } = await import('@/app/actions/expenses')
                         await finalizeExpense(request.entityId, tx)

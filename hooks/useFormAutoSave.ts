@@ -108,8 +108,18 @@ export function useFormAutoSave({
     }, [debouncedFormData, enabled, save, loanType, step])
 
     // Unmount protection - save on component unmount
+    // Track the current enabled state for the cleanup function
+    const enabledRef = useRef(enabled)
+    useEffect(() => {
+        enabledRef.current = enabled
+    }, [enabled])
+
+    // Unmount protection - save on component unmount
     useEffect(() => {
         return () => {
+            // Check the LATEST enabled state via ref
+            if (!enabledRef.current) return
+
             // Use navigator.sendBeacon for reliable unmount save
             const data = latestFormDataRef.current
             const currentLoanType = latestLoanTypeRef.current
@@ -120,7 +130,7 @@ export function useFormAutoSave({
                 return value !== '' && value !== null && value !== undefined
             })
 
-            if (hasData && enabled) {
+            if (hasData) {
                 // Try sendBeacon first (most reliable)
                 if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
                     const payload = {
@@ -140,7 +150,8 @@ export function useFormAutoSave({
                 }
             }
         }
-    }, [enabled])
+    }, []) // Run only on mount/unmount
+
 
     return {
         status,

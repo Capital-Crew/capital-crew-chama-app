@@ -9,22 +9,21 @@ import {
     ArrowLeft, UsersIcon, ShieldCheckIcon,
     HistoryIcon, DollarSignIcon, ClockIcon,
     InfoIcon, Loader2Icon, CheckCircle2Icon,
-    BanIcon
+    BanIcon, CalculatorIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
-import { handleWorkflowTransition } from '@/app/actions/approval-workflow';
-import { approveLoanNote, rejectLoanNote, subscribeToLoanNote, releaseEscrow, executeScheduledPaymentBatch } from '@/app/actions/cln-actions';
+import { NoteApprovalsTab } from './NoteApprovalsTab';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
+import { subscribeToLoanNote, executeScheduledPaymentBatch } from '@/app/actions/cln-actions';
+import { useSearchParams } from 'next/navigation';
 import { PostReturnsModal } from './PostReturnsModal';
 import { EarlySettlementModal } from './EarlySettlementModal';
-import { useSearchParams } from 'next/navigation';
-import { CalculatorIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface NoteDetailViewProps {
     note: LoanNote & { 
@@ -35,10 +34,11 @@ interface NoteDetailViewProps {
     };
     userId: string;
     userRole: string;
+    userPermissions: any;
     walletBalance: number;
 }
 
-export function NoteDetailView({ note, userId, userRole, walletBalance }: NoteDetailViewProps) {
+export function NoteDetailView({ note, userId, userRole, userPermissions, walletBalance }: NoteDetailViewProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [subscribeAmount, setSubscribeAmount] = useState('');
@@ -79,59 +79,6 @@ export function NoteDetailView({ note, userId, userRole, walletBalance }: NoteDe
         }
     };
 
-    const handleWorkflowAction = async (action: 'SEND' | 'CANCEL') => {
-        setIsSubmitting(true);
-        try {
-            const result = await handleWorkflowTransition('LOAN_NOTE' as any, note.id, action);
-            if (result.success) {
-                toast.success(`Note ${action === 'SEND' ? 'submitted for review' : 'recalled to draft'}`);
-                router.refresh();
-            } else {
-                toast.error(result.error || "Workflow action failed");
-            }
-        } catch (error) {
-            toast.error("An unexpected error occurred");
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    const handleAdminApproval = async (approve: boolean) => {
-        setIsSubmitting(true);
-        try {
-            const result = approve 
-                ? await approveLoanNote(note.id, "System Review Approved")
-                : await rejectLoanNote(note.id, "Does not meet market criteria");
-            
-            if (result.success) {
-                toast.success(`Note ${approve ? 'Approved' : 'Rejected'}`);
-                router.refresh();
-            } else {
-                toast.error(result.message || "Action failed");
-            }
-        } catch (error) {
-            toast.error("An unexpected error occurred");
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    const handleReleaseEscrow = async () => {
-        setIsSubmitting(true);
-        try {
-            const result = await releaseEscrow(note.id, "Escrow released by Admin");
-            if (result.success) {
-                toast.success("Escrow released and note activated!");
-                router.refresh();
-            } else {
-                toast.error(result.message || "Failed to release escrow");
-            }
-        } catch (error) {
-            toast.error("An unexpected error occurred");
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
 
     const handleExecutePayout = async (scheduleId: string) => {
         if (!confirm("Are you sure you want to execute this payout immediately? Funds will be debited from the issuer's wallet and distributed to all subscribers.")) return;
@@ -192,7 +139,7 @@ export function NoteDetailView({ note, userId, userRole, walletBalance }: NoteDe
 
                     <Tabs defaultValue="overview" className="w-full">
                         <TabsList className="bg-slate-200/50 p-1.5 rounded-2xl w-fit mb-8 border border-slate-200">
-                            {['overview', 'schedule', 'subscribers'].map(t => (
+                            {['overview', 'schedule', 'subscribers', 'approvals'].map(t => (
                                 <TabsTrigger 
                                     key={t}
                                     value={t} 
@@ -319,138 +266,23 @@ export function NoteDetailView({ note, userId, userRole, walletBalance }: NoteDe
                                 </div>
                             </div>
                         </TabsContent>
+
+                        <TabsContent value="approvals" className="outline-none">
+                            <NoteApprovalsTab 
+                                noteId={note.id}
+                                userId={userId}
+                                userRole={userRole}
+                                userPermissions={userPermissions}
+                                isFloater={isFloater}
+                                noteStatus={note.status}
+                                onPostReturns={() => setIsPostReturnsOpen(true)}
+                                onEarlySettlement={() => setIsEarlySettlementOpen(true)}
+                            />
+                        </TabsContent>
                     </Tabs>
                 </div>
 
                 <div className="lg:col-span-4 space-y-8">
-                    {(isFloater || userRole === 'SYSTEM_ADMIN') && (
-                        <div className="p-8 bg-white border-2 border-indigo-100 rounded-[40px] shadow-sm space-y-6">
-                            <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-                                <ShieldCheckIcon className="w-5 h-5 text-indigo-600" />
-                                <p className="text-[11px] font-black text-[#0F172A] uppercase tracking-widest">Governance Terminal</p>
-                            </div>
-
-                            {(note.status as any) === 'DRAFT' && isFloater && (
-                                <div className="space-y-4">
-                                    <p className="text-xs font-bold text-slate-500 leading-relaxed">This note is currently in **DRAFT**. Submit it for review to list it on the market.</p>
-                                    <Button 
-                                        onClick={() => handleWorkflowAction('SEND')}
-                                        disabled={isSubmitting}
-                                        className="w-full h-12 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm uppercase tracking-widest"
-                                    >
-                                        {isSubmitting ? <Loader2Icon className="animate-spin" /> : "Submit for Approval"}
-                                    </Button>
-                                </div>
-                            )}
-
-                            {note.status === 'PENDING_APPROVAL' && (
-                                <div className="space-y-4">
-                                    <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl">
-                                        <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1">Status: Under Review</p>
-                                        <p className="text-xs font-bold text-amber-800 leading-relaxed">This note is locked and awaiting administrative clearance.</p>
-                                    </div>
-                                    
-                                    {userRole === 'SYSTEM_ADMIN' && (
-                                        <div className="grid grid-cols-2 gap-3 pt-2">
-                                            <Button 
-                                                onClick={() => handleAdminApproval(true)}
-                                                disabled={isSubmitting}
-                                                className="rounded-xl bg-emerald-600 hover:bg-emerald-700 h-12 font-bold text-xs uppercase"
-                                            >
-                                                Approve
-                                            </Button>
-                                            <Button 
-                                                onClick={() => handleAdminApproval(false)}
-                                                disabled={isSubmitting}
-                                                variant="outline"
-                                                className="rounded-xl border-rose-200 text-rose-600 hover:bg-rose-50 h-12 font-bold text-xs uppercase"
-                                            >
-                                                Reject
-                                            </Button>
-                                        </div>
-                                    )}
-
-                                    {isFloater && (
-                                        <Button 
-                                            variant="ghost"
-                                            onClick={() => handleWorkflowAction('CANCEL')}
-                                            disabled={isSubmitting}
-                                            className="w-full text-slate-400 hover:text-rose-600 text-[10px] font-black uppercase"
-                                        >
-                                            Recall to Draft
-                                        </Button>
-                                    )}
-                                </div>
-                            )}
-
-                            {note.status === 'OPEN' && userRole === 'SYSTEM_ADMIN' && (
-                                <div className="pt-4 border-t border-slate-100 space-y-4">
-                                    <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl">
-                                        <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-1">Escrow Management</p>
-                                        <p className="text-xs font-bold text-indigo-800 leading-relaxed">
-                                            Release funds to the floater and activate the repayment schedule.
-                                        </p>
-                                    </div>
-                                    <Button 
-                                        onClick={handleReleaseEscrow}
-                                        disabled={isSubmitting || Number(note.subscribedAmount) <= 0}
-                                        className="w-full h-12 rounded-2xl bg-[#4F46E5] hover:bg-[#4338CA] text-white font-black text-sm uppercase tracking-widest shadow-lg shadow-indigo-500/20"
-                                    >
-                                        {isSubmitting ? <Loader2Icon className="animate-spin" /> : "Release Escrow & Activate"}
-                                    </Button>
-                                    {Number(note.subscribedAmount) <= 0 && (
-                                        <p className="text-[9px] text-center font-bold text-rose-500 uppercase tracking-tight">Cannot activate note with 0 subscriptions</p>
-                                    )}
-                                </div>
-                            )}
-
-                            {note.status === 'REJECTED' && (
-                                <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl">
-                                    <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest mb-1">Status: Declined</p>
-                                    <p className="text-xs font-bold text-rose-800">{note.adminReviewComment || "Note did not meet criteria."}</p>
-                                </div>
-                            )}
-
-                            {note.status === 'ACTIVE' && isFloater && (
-                                <div className="space-y-4">
-                                    <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <CheckCircle2Icon className="w-4 h-4 text-emerald-600" />
-                                            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Active & Operational</p>
-                                        </div>
-                                        <p className="text-xs font-bold text-emerald-800 leading-relaxed">
-                                            You can now post returns for upcoming payment cycles.
-                                        </p>
-                                    </div>
-                                    <Button 
-                                        onClick={() => setIsPostReturnsOpen(true)}
-                                        className="w-full h-14 rounded-2xl bg-[#0EA5E9] hover:bg-[#0284C7] text-white font-black text-sm uppercase tracking-widest flex items-center gap-3 shadow-lg shadow-sky-500/10"
-                                    >
-                                        <CalculatorIcon className="w-5 h-5" />
-                                        Post Returns
-                                    </Button>
-
-                                    <Button 
-                                        variant="outline"
-                                        onClick={() => setIsEarlySettlementOpen(true)}
-                                        className="w-full h-12 rounded-2xl border-rose-200 text-rose-600 hover:bg-rose-50 font-black text-[10px] uppercase tracking-widest flex items-center gap-3"
-                                    >
-                                        <BanIcon className="w-4 h-4" />
-                                        Settle Note Early
-                                    </Button>
-                                </div>
-                            )}
-
-                            {note.status === 'ACTIVE' && userRole === 'SYSTEM_ADMIN' && !isFloater && (
-                                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
-                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Management View</p>
-                                    <p className="text-xs font-bold text-slate-700 leading-relaxed">
-                                        Monitoring active note performance and payout schedules.
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-                    )}
 
                     <div className="p-8 md:p-10 bg-[#312E81] rounded-[40px] shadow-2xl sticky top-8 overflow-hidden group">
                         <div className="absolute -right-20 -top-20 w-40 h-40 bg-indigo-400/10 blur-[80px]" />

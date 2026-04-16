@@ -34,6 +34,11 @@ interface Approval {
     version?: number
 }
 
+interface VotingRecordsModalProps {
+    isOpen: boolean
+    onOpenChange: (open: boolean) => void
+    approvals: Approval[]
+    requiredApprovals: number
     currentVersion?: number
     // New Props for active voting
     canVote?: boolean

@@ -309,6 +309,8 @@ export function NoteApprovalsTab({
                                                         ? totalApprovals - 1 
                                                         : totalApprovals;
                                                         
+                                                    return Math.min((effectiveApprovals / minRequired) * 100, 100);
+                                                })()}%` 
                                             }}
                                         />
                                     </div>

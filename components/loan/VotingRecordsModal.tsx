@@ -34,15 +34,19 @@ interface Approval {
     version?: number
 }
 
-interface VotingRecordsModalProps {
-    isOpen: boolean
-    onOpenChange: (open: boolean) => void
-    approvals: Approval[]
-    requiredApprovals: number
     currentVersion?: number
+    // New Props for active voting
+    canVote?: boolean
+    isSubmitting?: boolean
+    onVote?: (action: 'APPROVED' | 'REJECTED', notes: string) => void
+    hasVoted?: boolean
 }
 
-export function VotingRecordsModal({ isOpen, onOpenChange, approvals, requiredApprovals, currentVersion }: VotingRecordsModalProps) {
+export function VotingRecordsModal({ 
+    isOpen, onOpenChange, approvals, requiredApprovals, currentVersion,
+    canVote, isSubmitting, onVote, hasVoted 
+}: VotingRecordsModalProps) {
+    const [notes, setNotes] = React.useState('')
     // Calculate Stats - For current version only
     const currentApprovals = approvals.filter(a => !currentVersion || a.version === currentVersion)
     const totalVotes = currentApprovals.length
@@ -190,6 +194,57 @@ export function VotingRecordsModal({ isOpen, onOpenChange, approvals, requiredAp
                         </Table>
                     </Card>
                 </div>
+
+                {/* Active Voting Section */}
+                {canVote && !hasVoted && onVote && (
+                    <div className="p-6 bg-white border-t border-slate-200 space-y-4 shadow-[0_-10px_30px_rgba(0,0,0,0.03)]">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Users className="w-4 h-4 text-indigo-600" />
+                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Cast Your Decision</h4>
+                        </div>
+                        <textarea 
+                            placeholder="Add your review notes here (Mandatory for rejection)..."
+                            value={notes}
+                            onChange={(e) => setNotes(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-medium focus:ring-2 focus:ring-indigo-500 transition-all outline-none min-h-[80px]"
+                        />
+                        <div className="grid grid-cols-2 gap-4">
+                            <button 
+                                onClick={() => {
+                                    onVote('APPROVED', notes);
+                                    setNotes('');
+                                }}
+                                disabled={isSubmitting}
+                                className="h-12 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-900/10 transition-all disabled:opacity-50"
+                            >
+                                {isSubmitting ? 'Processing...' : 'Approve & Promote'}
+                            </button>
+                            <button 
+                                onClick={() => {
+                                    if (!notes.trim()) {
+                                        alert("Please provide a reason for rejection");
+                                        return;
+                                    }
+                                    onVote('REJECTED', notes);
+                                    setNotes('');
+                                }}
+                                disabled={isSubmitting}
+                                className="h-12 rounded-2xl border-2 border-rose-100 text-rose-600 hover:bg-rose-50 font-black text-xs uppercase tracking-widest transition-all disabled:opacity-50"
+                            >
+                                Reject & Terminate
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {hasVoted && (
+                    <div className="p-4 bg-emerald-50 border-t border-emerald-100 text-center">
+                        <div className="flex items-center justify-center gap-2 text-emerald-700 font-black text-[10px] uppercase tracking-widest">
+                            <CheckCircle2 className="w-4 h-4" />
+                            Your Decision has been Recorded
+                        </div>
+                    </div>
+                )}
             </DialogContent>
         </Dialog>
     )

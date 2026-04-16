@@ -309,11 +309,24 @@ export function NoteApprovalsTab({
                                                         ? totalApprovals - 1 
                                                         : totalApprovals;
                                                         
-                                                    return Math.min((effectiveApprovals / minRequired) * 100, 100);
-                                                })()}%` 
                                             }}
                                         />
                                     </div>
+                                    {(() => {
+                                        const hasVoted = wf.actions.some(a => a.actorId === userId && a.stageId === wf.currentStage?.id);
+                                        if (hasVoted) {
+                                            const myVote = wf.actions.find(a => a.actorId === userId && a.stageId === wf.currentStage?.id);
+                                            return (
+                                                <div className="mt-4 flex items-center justify-center gap-2 py-2 px-4 bg-emerald-50 border border-emerald-100 rounded-xl animate-in fade-in zoom-in duration-300">
+                                                    <CheckCircle2Icon className="w-4 h-4 text-emerald-600" />
+                                                    <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">
+                                                        Decision Recorded: {myVote?.action}
+                                                    </span>
+                                                </div>
+                                            );
+                                        }
+                                        return null;
+                                    })()}
                                 </div>
 
                                 {/* History Snippet */}
@@ -444,7 +457,7 @@ export function NoteApprovalsTab({
             )}
 
             {selectedWorkflow && (
-                <VotingRecordsModal
+                <VotingRecordsModal 
                     isOpen={showVotingRecords}
                     onOpenChange={setShowVotingRecords}
                     approvals={selectedWorkflow.actions.map(a => ({
@@ -461,6 +474,25 @@ export function NoteApprovalsTab({
                     }))}
                     requiredApprovals={selectedWorkflow.currentStage?.minVotesRequired || 1}
                     currentVersion={selectedWorkflow.version}
+                    // Active Voting Integration
+                    canVote={(() => {
+                        const wf = selectedWorkflow;
+                        if (wf.status !== 'PENDING') return false;
+                        // 1. System Admins always vote
+                        if (userRole === 'SYSTEM_ADMIN') return true;
+                        // 2. The Floater now votes automatically
+                        if (isFloater) return true;
+                        // 3. Chairperson and Treasurer vote if they have the specific 'APPROVE_LOAN_NOTES' right
+                        const hasRight = userPermissions?.canApproveLoanNotes || userPermissions?.APPROVE_LOAN_NOTES;
+                        if ((userRole === 'CHAIRPERSON' || userRole === 'TREASURER') && hasRight) return true;
+                        return false;
+                    })()}
+                    isSubmitting={isSubmitting}
+                    onVote={(action, vNotes) => {
+                        setNotes(vNotes);
+                        handleVote(selectedWorkflow.id, action);
+                    }}
+                    hasVoted={selectedWorkflow.actions.some(a => a.actorId === userId && a.stageId === selectedWorkflow.currentStage?.id)}
                 />
             )}
         </div>

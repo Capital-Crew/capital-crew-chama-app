@@ -130,6 +130,10 @@ interface LoanData {
             stages: any[]
         }
     }
+    meta?: {
+        isAdmin: boolean
+        isRequester: boolean
+    }
 }
 
 export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, activeTab: parentActiveTab, onUpdate }: LoanAppraisalCardProps) {
@@ -143,6 +147,7 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
 
     const { execute: executeApproval, isPending: approvalPending, error: approvalError } = useOptimisticAction();
     const { execute: executeDisburse, isPending: disbursePending, error: disburseError } = useOptimisticAction();
+    const { execute: executeRecall, isPending: recallPending, error: recallError } = useOptimisticAction();
 
     useEffect(() => {
         if (isOpen && loanId) {
@@ -221,12 +226,36 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
         });
     }
 
+    const handleRecall = async () => {
+        if (!loan) return
+        if (!confirm("Are you sure you want to recall this application? It will revert to Draft status and all existing votes will be cleared.")) return
+
+        await executeRecall(async () => {
+            try {
+                const { handleWorkflowTransition } = await import('@/app/actions/approval-workflow')
+                const result = await handleWorkflowTransition('LOAN', loan.id, 'CANCEL')
+                if (result.error) throw new Error(result.error)
+
+                toast.success('Application recalled successfully')
+                onClose()
+                return { success: true }
+            } catch (error: any) {
+                return { success: false, error: error.message || 'Failed to recall application' }
+            }
+        }, {
+            onOptimisticUpdate: () => {
+                setLoan(prev => prev ? ({ ...prev, status: 'APPLICATION' }) : null);
+            }
+        });
+    }
+
     const handleDisburse = async () => {
         if (!loan) return
         if (!confirm(`Are you sure you want to disburse KES ${loan.netDisbursementAmount.toLocaleString()} to ${loan.member.name}?`)) return
 
         await executeDisburse(async () => {
             try {
+                const { disburseLoanToWallet } = await import('@/app/loan-approval-actions')
                 await disburseLoanToWallet(loan.id)
                 toast.success('Loan disbursed successfully')
                 onClose()
@@ -441,6 +470,16 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                                         </div>
 
                                         <div className="flex items-center gap-3">
+                                            {(loan.meta?.isRequester || loan.meta?.isAdmin) && (
+                                                <button
+                                                    onClick={handleRecall}
+                                                    disabled={recallPending}
+                                                    className="px-6 py-4 rounded-2xl border-2 border-amber-100 text-amber-600 font-black text-[10px] uppercase tracking-widest hover:bg-amber-50 transition-all disabled:opacity-50 flex items-center gap-2"
+                                                >
+                                                    {recallPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <History className="w-4 h-4" />}
+                                                    Recall Request
+                                                </button>
+                                            )}
                                             <button
                                                 onClick={handleReject}
                                                 disabled={approvalPending}

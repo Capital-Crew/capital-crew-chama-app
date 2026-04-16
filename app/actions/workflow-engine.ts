@@ -145,57 +145,60 @@ export async function initiateWorkflow(entityType: EntityType, entityId: string,
  * Process an action on a workflow request (Approve/Reject)
  */
 export async function processWorkflowAction(requestId: string, action: ApprovalAction, notes?: string) {
-    const session = await auth()
-    if (!session?.user) throw new Error("Unauthorized")
+    try {
+        const session = await auth()
+        if (!session?.user) return { success: false, error: "Unauthorized" }
 
-    const user = await prisma.user.findUnique({ where: { id: session.user.id } })
-    if (!user) throw new Error("User not found")
+        const user = await prisma.user.findUnique({ where: { id: session.user.id } })
+        if (!user) return { success: false, error: "User not found" }
 
-    // 1. Fetch Request with Current Stage info
-    const request = await prisma.workflowRequest.findUnique({
-        where: { id: requestId },
-        include: {
-            currentStage: true,
-            workflow: { include: { stages: { orderBy: { stepNumber: 'asc' } } } }
-        }
-    })
-
-    if (!request) throw new Error("Request not found")
-    if (request.status !== 'PENDING') throw new Error("Request is already finalized")
-    if (!request.currentStage) throw new Error("System Error: Request has no current stage")
-
-    // 2. Permission Check
-    const isNoteWorkflow = ['LOAN_NOTE', 'LOAN_NOTE_PAYMENT', 'LOAN_NOTE_SETTLEMENT'].includes(request.entityType);
-    const isAuthorized = await checkWorkflowPermission(user, request);
-    if (!isAuthorized) {
-        throw new Error(`Unauthorized: You need to be a ${request.currentStage.requiredRole} to perform this action.`)
-    }
-
-    // 3. Execution
-    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-        // Double Voting Check
-        const existingVote = await tx.workflowAction.findFirst({
-            where: {
-                requestId,
-                stageId: request.currentStage!.id,
-                actorId: user.id
+        // 1. Fetch Request with Current Stage info
+        const request = await prisma.workflowRequest.findUnique({
+            where: { id: requestId },
+            include: {
+                currentStage: true,
+                workflow: { include: { stages: { orderBy: { stepNumber: 'asc' } } } }
             }
         })
 
-        if (existingVote) {
-            throw new Error("You have already voted on this stage.")
+        if (!request) return { success: false, error: "Request not found" }
+        if (request.status !== 'PENDING') return { success: false, error: "Request is already finalized" }
+        if (!request.currentStage) return { success: false, error: "System Error: Request has no current stage" }
+
+        const isNoteWorkflow = ['LOAN_NOTE', 'LOAN_NOTE_PAYMENT', 'LOAN_NOTE_SETTLEMENT'].includes(request.entityType);
+
+        // 2. Permission Check
+        const isAuthorized = await checkWorkflowPermission(user, request);
+        if (!isAuthorized) {
+            return { success: false, error: `Unauthorized: You need to be a ${request.currentStage.requiredRole} to perform this action.` }
         }
 
-        // Log the Action
-        await tx.workflowAction.create({
-            data: {
-                requestId,
-                stageId: request.currentStage!.id,
-                actorId: user.id,
-                action,
-                notes
+        // 3. Execution
+        await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+            // Double Voting Check
+            const existingVote = await tx.workflowAction.findFirst({
+                where: {
+                    requestId,
+                    stageId: request.currentStage!.id,
+                    actorId: user.id
+                }
+            })
+
+            if (existingVote) {
+                throw new Error("You have already voted on this stage.")
             }
-        })
+
+            // Log the Action
+            await tx.workflowAction.create({
+                data: {
+                    requestId,
+                    stageId: request.currentStage!.id,
+                    actorId: user.id,
+                    action,
+                    notes
+                }
+            })
+            // ... (rest of the transaction logic continues below)
         if (action === 'REJECTED') {
             // Immediate Rejection
             await tx.workflowRequest.update({
@@ -326,9 +329,13 @@ export async function processWorkflowAction(requestId: string, action: ApprovalA
         }
     })
 
-    revalidatePath('/dashboard/approvals')
-    revalidatePath(`/loans/${request.entityId}`)
-    return { success: true }
+        revalidatePath('/dashboard/approvals')
+        revalidatePath(`/loans/${request.entityId}`)
+        return { success: true }
+    } catch (error: any) {
+        console.error("Workflow Engine Error:", error);
+        return { success: false, error: error.message || "An unexpected workflow error occurred" }
+    }
 }
 
 /**

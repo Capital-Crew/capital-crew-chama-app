@@ -169,7 +169,11 @@ export async function GET(
         // Combine and Return
         return NextResponse.json({
             ...loanData,
-            workflowRequest
+            workflowRequest,
+            meta: {
+                isAdmin,
+                isRequester: user?.member?.id === loan.memberId || workflowRequest?.requesterId === session.user.id
+            }
         })
 
     } catch (error: any) {

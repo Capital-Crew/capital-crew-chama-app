@@ -18,6 +18,8 @@ const VotingRecordsModal = dynamic(
 interface WorkflowAction {
     id: string;
     actor: { name: string };
+    actorId: string;
+    stageId: string;
     action: string;
     notes?: string;
     timestamp: string | Date;
@@ -269,9 +271,9 @@ export function NoteApprovalsTab({
                                                 setSelectedWorkflow(wf);
                                                 setShowVotingRecords(true);
                                             }}
-                                            className="h-8 px-4 rounded-xl bg-blue-50 text-blue-600 border-blue-100 font-black text-[9px] uppercase tracking-widest hover:bg-blue-100 transition-all flex items-center gap-2"
+                                            className="h-11 px-6 rounded-2xl bg-indigo-600 text-white border-none font-black text-[10px] uppercase tracking-widest shadow-xl shadow-indigo-500/20 hover:bg-indigo-700 hover:-translate-y-0.5 transition-all flex items-center gap-2 group/btn"
                                         >
-                                            <HistoryIcon className="w-3.5 h-3.5" /> Voting Log
+                                            <HistoryIcon className="w-4 h-4 text-indigo-200 group-hover/btn:text-white transition-colors" /> Voting Log
                                         </Button>
                                     </div>
                                 </div>
@@ -337,6 +339,10 @@ export function NoteApprovalsTab({
 
                                 {/* Voting Panel */}
                                 {(() => {
+                                    // 0. CHECK IF ALREADY VOTED
+                                    const hasVoted = wf.actions.some(a => a.actorId === userId && a.stageId === wf.currentStage?.id);
+                                    if (hasVoted) return false;
+
                                     // 1. System Admins always vote
                                     if (userRole === 'SYSTEM_ADMIN') return true;
                                     // 2. The Floater now votes automatically
@@ -347,7 +353,7 @@ export function NoteApprovalsTab({
                                     
                                     return false;
                                 })() && (
-                                    <div className="pt-6 border-t border-slate-100 space-y-4">
+                                    <div className="pt-6 border-t border-slate-100 space-y-4 animate-in fade-in slide-in-from-top-1">
                                         <Textarea 
                                             placeholder="Add Internal Review Notes (Mandatory for rejection)..."
                                             value={notes}
@@ -420,15 +426,15 @@ export function NoteApprovalsTab({
                                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Consensus Reached</p>
                                     </div>
                                     <Button
-                                        variant="ghost"
+                                        variant="outline"
                                         size="sm"
                                         onClick={() => {
                                             setSelectedWorkflow(wf);
                                             setShowVotingRecords(true);
                                         }}
-                                        className="h-8 px-3 rounded-xl bg-slate-50 text-slate-500 border-slate-100 font-black text-[9px] uppercase tracking-widest hover:bg-slate-100 transition-all flex items-center gap-2"
+                                        className="h-10 px-6 rounded-2xl bg-blue-50 text-blue-600 border-blue-100 font-black text-[9px] uppercase tracking-widest hover:bg-blue-100 transition-all flex items-center gap-2"
                                     >
-                                        <HistoryIcon className="w-3.5 h-3.5" /> View Log
+                                        <HistoryIcon className="w-4 h-4" /> View Full Log
                                     </Button>
                                 </div>
                             </div>

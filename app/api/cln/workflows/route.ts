@@ -35,7 +35,15 @@ export async function GET(request: Request) {
                 currentStage: true,
                 actions: {
                     include: {
-                        actor: { select: { name: true } }
+                        actor: { 
+                            select: { 
+                                name: true,
+                                role: true,
+                                member: {
+                                    select: { memberNumber: true }
+                                }
+                            } 
+                        }
                     },
                     orderBy: { timestamp: 'desc' }
                 }

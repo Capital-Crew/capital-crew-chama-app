@@ -8,6 +8,12 @@ import { toast } from 'sonner';
 import { Money } from '@/components/Money';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
+
+const VotingRecordsModal = dynamic(
+    () => import('../loan/VotingRecordsModal').then(mod => mod.VotingRecordsModal),
+    { ssr: false }
+);
 
 interface WorkflowAction {
     id: string;
@@ -23,9 +29,11 @@ interface WorkflowRequest {
     entityType: string;
     entityId: string;
     currentStage?: {
+        id: string;
         name: string;
         minVotesRequired: number;
     };
+    approvalsRequired?: number; // Added for modal compatibility
     actions: WorkflowAction[];
     version: number;
 }
@@ -51,6 +59,8 @@ export function NoteApprovalsTab({
     const [settings, setSettings] = useState<any>({ clnFloaterSelfApproval: true });
     const [notes, setNotes] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showVotingRecords, setShowVotingRecords] = useState(false);
+    const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowRequest | null>(null);
 
     useEffect(() => {
         fetchWorkflows();
@@ -228,133 +238,145 @@ export function NoteApprovalsTab({
 
             {/* 1. Active Workflow Requests */}
             <div className="grid grid-cols-1 gap-6">
-                {pendingWorkflows.length > 0 ? pendingWorkflows.map(wf => (
-                    <div key={wf.id} className="p-8 bg-white border-2 border-indigo-100 rounded-[32px] shadow-sm relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <ShieldCheckIcon className="w-16 h-16 text-indigo-600" />
-                        </div>
-                        
-                        <div className="relative z-10">
-                            <div className="flex justify-between items-start mb-6">
-                                <div>
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                                        <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Awaiting Decision</p>
-                                    </div>
-                                    <h3 className="text-xl font-black text-[#0F172A] uppercase tracking-tighter">
-                                        {wf.entityType === 'LOAN_NOTE' ? 'Market Listing Review' : 
-                                         wf.entityType === 'LOAN_NOTE_PAYMENT' ? 'Returns / Payout Approval' : 
-                                         'Early Settlement Clearance'}
-                                    </h3>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Status</p>
-                                    <span className="text-[11px] font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100 uppercase">
-                                        {wf.currentStage?.name || 'Review Stage'}
-                                    </span>
-                                </div>
+                {(pendingWorkflows.length > 0) ? pendingWorkflows.map((wf) => {
+                    return (
+                        <div key={wf.id} className="p-8 bg-white border-2 border-indigo-100 rounded-[32px] shadow-sm relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                <ShieldCheckIcon className="w-16 h-16 text-indigo-600" />
                             </div>
-
-                            {/* Quorum Progress */}
-                            <div className="mb-8 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                <div className="flex justify-between items-center mb-2">
-                                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Quorum Requirements</p>
-                                    <p className="text-[11px] font-black text-[#0F172A] uppercase tracking-widest">
-                                        {(() => {
-                                            const totalApprovals = wf.actions.filter(a => a.action === 'APPROVED').length;
-                                            const minRequired = wf.currentStage?.minVotesRequired || 1;
-                                            const requesterVoted = wf.actions.some(a => a.actorId === userId && a.action === 'APPROVED');
-                                            
-                                            // Case where floater's vote doesn't count for quorum
-                                            if (!settings.clnFloaterSelfApproval && requesterVoted && wf.entityType !== 'LOAN_NOTE') {
-                                                return `${totalApprovals - 1} / ${minRequired} (Excl. Floater)`;
-                                            }
-                                            return `${totalApprovals} / ${minRequired}`;
-                                        })()} Admins
-                                    </p>
+                            
+                            <div className="relative z-10">
+                                <div className="flex justify-between items-start mb-6">
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                                            <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Awaiting Decision</p>
+                                        </div>
+                                        <h3 className="text-xl font-black text-[#0F172A] uppercase tracking-tighter">
+                                            {wf.entityType === 'LOAN_NOTE' ? 'Market Listing Review' : 
+                                             wf.entityType === 'LOAN_NOTE_PAYMENT' ? 'Returns / Payout Approval' : 
+                                             'Early Settlement Clearance'}
+                                        </h3>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-3">
+                                        <span className="text-[11px] font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100 uppercase">
+                                            {wf.currentStage?.name || 'Review Stage'}
+                                        </span>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => {
+                                                setSelectedWorkflow(wf);
+                                                setShowVotingRecords(true);
+                                            }}
+                                            className="h-8 px-4 rounded-xl bg-blue-50 text-blue-600 border-blue-100 font-black text-[9px] uppercase tracking-widest hover:bg-blue-100 transition-all flex items-center gap-2"
+                                        >
+                                            <HistoryIcon className="w-3.5 h-3.5" /> Voting Log
+                                        </Button>
+                                    </div>
                                 </div>
-                                <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                                    <div 
-                                        className="h-full bg-indigo-600 transition-all duration-1000" 
-                                        style={{ 
-                                            width: `${(() => {
+
+                                {/* Quorum Progress */}
+                                <div className="mb-8 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Quorum Requirements</p>
+                                        <p className="text-[11px] font-black text-[#0F172A] uppercase tracking-widest">
+                                            {(() => {
                                                 const totalApprovals = wf.actions.filter(a => a.action === 'APPROVED').length;
                                                 const minRequired = wf.currentStage?.minVotesRequired || 1;
-                                                const requesterVoted = wf.actions.some(a => a.actorId === userId && a.action === 'APPROVED');
+                                                const requesterVoted = wf.actions.some(a => (a as any).actorId === userId && a.action === 'APPROVED');
                                                 
-                                                const effectiveApprovals = (!settings.clnFloaterSelfApproval && requesterVoted && wf.entityType !== 'LOAN_NOTE') 
-                                                    ? totalApprovals - 1 
-                                                    : totalApprovals;
+                                                // Case where floater's vote doesn't count for quorum
+                                                if (!settings.clnFloaterSelfApproval && requesterVoted && wf.entityType !== 'LOAN_NOTE') {
+                                                    return `${totalApprovals - 1} / ${minRequired} (Excl. Floater)`;
+                                                }
+                                                return `${totalApprovals} / ${minRequired}`;
+                                            })()} Admins
+                                        </p>
+                                    </div>
+                                    <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                        <div 
+                                            className="h-full bg-indigo-600 transition-all duration-1000" 
+                                            style={{ 
+                                                width: `${(() => {
+                                                    const totalApprovals = wf.actions.filter(a => a.action === 'APPROVED').length;
+                                                    const minRequired = wf.currentStage?.minVotesRequired || 1;
+                                                    const requesterVoted = wf.actions.some(a => (a as any).actorId === userId && a.action === 'APPROVED');
                                                     
-                                                return Math.min((effectiveApprovals / minRequired) * 100, 100);
-                                            })()}%` 
-                                        }}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* History Snippet */}
-                            {wf.actions.length > 0 && (
-                                <div className="space-y-3 mb-8">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Decision Trail</p>
-                                    {wf.actions.map(action => (
-                                        <div key={action.id} className="flex gap-3 items-start">
-                                            <div className={cn(
-                                                "mt-1 w-2 h-2 rounded-full",
-                                                action.action === 'APPROVED' ? 'bg-emerald-500' : 'bg-rose-500'
-                                            )} />
-                                            <div>
-                                                <p className="text-xs font-bold text-slate-700">
-                                                    <span className="font-black border-b border-indigo-100">{action.actor.name}</span> {action.action === 'APPROVED' ? 'granted approval' : 'rejected request'}
-                                                </p>
-                                                {action.notes && <p className="text-[11px] text-slate-500 italic mt-0.5">"{action.notes}"</p>}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            {/* Voting Panel */}
-                            {(() => {
-                                // 1. System Admins always vote
-                                if (userRole === 'SYSTEM_ADMIN') return true;
-                                // 2. The Floater now votes automatically
-                                if (isFloater) return true;
-                                // 3. Chairperson and Treasurer vote if they have the specific 'APPROVE_LOAN_NOTES' right
-                                const hasRight = userPermissions?.canApproveLoanNotes || userPermissions?.APPROVE_LOAN_NOTES;
-                                if ((userRole === 'CHAIRPERSON' || userRole === 'TREASURER') && hasRight) return true;
-                                
-                                return false;
-                            })() && (
-                                <div className="pt-6 border-t border-slate-100 space-y-4">
-                                    <Textarea 
-                                        placeholder="Add Internal Review Notes (Mandatory for rejection)..."
-                                        value={notes}
-                                        onChange={(e) => setNotes(e.target.value)}
-                                        className="bg-slate-50 border-slate-200 rounded-2xl min-h-[100px] text-sm font-medium focus:ring-indigo-500 transition-all"
-                                    />
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <Button 
-                                            onClick={() => handleVote(wf.id, 'APPROVED')}
-                                            disabled={isSubmitting}
-                                            className="h-12 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-widest"
-                                        >
-                                            {isSubmitting ? <Loader2Icon className="animate-spin" /> : "Approve & Promote"}
-                                        </Button>
-                                        <Button 
-                                            onClick={() => handleVote(wf.id, 'REJECTED')}
-                                            disabled={isSubmitting}
-                                            variant="outline"
-                                            className="h-12 rounded-2xl border-rose-200 text-rose-600 hover:bg-rose-50 font-black text-xs uppercase tracking-widest"
-                                        >
-                                            Reject & Terminate
-                                        </Button>
+                                                    const effectiveApprovals = (!settings.clnFloaterSelfApproval && requesterVoted && wf.entityType !== 'LOAN_NOTE') 
+                                                        ? totalApprovals - 1 
+                                                        : totalApprovals;
+                                                        
+                                                    return Math.min((effectiveApprovals / minRequired) * 100, 100);
+                                                })()}%` 
+                                            }}
+                                        />
                                     </div>
                                 </div>
-                            )}
+
+                                {/* History Snippet */}
+                                {wf.actions.length > 0 && (
+                                    <div className="space-y-3 mb-8">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Decision Trail</p>
+                                        {wf.actions.map(action => (
+                                            <div key={action.id} className="flex gap-3 items-start">
+                                                <div className={cn(
+                                                    "mt-1 w-2 h-2 rounded-full",
+                                                    action.action === 'APPROVED' ? 'bg-emerald-500' : 'bg-rose-500'
+                                                )} />
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-700">
+                                                        <span className="font-black border-b border-indigo-100">{action.actor.name}</span> {action.action === 'APPROVED' ? 'granted approval' : 'rejected request'}
+                                                    </p>
+                                                    {action.notes && <p className="text-[11px] text-slate-500 italic mt-0.5">"{action.notes}"</p>}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Voting Panel */}
+                                {(() => {
+                                    // 1. System Admins always vote
+                                    if (userRole === 'SYSTEM_ADMIN') return true;
+                                    // 2. The Floater now votes automatically
+                                    if (isFloater) return true;
+                                    // 3. Chairperson and Treasurer vote if they have the specific 'APPROVE_LOAN_NOTES' right
+                                    const hasRight = userPermissions?.canApproveLoanNotes || userPermissions?.APPROVE_LOAN_NOTES;
+                                    if ((userRole === 'CHAIRPERSON' || userRole === 'TREASURER') && hasRight) return true;
+                                    
+                                    return false;
+                                })() && (
+                                    <div className="pt-6 border-t border-slate-100 space-y-4">
+                                        <Textarea 
+                                            placeholder="Add Internal Review Notes (Mandatory for rejection)..."
+                                            value={notes}
+                                            onChange={(e) => setNotes(e.target.value)}
+                                            className="bg-slate-50 border-slate-200 rounded-2xl min-h-[100px] text-sm font-medium focus:ring-indigo-500 transition-all"
+                                        />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <Button 
+                                                onClick={() => handleVote(wf.id, 'APPROVED')}
+                                                disabled={isSubmitting}
+                                                className="h-12 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-widest"
+                                            >
+                                                {isSubmitting ? <Loader2Icon className="animate-spin" /> : "Approve & Promote"}
+                                            </Button>
+                                            <Button 
+                                                onClick={() => handleVote(wf.id, 'REJECTED')}
+                                                disabled={isSubmitting}
+                                                variant="outline"
+                                                className="h-12 rounded-2xl border-rose-200 text-rose-600 hover:bg-rose-50 font-black text-xs uppercase tracking-widest"
+                                            >
+                                                Reject & Terminate
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                )) : (
+                    );
+                }) : (
                     <div className="p-12 text-center bg-slate-50 rounded-[32px] border border-dashed border-slate-200">
                         <CheckCircle2Icon className="w-12 h-12 text-slate-300 mx-auto mb-4" />
                         <p className="text-sm font-black text-slate-400 uppercase tracking-widest">No Pending Governance Actions</p>
@@ -392,14 +414,48 @@ export function NoteApprovalsTab({
                                         </p>
                                     </div>
                                 </div>
-                                <div className="text-right">
-                                    <p className="text-xs font-black text-slate-700">{wf.actions.length} Decisions</p>
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Consensus Reached</p>
+                                <div className="text-right flex flex-col items-end gap-3">
+                                    <div className="text-right">
+                                        <p className="text-xs font-black text-slate-700">{wf.actions.length} Decisions</p>
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Consensus Reached</p>
+                                    </div>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                            setSelectedWorkflow(wf);
+                                            setShowVotingRecords(true);
+                                        }}
+                                        className="h-8 px-3 rounded-xl bg-slate-50 text-slate-500 border-slate-100 font-black text-[9px] uppercase tracking-widest hover:bg-slate-100 transition-all flex items-center gap-2"
+                                    >
+                                        <HistoryIcon className="w-3.5 h-3.5" /> View Log
+                                    </Button>
                                 </div>
                             </div>
                         ))}
                     </div>
                 </div>
+            )}
+
+            {selectedWorkflow && (
+                <VotingRecordsModal
+                    isOpen={showVotingRecords}
+                    onOpenChange={setShowVotingRecords}
+                    approvals={selectedWorkflow.actions.map(a => ({
+                        id: a.id,
+                        approver: {
+                            name: a.actor.name,
+                            memberNumber: (a.actor as any).member?.memberNumber || 0,
+                            user: { role: (a.actor as any).role || 'ADMIN' }
+                        },
+                        decision: a.action,
+                        notes: a.notes,
+                        timestamp: a.timestamp,
+                        version: selectedWorkflow.version
+                    }))}
+                    requiredApprovals={selectedWorkflow.currentStage?.minVotesRequired || 1}
+                    currentVersion={selectedWorkflow.version}
+                />
             )}
         </div>
     );

@@ -81,6 +81,7 @@ export function LoanApplicationForm({
     const [calculatingQualification, setCalculatingQualification] = useState(false);
     const [calcError, setCalcError] = useState<string | null>(null);
     const [isSubmitted, setIsSubmitted] = useState(false);
+    const [pendingIntent, setPendingIntent] = useState<'save' | 'send'>('send');
 
     // Status check for read-only mode or auto-save disable
     const isPendingDraft = initialData?.status &&
@@ -174,16 +175,26 @@ export function LoanApplicationForm({
     async function handleFormAction(formData: FormData) {
         if (isSubmitted) return;
 
+        // --- Observability: Log incoming data ---
+        const { logFormData } = await import('@/lib/utils/form-debug');
+        logFormData('Raw Submission', formData);
+
         await execute(async (idempotencyKey) => {
             const memberId = watchedMemberId || currentMemberId;
             if (memberId && !formData.get('memberId')) {
                 formData.set('memberId', memberId);
             }
 
-            // Append idempotency key to form data for backend tracking
+            // Centralized Intent Injection
+            formData.set('submitAction', pendingIntent);
+
+            // Technical metadata
             if (idempotencyKey) {
                 formData.append('idempotencyKey', idempotencyKey);
             }
+
+            // --- Observability: Log finalized data ---
+            logFormData('Final Payload', formData);
 
             const res = await applyForLoan(null, formData);
             if (res?.error) {
@@ -191,7 +202,7 @@ export function LoanApplicationForm({
             }
 
             setIsSubmitted(true);
-            toast.success('Loan application submitted successfully!');
+            toast.success(pendingIntent === 'send' ? 'Loan application submitted successfully!' : 'Draft saved successfully');
             reset();
             handleSuccess();
             return { success: true };
@@ -207,32 +218,14 @@ export function LoanApplicationForm({
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                         <button
-                            type="button"
-                            onClick={async () => {
-                                if (!initialData) {
-                                    const formData = new FormData();
-                                    formData.append('memberId', watchedMemberId || '');
-                                    formData.append('loanProductId', watchedProductId || '');
-                                    formData.append('amount', watchedAmount || '0');
-                                    formData.append('installments', String(watchedInstallments || 12));
-                                    formData.append('submitAction', 'save');
-
-                                    selectedLoansToOffset.forEach(loanId => {
-                                        formData.append('loansToOffset', loanId);
-                                    });
-
-                                    try {
-                                        await applyForLoan(null, formData);
-                                    } catch (error) { }
-                                }
-                                handleCancel();
-                            }}
-                            disabled={isSubmitting}
+                            type="submit"
+                            onClick={() => setPendingIntent('save')}
+                            disabled={isSubmitting || isSubmitted}
                             className="flex items-center gap-2 px-3 py-2 bg-white border-2 border-slate-300 text-slate-700 font-bold text-sm rounded-xl hover:bg-slate-50 hover:border-slate-400 transition-all shadow-sm disabled:opacity-50"
-                            title="Go Back"
+                            title="Save as Draft and Go Back"
                         >
                             <ChevronLeft className="w-4 h-4" />
-                            <span>Back</span>
+                            <span>Save & Back</span>
                         </button>
                     </div>
 
@@ -246,8 +239,9 @@ export function LoanApplicationForm({
                             isPending={isSubmitting}
                             label="Send Approval Request"
                             pendingLabel="Processing..."
+                            onClick={() => setPendingIntent('send')}
                             icon={<Send className="w-4 h-4 mr-2" />}
-                            disabled={!canEditDetails}
+                            disabled={!canEditDetails || isSubmitted}
                             className="bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200"
                         />
                     </div>

@@ -122,7 +122,7 @@ export async function createUserAccount(formData: FormData) {
     // Default Password Logic
     const defaultPassword = process.env.DEFAULT_MEMBER_PASSWORD;
     if (!defaultPassword) {
-      throw new Error("DEFAULT_MEMBER_PASSWORD environment variable is not set");
+      throw new Error("Internal configuration error: Default registration password not set.");
     }
     const bcrypt = require('bcryptjs')
     const hashedPassword = await bcrypt.hash(defaultPassword, 10)
@@ -210,15 +210,16 @@ export async function createUserAccount(formData: FormData) {
         const wallet = await WalletService.createWallet(member.id, tx)
 
         // Create welcome notification
+        // SECURITY: We no longer store the temporary password in the persistent notification table.
         await tx.notification.create({
             data: {
                 memberId: member.id,
                 type: NotificationType.SYSTEM_UPDATE,
-                message: `Welcome to Capital Crew, ${member.name}! Your temporary password is: ${defaultPassword}`,
+                message: `Welcome to Capital Crew, ${member.name}! Your account has been initialized. Please secure your login credentials from your administrator.`,
             }
         })
 
-        return { member, user, wallet }
+        return { member, user, wallet, tempPassword: defaultPassword }
     })
 
     revalidatePath('/members')
@@ -246,12 +247,20 @@ export const applyForLoan = withAudit(
         const loanId = formData.get('loanId') as string || null
 
         const loansToOffset = formData.getAll('loansToOffset') as string[]
-        const submitAction = formData.get('submitAction') as string || 'save'
+        const submitAction = formData.get('submitAction') as string
+        const idempotencyKey = formData.get('idempotencyKey') as string || null
+
+        // --- Backend Safety: Enforce explicit intent ---
+        if (!submitAction || !['send', 'save'].includes(submitAction)) {
+            console.error(`[ERROR] Missing or invalid submitAction: ${submitAction}`);
+            ctx.setErrorCode('INVALID_INTENT');
+            return { error: 'System Error: Submission intent is missing or invalid. Please try again.' }
+        }
+
+        console.log(`[INFO] Processing Loan Action: ${submitAction.toUpperCase()} (ID: ${loanId || 'NEW'})`);
 
         const feeExemptionsStr = formData.get('feeExemptions') as string
         const feeExemptions = feeExemptionsStr ? JSON.parse(feeExemptionsStr) : {}
-
-        const idempotencyKey = formData.get('idempotencyKey') as string || null
 
         const newStatus = submitAction === 'send' ? LoanStatus.PENDING_APPROVAL : LoanStatus.APPLICATION;
         const isDraftSave = newStatus === LoanStatus.APPLICATION;

@@ -8,6 +8,8 @@ type SubmitButtonProps = {
   pendingLabel: string   // label while waiting e.g. "Submitting..."
   variant?: 'primary' | 'danger' | 'warning' | 'success'
   disabled?: boolean
+  name?: string
+  value?: string
   onClick?: () => void
   className?: string
 }
@@ -18,6 +20,8 @@ export function SubmitButton({
   pendingLabel,
   variant = 'primary',
   disabled,
+  name,
+  value,
   onClick,
   className,
 }: SubmitButtonProps) {
@@ -32,6 +36,8 @@ export function SubmitButton({
   return (
     <button
       onClick={onClick}
+      name={name}
+      value={value}
       disabled={isPending || disabled}
       aria-busy={isPending}
       aria-label={isPending ? pendingLabel : label}

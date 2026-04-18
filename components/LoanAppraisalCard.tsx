@@ -163,8 +163,15 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                 credentials: 'include'
             })
             const data = await response.json()
-            setLoan(data.loan)
+            if (data.loan) {
+                setLoan({
+                    ...data.loan,
+                    workflowRequest: data.workflowRequest,
+                    meta: data.meta
+                })
+            }
         } catch (error) {
+            console.error("Failed to fetch loan card data:", error)
         } finally {
             setLoading(false)
         }

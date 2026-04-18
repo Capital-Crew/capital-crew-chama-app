@@ -79,52 +79,19 @@ export const handleLoanTransition = withAudit(
                 })
                 ctx.endStep('Update Loan Status');
 
-                ctx.beginStep('Create/Update Approval Request');
-                // Ensure ApprovalRequest exists
-                const loanWithDetails = await tx.loan.findUnique({
-                    where: { id: loanId },
-                    include: {
-                        member: { select: { id: true, name: true, memberNumber: true } },
-                        loanProduct: { select: { name: true } }
+                ctx.beginStep('Log Approval History');
+                // Log History
+                await tx.approvalHistory.create({
+                    data: {
+                        entityType: 'LOAN',
+                        entityId: loanId,
+                        actorUsername: actorName,
+                        actorId: actorId,
+                        action: 'SUBMITTED',
+                        metadata: { version: nextVersion, amount: loan.amount } as any
                     }
                 })
-
-                if (loanWithDetails) {
-                    const existingReq = await tx.approvalRequest.findFirst({
-                        where: { referenceId: loanId, type: 'LOAN' }
-                    })
-
-                    const description = `${loanWithDetails.loanProduct?.name || 'Loan'} - ${loanWithDetails.member.name} (${loanWithDetails.member.memberNumber})`
-
-                    if (existingReq) {
-                        await tx.approvalRequest.update({
-                            where: { id: existingReq.id },
-                            data: {
-                                status: 'PENDING',
-                                description,
-                                amount: loanWithDetails.amount,
-                                requesterName: loanWithDetails.member.name
-                            }
-                        })
-                    } else {
-                        await tx.approvalRequest.create({
-                            data: {
-                                type: 'LOAN',
-                                referenceId: loanId,
-                                referenceTable: 'Loan',
-                                requesterId: loanWithDetails.memberId,
-                                requesterName: loanWithDetails.member.name,
-                                description,
-                                amount: loanWithDetails.amount,
-                                status: 'PENDING',
-                                requiredPermission: 'APPROVE_LOANS'
-                            }
-                        })
-                    }
-                }
-                ctx.endStep('Create/Update Approval Request');
-
-                ctx.beginStep('Log Approval History');
+                ctx.endStep('Log Approval History');
                 // Log History
                 await tx.approvalHistory.create({
                     data: {
@@ -182,16 +149,6 @@ export const handleLoanTransition = withAudit(
                     }
                 })
                 ctx.endStep('Revert Loan Status');
-
-                ctx.beginStep('Remove Approval Request');
-                // Remove from approval queue
-                const existingReq = await tx.approvalRequest.findFirst({
-                    where: { referenceId: loanId, type: 'LOAN' }
-                })
-                if (existingReq) {
-                    await tx.approvalRequest.delete({ where: { id: existingReq.id } })
-                }
-                ctx.endStep('Remove Approval Request');
 
                 ctx.beginStep('Log Approval History');
                 // Log History

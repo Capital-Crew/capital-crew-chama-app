@@ -673,10 +673,8 @@ model Member {
   branchId String?
   branch   Branch? @relation(fields: [branchId], references: [id])
 
-  // MEMBER CONTRIBUTIONS (EQUITY)
-  contributionBalance Decimal @default(0) @db.Decimal(19, 4)
-
-  // NEW: Contribution Tracking
+  // MEMBER CONTRIBUTIONS (EQUITY) - Managed by AccountingEngine via LedgerEntries
+  // contributionBalance removed in favor of ledger-based calculation
   contributionArrears Decimal @default(0) @db.Decimal(19, 4)
   penaltyArrears      Decimal @default(0) @db.Decimal(19, 4)
 
@@ -871,8 +869,7 @@ model Loan {
   dueDate          DateTime?
   interestRate     Decimal?  @db.Decimal(10, 6)
 
-  /// @deprecated Read-only cache. Use AccountingEngine.
-  penalties Decimal    @default(0) @db.Decimal(19, 4)
+  // penalties removed - Handled by PenaltyEngine and Ledger
   status    LoanStatus @default(PENDING_APPROVAL)
 
   // Loan Appraisal Calculation Fields
@@ -2255,53 +2252,10 @@ model NotificationConfig {
 // CENTRALIZED APPROVALS MODULE
 // ========================================
 
-enum ApprovalType {
-  LOAN
-  EXPENSE
-  MEMBER
-  WELFARE
-  LOAN_NOTE_PAYMENT
-  LOAN_NOTE_SETTLEMENT
-  OTHER
-}
+// ApprovalType removed - Fully migrated to WorkflowRequest engine.
 
-model ApprovalRequest {
-  id String @id @default(cuid())
+// ApprovalRequest removed - Fully migrated to WorkflowRequest engine.
 
-  // Type & Reference
-  type           ApprovalType
-  referenceId    String // ID of the Loan, Expense, Member, etc.
-  referenceTable String // For clarity (e.g. 'Loan')
-
-  // Requester Info
-  requesterId   String? // ID of User/Member requesting
-  requesterName String?
-
-  // Content Snapshot
-  description String?
-  amount      Decimal? @db.Decimal(19, 4)
-
-  // Status
-  status ApprovalStatus @default(PENDING)
-
-  // RBAC
-  requiredPermission String? // Permission required to view/act (e.g. 'APPROVE_LOANS')
-
-  // Decision
-  approverId    String?
-  approverName  String?
-  decisionNotes String?
-  approvedAt    DateTime?
-
-  version Int @default(1)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([status])
-  @@index([type])
-  @@index([requesterId])
-}
 
 enum MpesaTransactionStatus {
   PENDING

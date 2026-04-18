@@ -59,16 +59,7 @@ export const directLoadContribution = withAudit(
             const desc = description || 'Balance Brought Forward'
 
             await db.$transaction(async (tx) => {
-                // STEP 1: Update the legacy contributionBalance cache for backwards compatibility
-                const currentLegacyBalance = Number(member.contributionBalance || 0)
-                await tx.member.update({
-                    where: { id: memberId },
-                    data: {
-                        contributionBalance: new Prisma.Decimal(currentLegacyBalance + amount)
-                    }
-                })
-
-                // STEP 2: Post the GL Journal Entry (Debit Asset, Credit Contributions)
+                // STEP 1: Post the GL Journal Entry (Debit Asset, Credit Contributions)
                 const mappings = await getSystemMappingsDict()
                 const journalEntry = PostingRules.contributionPayment(
                     memberId,

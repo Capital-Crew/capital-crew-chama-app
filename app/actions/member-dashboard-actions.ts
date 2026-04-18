@@ -83,8 +83,7 @@ export async function getMemberStats(memberId: string): Promise<MemberFactBoxSta
         const { WalletService } = await import('@/lib/services/WalletService')
 
         const ledgerContributionBalance = await getAccountBalance(memberId, '2100', 'CREDIT')
-        const legacyContributions = Number(member.contributionBalance) || 0
-        const contributionBalance = ledgerContributionBalance > 0 ? ledgerContributionBalance : legacyContributions
+        const contributionBalance = ledgerContributionBalance
         const savingsBalance = await WalletService.getWalletBalance(memberId)
 
         // Loan Balance (Account 1200) - Debit Normal (Asset)
@@ -235,9 +234,8 @@ export async function getDetailedMemberStats(memberId: string): Promise<{ stats:
         return sum + fine.totalFine;
     }, 0);
 
-    const legacyContributions = Number(member.contributionBalance) || 0;
-    const contributionBalance = ledgerContributionBalance > 0 ? ledgerContributionBalance : legacyContributions;
-    const totalContributionsBalance = contributionTxCount > 0 ? ledgerContributions : legacyContributions;
+    const contributionBalance = ledgerContributionBalance;
+    const totalContributionsBalance = ledgerContributions;
 
     // Import statement processor for consistent balance calculation
     const { processTransactions } = await import('@/lib/statementProcessor');
@@ -410,7 +408,7 @@ export async function getDetailedMemberStats(memberId: string): Promise<{ stats:
     });
 
     const ledgerCumulative = Number(cumulativeContributionsRaw._sum.creditAmount || 0);
-    const cumulativeContributions = ledgerCumulative > 0 ? ledgerCumulative : legacyContributions;
+    const cumulativeContributions = ledgerCumulative;
 
     return {
         stats: {

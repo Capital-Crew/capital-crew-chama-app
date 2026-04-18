@@ -97,13 +97,8 @@ export async function getWalletBalance(memberId: string): Promise<Serialized<any
     let contributionBalance = 0
     let balance = 0
 
-    try {
-        balance = await WalletService.getWalletBalance(memberId)
-        contributionBalance = await getMemberContributionBalance(memberId)
-    } catch (error) {
-        // Fallback for missing mappings, though unlikely in a seeded system
-        contributionBalance = Number(member.contributionBalance) || 0
-    }
+    balance = await WalletService.getWalletBalance(memberId)
+    contributionBalance = await getMemberContributionBalance(memberId)
 
     const lockedAmount = 0
     const availableBalance = balance - lockedAmount

@@ -143,6 +143,14 @@ export const createMemberWithWallet = withAudit(
                 })
                 ctx.endStep('Create Wallet Record');
 
+                // TRIGGER UNIVERSAL WORKFLOW
+                const { initiateWorkflow } = await import('@/app/actions/workflow-engine')
+                await initiateWorkflow({
+                    entityType: 'MEMBER',
+                    entityId: member.id,
+                    requesterId: session.user.id
+                })
+
                 return { member, wallet }
             })
 

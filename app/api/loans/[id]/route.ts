@@ -177,7 +177,22 @@ export async function GET(
         })
 
     } catch (error: any) {
-        // Syntax fixed
+        console.error("[LOAN_API_ERROR] Detail:", {
+            message: error.message,
+            code: error.code,
+            digest: error.digest,
+            stack: error.stack
+        });
+
+        // Provide specific hint for connection issues
+        if (error.message?.includes("Can't reach database server")) {
+            return NextResponse.json({
+                error: 'Database Connection Error',
+                message: 'The system is temporarily unable to reach the database. Please check your connection string or wait a moment for the database to wake up.',
+                code: 'P1001'
+            }, { status: 503 })
+        }
+
         return NextResponse.json({
             error: 'Failed to fetch loan',
             message: error.message

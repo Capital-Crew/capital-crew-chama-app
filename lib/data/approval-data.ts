@@ -151,6 +151,23 @@ export async function getPendingApprovals() {
                         description = `Investment Note: ${note.title} (Target: KES ${note.totalAmount.toLocaleString()})`
                         requesterName = note.floater.name || 'Unknown'
                     }
+                } else if (req.entityType === 'LOAN') {
+                    const loan = await db.loan.findUnique({
+                        where: { id: req.entityId },
+                        include: { 
+                            member: true,
+                            loanProduct: true 
+                        }
+                    })
+
+                    if (loan) {
+                        entityDetails = {
+                            ...loan,
+                            amount: Number(loan.amount)
+                        }
+                        description = `Member Loan Application - KES ${entityDetails.amount.toLocaleString()}`
+                        requesterName = loan.member.name
+                    }
                 }
             } catch (error) {}
 
@@ -161,10 +178,10 @@ export async function getPendingApprovals() {
                 id: req.id,
                 type: req.entityType as any,
                 referenceId: req.entityId,
-                referenceTable: req.entityType === 'LOAN_NOTE' ? 'loan_notes' : 'Unknown',
+                referenceTable: req.entityType === 'LOAN_NOTE' ? 'loan_notes' : (req.entityType === 'LOAN' ? 'loans' : 'Unknown'),
                 requesterId: req.requesterId,
-                requesterName: requesterName,
-                description: description,
+                requesterName: requesterName || 'Unknown',
+                description: description || `Request regarding ${req.entityType}`,
                 amount: entityDetails?.amount || 0,
                 status: 'PENDING',
                 requiredPermission: req.currentStage?.requiredRole || 'SYSTEM_ADMIN',
@@ -177,8 +194,18 @@ export async function getPendingApprovals() {
         })
     )
 
+    // Deduplication Strategy: 
+    // If an entity has a WorkflowRequest, we MUST hide its legacy ApprovalRequest to prevent duplicates in the inbox.
+    const activeWorkflowEntityIds = new Set(workflowRequests.map(w => w.entityId))
+    
+    // Filter out legacy requests that have a corresponding modern workflow
+    const deduplicatedLegacy = enrichedLegacy.filter(req => {
+        if (!req) return false
+        return !activeWorkflowEntityIds.has(req.referenceId)
+    })
+
     // Filter out nulls and combine
-    const allRequests = [...enrichedLegacy, ...enrichedWorkflow].filter(req => req !== null)
+    const allRequests = [...deduplicatedLegacy, ...enrichedWorkflow].filter(req => req !== null)
     
     // Sort combined list by date desc
     return (allRequests as any[]).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())

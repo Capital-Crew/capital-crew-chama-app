@@ -161,6 +161,12 @@ export const submitLoanApproval = withAudit(
             throw new Error("Loan is not in pending approval status");
         }
 
+        // Self-Approval Block
+        if (loan.memberId === approverId) {
+            ctx.setErrorCode('SELF_APPROVAL_BLOCKED');
+            throw new Error("Self-approval is prohibited to ensure independent review.");
+        }
+
         ctx.beginStep('Process Vote with Workflow Engine');
         let workflowRequest = await prisma.workflowRequest.findFirst({
             where: {

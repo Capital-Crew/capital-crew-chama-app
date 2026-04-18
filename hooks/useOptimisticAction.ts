@@ -28,11 +28,12 @@ export function useOptimisticAction<T>(
       setOptimisticValue(optimisticUpdate)
       try {
         const result = await action()
-        if (!result.success && result.error) {
-          // Server rejected — revert to original value automatically
-          setError(result.error)
+        if (!result.success) {
+          // Server rejected with a curated message or status
+          setError(result.error || 'Action failed. Please try again.')
         }
-      } catch {
+      } catch (err: any) {
+        // Actual code execution crash (throw)
         setError('Action failed. Please try again.')
       }
     })

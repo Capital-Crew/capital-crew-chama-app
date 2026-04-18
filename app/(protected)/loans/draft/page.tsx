@@ -41,8 +41,8 @@ export default async function ResumeDraftPage() {
         const draftMemberId = (loanDraft.data as any).memberId
         if (draftMemberId && draftMemberId !== currentMemberId) {
 
-            // Delete the invalid draft
-            await db.loanDraft.delete({
+            // Delete the invalid draft - use deleteMany to avoid errors if already gone
+            await db.loanDraft.deleteMany({
                 where: { userId: session.user.id }
             })
 

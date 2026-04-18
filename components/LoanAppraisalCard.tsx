@@ -182,7 +182,10 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
             try {
                 if (loan.workflowRequest && loan.workflowRequest.status === 'PENDING') {
                     const { processWorkflowAction } = await import('@/app/actions/workflow-engine')
-                    await processWorkflowAction(loan.workflowRequest.id, 'APPROVED', approvalNotes)
+                    const result: any = await processWorkflowAction(loan.workflowRequest.id, 'APPROVED', approvalNotes)
+                    if (result?.success === false) {
+                        return { success: false, error: result.error || 'Failed to submit approval' }
+                    }
                 } else {
                     const result: any = await submitLoanApproval(loan.id, 'APPROVED', approvalNotes)
                     if (result?.error) throw new Error(result.error)

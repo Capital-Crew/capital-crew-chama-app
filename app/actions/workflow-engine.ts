@@ -173,6 +173,11 @@ export async function processWorkflowAction(requestId: string, action: ApprovalA
             return { success: false, error: `Unauthorized: You need to be a ${request.currentStage.requiredRole} to perform this action.` }
         }
 
+        // 2.5 Conflict of Interest Check: Self-Approval Block (Standard Loans Only)
+        if (request.entityType === 'LOAN' && request.requesterId === user.id) {
+            return { success: false, error: "Self-approval is prohibited to ensure independent review." }
+        }
+
         // 3. Execution
         await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
             // Double Voting Check

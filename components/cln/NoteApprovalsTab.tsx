@@ -315,9 +315,15 @@ export function NoteApprovalsTab({
                                         />
                                     </div>
                                     {(() => {
-                                        const hasVoted = wf.actions.some(a => a.actorId === userId && a.stageId === wf.currentStage?.id);
+                                        const hasVoted = wf.actions.some(a => {
+                                            const voterId = a.actorId || (a.actor as any)?.id;
+                                            return voterId === userId && a.stageId === wf.currentStage?.id;
+                                        });
                                         if (hasVoted) {
-                                            const myVote = wf.actions.find(a => a.actorId === userId && a.stageId === wf.currentStage?.id);
+                                            const myVote = wf.actions.find(a => {
+                                                const voterId = a.actorId || (a.actor as any)?.id;
+                                                return voterId === userId && a.stageId === wf.currentStage?.id;
+                                            });
                                             return (
                                                 <div className="mt-4 flex items-center justify-center gap-2 py-2 px-4 bg-emerald-50 border border-emerald-100 rounded-xl animate-in fade-in zoom-in duration-300">
                                                     <CheckCircle2Icon className="w-4 h-4 text-emerald-600" />
@@ -355,16 +361,29 @@ export function NoteApprovalsTab({
                                 {/* Voting Panel */}
                                 {(() => {
                                     // 0. CHECK IF ALREADY VOTED
-                                    const hasVoted = wf.actions.some(a => a.actorId === userId && a.stageId === wf.currentStage?.id);
+                                    const hasVoted = wf.actions.some(a => {
+                                        const voterId = a.actorId || (a.actor as any)?.id;
+                                        return voterId === userId && a.stageId === wf.currentStage?.id;
+                                    });
                                     if (hasVoted) return false;
 
-                                    // 1. System Admins always vote
-                                    if (userRole === 'SYSTEM_ADMIN') return true;
-                                    // 2. The Floater now votes automatically
+                                    // 1. Recognize either SYSTEM_ADMIN or ADMIN as high authority
+                                    const isAdmin = userRole === 'SYSTEM_ADMIN' || userRole === 'ADMIN';
+                                    if (isAdmin) return true;
+
+                                    // 2. Floater always has participation rights on their own notes
                                     if (isFloater) return true;
-                                    // 3. Chairperson and Treasurer vote if they have the specific 'APPROVE_LOAN_NOTES' right
-                                    const hasRight = userPermissions?.canApproveLoanNotes || userPermissions?.APPROVE_LOAN_NOTES;
-                                    if ((userRole === 'CHAIRPERSON' || userRole === 'TREASURER') && hasRight) return true;
+
+                                    // 3. Specific permissions for other leadership roles
+                                    const isNoteWorkflow = ['LOAN_NOTE', 'LOAN_NOTE_PAYMENT', 'LOAN_NOTE_SETTLEMENT'].includes(wf.entityType);
+                                    if (!isNoteWorkflow) return false;
+
+                                    const hasRight = userPermissions?.canApproveLoanNotes || 
+                                                   userPermissions?.APPROVE_LOAN_NOTES ||
+                                                   (Array.isArray(userPermissions) && userPermissions.includes("APPROVE_LOAN_NOTES"));
+                                    
+                                    const highRoles = ['CHAIRPERSON', 'TREASURER', 'SECRETARY'];
+                                    if (highRoles.includes(userRole) && hasRight) return true;
                                     
                                     return false;
                                 })() && (
@@ -479,14 +498,26 @@ export function NoteApprovalsTab({
                     // Active Voting Integration
                     canVote={(() => {
                         const wf = selectedWorkflow;
-                        if (wf.status !== 'PENDING') return false;
-                        // 1. System Admins always vote
-                        if (userRole === 'SYSTEM_ADMIN') return true;
-                        // 2. The Floater now votes automatically
+                        if (!wf || wf.status !== 'PENDING') return false;
+                        
+                        // 1. Recognize either SYSTEM_ADMIN or ADMIN as high authority
+                        const isAdmin = userRole === 'SYSTEM_ADMIN' || userRole === 'ADMIN';
+                        if (isAdmin) return true;
+
+                        // 2. Floater always has participation rights on their own notes
                         if (isFloater) return true;
-                        // 3. Chairperson and Treasurer vote if they have the specific 'APPROVE_LOAN_NOTES' right
-                        const hasRight = userPermissions?.canApproveLoanNotes || userPermissions?.APPROVE_LOAN_NOTES;
-                        if ((userRole === 'CHAIRPERSON' || userRole === 'TREASURER') && hasRight) return true;
+
+                        // 3. Specific permissions for other leadership roles
+                        const isNoteWorkflow = ['LOAN_NOTE', 'LOAN_NOTE_PAYMENT', 'LOAN_NOTE_SETTLEMENT'].includes(wf.entityType);
+                        if (!isNoteWorkflow) return false;
+
+                        const hasRight = userPermissions?.canApproveLoanNotes || 
+                                       userPermissions?.APPROVE_LOAN_NOTES ||
+                                       (Array.isArray(userPermissions) && userPermissions.includes("APPROVE_LOAN_NOTES"));
+                        
+                        const highRoles = ['CHAIRPERSON', 'TREASURER', 'SECRETARY'];
+                        if (highRoles.includes(userRole) && hasRight) return true;
+
                         return false;
                     })()}
                     isSubmitting={isSubmitting}
@@ -494,7 +525,11 @@ export function NoteApprovalsTab({
                         setNotes(vNotes);
                         handleVote(selectedWorkflow.id, action);
                     }}
-                    hasVoted={selectedWorkflow.actions.some(a => a.actorId === userId && a.stageId === selectedWorkflow.currentStage?.id)}
+                    hasVoted={selectedWorkflow.actions.some(a => {
+                        // Resilient comparison checking both actorId and nested actor.id
+                        const voterId = a.actorId || (a.actor as any)?.id;
+                        return voterId === userId && a.stageId === selectedWorkflow.currentStage?.id;
+                    })}
                 />
             )}
         </div>

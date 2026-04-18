@@ -147,7 +147,7 @@ export function AppSidebar({ user, approvalCount = 0, pendingLoanCount = 0 }: { 
 
                 {canAccess('WALLET') && renderNavItem({ icon: <WalletIcon />, label: "My Wallet", href: "/wallet", active: pathname === '/wallet' })}
                 
-                {renderNavItem({ icon: <TrendingUpIcon />, label: "Note Market", href: "/loan-notes", active: pathname === '/loan-notes' })}
+                {canAccess('NOTE_MARKET') && renderNavItem({ icon: <TrendingUpIcon />, label: "Note Market", href: "/loan-notes", active: pathname === '/loan-notes' })}
 
                 {canAccess('WELFARE') && renderNavItem({ icon: <HeartHandshake />, label: "Welfare", href: "/welfare", active: pathname.startsWith('/welfare') })}
 

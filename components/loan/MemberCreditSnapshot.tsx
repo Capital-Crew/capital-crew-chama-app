@@ -10,11 +10,12 @@ interface MemberCreditSnapshotProps {
 
 export function MemberCreditSnapshot({ data }: MemberCreditSnapshotProps) {
     const formatCurrency = (amount: number) => {
+        const value = isNaN(amount) || amount === undefined || amount === null ? 0 : amount;
         return new Intl.NumberFormat('en-KE', {
             style: 'currency',
             currency: 'KES',
             minimumFractionDigits: 0,
-        }).format(amount)
+        }).format(value)
     }
 
     return (
@@ -43,7 +44,7 @@ export function MemberCreditSnapshot({ data }: MemberCreditSnapshotProps) {
                         <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Contributions</span>
                     </div>
                     <div className="text-xl font-black text-slate-900">
-                        {formatCurrency(data.shareCapital)}
+                        {formatCurrency(data.contributionBalance)}
                     </div>
                     <p className="text-[10px] text-slate-400 mt-1 font-bold italic">GL 1200 - Qualifying Contributions</p>
                 </div>

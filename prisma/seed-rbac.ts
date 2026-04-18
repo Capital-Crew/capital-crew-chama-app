@@ -19,6 +19,7 @@ async function main() {
     { key: 'ACCOUNTS', name: 'Accounting & Ledgers', description: 'Chart of accounts and ledger management' },
     { key: 'ADMIN', name: 'System Administration', description: 'Global system configuration and settings' },
     { key: 'AUDIT', name: 'Audit Logs', description: 'Security and operation activity tracking' },
+    { key: 'NOTE_MARKET', name: 'Note Market', description: 'Secondary market for Loan Notes and investments' },
   ]
 
   console.log('Upserting modules...')
@@ -35,14 +36,14 @@ async function main() {
     [UserRole.CHAIRPERSON]: modules.map(m => m.key),
     [UserRole.TREASURER]: [
       'DASHBOARD', 'APPROVALS', 'MEMBERS', 'LOANS', 'WALLET', 
-      'EXPENSES', 'REPORTS_HUB', 'ACCOUNTS', 'AUDIT'
+      'EXPENSES', 'REPORTS_HUB', 'ACCOUNTS', 'AUDIT', 'NOTE_MARKET'
     ],
     [UserRole.SECRETARY]: [
       'DASHBOARD', 'APPROVALS', 'MEMBERS', 'LOANS', 'WELFARE', 
-      'MEETINGS', 'REPORTS_HUB', 'AUDIT'
+      'MEETINGS', 'REPORTS_HUB', 'AUDIT', 'NOTE_MARKET'
     ],
     [UserRole.MEMBER]: [
-      'DASHBOARD', 'LOANS', 'WALLET', 'WELFARE', 'MEETINGS', 'EXPENSES'
+      'DASHBOARD', 'LOANS', 'WALLET', 'WELFARE', 'MEETINGS', 'EXPENSES', 'NOTE_MARKET'
     ]
   }
 

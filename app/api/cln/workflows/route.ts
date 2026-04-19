@@ -12,25 +12,34 @@ export async function GET(request: Request) {
 
         const { searchParams } = new URL(request.url);
         const noteId = searchParams.get('noteId');
+        const scope = searchParams.get('scope') || 'listing'; // listing | all
 
         if (!noteId) {
             return NextResponse.json({ success: false, error: 'Note ID required' }, { status: 400 });
         }
 
-        // 1. Fetch note's own workflow (Listing)
-        // 2. Fetch workflows for any schedules related to this note
-        const scheduleIds = (await db.loanNotePaymentSchedule.findMany({
-            where: { loanNoteId: noteId },
-            select: { id: true }
-        })).map(s => s.id);
+        let whereClause: any = {};
 
-        const workflows = await db.workflowRequest.findMany({
-            where: {
+        if (scope === 'listing') {
+            // ONLY fetch the note's own creation/listing approval
+            whereClause = { entityType: 'LOAN_NOTE' as any, entityId: noteId };
+        } else {
+            // Fetch everything (listing + payouts + settlements)
+            const scheduleIds = (await db.loanNotePaymentSchedule.findMany({
+                where: { loanNoteId: noteId },
+                select: { id: true }
+            })).map(s => s.id);
+
+            whereClause = {
                 OR: [
                     { entityType: 'LOAN_NOTE' as any, entityId: noteId },
                     { entityType: { in: ['LOAN_NOTE_PAYMENT' as any, 'LOAN_NOTE_SETTLEMENT' as any] }, entityId: { in: scheduleIds } }
                 ]
-            },
+            };
+        }
+
+        const workflows = await db.workflowRequest.findMany({
+            where: whereClause,
             include: {
                 currentStage: true,
                 actions: {
@@ -48,7 +57,9 @@ export async function GET(request: Request) {
                     orderBy: { timestamp: 'desc' }
                 }
             },
-            orderBy: { createdAt: 'desc' }
+            orderBy: { createdAt: 'desc' },
+            // If scope is all, we might want to limit to prevent huge payloads
+            ...(scope === 'all' && { take: 50 }) 
         });
 
         const settings = await db.saccoSettings.findFirst({
@@ -58,6 +69,7 @@ export async function GET(request: Request) {
         return NextResponse.json({ 
             success: true, 
             workflows, 
+            scope,
             settings: { 
                 clnFloaterSelfApproval: settings?.clnFloaterSelfApproval ?? true 
             } 

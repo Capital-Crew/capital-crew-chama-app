@@ -61,20 +61,23 @@ export function NoteApprovalsTab({
     const [settings, setSettings] = useState<any>({ clnFloaterSelfApproval: true });
     const [notes, setNotes] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [scope, setScope] = useState<'listing' | 'all'>('listing');
+    const [isFetchingAll, setIsFetchingAll] = useState(false);
     const [showVotingRecords, setShowVotingRecords] = useState(false);
     const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowRequest | null>(null);
 
     useEffect(() => {
-        fetchWorkflows();
+        fetchWorkflows('listing');
     }, [noteId]);
 
-    const fetchWorkflows = async () => {
+    const fetchWorkflows = async (targetScope: 'listing' | 'all' = 'listing') => {
         setLoading(true);
         try {
-            const response = await fetch(`/api/cln/workflows?noteId=${noteId}`);
+            const response = await fetch(`/api/cln/workflows?noteId=${noteId}&scope=${targetScope}`);
             const data = await response.json();
             if (data.success) {
                 setWorkflows(data.workflows);
+                setScope(data.scope);
                 if (data.settings) setSettings(data.settings);
             }
         } catch (error) {
@@ -82,6 +85,12 @@ export function NoteApprovalsTab({
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleFetchAll = async () => {
+        setIsFetchingAll(true);
+        await fetchWorkflows('all');
+        setIsFetchingAll(false);
     };
 
     const handleWorkflowInitiation = async (action: 'SEND' | 'CANCEL') => {
@@ -428,9 +437,23 @@ export function NoteApprovalsTab({
             {/* 2. Governance History */}
             {completedWorkflows.length > 0 && (
                 <div className="space-y-6">
-                    <div className="flex items-center gap-2 px-2">
-                        <HistoryIcon className="w-4 h-4 text-indigo-400" />
-                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Decision History</h4>
+                    <div className="flex items-center justify-between px-2">
+                        <div className="flex items-center gap-2">
+                            <HistoryIcon className="w-4 h-4 text-indigo-400" />
+                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Decision History</h4>
+                        </div>
+                        {scope === 'listing' && (
+                            <Button 
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleFetchAll}
+                                disabled={isFetchingAll}
+                                className="h-8 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:bg-indigo-50 border border-indigo-100 hover:border-indigo-200 transition-all"
+                            >
+                                {isFetchingAll ? <Loader2Icon className="w-3 h-3 animate-spin mr-2" /> : <HistoryIcon className="w-3 h-3 mr-2" />}
+                                Load Full History
+                            </Button>
+                        )}
                     </div>
                     
                     <div className="space-y-4">

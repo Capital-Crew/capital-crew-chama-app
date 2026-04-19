@@ -5,6 +5,7 @@ import { db as prisma } from '@/lib/db'
 import { auth } from '@/auth'
 import { Prisma, EntityType, AuditLogAction } from '@prisma/client'
 import { withAudit } from '@/lib/with-audit'
+import { MESSAGES } from '@/lib/constants/messages'
 
 /**
  * Universal Workflow Workflow Transition Handler
@@ -18,7 +19,7 @@ export async function handleWorkflowTransition(
     action: 'SEND' | 'CANCEL' | 'APPROVE' | 'REJECT'
 ) {
     const session = await auth()
-    if (!session?.user) return { error: 'Unauthorized' }
+    if (!session?.user) return { error: MESSAGES.AUTH.UNAUTHORIZED }
 
     const actorId = session.user.id || ''
     const actorName = session.user.name || 'Unknown User'
@@ -50,7 +51,7 @@ export const handleLoanTransition = withAudit(
         const loan = await prisma.loan.findUnique({ where: { id: loanId } })
         if (!loan) {
             ctx.setErrorCode('LOAN_NOT_FOUND');
-            throw new Error('Loan not found')
+            throw new Error(MESSAGES.LOAN.NOT_FOUND)
         }
         ctx.captureBefore('Loan', loan.id, loan);
         ctx.endStep('Retrieve Loan Record');
@@ -193,13 +194,13 @@ export const handleLoanNoteTransition = withAudit(
     async (ctx, noteId: string, action: 'SEND' | 'CANCEL' | 'APPROVE' | 'REJECT', actorId: string, actorName: string) => {
         ctx.beginStep('Retrieve Loan Note');
         const note = await prisma.loanNote.findUnique({ where: { id: noteId } })
-        if (!note) throw new Error('Loan Note not found')
+        if (!note) throw new Error(MESSAGES.NOTE.NOT_FOUND)
         ctx.captureBefore('LoanNote', note.id, note);
         ctx.endStep('Retrieve Loan Note');
 
         if (action === 'SEND') {
             if (!['DRAFT', 'REJECTED'].includes(note.status)) {
-                throw new Error('Note must be in DRAFT or REJECTED stage to send.')
+                throw new Error(MESSAGES.NOTE.INVALID_STATE)
             }
 
             const nextVersion = (note.version || 0) + 1
@@ -257,7 +258,7 @@ export const handleLoanNoteTransition = withAudit(
         }
 
         if (action === 'CANCEL') {
-            if (note.status !== 'PENDING_APPROVAL') throw new Error('Cannot cancel a processed note.')
+            if (note.status !== 'PENDING_APPROVAL') throw new Error(MESSAGES.NOTE.INVALID_STATE)
 
             const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
                 await tx.loanNote.update({
@@ -282,7 +283,7 @@ export const handleLoanNoteTransition = withAudit(
         }
 
         if (action === 'APPROVE') {
-            if (note.status !== 'PENDING_APPROVAL') throw new Error('No pending approval request found.')
+            if (note.status !== 'PENDING_APPROVAL') throw new Error(MESSAGES.GOVERNANCE.REQ_NOT_FOUND)
 
             const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
                 await tx.loanNote.update({

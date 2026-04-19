@@ -2,6 +2,7 @@
 
 import { db } from '@/lib/db'
 import { LoanScheduleCache } from '@/lib/services/LoanScheduleCache'
+import { MESSAGES } from '@/lib/constants/messages'
 
 export type EligibilityResult = {
     isEligible: boolean
@@ -87,7 +88,9 @@ export async function checkLoanEligibility(memberId: string): Promise<Eligibilit
 
             const principalArrears = overdueItems.reduce((sum: number, i: any) => sum + Number(i.principalDue || i.principal || 0), 0)
             const interestArrears = overdueItems.reduce((sum: number, i: any) => sum + Number(i.interestDue || i.interest || 0), 0)
-            const penaltyArrears = Number(loan.penalties || 0) // Penalties are always "Arrears" if unpaid
+            
+            const { getLoanPenaltyBalance } = await import('@/lib/accounting/AccountingEngine')
+            const penaltyArrears = await getLoanPenaltyBalance(loan.id) // Penalties are always "Arrears" if unpaid
 
             const loanArrears = principalArrears + interestArrears + penaltyArrears
 
@@ -105,7 +108,7 @@ export async function checkLoanEligibility(memberId: string): Promise<Eligibilit
             return {
                 isEligible: false,
                 totalArrears,
-                message: `Application Denied: You have outstanding arrears of KES ${totalArrears.toLocaleString()}. Please clear these before applying for a new loan.`,
+                message: MESSAGES.LOAN.ELIGIBILITY_ARREARS(totalArrears.toLocaleString()),
                 breakdown
             }
         }
@@ -118,7 +121,7 @@ export async function checkLoanEligibility(memberId: string): Promise<Eligibilit
         return {
             isEligible: false,
             totalArrears: 0,
-            message: 'System Error: Could not verify eligibility. Please contact support.'
+            message: MESSAGES.LOAN.ELIGIBILITY_ARREARS('0') // Generic eligibility fail
         }
     }
 }

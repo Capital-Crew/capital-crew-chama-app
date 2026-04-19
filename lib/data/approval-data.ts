@@ -1,14 +1,14 @@
 import { auth } from "@/auth"
 import { db } from "@/lib/db"
-import { serializeApprovalRequest } from "@/lib/serializers"
+import { MESSAGES } from "@/lib/constants/messages"
 
 
 // Map Roles to Permissions (Simple version)
 export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'SYSTEM_ADMIN': ['ALL'],
-    'CHAIRPERSON': ['APPROVE_LOANS', 'APPROVE_EXPENSES', 'APPROVE_MEMBERS', 'APPROVE_WELFARE'],
-    'TREASURER': ['APPROVE_LOANS', 'APPROVE_EXPENSES', 'APPROVE_MEMBERS', 'APPROVE_WELFARE'],
-    'SECRETARY': ['APPROVE_MEMBERS', 'APPROVE_WELFARE'],
+    'CHAIRPERSON': ['APPROVE_LOANS', 'APPROVE_EXPENSES', 'APPROVE_MEMBERS', 'APPROVE_WELFARE', 'APPROVE_NOTE'],
+    'TREASURER': ['APPROVE_LOANS', 'APPROVE_EXPENSES', 'APPROVE_MEMBERS', 'APPROVE_WELFARE', 'APPROVE_NOTE'],
+    'SECRETARY': ['APPROVE_MEMBERS', 'APPROVE_WELFARE', 'APPROVE_NOTE'],
     'MEMBER': []
 }
 
@@ -42,93 +42,26 @@ export async function getPendingApprovals() {
     const userRole = session.user.role || 'MEMBER'
     const userPermissions = (session.user as any).permissions
 
-    // Fetch all pending legacy requests
-    const legacyRequests = await db.approvalRequest.findMany({
-        where: { status: 'PENDING' },
-        orderBy: { createdAt: 'desc' },
-    })
-
     // Fetch all pending universal workflow requests
     const workflowRequests = await db.workflowRequest.findMany({
         where: { status: 'PENDING' },
         include: {
             currentStage: true,
-            workflow: true
+            workflow: true,
+            actions: {
+                include: {
+                    actor: {
+                        select: {
+                            id: true,
+                            role: true,
+                            permissions: true
+                        }
+                    }
+                }
+            }
         },
         orderBy: { createdAt: 'desc' },
     })
-
-    // Fetch related entities for rich display
-    const enrichedLegacy = await Promise.all(
-        legacyRequests.map(async (req) => {
-            let entityDetails: any = null
-
-            try {
-                // Fetch entity details based on type
-                if (req.type === 'LOAN') {
-                    entityDetails = await db.loan.findUnique({
-                        where: { id: req.referenceId },
-                        select: {
-                            id: true,
-                            loanApplicationNumber: true,
-                            amount: true,
-                            installments: true,
-                            interestRate: true,
-                            status: true,
-                            approvals: {
-                                select: {
-                                    approverId: true,
-                                    decision: true
-                                }
-                            },
-                            member: {
-                                select: {
-                                    id: true,
-                                    name: true,
-                                    memberNumber: true,
-                                    phoneNumber: true
-                                }
-                            },
-                            loanProduct: {
-                                select: {
-                                    productName: true,
-                                    maxAmount: true,
-                                    interestRate: true
-                                }
-                            }
-                        }
-                    })
-
-                    // Filter out if user has already voted
-                    if (entityDetails) {
-                        const hasVoted = entityDetails.approvals.some((a: any) => a.approverId === session.user.memberId)
-                        if (hasVoted) return null // Skip this request
-                    }
-                } else if (req.type === 'MEMBER') {
-                    entityDetails = await db.member.findUnique({
-                        where: { id: req.referenceId },
-                        select: {
-                            id: true,
-                            name: true,
-                            memberNumber: true,
-                            email: true,
-                            phoneNumber: true,
-                            nationalId: true,
-                            status: true,
-                            createdAt: true
-                        }
-                    })
-                }
-            } catch (error) {
-            }
-
-            return {
-                ...serializeApprovalRequest(req),
-                canApprove: hasPermission(userRole, req.requiredPermission, userPermissions),
-                entityDetails // Attach the related entity data
-            }
-        })
-    )
 
     const enrichedWorkflow = await Promise.all(
         workflowRequests.map(async (req) => {
@@ -155,7 +88,7 @@ export async function getPendingApprovals() {
                     const loan = await db.loan.findUnique({
                         where: { id: req.entityId },
                         include: { 
-                            member: true,
+                            member: true, 
                             loanProduct: true 
                         }
                     })
@@ -168,17 +101,80 @@ export async function getPendingApprovals() {
                         description = `Member Loan Application - KES ${entityDetails.amount.toLocaleString()}`
                         requesterName = loan.member.name
                     }
+                } else if (req.entityType === 'MEMBER_REGISTRATION' || req.entityType === 'MEMBER') {
+                    const member = await db.member.findUnique({
+                        where: { id: req.entityId },
+                        include: { 
+                            contactInfo: true 
+                        }
+                    })
+
+                    if (member) {
+                        entityDetails = {
+                            ...member,
+                            id: member.id,
+                            name: member.name,
+                            memberNumber: member.memberNumber,
+                            email: member.contactInfo?.email,
+                            phoneNumber: member.contactInfo?.mobile || member.contact,
+                            nationalId: member.nationalId,
+                            status: member.status,
+                        }
+                        description = `New Member Registration: ${member.name}`
+                        requesterName = member.name
+                    }
                 }
             } catch (error) {}
 
+            // Governance Tracking
+            const PRIVILEGED_ROLES = ['TREASURER', 'CHAIRPERSON', 'SECRETARY', 'SYSTEM_ADMIN'];
+            const ENTITY_PERMISSION_MAP: Record<string, string[]> = {
+                'LOAN': ['APPROVE_LOANS', 'APPROVE_LOAN', 'canApprove'],
+                'LOAN_NOTE': ['APPROVE_NOTE', 'APPROVE_LOAN_NOTES', 'canApproveLoanNotes'],
+                'LOAN_NOTE_PAYMENT': ['APPROVE_NOTE', 'APPROVE_LOAN_NOTES', 'canApproveLoanNotes'],
+                'LOAN_NOTE_SETTLEMENT': ['APPROVE_NOTE', 'APPROVE_LOAN_NOTES', 'canApproveLoanNotes'],
+                'MEMBER_REGISTRATION': ['APPROVE_MEMBERS', 'canApproveMember'],
+                'EXPENSE': ['APPROVE_EXPENSES', 'canApprove'],
+            };
+
+            const requiredPerms = ENTITY_PERMISSION_MAP[req.entityType] || ['ALL'];
+
+            const eligibleApprovals = req.actions.filter(a => {
+                const perms = a.actor.permissions as any;
+                if (!perms) return false;
+                if (a.actor.role === 'SYSTEM_ADMIN') return true;
+
+                if (Array.isArray(perms)) {
+                    return perms.includes('ALL') || requiredPerms.some(p => perms.includes(p));
+                }
+                if (typeof perms === 'object') {
+                    return perms['ALL'] === true || requiredPerms.some(p => perms[p] === true);
+                }
+                return false;
+            });
+
+            const hasPrivilegedRole = eligibleApprovals.some(a => PRIVILEGED_ROLES.includes(a.actor.role));
+
             // Permissions Check: Can the current user act on this stage?
-            const canApprove = req.currentStage ? hasPermission(userRole, req.currentStage.requiredRole as any, userPermissions) : false;
+            const userHasAlreadyVoted = req.actions.some(a => a.actorId === session.user.id && a.stageId === req.currentStageId);
+            const canApprove = req.currentStage && !userHasAlreadyVoted ? hasPermission(userRole, req.currentStage.requiredRole as any, userPermissions) : false;
+
+            // Determine Failure Reason
+            const quorumRequired = req.currentStage?.minVotesRequired || 1;
+            const quorumMet = eligibleApprovals.length >= quorumRequired;
+            
+            let failureReason: 'INSUFFICIENT_APPROVALS' | 'MISSING_REQUIRED_ROLE' | null = null;
+            if (!quorumMet) {
+                failureReason = 'INSUFFICIENT_APPROVALS';
+            } else if (!hasPrivilegedRole) {
+                failureReason = 'MISSING_REQUIRED_ROLE';
+            }
 
             return {
                 id: req.id,
-                type: req.entityType as any,
+                type: req.entityType === 'MEMBER_REGISTRATION' ? 'MEMBER' : req.entityType as any,
                 referenceId: req.entityId,
-                referenceTable: req.entityType === 'LOAN_NOTE' ? 'loan_notes' : (req.entityType === 'LOAN' ? 'loans' : 'Unknown'),
+                referenceTable: req.entityType === 'LOAN_NOTE' ? 'loan_notes' : (req.entityType === 'LOAN' ? 'loans' : 'members'),
                 requesterId: req.requesterId,
                 requesterName: requesterName || 'Unknown',
                 description: description || `Request regarding ${req.entityType}`,
@@ -189,23 +185,22 @@ export async function getPendingApprovals() {
                 updatedAt: req.updatedAt,
                 entityDetails,
                 canApprove,
-                isWorkflowRequest: true // Flag for processor
+                isWorkflowRequest: true, // Flag for processor
+                governance: {
+                    eligibleVotes: eligibleApprovals.length,
+                    quorumRequired,
+                    hasPrivilegedRole,
+                    failureReason,
+                    missingRoleLabel: MESSAGES.GOVERNANCE.MISSING_PRIVILEGED_ROLE(),
+                    isLoan: req.entityType === 'LOAN',
+                    isNote: ['LOAN_NOTE', 'LOAN_NOTE_PAYMENT', 'LOAN_NOTE_SETTLEMENT'].includes(req.entityType)
+                }
             }
         })
     )
 
-    // Deduplication Strategy: 
-    // If an entity has a WorkflowRequest, we MUST hide its legacy ApprovalRequest to prevent duplicates in the inbox.
-    const activeWorkflowEntityIds = new Set(workflowRequests.map(w => w.entityId))
-    
-    // Filter out legacy requests that have a corresponding modern workflow
-    const deduplicatedLegacy = enrichedLegacy.filter(req => {
-        if (!req) return false
-        return !activeWorkflowEntityIds.has(req.referenceId)
-    })
-
     // Filter out nulls and combine
-    const allRequests = [...deduplicatedLegacy, ...enrichedWorkflow].filter(req => req !== null)
+    const allRequests = enrichedWorkflow.filter(req => req !== null)
     
     // Sort combined list by date desc
     return (allRequests as any[]).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -220,46 +215,21 @@ export async function getApprovalCounts() {
         const userRole = session.user.role || 'MEMBER'
         const userPermissions = (session.user as any).permissions
 
-        // 1. Get Base Role Permissions
-        const rolePerms = ROLE_PERMISSIONS[userRole] || []
+        // Fetch all pending universal workflow requests
+        const workflowRequests = await db.workflowRequest.findMany({
+            where: { status: 'PENDING' },
+            include: {
+                currentStage: true
+            }
+        })
 
-        // 2. Merge Granular Permissions
-        let combinedPermissions: string[] = [...rolePerms]
+        // Count requests where the user has permission to approve the current stage
+        const count = workflowRequests.filter(req => {
+            if (!req.currentStage) return false;
+            return hasPermission(userRole, req.currentStage.requiredRole as any, userPermissions);
+        }).length;
 
-        if (userPermissions && Array.isArray(userPermissions)) {
-            combinedPermissions = [...combinedPermissions, ...userPermissions]
-        } else if (userPermissions && typeof userPermissions === 'object') {
-            const extraKeys = Object.keys(userPermissions).filter(k => userPermissions[k] === true)
-            combinedPermissions = [...combinedPermissions, ...extraKeys]
-        }
-
-        // 3. Check for ALL
-        const hasAll = combinedPermissions.includes('ALL')
-
-        // Check if user has permission to approve loans
-        const canApproveLoans = hasAll ||
-            combinedPermissions.includes('APPROVE_LOANS') ||
-            combinedPermissions.includes('canApprove') ||
-            ['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER'].includes(userRole)
-
-        let totalCount = 0
-
-        if (canApproveLoans) {
-            const loanCount = await db.loan.count({
-                where: {
-                    status: 'PENDING_APPROVAL',
-                    // Exclude loans where I have already voted
-                    approvals: {
-                        none: {
-                            approverId: session.user.memberId
-                        }
-                    }
-                }
-            })
-            totalCount += loanCount
-        }
-
-        return totalCount
+        return count;
     } catch (error) {
         return 0
     }

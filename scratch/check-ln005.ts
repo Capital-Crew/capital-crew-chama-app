@@ -1,84 +1,92 @@
-
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient, EntityType } from '@prisma/client'
 const prisma = new PrismaClient()
 
 async function main() {
-  console.log("Checking Loan table for LN005...")
-  const loan = await prisma.loan.findUnique({
-    where: { loanApplicationNumber: 'LN005' },
-    include: {
-      member: true,
-      approvals: true
-    }
-  })
-  
-  if (loan) {
-    console.log("Found in Loan table:")
-    console.log(JSON.stringify(loan, null, 2))
+    const loanAppNumber = 'LN005'
+    console.log(`--- INVESTIGATING ${loanAppNumber} ---`)
 
-    console.log("\nChecking WorkflowRequests for Loan LN005...")
-    const wfRequests = await prisma.workflowRequest.findMany({
-      where: {
-        entityId: loan.id,
-        entityType: 'LOAN'
-      },
-      include: {
-        currentStage: true,
-        actions: {
-          include: {
-            actor: true
-          }
+    const loan = await prisma.loan.findFirst({
+        where: { loanApplicationNumber: loanAppNumber },
+        include: {
+            member: true,
         }
-      }
     })
-    console.log(JSON.stringify(wfRequests, null, 2))
 
-    console.log("\nChecking ApprovalRequests for Loan LN005...")
-    const appRequests = await prisma.approvalRequest.findMany({
-      where: {
-        referenceId: loan.id,
-        type: 'LOAN'
-      }
-    })
-    console.log(JSON.stringify(appRequests, null, 2))
-  } else {
-    console.log("Not found in Loan table.")
-  }
-
-  console.log("\nChecking LoanNote table for LN005...")
-  const loanNote = await prisma.loanNote.findUnique({
-    where: { referenceNo: 'LN005' },
-    include: {
-      floater: true,
-      subscriptions: true
+    if (!loan) {
+        console.log(`Loan ${loanAppNumber} not found.`)
+        return
     }
-  })
 
-  if (loanNote) {
-    console.log("Found in LoanNote table:")
-    console.log(JSON.stringify(loanNote, null, 2))
+    console.log(`Loan ID: ${loan.id}`)
+    console.log(`Status: ${loan.approvalStatus}`)
 
-    console.log("\nChecking WorkflowRequests for LoanNote LN005...")
-    const wfRequests = await prisma.workflowRequest.findMany({
-      where: {
-        entityId: loanNote.id,
-        entityType: 'LOAN_NOTE'
-      },
-      include: {
-        currentStage: true,
-        actions: {
-          include: {
-            actor: true
-          }
+    const request = await prisma.workflowRequest.findFirst({
+        where: { 
+            entityId: loan.id,
+            entityType: EntityType.LOAN,
+            status: 'PENDING'
+        },
+        include: {
+            currentStage: true,
+            actions: {
+                include: {
+                    actor: {
+                        select: {
+                            username: true,
+                            role: true,
+                            permissions: true
+                        }
+                    }
+                }
+            }
         }
-      }
     })
-    console.log(JSON.stringify(wfRequests, null, 2))
-  } else {
-    console.log("Not found in LoanNote table.")
-  }
+
+    if (!request) {
+        console.log("No pending workflow request found for this loan.")
+        return
+    }
+
+    console.log(`Current Stage: ${request.currentStage?.name} (Min Votes: ${request.currentStage?.minVotesRequired})`)
+    console.log(`Total Actions: ${request.actions.length}`)
+
+    const PRIVILEGED_ROLES = ['TREASURER', 'CHAIRPERSON', 'SECRETARY', 'SYSTEM_ADMIN']
+    
+    console.log("\nVotes Detail:")
+    let eligibleCount = 0
+    let hasPrivileged = false
+
+    request.actions.forEach(a => {
+        const perms = a.actor.permissions as any
+        let hasApprovePerm = false
+        if (Array.isArray(perms)) {
+            hasApprovePerm = perms.includes('APPROVE_LOANS') || perms.includes('APPROVE_LOAN') || perms.includes('ALL')
+        } else if (typeof perms === 'object' && perms !== null) {
+            hasApprovePerm = perms['APPROVE_LOANS'] === true || perms['canApprove'] === true || perms['ALL'] === true || perms['APPROVE_LOAN'] === true
+        }
+
+        const isPrivileged = PRIVILEGED_ROLES.includes(a.actor.role)
+        console.log(`- ${a.actor.username} (${a.actor.role}): Action=${a.action}, Eligible=${hasApprovePerm}, Privileged=${isPrivileged}`)
+        
+        if (a.action === 'APPROVED' && hasApprovePerm) {
+            eligibleCount++
+            if (isPrivileged) hasPrivileged = true
+        }
+    })
+
+    console.log(`\nGovernance Result:`)
+    console.log(`Eligible Votes: ${eligibleCount} / ${request.currentStage?.minVotesRequired || 1}`)
+    console.log(`Privileged Role Voted: ${hasPrivileged}`)
+
+    if (eligibleCount >= (request.currentStage?.minVotesRequired || 1) && !hasPrivileged) {
+        console.log("CRITICAL: Quorum met but MISSING privileged role approval.")
+    } else if (eligibleCount < (request.currentStage?.minVotesRequired || 1)) {
+        console.log("Result: Still pending due to INSUFFICIENT VOTES.")
+    } else {
+        console.log("Result: Should be approved. Investigating engine sync...")
+    }
 }
 
 main()
-  .catch(e => console.error(e))
-  .finally(async () => await prisma.$disconnect())
+    .catch(e => console.error(e))
+    .finally(async () => await prisma.$disconnect())

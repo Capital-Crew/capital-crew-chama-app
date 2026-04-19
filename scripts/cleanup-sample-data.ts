@@ -28,7 +28,6 @@ async function main() {
   await prisma.loanDraft.deleteMany({})
   await prisma.loanApproval.deleteMany({})
   await prisma.guarantorMap.deleteMany({})
-  await prisma.expenseApproval.deleteMany({})
   await prisma.transferApproval.deleteMany({})
   await prisma.welfareApproval.deleteMany({})
   await prisma.meetingAttendee.deleteMany({})
@@ -54,7 +53,6 @@ async function main() {
   await prisma.generalLedger.deleteMany({})
   await prisma.shareTransaction.deleteMany({})
   await prisma.workflowRequest.deleteMany({})
-  await prisma.approvalRequest.deleteMany({})
 
   // 4. Projections & Summaries
   console.log('Clearing projections and summaries...')

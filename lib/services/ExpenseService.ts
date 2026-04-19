@@ -1,7 +1,6 @@
-import { db } from '@/lib/db'
-import { Prisma, ExpenseStatus, AuditLogAction, ExpenseType, SystemAccountType } from '@prisma/client'
 import { Decimal } from 'decimal.js'
 import { getSystemMappingsDict } from '@/app/actions/system-accounting'
+import { MESSAGES } from '@/lib/constants/messages'
 
 /**
  * ExpenseService
@@ -65,7 +64,7 @@ export class ExpenseService {
             include: { recipient: true, subCategory: true }
         })
 
-        if (!expense) throw new Error("Expense not found during finalization")
+        if (!expense) throw new Error(MESSAGES.EXPENSE.NOT_FOUND)
 
         const { AccountingEngine } = await import('@/lib/accounting/AccountingEngine')
         const mappings = await getSystemMappingsDict()
@@ -79,7 +78,7 @@ export class ExpenseService {
                 where: { memberId: expense.recipientId },
                 include: { glAccount: true }
             })
-            if (!wallet || !wallet.glAccount) throw new Error("Recipient member does not have an active wallet.")
+            if (!wallet || !wallet.glAccount) throw new Error(MESSAGES.EXPENSE.RECIPIENT_WALLET_NOT_FOUND)
 
             creditAccountId = wallet.glAccountId
             isWalletTransaction = true
@@ -88,7 +87,7 @@ export class ExpenseService {
         }
 
         if (!creditAccountId) {
-            throw new Error("⚠️ Configuration Required: Please map the 'Expense Payment Source' GL account.")
+            throw new Error(MESSAGES.EXPENSE.WALLET_NOT_FOUND)
         }
 
         const approvedAmount = expense.approvedAmount || expense.requestedAmount
@@ -163,7 +162,7 @@ export class ExpenseService {
             })
 
             if (!expense || expense.status !== ExpenseStatus.DISBURSED || expense.type !== ExpenseType.IMPREST) {
-                throw new Error("Invalid expense for surrender.")
+                throw new Error(MESSAGES.EXPENSE.INVALID_STATUS(expense?.status || 'UNKNOWN'))
             }
 
             const approvedAmount = Number(expense.approvedAmount || expense.amount)
@@ -174,7 +173,7 @@ export class ExpenseService {
                 include: { glAccount: true }
             })
 
-            if (!wallet || !wallet.glAccount) throw new Error("User wallet not found for surrender settlement. Ensure the recipient has an active wallet.")
+            if (!wallet || !wallet.glAccount) throw new Error(MESSAGES.EXPENSE.RECIPIENT_WALLET_NOT_FOUND)
 
             const { AccountingEngine } = await import('@/lib/accounting/AccountingEngine')
             let balanceAction: any = null

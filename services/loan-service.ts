@@ -11,10 +11,9 @@
  * - Admin scripts (migrations)
  */
 
-import { db } from '@/lib/db'
-import { AccountingEngine } from '@/lib/accounting/AccountingEngine'
 import { Decimal } from '@prisma/client/runtime/library'
 import { getSystemMappingsDict } from '@/app/actions/system-accounting'
+import { MESSAGES } from '@/lib/constants/messages'
 import { Prisma, LoanStatus, LoanEventType, AuditLogAction, SystemAccountType } from '@prisma/client'
 import { WalletService } from '@/lib/services/WalletService'
 import { LoanBalanceService } from '@/services/loan-balance'
@@ -76,7 +75,7 @@ export class LoanService {
         })
 
         if (!loan) {
-            throw new Error('Loan not found')
+            throw new Error(MESSAGES.LOAN.NOT_FOUND)
         }
 
         // Use Decimal for all financial calculations
@@ -128,7 +127,7 @@ export class LoanService {
     static async processRepayment(input: RepaymentInput): Promise<RepaymentResult> {
         // 1. Validate amount
         if (input.amount <= 0) {
-            throw new Error('Amount must be greater than zero')
+            throw new Error(MESSAGES.LOAN.INVALID_AMOUNT)
         }
 
         // 2. Fetch loan
@@ -142,7 +141,7 @@ export class LoanService {
         }
 
         if (!['ACTIVE', 'OVERDUE'].includes(loan.status)) {
-            throw new Error(`Cannot repay loan with status: ${loan.status}`)
+            throw new Error(MESSAGES.LOAN.DISBURSE_DENIED(loan.status))
         }
 
         // 3. Calculate outstanding balances
@@ -152,7 +151,10 @@ export class LoanService {
         const amountDecimal = new Decimal(input.amount)
         if (amountDecimal.gt(balances.total)) {
             throw new Error(
-                `Repayment amount (KES ${input.amount.toLocaleString()}) exceeds outstanding balance (KES ${balances.total.toNumber().toLocaleString()})`
+                MESSAGES.LOAN.OVERPAYMENT(
+                    input.amount.toLocaleString(),
+                    balances.total.toNumber().toLocaleString()
+                )
             )
         }
 
@@ -427,9 +429,9 @@ export class LoanService {
                 }
             })
 
-            if (!loan) throw new Error("Loan not found")
+            if (!loan) throw new Error(MESSAGES.LOAN.NOT_FOUND)
             if (loan.status !== LoanStatus.APPROVED) {
-                throw new Error(`Loan must be APPROVED to disburse. Current status: ${loan.status}`)
+                throw new Error(MESSAGES.LOAN.DISBURSE_DENIED(loan.status))
             }
 
             // 2. Ensure Wallet exists
@@ -441,7 +443,7 @@ export class LoanService {
             const netDisbursement = loan.netDisbursementAmount
 
             if (netDisbursement.isNegative()) {
-                throw new Error(`Net disbursement amount is negative (KES ${netDisbursement}).`)
+                throw new Error(MESSAGES.LOAN.NEGATIVE_DISBURSEMENT)
             }
 
             // 3. Record Wallet Transaction

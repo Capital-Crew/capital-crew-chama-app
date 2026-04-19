@@ -4,6 +4,20 @@ import { auth } from "@/auth"
 import { db as prisma } from "@/lib/db"
 import { EntityType, ApprovalAction, WorkflowStatus, UserRole, Prisma } from "@prisma/client" // Ensure these are exported from generated client once migrated
 import { revalidatePath } from "next/cache"
+import { MESSAGES } from "@/lib/constants/messages"
+
+// Governance Constants
+export const PRIVILEGED_ROLES = ['TREASURER', 'CHAIRPERSON', 'SECRETARY', 'SYSTEM_ADMIN'];
+
+// Map entity types to the required permission identifiers in string format
+export const ENTITY_PERMISSION_MAP: Record<string, string[]> = {
+    'LOAN': ['APPROVE_LOANS', 'APPROVE_LOAN', 'canApprove'],
+    'LOAN_NOTE': ['APPROVE_NOTE', 'APPROVE_LOAN_NOTES', 'canApproveLoanNotes'],
+    'LOAN_NOTE_PAYMENT': ['APPROVE_NOTE', 'APPROVE_LOAN_NOTES', 'canApproveLoanNotes'],
+    'LOAN_NOTE_SETTLEMENT': ['APPROVE_NOTE', 'APPROVE_LOAN_NOTES', 'canApproveLoanNotes'],
+    'MEMBER': ['APPROVE_MEMBERS', 'canApproveMember'],
+    'EXPENSE': ['APPROVE_EXPENSES', 'canApprove'],
+};
 
 // Helper to check role hierarchy or specific permission
 function hasRole(userRole: string, requiredRole: string) {
@@ -19,31 +33,23 @@ async function checkWorkflowPermission(user: any, request: any): Promise<boolean
     if (hasRole(user.role, requiredRole)) return true;
 
     // Special: For Loan Workflows, any "High Authority" role can approve
-    const highAuthorityRoles = ['CHAIRPERSON', 'TREASURER', 'SECRETARY'];
-    if (request.entityType === 'LOAN' && highAuthorityRoles.includes(user.role)) {
+    const highAuthorityRoles = ['CHAIRPERSON', 'TREASURER', 'SECRETARY', 'SYSTEM_ADMIN'];
+    if (request.entityType === 'LOAN' && (highAuthorityRoles.includes(user.role) || user.role === 'SYSTEM_ADMIN')) {
         return true;
     }
 
     // 2. Granular Permissions Check
     const userPermissions = user.permissions;
-    const isNoteWorkflow = ['LOAN_NOTE', 'LOAN_NOTE_PAYMENT', 'LOAN_NOTE_SETTLEMENT'].includes(request.entityType);
-
-    // Special: Floater (Owner) can always vote on their own note
-    if (isNoteWorkflow && user.id === request.requesterId) return true;
+    const requiredPerms = ENTITY_PERMISSION_MAP[request.entityType] || ['ALL'];
 
     if (userPermissions) {
         if (Array.isArray(userPermissions)) {
-            if (userPermissions.includes("APPROVE_LOANS") || userPermissions.includes("ALL")) return true;
-            if (isNoteWorkflow && userPermissions.includes("APPROVE_LOAN_NOTES")) return true;
+            if (userPermissions.includes("ALL")) return true;
+            if (requiredPerms.some(p => userPermissions.includes(p))) return true;
         } else if (typeof userPermissions === "object") {
             const p = userPermissions as any;
-            if (p["APPROVE_LOANS"] === true || p["canApprove"] === true || p["ALL"] === true) return true;
-            if (isNoteWorkflow && p["APPROVE_LOAN_NOTES"] === true) {
-                // Also check if they are Chairperson/Treasurer as requested by user
-                if (['CHAIRPERSON', 'TREASURER'].includes(user.role)) return true;
-                // If they have the specific right but aren't those roles, still allow if granted
-                return true; 
-            }
+            if (p["ALL"] === true) return true;
+            if (requiredPerms.some(perm => p[perm] === true)) return true;
         }
     }
 
@@ -147,7 +153,7 @@ export async function initiateWorkflow(entityType: EntityType, entityId: string,
 export async function processWorkflowAction(requestId: string, action: ApprovalAction, notes?: string) {
     try {
         const session = await auth()
-        if (!session?.user) return { success: false, error: "Unauthorized" }
+        if (!session?.user) return { success: false, error: MESSAGES.AUTH.UNAUTHORIZED }
 
         const user = await prisma.user.findUnique({ where: { id: session.user.id } })
         if (!user) return { success: false, error: "User not found" }
@@ -161,8 +167,8 @@ export async function processWorkflowAction(requestId: string, action: ApprovalA
             }
         })
 
-        if (!request) return { success: false, error: "Request not found" }
-        if (request.status !== 'PENDING') return { success: false, error: "Request is already finalized" }
+        if (!request) return { success: false, error: MESSAGES.GOVERNANCE.REQ_NOT_FOUND }
+        if (request.status !== 'PENDING') return { success: false, error: MESSAGES.GOVERNANCE.FINALIZED }
         if (!request.currentStage) return { success: false, error: "System Error: Request has no current stage" }
 
         const isNoteWorkflow = ['LOAN_NOTE', 'LOAN_NOTE_PAYMENT', 'LOAN_NOTE_SETTLEMENT'].includes(request.entityType);
@@ -170,12 +176,12 @@ export async function processWorkflowAction(requestId: string, action: ApprovalA
         // 2. Permission Check
         const isAuthorized = await checkWorkflowPermission(user, request);
         if (!isAuthorized) {
-            return { success: false, error: `Unauthorized: You need to be a ${request.currentStage.requiredRole} to perform this action.` }
+            return { success: false, error: MESSAGES.AUTH.ACCESS_DENIED }
         }
 
         // 2.5 Conflict of Interest Check: Self-Approval Block (Standard Loans Only)
         if (request.entityType === 'LOAN' && request.requesterId === user.id) {
-            return { success: false, error: "Self-approval is prohibited to ensure independent review." }
+            return { success: false, error: MESSAGES.GOVERNANCE.SELF_APPROVAL }
         }
 
         // 3. Execution
@@ -190,7 +196,7 @@ export async function processWorkflowAction(requestId: string, action: ApprovalA
             })
 
             if (existingVote) {
-                throw new Error("You have already voted on this stage.")
+                throw new Error(MESSAGES.GOVERNANCE.ALREADY_VOTED)
             }
 
             // Log the Action
@@ -241,105 +247,138 @@ export async function processWorkflowAction(requestId: string, action: ApprovalA
         }
 
         if (action === 'APPROVED') {
-            // CHECK VOTES AND ADMIN QUORUM
-            const approvedActions = await tx.workflowAction.findMany({
-                where: {
-                    requestId,
-                    stageId: request.currentStage!.id,
-                    action: 'APPROVED'
-                },
-                include: { actor: { select: { role: true } } }
-            })
+            await evaluateAndAdvance(tx, request.id);
+        }
+    })
 
-            const approvalCount = approvedActions.length;
-            const minVotes = request.currentStage!.minVotesRequired || 1
+    revalidatePath('/dashboard/approvals')
+    revalidatePath(`/loans/${request.entityId}`)
+    return { success: true }
+  } catch (error: any) {
+    console.error("Workflow Engine Error:", error);
+    return { success: false, error: error.message || "An unexpected workflow error occurred" }
+  }
+}
 
-            // Quorum Logic for Loan Notes (Respecting Floater Self-Approval Setting)
-            let effectiveApprovalCount = approvalCount;
-            if (isNoteWorkflow) {
-                const settings = await tx.saccoSettings.findFirst();
-                const allowFloaterSelfApproval = (settings as any)?.clnFloaterSelfApproval ?? true;
-
-                if (!allowFloaterSelfApproval) {
-                    // Filter out the requester from the count
-                    const independentApprovals = approvedActions.filter(a => a.actorId !== request.requesterId);
-                    effectiveApprovalCount = independentApprovals.length;
-                }
-            }
-
-            // NEW ADMIN CHECK
-            let adminVoted = true; // Default true for non-loan entities
-            if (request.entityType === 'LOAN') {
-                const adminRoles = ['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER', 'SECRETARY'];
-                adminVoted = approvedActions.some(a => adminRoles.includes(a.actor.role));
-            }
-
-            if (effectiveApprovalCount >= minVotes && adminVoted) {
-                // THRESHOLD MET: Move to Next Stage
-                const currentStep = request.currentStage!.stepNumber
-                const allStages = request.workflow.stages // Ordered asc
-
-                const nextStage = allStages.find((s: any) => s.stepNumber > currentStep)
-
-                if (nextStage) {
-                    // Advance
-                    await tx.workflowRequest.update({
-                        where: { id: requestId },
-                        data: { currentStageId: nextStage.id }
-                    })
-                } else {
-                    // No next stage -> Workflow Complete
-                    await tx.workflowRequest.update({
-                        where: { id: requestId },
-                        data: {
-                            status: WorkflowStatus.APPROVED,
-                            currentStageId: null
-                        }
-                    })
-
-                    // Trigger Completion Logic
-                    if (request.entityType === 'LOAN') {
-                        await tx.loan.update({
-                            where: { id: request.entityId },
-                            data: { status: 'APPROVED' }
-                        })
-                    } else if (request.entityType === 'MEMBER') {
-                        await tx.member.update({
-                            where: { id: request.entityId },
-                            data: { status: 'ACTIVE' }
-                        })
-                    } else if (request.entityType as any === 'LOAN_NOTE') {
-                        await tx.loanNote.update({
-                            where: { id: request.entityId },
-                            data: { status: 'OPEN' as any }
-                        })
-                    } else if (request.entityType as any === 'LOAN_NOTE_PAYMENT' || (request.entityType as any) === 'LOAN_NOTE_SETTLEMENT') {
-                        // For payments and settlements, the final stage approval means
-                        // the schedule is now ready for Payout Execution.
-                        const schedule = await tx.loanNotePaymentSchedule.findUnique({
-                            where: { id: request.entityId }
-                        });
-                        if (schedule) {
-                            await tx.loanNotePaymentSchedule.update({
-                                where: { id: request.entityId },
-                                data: { status: 'AWAITING_CONFIRMATION' }
-                            });
-                        }
-                    } else if (request.entityType === 'EXPENSE') {
-                        const { finalizeExpense } = await import('@/app/actions/expenses')
-                        await finalizeExpense(request.entityId, tx)
-                    }
-                }
+/**
+ * Internal helper to check governance and move workflow forward.
+ * Can be called by processWorkflowAction OR by the manual Sync utility.
+ */
+async function evaluateAndAdvance(tx: Prisma.TransactionClient, requestId: string) {
+    const request = await tx.workflowRequest.findUnique({
+        where: { id: requestId },
+        include: {
+            currentStage: true,
+            workflow: { include: { stages: { orderBy: { stepNumber: 'asc' } } } },
+            actions: {
+                where: { action: 'APPROVED' },
+                include: { actor: { select: { id: true, role: true, permissions: true } } }
             }
         }
     })
 
-        revalidatePath('/dashboard/approvals')
-        revalidatePath(`/loans/${request.entityId}`)
+    if (!request || !request.currentStage || request.status !== 'PENDING') return;
+
+    // 1. Filter Eligible Approvals (Those with permission)
+    const requiredPerms = ENTITY_PERMISSION_MAP[request.entityType] || ['ALL'];
+    
+    const eligibleApprovals = request.actions.filter(a => {
+        const perms = a.actor.permissions as any;
+        if (!perms) return false;
+        
+        // System Admin bypass
+        if (a.actor.role === 'SYSTEM_ADMIN') return true;
+
+        if (Array.isArray(perms)) {
+            return perms.includes('ALL') || requiredPerms.some(p => perms.includes(p));
+        }
+        if (typeof perms === 'object') {
+            return perms['ALL'] === true || requiredPerms.some(p => perms[p] === true);
+        }
+        return false;
+    });
+
+    const effectiveApprovalCount = eligibleApprovals.length;
+    const minVotes = request.currentStage.minVotesRequired || 1
+
+    // 2. Check for Privileged Role
+    const hasPrivilegedRole = eligibleApprovals.some(a => PRIVILEGED_ROLES.includes(a.actor.role));
+
+    // 3. Final Decision Logic
+    const quorumMet = effectiveApprovalCount >= minVotes;
+    
+    // BOTH Loans AND Notes now require at least one Privileged Role for finalization
+    const canFinalize = quorumMet && hasPrivilegedRole;
+
+    if (canFinalize) {
+        // THRESHOLD MET: Move to Next Stage
+        const currentStep = request.currentStage.stepNumber
+        const allStages = request.workflow.stages 
+
+        const nextStage = allStages.find((s: any) => s.stepNumber > currentStep)
+
+        if (nextStage) {
+            await tx.workflowRequest.update({
+                where: { id: requestId },
+                data: { currentStageId: nextStage.id }
+            })
+        } else {
+            // No next stage -> Workflow Complete
+            await tx.workflowRequest.update({
+                where: { id: requestId },
+                data: { status: WorkflowStatus.APPROVED, currentStageId: null }
+            })
+
+            // Trigger Completion Logic
+            if (request.entityType === 'LOAN') {
+                await tx.loan.update({
+                    where: { id: request.entityId },
+                    data: { status: 'APPROVED' }
+                })
+            } else if (request.entityType === 'MEMBER') {
+                await tx.member.update({
+                    where: { id: request.entityId },
+                    data: { status: 'ACTIVE' }
+                })
+            } else if (request.entityType as any === 'LOAN_NOTE') {
+                await tx.loanNote.update({
+                    where: { id: request.entityId },
+                    data: { status: 'OPEN' as any }
+                })
+            } else if (request.entityType as any === 'LOAN_NOTE_PAYMENT' || (request.entityType as any) === 'LOAN_NOTE_SETTLEMENT') {
+                const schedule = await tx.loanNotePaymentSchedule.findUnique({ where: { id: request.entityId } });
+                if (schedule) {
+                    await tx.loanNotePaymentSchedule.update({
+                        where: { id: request.entityId },
+                        data: { status: 'AWAITING_CONFIRMATION' }
+                    });
+                }
+            } else if (request.entityType === 'EXPENSE') {
+                const { finalizeExpense } = await import('@/app/actions/expenses')
+                await finalizeExpense(request.entityId, tx)
+            }
+        }
+    }
+}
+
+/**
+ * ADMIN UTILITY: Manually trigger re-evaluation of a workflow.
+ * Useful when a request is "stuck" despite meeting governance rules.
+ */
+export async function syncWorkflowRequest(requestId: string) {
+    const session = await auth()
+    if (!session?.user || !['SYSTEM_ADMIN', 'CHAIRPERSON'].includes(session.user.role)) {
+        return { success: false, error: MESSAGES.AUTH.UNAUTHORIZED }
+    }
+
+    try {
+        await prisma.$transaction(async (tx) => {
+            await evaluateAndAdvance(tx, requestId);
+        });
+        revalidatePath('/admin/workflows');
         return { success: true }
     } catch (error: any) {
-        console.error("Workflow Engine Error:", error);
-        return { success: false, error: error.message || "An unexpected workflow error occurred" }
+        return { success: false, error: error.message }
     }
 }
 

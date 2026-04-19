@@ -68,12 +68,16 @@ export default async function LoanDraftPage({ params }: PageProps) {
         }
     }
 
+    // Fetch current penalty balance from ledger
+    const { getLoanPenaltyBalance } = await import('@/lib/accounting/AccountingEngine')
+    const currentPenalties = await getLoanPenaltyBalance(loan.id)
+
     // Serialize for Client Component
     const serializedLoan = {
         ...loan,
         amount: Number(loan.amount || 0),
         interestRate: Number(loan.interestRate || 0),
-        penalties: Number(loan.penalties || 0),
+        penalties: currentPenalties,
         // ... other decimals
         memberContributionsAtApplication: Number(loan.memberContributionsAtApplication || 0),
         grossQualifyingAmount: Number(loan.grossQualifyingAmount || 0),

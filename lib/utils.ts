@@ -47,8 +47,8 @@ export const calculateOutstandingBalance = (loan: Loan, revenues: Revenue[]): nu
             return sum;
         }, 0);
 
-    // Use penalties if exist, or 0.
-    const totalRepayable = (loan.repaymentSchedule as any[]).reduce((sum, item) => sum + item.total, 0) + Number(loan.penalties || 0);
+    // Use penalties if exist, or 0. (Cast to any for legacy support after column removal)
+    const totalRepayable = (loan.repaymentSchedule as any[]).reduce((sum, item) => sum + item.total, 0) + Number((loan as any).penalties || 0);
 
     return Math.max(0, totalRepayable - totalPaidForLoan);
 };

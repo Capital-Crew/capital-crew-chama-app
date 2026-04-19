@@ -99,16 +99,7 @@ export class PenaltyService {
                 }
             })
 
-            // B. Update Loan Balance (Cache only)
-            // Note: Penalties are now authoritative in LedgerTransaction.
-            await tx.loan.update({
-                where: { id: item.loanId },
-                data: {
-                    penalties: { increment: penaltyAmount.toNumber() }
-                }
-            })
-
-            // C. Post Journal Entry (Dr Member Loan / Cr Penalty Revenue)
+            // B. Post Journal Entry (Dr Member Loan / Cr Penalty Revenue)
             // We reuse AccountingEngine
             await AccountingService.postLoanEvent(item.loanId, 'PENALTY_APPLIED', penaltyAmount.toNumber(), tx)
 

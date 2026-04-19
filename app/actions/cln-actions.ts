@@ -12,6 +12,7 @@ import { revalidatePath } from 'next/cache';
 import { handleWorkflowTransition } from './approval-workflow';
 import { CLNPostReturnsService } from '@/lib/services/CLN/CLNPostReturnsService';
 import { CLNSettlementService } from '@/lib/services/CLN/CLNSettlementService';
+import { MESSAGES } from '@/lib/constants/messages';
 
 /**
  * Issue a new Loan Note
@@ -37,7 +38,7 @@ export async function issueLoanNote(data: {
     idempotencyKey: string;
 }) {
     const session = await auth();
-    if (!session?.user) return { success: false, message: 'Unauthorized' };
+    if (!session?.user) return { success: false, message: MESSAGES.AUTH.UNAUTHORIZED };
 
     return await withIdempotency({
         key: data.idempotencyKey,
@@ -112,20 +113,20 @@ export async function subscribeToLoanNote(params: {
             });
 
             if (!note || note.status !== 'OPEN') {
-                return { success: false, message: 'Note is not open for subscription' };
+                return { success: false, message: MESSAGES.NOTE.NOT_OPEN };
             }
 
             // 2. Business Logic Validation
             if (amount < Number(note.minSubscription)) {
-                return { success: false, message: `Minimum subscription is ${note.minSubscription}` };
+                return { success: false, message: MESSAGES.NOTE.LIMIT_MIN(note.minSubscription.toString()) };
             }
             if (note.maxSubscription && amount > Number(note.maxSubscription)) {
-                return { success: false, message: `Maximum subscription is ${note.maxSubscription}` };
+                return { success: false, message: MESSAGES.NOTE.LIMIT_MAX(note.maxSubscription.toString()) };
             }
 
             const remainingNeeded = Number(note.totalAmount) - Number(note.subscribedAmount);
             if (amount > remainingNeeded) {
-                return { success: false, message: `Only ${remainingNeeded} remaining available for subscription` };
+                return { success: false, message: MESSAGES.NOTE.LIMIT_REMAINING(remainingNeeded.toLocaleString()) };
             }
 
             // 2b. Sufficient Balance Check
@@ -135,12 +136,12 @@ export async function subscribeToLoanNote(params: {
             });
 
             if (!wallet || !wallet.glAccount) {
-                return { success: false, message: 'Your wallet/accounting mapping not found' };
+                return { success: false, message: MESSAGES.NOTE.WALLET_NOT_FOUND };
             }
 
             const currentBalance = Number(wallet.glAccount.balance);
             if (currentBalance < amount) {
-                return { success: false, message: `Insufficient funds. Your balance is ${currentBalance}` };
+                return { success: false, message: MESSAGES.NOTE.INSUFFICIENT_FUNDS(currentBalance.toLocaleString()) };
             }
 
             // 3. Atomic Transaction
@@ -188,69 +189,15 @@ export async function subscribeToLoanNote(params: {
     });
 }
 
-/**
- * Admin action to approve a Loan Note for the market
- */
-export async function approveLoanNote(noteId: string, comment?: string) {
-    const session = await auth();
-    if (session?.user?.role !== 'SYSTEM_ADMIN') return { success: false, message: 'Forbidden' };
-
-    try {
-        const note = await db.$transaction(async (tx) => {
-            const updated = await tx.loanNote.update({
-                where: { id: noteId },
-                data: {
-                    status: 'OPEN',
-                    adminReviewComment: comment
-                }
-            });
-
-            await tx.loanNoteAuditLog.create({
-                data: {
-                    loanNoteId: noteId,
-                    action: 'APPROVED',
-                    performedBy: session.user.name || 'System Admin',
-                    notes: comment || 'Note approved for market listing',
-                    businessDate: new Date()
-                }
-            });
-
-            return updated;
-        });
-
-        revalidatePath('/loan-notes');
-        revalidatePath(`/loan-notes/${noteId}`);
-        return { success: true, data: note };
-    } catch (error: any) {
-        return { success: false, message: error.message };
-    }
-}
-
-/**
- * Admin action to reject a Loan Note
- */
-export async function rejectLoanNote(noteId: string, comment: string) {
-    const session = await auth();
-    if (session?.user?.role !== 'SYSTEM_ADMIN') return { success: false, message: 'Forbidden' };
-
-    const note = await db.loanNote.update({
-        where: { id: noteId },
-        data: {
-            status: 'REJECTED',
-            adminReviewComment: comment
-        }
-    });
-
-    revalidatePath('/admin/loan-notes');
-    return { success: true, data: note };
-}
+// Note Approval/Rejection is now handled via the Universal Workflow Engine (workflow-engine.ts)
+// The following legacy functions are removed to prevent governance bypass.
 
 /**
  * Release escrow funds to the Floater
  */
 export async function releaseEscrow(noteId: string, comment?: string) {
     const session = await auth();
-    if (session?.user?.role !== 'SYSTEM_ADMIN') return { success: false, message: 'Forbidden' };
+    if (session?.user?.role !== 'SYSTEM_ADMIN') return { success: false, message: MESSAGES.AUTH.ACCESS_DENIED };
 
     const note = await db.loanNote.findUnique({
         where: { id: noteId },
@@ -258,7 +205,7 @@ export async function releaseEscrow(noteId: string, comment?: string) {
     });
 
     if (!note || note.status !== 'OPEN' || note.escrowReleased) {
-        return { success: false, message: 'Invalid note state for escrow release' };
+        return { success: false, message: MESSAGES.NOTE.INVALID_STATE };
     }
 
     try {
@@ -338,7 +285,7 @@ export async function releaseEscrow(noteId: string, comment?: string) {
  */
 export async function executeScheduledPaymentBatch(scheduleId: string) {
     const session = await auth();
-    if (session?.user?.role !== 'SYSTEM_ADMIN') return { success: false, message: 'Forbidden' };
+    if (session?.user?.role !== 'SYSTEM_ADMIN') return { success: false, message: MESSAGES.AUTH.ACCESS_DENIED };
 
     const schedule = await db.loanNotePaymentSchedule.findUnique({
         where: { id: scheduleId },
@@ -366,10 +313,10 @@ export async function executeScheduledPaymentBatch(scheduleId: string) {
         where: { userId: note.floaterId },
         include: { glAccount: true }
     })) as (Wallet & { glAccount: any });
-    if (!floaterWallet) return { success: false, message: 'Floater wallet not found' };
+    if (!floaterWallet) return { success: false, message: MESSAGES.NOTE.WALLET_NOT_FOUND };
 
     if (!floaterWallet.glAccount || (floaterWallet.glAccount.balance as any).lessThan(schedule.groupAmount)) {
-        return { success: false, message: 'Insufficient funds in floater wallet' };
+        return { success: false, message: MESSAGES.NOTE.INSUFFICIENT_FUNDS(floaterWallet.glAccount?.balance?.toString() || '0') };
     }
 
     // 1. Prepare Payout Data
@@ -462,7 +409,7 @@ export async function executeScheduledPaymentBatch(scheduleId: string) {
  */
 export async function getDisbursementPreview(scheduleId: string) {
     const session = await auth();
-    if (!session?.user) return { success: false, message: 'Unauthorized' };
+    if (!session?.user) return { success: false, message: MESSAGES.AUTH.UNAUTHORIZED };
 
     try {
         const preview = await CLNPostReturnsService.getPreview(scheduleId);
@@ -497,13 +444,13 @@ export async function submitReturnsForApproval(data: {
 
             if (!schedule) return { success: false, message: 'Payment event not found' };
             if (schedule.loanNote.floaterId !== floaterId) {
-                return { success: false, message: 'Only the Note Issuer can post returns' };
+                return { success: false, message: MESSAGES.NOTE.ISSUER_ONLY };
             }
 
             // 2. Validate State Transition
             if (schedule.status !== 'UPCOMING') {
                 const message = schedule.status === 'PAID' 
-                    ? 'This payment has already been settled.' 
+                    ? MESSAGES.NOTE.ALREADY_SETTLED 
                     : 'This payment is already pending admin approval.';
                 return { success: false, message };
             }
@@ -519,7 +466,7 @@ export async function submitReturnsForApproval(data: {
                             where: { id: scheduleId },
                             data: { status: 'SHORTFALL' }
                         });
-                        throw new Error(`Insufficient funds. Required: ${preview.totalAmount}, Available: ${preview.floaterBalance}`);
+                        throw new Error(MESSAGES.NOTE.FUNDS_SHORTFALL(preview.totalAmount.toString(), preview.floaterBalance.toString()));
                     }
 
                     // Success Transition: UPCOMING -> AWAITING_COMMITTEE_APPROVAL
@@ -562,7 +509,7 @@ export async function submitReturnsForApproval(data: {
  */
 export async function getEarlySettlementPreview(noteId: string) {
     const session = await auth();
-    if (!session?.user) return { success: false, message: 'Unauthorized' };
+    if (!session?.user) return { success: false, message: MESSAGES.AUTH.UNAUTHORIZED };
 
     try {
         const preview = await CLNSettlementService.getEarlySettlementPreview(noteId);
@@ -596,13 +543,13 @@ export async function submitEarlySettlementRequest(data: {
             });
 
             if (!note || note.floaterId !== floaterId) {
-                return { success: false, message: 'Unauthorized note management' };
+                return { success: false, message: MESSAGES.NOTE.ISSUER_ONLY };
             }
 
             // 1. Calculate final total
             const preview = await CLNSettlementService.getEarlySettlementPreview(noteId);
             if (!preview.isSufficient) {
-                return { success: false, message: `Insufficient funds. Required: ${preview.totalAmount}` };
+                return { success: false, message: MESSAGES.NOTE.FUNDS_SHORTFALL(preview.totalAmount.toString(), preview.floaterBalance.toString()) };
             }
 
             try {

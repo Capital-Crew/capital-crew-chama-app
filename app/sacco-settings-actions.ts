@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { db as prisma } from '@/lib/db'
 import { auth } from '@/auth'
 import { withAudit } from '@/lib/with-audit'
-import { AuditLogAction } from '@prisma/client'
+import { AuditLogAction, EntityType } from '@prisma/client'
 
 /**
  * Get SACCO settings (create default if not exists)
@@ -125,14 +125,48 @@ export const updateSaccoSettings = withAudit(
                 data
             })
         }
+
+        // SYNC WORKFLOW ENGINE
+        await syncWorkflowStages(settings)
+
         ctx.captureAfter(settings);
         ctx.endStep('Update Sacco Settings');
 
         const serialized = serializeSettings(settings)
         revalidatePath('/admin/system')
+        revalidatePath('/admin/workflows')
+        revalidatePath('/dashboard/approvals')
         return serialized
     }
 );
+
+/**
+ * Sync Workflow Engine stages with current SaccoSettings
+ */
+async function syncWorkflowStages(settings: any) {
+    console.log("[SYNC] Propagating SaccoSettings to Workflow Engine...");
+
+    // 1. LOAN Workflow Synchronization
+    await prisma.workflowStage.updateMany({
+        where: {
+            workflow: { entityType: EntityType.LOAN },
+            isFinal: true // Standard configuration: last stage follows sacco settings
+        },
+        data: { minVotesRequired: settings.requiredApprovals }
+    })
+
+    // 2. WELFARE Workflow Synchronization
+    await prisma.workflowStage.updateMany({
+        where: {
+            workflow: { entityType: EntityType.WELFARE }
+        },
+        data: { minVotesRequired: settings.requiredWelfareApprovals }
+    })
+
+    // 3. Optional: Add more sync points as needed (Reschedule, TopUp)
+    
+    console.log("[SYNC] Workflow Engine successfully synchronized.");
+}
 
 
 

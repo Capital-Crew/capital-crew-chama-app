@@ -108,7 +108,13 @@ export async function getAllMemberLoans(memberId: string): Promise<Serialized<Me
         const loans = await db.loan.findMany({
             where: { memberId },
             orderBy: { disbursementDate: 'desc' },
-            include: {
+            select: {
+                id: true,
+                loanApplicationNumber: true,
+                amount: true,
+                status: true,
+                disbursementDate: true,
+                applicationDate: true,
                 member: true,
                 loanProduct: true,
                 repaymentInstallments: {
@@ -126,8 +132,15 @@ export async function getAllMemberLoans(memberId: string): Promise<Serialized<Me
             }
         });
 
-        // Use the centralized mapper for consistent logic
-        return serializeFinancials(loans.map(loan => mapLoanToTableRow(loan as any)));
+        // 1. Fetch penalty balances for all loans in parallel
+        const { getLoanPenaltyBalance } = await import('@/lib/accounting/AccountingEngine');
+        
+        const loansWithPenalties = await Promise.all(loans.map(async loan => {
+            const penalty = await getLoanPenaltyBalance(loan.id);
+            return mapLoanToTableRow(loan as any, penalty);
+        }));
+
+        return serializeFinancials(loansWithPenalties);
     } catch (error) {
         return [];
     }

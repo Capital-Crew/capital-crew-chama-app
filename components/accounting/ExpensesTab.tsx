@@ -48,9 +48,6 @@ export function ExpensesTab({ expenses, accounts, categories, members, currentUs
     const [activeTab, setActiveTab] = useState<'draft' | 'pending' | 'active' | 'history'>('draft')
     const [viewingExpense, setViewingExpense] = useState<any | null>(null)
     const [selectedExpenseForSurrender, setSelectedExpenseForSurrender] = useState<any | null>(null)
-    // Workflow status map: expenseId -> workflow data
-    const [workflowStatuses, setWorkflowStatuses] = useState<Record<string, any>>({})
-    const [loadingWorkflow, setLoadingWorkflow] = useState<Record<string, boolean>>({})
     const [expandedApproval, setExpandedApproval] = useState<Record<string, boolean>>({})
 
     const ADMIN_ROLES = ['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER', 'SECRETARY']
@@ -93,22 +90,6 @@ export function ExpensesTab({ expenses, accounts, categories, members, currentUs
             : activeTab === 'active' ? activeExpenses
                 : historyExpenses
 
-    // Load workflow status for expenses that need it
-    const loadWorkflowStatus = useCallback(async (expenseId: string) => {
-        setLoadingWorkflow(prev => ({ ...prev, [expenseId]: true }))
-        try {
-            const data = await getExpenseWorkflowStatus(expenseId)
-            setWorkflowStatuses(prev => ({ ...prev, [expenseId]: data }))
-        } catch { } finally {
-            setLoadingWorkflow(prev => ({ ...prev, [expenseId]: false }))
-        }
-    }, [])
-
-    // Reload approval data when tab changes or expenses change
-    useEffect(() => {
-        const toLoad = displayedExpenses.filter(e => e.status === 'PENDING_APPROVAL')
-        toLoad.forEach(e => loadWorkflowStatus(e.id))
-    }, [activeTab, expenses.length])
 
     // Handlers
     const handleCreate = () => {
@@ -148,7 +129,6 @@ export function ExpensesTab({ expenses, accounts, categories, members, currentUs
                 await sendExpenseForApproval(expenseId)
                 toast.success("Expense sent for approval")
                 onRefresh()
-                loadWorkflowStatus(expenseId)
             } catch (e: any) {
                 toast.error(e.message || "Failed to send for approval")
             }
@@ -162,7 +142,6 @@ export function ExpensesTab({ expenses, accounts, categories, members, currentUs
                 await cancelExpenseApproval(expenseId)
                 toast.success("Approval cancelled — expense is back in draft")
                 onRefresh()
-                setWorkflowStatuses(prev => { const n = { ...prev }; delete n[expenseId]; return n })
             } catch (e: any) {
                 toast.error(e.message || "Failed to cancel approval")
             }
@@ -176,7 +155,6 @@ export function ExpensesTab({ expenses, accounts, categories, members, currentUs
                 await voteOnExpenseApproval(expenseId, action)
                 toast.success(action === 'APPROVED' ? 'Approved ✓' : 'Rejected — expense request declined')
                 onRefresh()
-                loadWorkflowStatus(expenseId)
             } catch (e: any) {
                 toast.error(e.message || "Vote failed")
             }
@@ -327,11 +305,11 @@ export function ExpensesTab({ expenses, accounts, categories, members, currentUs
                     </div>
                 ) : (
                     displayedExpenses.map((expense) => {
-                        const wf = workflowStatuses[expense.id]
-                        const isLoadingWf = loadingWorkflow[expense.id]
+                        const wf = expense.workflow
+                        const isLoadingWf = false
                         const isExpanded = expandedApproval[expense.id]
-                        const actions = wf?.request?.actions || []
-                        const currentStage = wf?.request?.currentStage
+                        const actions = wf?.actions || []
+                        const currentStage = wf?.currentStage
 
                         // Has the current user already voted?
                         const myVote = actions.find((a: any) => a.actor?.id === currentUserId)
@@ -416,9 +394,6 @@ export function ExpensesTab({ expenses, accounts, categories, members, currentUs
                                             onClick={() => {
                                                 const wasExpanded = expandedApproval[expense.id]
                                                 setExpandedApproval(prev => ({ ...prev, [expense.id]: !wasExpanded }))
-                                                if (!wasExpanded && !workflowStatuses[expense.id]) {
-                                                    loadWorkflowStatus(expense.id)
-                                                }
                                             }}
                                         >
                                             <span className="flex items-center gap-2">

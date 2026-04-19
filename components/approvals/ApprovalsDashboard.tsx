@@ -2,11 +2,10 @@
 
 import React, { useState, useTransition, useOptimistic } from 'react'
 import { useRouter } from 'next/navigation'
-import { ApprovalRequest } from '@prisma/client'
 import { format } from 'date-fns'
 import { LoanAppraisalCard } from '@/components/LoanAppraisalCard'
 import { MemberDetailsCard } from './MemberDetailsCard'
-import { UserCheck, FileText, DollarSign, Users, ChevronRight, Check, X, Loader2, Calendar, Hash, Percent, ActivityIcon } from 'lucide-react'
+import { UserCheck, FileText, DollarSign, Users, ChevronRight, Check, X, Loader2, Calendar, Hash, Percent, ActivityIcon, ShieldCheck, AlertTriangle } from 'lucide-react'
 import { processApproval } from '@/app/actions/approval-actions'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -31,9 +30,22 @@ const TYPE_COLORS = {
     'OTHER': 'from-slate-400 to-slate-600'
 }
 
-export interface ExtendedApprovalRequest extends ApprovalRequest {
+export interface ExtendedApprovalRequest {
+    id: string
+    type: 'LOAN' | 'MEMBER' | 'LOAN_NOTE' | 'EXPENSE' | 'WELFARE' | 'OTHER'
+    referenceId: string
+    referenceTable?: string
+    requesterId?: string
+    requesterName?: string
+    description?: string
+    amount?: number
+    status: string
+    requiredPermission?: string
+    createdAt: Date | string
+    updatedAt?: Date | string
     canApprove?: boolean
     entityDetails?: any
+    isWorkflowRequest?: boolean
 }
 
 interface ApprovalsDashboardProps {
@@ -231,7 +243,58 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
                                                 </div>
                                             )}
 
-                                            {}
+                                            {/* Governance Indicators (Loans & Notes) */}
+                                            {(req.governance?.isLoan || req.governance?.isNote) && (
+                                                <div className="mt-4 p-3 rounded-xl bg-slate-50 border border-slate-100 flex flex-col gap-2.5">
+                                                    {/* Quorum Progress */}
+                                                    <div>
+                                                        <div className="flex items-center justify-between text-[10px] mb-1.5">
+                                                            <span className="text-slate-500 font-bold uppercase tracking-tight flex items-center gap-1.5">
+                                                                <Users className="w-3 h-3 text-[#00c2e0]" />
+                                                                Approval Quorum
+                                                            </span>
+                                                            <span className={cn(
+                                                                "font-black px-1.5 py-0.5 rounded",
+                                                                req.governance.eligibleVotes >= req.governance.quorumRequired 
+                                                                    ? "bg-emerald-100 text-emerald-700" 
+                                                                    : "bg-slate-200 text-slate-600"
+                                                            )}>
+                                                                {req.governance.eligibleVotes} / {req.governance.quorumRequired}
+                                                            </span>
+                                                        </div>
+                                                        <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                                                            <div 
+                                                                className={cn(
+                                                                    "h-full transition-all duration-500 rounded-full",
+                                                                    req.governance.eligibleVotes >= req.governance.quorumRequired ? "bg-emerald-500" : "bg-[#00c2e0]"
+                                                                )}
+                                                                style={{ width: `${Math.min(100, (req.governance.eligibleVotes / req.governance.quorumRequired) * 100)}%` }}
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Privileged Role Status */}
+                                                    <div className={cn(
+                                                        "flex items-center gap-2 p-2 rounded-lg border text-[10px] font-bold uppercase tracking-wide",
+                                                        req.governance.hasPrivilegedRole 
+                                                            ? "bg-emerald-50/50 border-emerald-100 text-emerald-600" 
+                                                            : "bg-amber-50/50 border-amber-100 text-amber-600"
+                                                    )}>
+                                                        {req.governance.hasPrivilegedRole ? (
+                                                            <>
+                                                                <ShieldCheck className="w-3.5 h-3.5" />
+                                                                Privileged Role Present
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <AlertTriangle className="w-3.5 h-3.5 animate-pulse" />
+                                                                {req.governance.missingRoleLabel || "Board Approval Required"}
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             {!req.entityDetails && req.amount && (
                                                 <div className="mt-2 flex items-baseline gap-1">
                                                     <span className="text-lg font-black text-slate-900">
@@ -254,7 +317,7 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
                                         <>
                                             <button
                                                 onClick={(e) => handleQuickAction(e, req, 'REJECTED')}
-                                                disabled={!!processingId}
+                                                disabled={!!processingId || anyIsPending}
                                                 className="flex-1 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-600 text-xs font-bold uppercase tracking-wider hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                                             >
                                                 {isProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <X className="w-3.5 h-3.5" />}
@@ -262,7 +325,7 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
                                             </button>
                                             <button
                                                 onClick={(e) => handleQuickAction(e, req, 'APPROVED')}
-                                                disabled={!!processingId}
+                                                disabled={!!processingId || anyIsPending}
                                                 className="flex-1 py-2.5 rounded-xl bg-[#0A192F] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#00c2e0] transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-slate-200"
                                             >
                                                 {isProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}

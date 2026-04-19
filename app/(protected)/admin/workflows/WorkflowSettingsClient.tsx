@@ -3,6 +3,9 @@
 import React, { useState } from 'react';
 import { updateStageSettings } from '@/app/actions/workflow-settings';
 import { toast } from '@/lib/toast';
+import { GovernanceHealth } from './GovernanceHealth';
+import { Settings, HeartPulse } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface WorkflowSettingsClientProps {
     workflows: any[];
@@ -10,6 +13,7 @@ interface WorkflowSettingsClientProps {
 
 export function WorkflowSettingsClient({ workflows }: WorkflowSettingsClientProps) {
     const [updating, setUpdating] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<'settings' | 'health'>('settings');
 
     const handleUpdate = async (stageId: string, newValue: number) => {
         if (newValue < 1) return;

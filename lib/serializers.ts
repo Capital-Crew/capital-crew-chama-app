@@ -6,10 +6,8 @@ import { Loan, Member } from '@prisma/client'
 export function serializeMember<T extends Partial<Member>>(member: T): T {
     return {
         ...member,
-        contributionBalance: (member as any).contributionBalance ? Number((member as any).contributionBalance) : 0,
         contributionArrears: member.contributionArrears ? Number(member.contributionArrears) : 0,
         penaltyArrears: member.penaltyArrears ? Number(member.penaltyArrears) : 0,
-        welfareArrears: (member as any).welfareArrears ? Number((member as any).welfareArrears) : 0,
     } as T
 }
 
@@ -33,8 +31,6 @@ export function serializeLoan<T extends Partial<Loan>>(loan: T): T {
         ...loan,
         outstandingBalance: loan.outstandingBalance ? Number(loan.outstandingBalance) : 0,
         amount: loan.amount ? Number(loan.amount) : 0,
-        current_balance: loan.current_balance ? Number(loan.current_balance) : 0, // Legacy support
-        penalties: loan.penalties ? Number(loan.penalties) : 0, // Legacy support
         processingFee: loan.processingFee ? Number(loan.processingFee) : 0,
         insuranceFee: loan.insuranceFee ? Number(loan.insuranceFee) : 0,
         contributionDeduction: loan.contributionDeduction ? Number(loan.contributionDeduction) : 0,
@@ -95,11 +91,16 @@ export function serializeJournalEntry(entry: any): any {
 }
 
 /**
- * Serializes an approval request object by converting Decimals to numbers
+ * Serializes a workflow request object by converting Decimals to numbers
  */
-export function serializeApprovalRequest(request: any): any {
+export function serializeWorkflowRequest(request: any): any {
+    if (!request) return null
     return {
         ...request,
+        // Entity specific nested serialization if present
+        loan: request.loan ? serializeLoan(request.loan) : request.entityType === 'LOAN' && request.loan ? serializeLoan(request.loan) : undefined,
+        // Generic amount conversion if present in nested entities
         amount: request.amount ? Number(request.amount) : null,
     }
 }
+

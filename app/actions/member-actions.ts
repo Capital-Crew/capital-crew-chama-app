@@ -7,6 +7,7 @@ import { MemberWriteService } from '@/services/member/MemberWriteService'
 import { AuditLogAction } from '@prisma/client'
 import { withAudit } from '@/lib/with-audit'
 import { db as prisma } from '@/lib/db'
+import { MESSAGES } from "@/lib/constants/messages";
 
 /**
  * Standardized Action Result
@@ -244,7 +245,7 @@ export const updateMemberProfile = withAudit(
             return { success: true, data: result }
         } catch (e: any) {
             ctx.setErrorCode('UPDATE_FAILED');
-            return { success: false, error: e.message || "Failed to update profile" }
+            return { success: false, error: MESSAGES.MEMBER.UPDATE_FAILED }
         }
     }
 );
@@ -256,12 +257,12 @@ export const updateMemberProfileImage = withAudit(
         const file = formData.get("file") as File;
         
         if (!memberId || !file) {
-            return { success: false, error: "Missing member ID or file" };
+            return { success: false, error: MESSAGES.MEMBER.NOT_FOUND };
         }
 
         // Limit size to 2MB (2 * 1024 * 1024)
         if (file.size > 2 * 1024 * 1024) {
-            return { success: false, error: "Image size exceeds 2MB limit" };
+            return { success: false, error: MESSAGES.MEMBER.IMAGE_SIZE };
         }
 
         try {
@@ -273,7 +274,7 @@ export const updateMemberProfileImage = withAudit(
 
             if (!member?.user?.id) {
                 ctx.setErrorCode('USER_NOT_FOUND');
-                return { success: false, error: "Member has no associated user account" };
+                return { success: false, error: MESSAGES.MEMBER.NO_USER_ACCOUNT };
             }
 
             ctx.beginStep('Process Image');
@@ -290,10 +291,10 @@ export const updateMemberProfileImage = withAudit(
             revalidatePath(`/members/${memberId}`);
             revalidatePath(`/`, 'layout');
             return { success: true };
-        } catch (error) {
+        } catch (error: any) {
             console.error("Upload error:", error);
             ctx.setErrorCode('UPLOAD_FAILED');
-            return { success: false, error: "Failed to upload image" };
+            return { success: false, error: MESSAGES.MEMBER.IMAGE_UPLOAD_FAILED };
         }
     }
 );

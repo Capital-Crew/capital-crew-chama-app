@@ -2,6 +2,7 @@
 
 import { auth } from '@/auth'
 import { db } from '@/lib/db'
+import { MESSAGES } from "@/lib/constants/messages"
 import { AuditLogAction, ExpenseType } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 import { serializeFinancials, Serialized } from "@/lib/safe-serialization"
@@ -29,7 +30,7 @@ export const createExpenseRequest = withAudit(
         const session = await auth()
         if (!session?.user?.id) {
             ctx.setErrorCode('UNAUTHORIZED');
-            throw new Error("Unauthorized")
+            throw new Error(MESSAGES.AUTH.UNAUTHORIZED)
         }
 
         try {
@@ -68,7 +69,7 @@ export const approveExpense = withAudit(
         const session = await auth()
         if (!session?.user?.id) {
             ctx.setErrorCode('UNAUTHORIZED');
-            throw new Error("Unauthorized")
+            throw new Error(MESSAGES.AUTH.UNAUTHORIZED)
         }
 
         ctx.beginStep('Validation');
@@ -78,7 +79,7 @@ export const approveExpense = withAudit(
 
         if (!request) {
             ctx.setErrorCode('REQUEST_NOT_FOUND');
-            throw new Error("No active approval request found for this expense")
+            throw new Error(MESSAGES.EXPENSE.NO_WORKFLOW)
         }
         ctx.captureBefore('WorkflowRequest', request.id, request);
 
@@ -113,7 +114,7 @@ export const submitExpenseSurrender = withAudit(
         const session = await auth()
         if (!session?.user?.id) {
             ctx.setErrorCode('UNAUTHORIZED');
-            throw new Error("Unauthorized")
+            throw new Error(MESSAGES.AUTH.UNAUTHORIZED)
         }
 
         ctx.beginStep('Capture Initial State');
@@ -146,9 +147,9 @@ export const submitExpenseSurrender = withAudit(
  */
 export async function approveReimbursementClaim(expenseId: string) {
     const session = await auth()
-    if (!session?.user?.id) throw new Error('Unauthorized')
+    if (!session?.user?.id) throw new Error(MESSAGES.AUTH.UNAUTHORIZED)
     const allowedRoles = ['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER']
-    if (!allowedRoles.includes(session.user.role as string)) throw new Error('Forbidden: Insufficient permissions')
+    if (!allowedRoles.includes(session.user.role as string)) throw new Error(MESSAGES.AUTH.FORBIDDEN)
 
     return await prisma.$transaction(async (tx) => {
         await ExpenseService.finalizeExpense(expenseId, tx)
@@ -163,7 +164,7 @@ export async function approveReimbursementClaim(expenseId: string) {
  */
 export async function getExpenseWorkflowStatus(expenseId: string) {
     const session = await auth()
-    if (!session?.user?.id) throw new Error('Unauthorized')
+    if (!session?.user?.id) throw new Error(MESSAGES.AUTH.UNAUTHORIZED)
 
     const request = await prisma.workflowRequest.findFirst({
         where: { entityId: expenseId, entityType: 'EXPENSE' },
@@ -185,17 +186,17 @@ export async function getExpenseWorkflowStatus(expenseId: string) {
  */
 export async function sendExpenseForApproval(expenseId: string) {
     const session = await auth()
-    if (!session?.user?.id) throw new Error('Unauthorized')
+    if (!session?.user?.id) throw new Error(MESSAGES.AUTH.UNAUTHORIZED)
 
     const expense = await prisma.expense.findUnique({ where: { id: expenseId } })
-    if (!expense) throw new Error('Expense not found')
-    if (expense.status !== 'DRAFT') throw new Error('Only DRAFT expenses can be sent for approval')
+    if (!expense) throw new Error(MESSAGES.EXPENSE.NOT_FOUND)
+    if (expense.status !== 'DRAFT') throw new Error(MESSAGES.EXPENSE.INVALID_STATUS(expense.status))
 
     // Check no active workflow already
-    const existing = await prisma.workflowRequest.findFirst({
+    const existing = await db.workflowRequest.findFirst({
         where: { entityId: expenseId, entityType: 'EXPENSE', status: 'PENDING' }
     })
-    if (existing) throw new Error('An approval request is already active for this expense')
+    if (existing) throw new Error(MESSAGES.EXPENSE.ALREADY_PENDING)
 
     const { initiateWorkflow } = await import('@/app/actions/workflow-engine')
     await initiateWorkflow('EXPENSE', expenseId, session.user.id)
@@ -214,12 +215,12 @@ export async function sendExpenseForApproval(expenseId: string) {
  */
 export async function cancelExpenseApproval(expenseId: string) {
     const session = await auth()
-    if (!session?.user?.id) throw new Error('Unauthorized')
+    if (!session?.user?.id) throw new Error(MESSAGES.AUTH.UNAUTHORIZED)
 
-    const request = await prisma.workflowRequest.findFirst({
+    const request = await db.workflowRequest.findFirst({
         where: { entityId: expenseId, entityType: 'EXPENSE', status: 'PENDING' }
     })
-    if (!request) throw new Error('No active approval request found')
+    if (!request) throw new Error(MESSAGES.EXPENSE.NO_WORKFLOW)
 
     // Delete all actions then the request
     await prisma.workflowAction.deleteMany({ where: { requestId: request.id } })
@@ -239,15 +240,15 @@ export async function cancelExpenseApproval(expenseId: string) {
  */
 export async function voteOnExpenseApproval(expenseId: string, action: 'APPROVED' | 'REJECTED', notes?: string) {
     const session = await auth()
-    if (!session?.user?.id) throw new Error('Unauthorized')
+    if (!session?.user?.id) throw new Error(MESSAGES.AUTH.UNAUTHORIZED)
 
     const adminRoles = ['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER', 'SECRETARY']
-    if (!adminRoles.includes(session.user.role as string)) throw new Error('Only admins can vote on expenses')
+    if (!adminRoles.includes(session.user.role as string)) throw new Error(MESSAGES.AUTH.FORBIDDEN)
 
-    const request = await prisma.workflowRequest.findFirst({
+    const request = await db.workflowRequest.findFirst({
         where: { entityId: expenseId, entityType: 'EXPENSE', status: 'PENDING' }
     })
-    if (!request) throw new Error('No active approval workflow found for this expense')
+    if (!request) throw new Error(MESSAGES.EXPENSE.NO_WORKFLOW)
 
     const { processWorkflowAction } = await import('@/app/actions/workflow-engine')
     await processWorkflowAction(request.id, action as any, notes)
@@ -269,19 +270,39 @@ export async function voteOnExpenseApproval(expenseId: string, action: 'APPROVED
  */
 export async function getExpenses(): Promise<Serialized<any>> {
     const session = await auth()
-    if (!session?.user?.id) throw new Error('Unauthorized')
+    if (!session?.user?.id) throw new Error(MESSAGES.AUTH.UNAUTHORIZED)
 
     const expenses = await prisma.expense.findMany({
         include: {
             requester: { select: { id: true, name: true, role: true } },
             recipient: { select: { id: true, name: true } },
             expenseAccount: { select: { name: true, code: true } },
-            approvals: { include: { user: { select: { id: true, name: true } } } },
             subCategory: true
         },
         orderBy: { createdAt: 'desc' }
     })
-    return serializeFinancials(expenses)
+
+    // Enrich with workflow status
+    const enrichedExpenses = await Promise.all(expenses.map(async (expense) => {
+        const workflow = await prisma.workflowRequest.findFirst({
+            where: { entityId: expense.id, entityType: 'EXPENSE' },
+            include: {
+                currentStage: true,
+                actions: {
+                    include: { actor: { select: { id: true, name: true, role: true } } },
+                    orderBy: { createdAt: 'asc' } as any
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        })
+
+        return {
+            ...expense,
+            workflow
+        }
+    }))
+
+    return serializeFinancials(enrichedExpenses)
 }
 
 /**
@@ -289,7 +310,7 @@ export async function getExpenses(): Promise<Serialized<any>> {
  */
 export async function getExpenseCategories() {
     const session = await auth()
-    if (!session?.user?.id) throw new Error('Unauthorized')
+    if (!session?.user?.id) throw new Error(MESSAGES.AUTH.UNAUTHORIZED)
 
     return await prisma.expenseCategoryGroup.findMany({
         where: { isActive: true },

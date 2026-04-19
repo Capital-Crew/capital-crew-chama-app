@@ -584,7 +584,6 @@ model User {
   lockoutUntil        DateTime?
 
   expensesRequested Expense[]         @relation("ExpenseRequester")
-  expenseApprovals  ExpenseApproval[]
 
   // Transfer Approvals
   transferRequests  TransferRequest[]  @relation("TransferRequester")
@@ -1081,9 +1080,6 @@ model Expense {
   // Status
   status ExpenseStatus @default(PENDING_APPROVAL)
 
-  // Approvals
-  approvals ExpenseApproval[]
-
   // Accounting
   expenseAccountId String
   expenseAccount   LedgerAccount @relation("ExpenseAccount", fields: [expenseAccountId], references: [id])
@@ -1250,19 +1246,6 @@ model TransferApproval {
   createdAt DateTime @default(now())
 
   @@unique([transferRequestId, approverId]) // Prevent double voting
-}
-
-model ExpenseApproval {
-  id        String         @id @default(cuid())
-  expenseId String
-  expense   Expense        @relation(fields: [expenseId], references: [id])
-  userId    String
-  user      User           @relation(fields: [userId], references: [id])
-  status    ApprovalStatus
-  notes     String?
-  createdAt DateTime       @default(now())
-
-  @@unique([expenseId, userId])
 }
 
 model Revenue {

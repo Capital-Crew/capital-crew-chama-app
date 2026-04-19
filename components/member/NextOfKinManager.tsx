@@ -25,9 +25,9 @@ const RELATIONSHIPS = ['SPOUSE', 'CHILD', 'PARENT', 'SIBLING', 'OTHER'];
 
 export function NextOfKinManager({ initialData, memberId, canEdit = true }: NextOfKinManagerProps) {
     const router = useRouter();
-    const [isEditing, setIsEditing] = useState(initialData.length === 0);
+    const [isEditing, setIsEditing] = useState((initialData?.length || 0) === 0);
     const [beneficiaries, setBeneficiaries] = useState<NextOfKinData[]>(
-        initialData.length > 0 ? initialData : [{
+        (initialData?.length || 0) > 0 ? initialData : [{
             fullName: '',
             relationship: 'SPOUSE',
             phoneNumber: '',
@@ -108,7 +108,7 @@ export function NextOfKinManager({ initialData, memberId, canEdit = true }: Next
     };
 
     const handleCancel = () => {
-        setBeneficiaries(initialData.length > 0 ? initialData : [{
+        setBeneficiaries((initialData?.length || 0) > 0 ? initialData : [{
             fullName: '',
             relationship: 'SPOUSE',
             phoneNumber: '',
@@ -120,7 +120,7 @@ export function NextOfKinManager({ initialData, memberId, canEdit = true }: Next
     };
 
     // Summary Mode
-    if (!isEditing && initialData.length > 0) {
+    if (!isEditing && (initialData?.length || 0) > 0) {
         return (
             <div className="space-y-4">
                 <div className="flex justify-between items-center mb-4">
@@ -160,7 +160,7 @@ export function NextOfKinManager({ initialData, memberId, canEdit = true }: Next
                 )}
 
                 <div className="grid grid-cols-1 gap-4">
-                    {initialData.map((kin, i) => (
+                    {(initialData || []).map((kin, i) => (
                         <div key={kin.id || i} className="bg-white border border-slate-100 rounded-2xl p-6 hover:border-cyan-100 hover:shadow-xl hover:shadow-cyan-500/5 transition-all">
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-center">
                                 <div className="flex items-center gap-3">
@@ -326,7 +326,7 @@ export function NextOfKinManager({ initialData, memberId, canEdit = true }: Next
                 </button>
 
                 <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-                    {initialData.length > 0 && (
+                    {(initialData?.length || 0) > 0 && (
                         <button
                             type="button"
                             onClick={handleCancel}

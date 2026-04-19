@@ -22,6 +22,8 @@ import { MobileDrawer } from '@/components/ui/MobileDrawer';
 import { BookOpen, ExternalLink, MessageSquareText } from 'lucide-react';
 import { MeetingApologyManager } from '@/components/meetings/MeetingApologyManager';
 import { PremiumTabs } from './shared/PremiumTabs';
+import { GovernanceHealth } from '@/components/admin/GovernanceHealth';
+import { HeartPulse } from 'lucide-react';
 
 
 interface Member {
@@ -95,6 +97,7 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
         { id: 'adjustments', label: 'Loan Adjustments', icon: Scale },
         { id: 'welfare', label: 'Welfare', icon: HeartHandshake },
         { id: 'notifications', label: 'Notifications', icon: Mail },
+        { id: 'workflow-health', label: 'Workflow Health', icon: HeartPulse },
         { id: 'apologies', label: 'Meeting Apologies', icon: MessageSquareText }
     ];
 
@@ -382,6 +385,12 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
                         <p className="text-slate-600 mt-1">Manage email alerts and mailing lists</p>
                     </div>
                     <NotificationSettings />
+                </div>
+            )}
+
+            {activeTab === 'workflow-health' && (
+                <div className="bg-white rounded-3xl p-8 border border-slate-200">
+                    <GovernanceHealth />
                 </div>
             )}
 

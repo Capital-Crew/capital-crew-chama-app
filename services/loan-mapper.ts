@@ -45,7 +45,7 @@ function toSafeNumber(val: any): number {
     return isNaN(num) ? 0 : num;
 }
 
-export function mapLoanToTableRow(loan: LoanWithRelations): MemberLoanTableRow {
+export function mapLoanToTableRow(loan: LoanWithRelations, penaltyBalance: number = 0): MemberLoanTableRow {
     const today = new Date();
 
     // ─── NORMALISE INSTALLMENTS FROM DB ─────────────────────────────────────
@@ -128,7 +128,7 @@ export function mapLoanToTableRow(loan: LoanWithRelations): MemberLoanTableRow {
         offsetBalance = 0; // current_balance column removed from DB
     }
 
-    const penalties = toSafeNumber(loan.penalties);
+    const penalties = penaltyBalance;
     const otherCharges = 0;
     const outstandingBalance = Math.max(0, offsetBalance + penalties + otherCharges);
 

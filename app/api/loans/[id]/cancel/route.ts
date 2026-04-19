@@ -56,17 +56,28 @@ export async function POST(
                 }
             })
 
+            // 2. Clean up Workflow Requests
             try {
-                // Attempt to update pending approval request
-                // Delete the pending approval request
-                await tx.approvalRequest.deleteMany({
+                const workflow = await tx.workflowRequest.findFirst({
                     where: {
-                        referenceId: loanId,
+                        entityId: loanId,
+                        entityType: 'LOAN',
                         status: 'PENDING'
                     }
                 })
+
+                if (workflow) {
+                    // Delete actions then the request
+                    await tx.workflowAction.deleteMany({
+                        where: { requestId: workflow.id }
+                    })
+                    await tx.workflowRequest.delete({
+                        where: { id: workflow.id }
+                    })
+                }
             } catch (e) {
-                // Ignore if model doesn't exist or fails (failsafe)
+                console.error("[CANCELLATION ERROR] Failed to clean up workflow:", e)
+                // Proceed with loan status update anyway to ensure user can at least see it's cancelled
             }
 
 

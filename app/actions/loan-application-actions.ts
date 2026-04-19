@@ -6,6 +6,7 @@ import { getNextLoanNumber } from '@/lib/utils'
 import { z } from 'zod'
 import { withAudit } from '@/lib/with-audit'
 import { AuditLogAction } from '@prisma/client'
+import { MESSAGES } from '@/lib/constants/messages'
 
 /**
  * Zod schema for allowed draft loan fields.
@@ -34,7 +35,7 @@ export const startLoanApplication = withAudit(
         const session = await auth()
         if (!session?.user) {
             ctx.setErrorCode('UNAUTHORIZED');
-            throw new Error('Unauthorized')
+            throw new Error(MESSAGES.AUTH.UNAUTHORIZED)
         }
 
         // Determine Member ID
@@ -48,7 +49,7 @@ export const startLoanApplication = withAudit(
 
             if (!targetMemberId) {
                 ctx.setErrorCode('MISSING_MEMBER_ID');
-                throw new Error('Member ID is required to start an application.')
+                throw new Error(MESSAGES.LOAN.NOT_FOUND)
             }
         }
         ctx.endStep('Validate User Session', { targetMemberId });
@@ -106,7 +107,7 @@ export const startLoanApplication = withAudit(
         } catch (error: any) {
             ctx.setErrorCode('DATABASE_ERROR');
             ctx.failStep('Initialize New Draft', error);
-            throw new Error('Failed to start application')
+            throw new Error(MESSAGES.LOAN.START_FAILED)
         }
     }
 )
@@ -121,7 +122,7 @@ export const updateLoanDraft = withAudit(
         const session = await auth()
         if (!session?.user) {
             ctx.setErrorCode('UNAUTHORIZED');
-            throw new Error('Unauthorized')
+            throw new Error(MESSAGES.AUTH.UNAUTHORIZED)
         }
 
         const parseResult = loanDraftUpdateSchema.safeParse(data)
@@ -141,7 +142,7 @@ export const updateLoanDraft = withAudit(
         })
         if (!loan) {
             ctx.setErrorCode('LOAN_NOT_FOUND');
-            throw new Error('Loan not found')
+            throw new Error(MESSAGES.LOAN.NOT_FOUND)
         }
         ctx.captureBefore('Loan', loan.id, loan);
 
@@ -155,7 +156,7 @@ export const updateLoanDraft = withAudit(
 
         if (!isOwner && !isAdmin) {
             ctx.setErrorCode('INSUFFICIENT_PERMISSIONS');
-            throw new Error('Unauthorized: You can only update your own loan applications')
+            throw new Error(MESSAGES.AUTH.OWNERSHIP_ONLY)
         }
 
         let updateData: Partial<LoanDraftUpdateInput> = safeData
@@ -188,7 +189,7 @@ export const discardDraft = withAudit(
         const session = await auth()
         if (!session?.user) {
             ctx.setErrorCode('UNAUTHORIZED');
-            throw new Error('Unauthorized')
+            throw new Error(MESSAGES.AUTH.UNAUTHORIZED)
         }
 
         const loan = await db.loan.findUnique({
@@ -200,7 +201,7 @@ export const discardDraft = withAudit(
 
         if (!loan) {
             ctx.setErrorCode('LOAN_NOT_FOUND');
-            throw new Error('Loan not found')
+            throw new Error(MESSAGES.LOAN.NOT_FOUND)
         }
         ctx.captureBefore('Loan', loan.id, loan);
 
@@ -214,7 +215,7 @@ export const discardDraft = withAudit(
 
         if (!isSystemAdmin && !isOwner) {
             ctx.setErrorCode('INSUFFICIENT_PERMISSIONS');
-            throw new Error('Unauthorized: You can only delete your own loan applications.')
+            throw new Error(MESSAGES.AUTH.OWNERSHIP_ONLY)
         }
         ctx.endStep('Validate Discard Request');
 

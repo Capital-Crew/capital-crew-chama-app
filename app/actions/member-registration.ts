@@ -145,11 +145,7 @@ export const createMemberWithWallet = withAudit(
 
                 // TRIGGER UNIVERSAL WORKFLOW
                 const { initiateWorkflow } = await import('@/app/actions/workflow-engine')
-                await initiateWorkflow({
-                    entityType: 'MEMBER',
-                    entityId: member.id,
-                    requesterId: session.user.id
-                })
+                await initiateWorkflow('MEMBER', member.id, session.user.id);
 
                 return { member, wallet }
             })

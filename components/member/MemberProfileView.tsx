@@ -41,10 +41,10 @@ interface MemberProfileViewProps {
 export function MemberProfileView({
     member,
     stats,
-    contributions,
-    loans,
+    contributions = [],
+    loans = [],
     contributionStatus,
-    nextOfKin,
+    nextOfKin = [],
     unpaidPenalties = [],
     attendanceHistory = [],
     currentUserRole,

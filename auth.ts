@@ -53,7 +53,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             authorize: async (credentials) => {
                 const parsed = z.object({
                     email: z.string().email(),
-                    password: z.string().min(10),
+                    password: z.string().min(1),
                 }).safeParse(credentials);
 
                 if (!parsed.success) return null;
@@ -79,11 +79,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
                     if (passwordsMatch) {
                         // SUCCESS: Reset counters
-                        await prisma.user.update({
+                        // PROACTIVE UPGRADE: Flag if password is less than 10 characters
+                        const isWeak = password.length < 10;
+                        
+                        const updatedUser = await prisma.user.update({
                             where: { id: user.id },
                             data: {
                                 failedLoginAttempts: 0,
-                                lockoutUntil: null
+                                lockoutUntil: null,
+                                mustChangePassword: user.mustChangePassword || isWeak
                             }
                         });
 
@@ -93,7 +97,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                             email: user.email,
                             role: user.role,
                             memberId: user.memberId,
-                            mustChangePassword: user.mustChangePassword,
+                            mustChangePassword: updatedUser.mustChangePassword,
                             permissions: user.permissions,
                         };
                     }

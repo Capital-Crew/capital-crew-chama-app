@@ -23,7 +23,8 @@ import { BookOpen, ExternalLink, MessageSquareText } from 'lucide-react';
 import { MeetingApologyManager } from '@/components/meetings/MeetingApologyManager';
 import { PremiumTabs } from './shared/PremiumTabs';
 import { GovernanceHealth } from '@/components/admin/GovernanceHealth';
-import { HeartPulse } from 'lucide-react';
+import { HeartPulse, Wallet } from 'lucide-react';
+import { AdminWalletAdjustmentModal } from '@/components/admin/AdminWalletAdjustmentModal';
 
 
 interface Member {
@@ -50,7 +51,10 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
     const [activeTab, setActiveTab] = useState('products');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isAdjustmentModalOpen, setIsAdjustmentModalOpen] = useState(false);
+    const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+    const [selectedMember, setSelectedMember] = useState<Member | null>(null);
     const [updatingWorkflow, setUpdatingWorkflow] = useState(false);
+    const [memberFilter, setMemberFilter] = useState('');
 
     const handleToggleApprovalRight = async (memberId: string) => {
         await toggleMemberApprovalRight(memberId);
@@ -96,6 +100,7 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
         { id: 'governance', label: 'Market Governance', icon: Shield },
         { id: 'adjustments', label: 'Loan Adjustments', icon: Scale },
         { id: 'welfare', label: 'Welfare', icon: HeartHandshake },
+        { id: 'wallets', label: 'Wallet Management', icon: Wallet },
         { id: 'notifications', label: 'Notifications', icon: Mail },
         { id: 'workflow-health', label: 'Workflow Health', icon: HeartPulse },
         { id: 'apologies', label: 'Meeting Apologies', icon: MessageSquareText }
@@ -376,6 +381,84 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
                 </div>
             )}
 
+            {activeTab === 'wallets' && (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h2 className="text-2xl font-bold text-slate-900">Wallet Management</h2>
+                            <p className="text-slate-600 mt-1">Directly adjust member wallet balances (M-Pesa Only)</p>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                            <div className="relative max-w-sm">
+                                <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Search by name or number..."
+                                    value={memberFilter}
+                                    onChange={(e) => setMemberFilter(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2 border-2 border-slate-200 rounded-xl text-sm font-medium focus:border-cyan-500 outline-none transition-all"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-slate-50 border-b border-slate-200">
+                                    <tr>
+                                        <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Member</th>
+                                        <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Number</th>
+                                        <th className="px-6 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {members
+                                        .filter(m => 
+                                            m.name.toLowerCase().includes(memberFilter.toLowerCase()) || 
+                                            m.memberNumber.toString().includes(memberFilter)
+                                        )
+                                        .slice(0, 10)
+                                        .map((member) => (
+                                            <tr key={member.id} className="hover:bg-slate-50/80 transition-colors group">
+                                                <td className="px-6 py-4">
+                                                    <p className="font-bold text-slate-900">{member.name}</p>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <Badge variant="outline" className="font-mono text-xs">
+                                                        #{String(member.memberNumber).padStart(4, '0')}
+                                                    </Badge>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <button
+                                                        onClick={() => {
+                                                            setSelectedMember(member);
+                                                            setIsWalletModalOpen(true);
+                                                        }}
+                                                        className="inline-flex items-center gap-2 bg-white text-cyan-600 border border-cyan-200 hover:bg-cyan-50 px-4 py-2 rounded-lg font-bold text-xs transition-all shadow-sm"
+                                                    >
+                                                        <DollarSign className="w-3.5 h-3.5" />
+                                                        Adjust Balance
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                </tbody>
+                            </table>
+                            {members.filter(m => 
+                                m.name.toLowerCase().includes(memberFilter.toLowerCase()) || 
+                                m.memberNumber.toString().includes(memberFilter)
+                            ).length === 0 && (
+                                <div className="py-20 text-center text-slate-500 font-medium italic">
+                                    No members found matching your search.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
 
             {}
             {activeTab === 'notifications' && (
@@ -399,6 +482,15 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
                 isOpen={isAdjustmentModalOpen}
                 onClose={() => setIsAdjustmentModalOpen(false)}
                 onAdjustmentSubmit={handleAdjustmentSubmit}
+            />
+
+            <AdminWalletAdjustmentModal
+                isOpen={isWalletModalOpen}
+                onClose={() => setIsWalletModalOpen(false)}
+                member={selectedMember}
+                onSuccess={() => {
+                    // Logic to refresh if needed
+                }}
             />
 
             {}

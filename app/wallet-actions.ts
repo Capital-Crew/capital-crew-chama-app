@@ -253,3 +253,115 @@ export const reverseTransaction = withAudit(
         return serializeFinancials(result)
     }
 );
+
+/**
+ * Post an administrative wallet adjustment (Manual Deposit or Withdrawal)
+ * Restricted to CHAIRPERSON, TREASURER, SYSTEM_ADMIN
+ */
+export const postAdminWalletAdjustment = withAudit(
+    { actionType: AuditLogAction.WALLET_TRANSACTION_CREATED, domain: 'FINANCE', apiRoute: '/api/admin/wallet/adjustment' },
+    async (ctx, formData: FormData) => {
+        ctx.beginStep('Authorize Admin Action');
+        const session = await auth()
+        if (!session?.user) {
+            ctx.setErrorCode('UNAUTHORIZED');
+            throw new Error('Unauthorized')
+        }
+
+        const userRole = session.user.role as string
+        const allowedRoles = ['CHAIRPERSON', 'TREASURER', 'SYSTEM_ADMIN', 'SYSTEM_ADMINISTRATOR']
+        
+        if (!allowedRoles.includes(userRole)) {
+            ctx.setErrorCode('FORBIDDEN');
+            throw new Error('Forbidden: Insufficient permissions to perform wallet adjustments')
+        }
+        ctx.endStep('Authorize Admin Action');
+
+        ctx.beginStep('Validate Adjustment Input');
+        const memberId = String(formData.get('memberId'))
+        const type = formData.get('type') as 'DEPOSIT' | 'WITHDRAWAL'
+        const amount = Number(formData.get('amount'))
+        const reference = String(formData.get('reference'))
+        const description = String(formData.get('description'))
+
+        if (!memberId) throw new Error('Member ID is required')
+        if (!['DEPOSIT', 'WITHDRAWAL'].includes(type)) throw new Error('Invalid adjustment type')
+        if (isNaN(amount) || amount <= 0) throw new Error('Amount must be a positive number')
+        if (!reference || reference.trim() === '') throw new Error('M-Pesa Reference is mandatory')
+        if (!description || description.trim() === '') throw new Error('Description is mandatory')
+
+        const member = await prisma.member.findUnique({
+            where: { id: memberId },
+            include: { 
+                wallet: { include: { glAccount: true } } 
+            }
+        })
+
+        if (!member || !member.wallet || !member.wallet.glAccount) {
+            ctx.setErrorCode('WALLET_NOT_FOUND');
+            throw new Error('Member wallet or GL account not found')
+        }
+        ctx.endStep('Validate Adjustment Input');
+
+        ctx.beginStep('Execute Ledger Posting');
+        const { AccountingEngine } = await import('@/lib/accounting/AccountingEngine')
+        
+        // contraAccount: For M-Pesa deposits/withdrawals, we typically use the M-Pesa/Cash Clearing account
+        // Referenced as EVENT_CASH_DEPOSIT / EVENT_CASH_WITHDRAWAL in SystemAccountType
+        const contraType = type === 'DEPOSIT' ? 'EVENT_CASH_DEPOSIT' : 'EVENT_CASH_WITHDRAWAL'
+        
+        const journal = await AccountingEngine.postJournalEntry({
+            transactionDate: new Date(),
+            referenceType: type === 'DEPOSIT' ? 'SAVINGS_DEPOSIT' : 'SAVINGS_WITHDRAWAL',
+            referenceId: memberId,
+            externalReferenceId: reference,
+            description: `${type} - ${description} (Ref: ${reference})`,
+            createdBy: session.user.id,
+            createdByName: session.user.name || 'Admin',
+            lines: [
+                {
+                    // For DEPOSIT: Credit Wallet (Increase Liability)
+                    // For WITHDRAWAL: Debit Wallet (Decrease Liability)
+                    accountId: member.wallet.glAccountId,
+                    debitAmount: type === 'WITHDRAWAL' ? amount : 0,
+                    creditAmount: type === 'DEPOSIT' ? amount : 0,
+                    description: `${type === 'DEPOSIT' ? 'Manual Deposit' : 'Manual Withdrawal'}`
+                },
+                {
+                    // Opposite for Cash/Clearing Account
+                    accountCode: (await prisma.systemAccountingMapping.findUnique({
+                        where: { type: contraType as any },
+                        include: { account: true }
+                    }))?.account.code || '1011', // Fallback or strict error
+                    debitAmount: type === 'DEPOSIT' ? amount : 0,
+                    creditAmount: type === 'WITHDRAWAL' ? amount : 0,
+                    description: `M-Pesa Contra-Entry`
+                }
+            ]
+        })
+        ctx.endStep('Execute Ledger Posting');
+
+        ctx.beginStep('Update Wallet History');
+        const walletTx = await prisma.walletTransaction.create({
+            data: {
+                walletId: member.wallet.id,
+                type: type === 'DEPOSIT' ? 'DEPOSIT' : 'WITHDRAWAL',
+                amount: amount,
+                description: `${description} (M-Pesa Ref: ${reference})`,
+                externalReference: reference,
+                ledgerTransactionId: journal.id,
+                immutable: true
+            }
+        })
+        ctx.endStep('Update Wallet History');
+
+        revalidatePath('/admin/system')
+        revalidatePath(`/members/${memberId}`)
+        
+        return { 
+            success: true, 
+            message: `Wallet ${type.toLowerCase()} of KES ${amount} processed successfully`,
+            transactionId: walletTx.id 
+        }
+    }
+)

@@ -81,7 +81,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                         // SUCCESS: Reset counters
                         // PROACTIVE UPGRADE: Flag if password is less than 10 characters
                         const isWeak = password.length < 10;
-                        
+
                         const updatedUser = await prisma.user.update({
                             where: { id: user.id },
                             data: {

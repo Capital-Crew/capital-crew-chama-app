@@ -6,8 +6,8 @@ import type { NextRequest } from 'next/server';
 // Basic in-memory rate limiting for sensitive routes
 // Note: In production, use @upstash/ratelimit with Redis for cross-instance state
 const rateLimitMap = new Map<string, { count: number, windowStart: number }>();
-const LIMIT = 10; // requests
-const WINDOW = 60 * 1000; // 1 minute
+const LIMIT = 50; // Requests per WINDOW
+const WINDOW = 60 * 1000; // 1 Minute
 
 async function rateLimit(request: NextRequest) {
     const rawIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()

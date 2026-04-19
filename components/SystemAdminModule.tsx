@@ -25,6 +25,7 @@ import { PremiumTabs } from './shared/PremiumTabs';
 import { GovernanceHealth } from '@/components/admin/GovernanceHealth';
 import { HeartPulse, Wallet } from 'lucide-react';
 import { AdminWalletAdjustmentModal } from '@/components/admin/AdminWalletAdjustmentModal';
+import { Badge } from '@/components/ui/badge';
 
 
 interface Member {

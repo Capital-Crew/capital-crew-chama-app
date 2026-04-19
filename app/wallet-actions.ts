@@ -303,65 +303,86 @@ export const postAdminWalletAdjustment = withAudit(
         }
         ctx.endStep('Validate Adjustment Input');
 
-        ctx.beginStep('Execute Ledger Posting');
-        const { AccountingEngine } = await import('@/lib/accounting/AccountingEngine')
-        
-        // contraAccount: For M-Pesa deposits/withdrawals, we typically use the M-Pesa/Cash Clearing account
-        // Referenced as EVENT_CASH_DEPOSIT / EVENT_CASH_WITHDRAWAL in SystemAccountType
-        const contraType = type === 'DEPOSIT' ? 'EVENT_CASH_DEPOSIT' : 'EVENT_CASH_WITHDRAWAL'
-        
-        const journal = await AccountingEngine.postJournalEntry({
-            transactionDate: new Date(),
-            referenceType: type === 'DEPOSIT' ? 'SAVINGS_DEPOSIT' : 'SAVINGS_WITHDRAWAL',
-            referenceId: memberId,
-            externalReferenceId: reference,
-            description: `${type} - ${description} (Ref: ${reference})`,
-            createdBy: session.user.id,
-            createdByName: session.user.name || 'Admin',
-            lines: [
-                {
-                    // For DEPOSIT: Credit Wallet (Increase Liability)
-                    // For WITHDRAWAL: Debit Wallet (Decrease Liability)
-                    accountId: member.wallet.glAccountId,
-                    debitAmount: type === 'WITHDRAWAL' ? amount : 0,
-                    creditAmount: type === 'DEPOSIT' ? amount : 0,
-                    description: `${type === 'DEPOSIT' ? 'Manual Deposit' : 'Manual Withdrawal'}`
-                },
-                {
-                    // Opposite for Cash/Clearing Account
-                    accountCode: (await prisma.systemAccountingMapping.findUnique({
-                        where: { type: contraType as any },
-                        include: { account: true }
-                    }))?.account.code || '1011', // Fallback or strict error
-                    debitAmount: type === 'DEPOSIT' ? amount : 0,
-                    creditAmount: type === 'WITHDRAWAL' ? amount : 0,
-                    description: `M-Pesa Contra-Entry`
-                }
-            ]
-        })
-        ctx.endStep('Execute Ledger Posting');
+        ctx.beginStep('Execute Ledger Posting and History Update');
+        try {
+            const { AccountingEngine } = await import('@/lib/accounting/AccountingEngine')
+            
+            const contraType = type === 'DEPOSIT' ? 'EVENT_CASH_DEPOSIT' : 'EVENT_CASH_WITHDRAWAL'
+            
+            const result = await prisma.$transaction(async (tx) => {
+                // 1. POST JOURNAL ENTRY
+                const journal = await AccountingEngine.postJournalEntry({
+                    transactionDate: new Date(),
+                    referenceType: type === 'DEPOSIT' ? 'SAVINGS_DEPOSIT' : 'SAVINGS_WITHDRAWAL',
+                    referenceId: memberId,
+                    externalReferenceId: reference,
+                    description: `${type} - ${description} (Ref: ${reference})`,
+                    createdBy: session.user.id,
+                    createdByName: session.user.name || 'Admin',
+                    lines: [
+                        {
+                            accountId: member.wallet.glAccountId,
+                            debitAmount: type === 'WITHDRAWAL' ? amount : 0,
+                            creditAmount: type === 'DEPOSIT' ? amount : 0,
+                            description: `${type === 'DEPOSIT' ? 'Manual Deposit' : 'Manual Withdrawal'}`
+                        },
+                        {
+                            accountCode: (await tx.systemAccountingMapping.findUnique({
+                                where: { type: contraType as any },
+                                include: { account: true }
+                            }))?.account.code || '1011',
+                            debitAmount: type === 'DEPOSIT' ? amount : 0,
+                            creditAmount: type === 'WITHDRAWAL' ? amount : 0,
+                            description: `M-Pesa Contra-Entry`
+                        }
+                    ]
+                }, tx); // Pass the transaction client here!
 
-        ctx.beginStep('Update Wallet History');
-        const walletTx = await prisma.walletTransaction.create({
-            data: {
-                walletId: member.wallet.id,
-                type: type === 'DEPOSIT' ? 'DEPOSIT' : 'WITHDRAWAL',
-                amount: amount,
-                description: `${description} (M-Pesa Ref: ${reference})`,
-                externalReference: reference,
-                ledgerTransactionId: journal.id,
-                immutable: true
+                // 2. UPDATE WALLET HISTORY (Calculated with current balance)
+                const currentBalance = member.wallet!.glAccount!.balance;
+                const balanceAfter = type === 'DEPOSIT' 
+                    ? Number(currentBalance) + amount 
+                    : Number(currentBalance) - amount;
+
+                const walletTx = await tx.walletTransaction.create({
+                    data: {
+                        walletId: member.wallet!.id,
+                        type: type === 'DEPOSIT' ? 'DEPOSIT' : 'WITHDRAWAL',
+                        amount: amount,
+                        description: `${description} (M-Pesa Ref: ${reference})`,
+                        balanceAfter: balanceAfter,
+                        immutable: true
+                    }
+                });
+
+                return { journal, walletTx };
+            }, { timeout: 15000 });
+
+            ctx.endStep('Execute Ledger Posting and History Update');
+
+            revalidatePath('/admin/system')
+            revalidatePath(`/members/${memberId}`)
+            
+            return { 
+                success: true, 
+                message: `Wallet ${type.toLowerCase()} of KES ${amount} processed successfully`,
+                transactionId: result.walletTx.id 
             }
-        })
-        ctx.endStep('Update Wallet History');
 
-        revalidatePath('/admin/system')
-        revalidatePath(`/members/${memberId}`)
-        
-        return { 
-            success: true, 
-            message: `Wallet ${type.toLowerCase()} of KES ${amount} processed successfully`,
-            transactionId: walletTx.id 
+        } catch (error: any) {
+            ctx.endStep('Execute Ledger Posting and History Update');
+            
+            // Handle unique constraint violation (P2002)
+            if (error.code === 'P2002') {
+                return { 
+                    success: false, 
+                    message: `Duplicate Reference: The M-Pesa Reference ID '${reference}' has already been used in another transaction.`
+                }
+            }
+            
+            console.error('Wallet Adjustment Error:', error);
+            ctx.setErrorCode('ADJUSTMENT_FAILED');
+            throw error;
         }
     }
 )

@@ -1,6 +1,7 @@
 import { auth } from "@/auth"
 import { db } from "@/lib/db"
 import { MESSAGES } from "@/lib/constants/messages"
+import { PRIVILEGED_ROLES, ENTITY_PERMISSION_MAP } from "@/lib/constants/governance"
 
 
 // Map Roles to Permissions (Simple version)
@@ -126,16 +127,6 @@ export async function getPendingApprovals() {
                 }
             } catch (error) {}
 
-            // Governance Tracking
-            const PRIVILEGED_ROLES = ['TREASURER', 'CHAIRPERSON', 'SECRETARY', 'SYSTEM_ADMIN'];
-            const ENTITY_PERMISSION_MAP: Record<string, string[]> = {
-                'LOAN': ['APPROVE_LOANS', 'APPROVE_LOAN', 'canApprove'],
-                'LOAN_NOTE': ['APPROVE_NOTE', 'APPROVE_LOAN_NOTES', 'canApproveLoanNotes'],
-                'LOAN_NOTE_PAYMENT': ['APPROVE_NOTE', 'APPROVE_LOAN_NOTES', 'canApproveLoanNotes'],
-                'LOAN_NOTE_SETTLEMENT': ['APPROVE_NOTE', 'APPROVE_LOAN_NOTES', 'canApproveLoanNotes'],
-                'MEMBER_REGISTRATION': ['APPROVE_MEMBERS', 'canApproveMember'],
-                'EXPENSE': ['APPROVE_EXPENSES', 'canApprove'],
-            };
 
             const requiredPerms = ENTITY_PERMISSION_MAP[req.entityType] || ['ALL'];
 

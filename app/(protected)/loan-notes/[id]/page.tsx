@@ -29,6 +29,21 @@ export default async function LoanNoteDetailPage(props: { params: Promise<{ id: 
 
     if (!note) notFound();
 
+    // Check for pending governance actions
+    const pendingWorkflow = await db.workflowRequest.findFirst({
+        where: {
+            entityId: id,
+            status: 'PENDING',
+            entityType: { in: ['LOAN_NOTE', 'LOAN_NOTE_PAYMENT', 'LOAN_NOTE_SETTLEMENT'] }
+        },
+        include: { 
+            currentStage: true,
+            actions: {
+                select: { actorId: true, stageId: true }
+            }
+        }
+    });
+
     // Fetch user Context for Governance & Subscription
     const userWithMember = await db.user.findUnique({
         where: { id: session.user.id },
@@ -43,6 +58,10 @@ export default async function LoanNoteDetailPage(props: { params: Promise<{ id: 
         }
     });
 
+    const hasPendingAction = pendingWorkflow && 
+        (session.user.role === 'SYSTEM_ADMIN' || pendingWorkflow.currentStage?.requiredRole === session.user.role) &&
+        !pendingWorkflow.actions.some(a => a.actorId === session.user.id && a.stageId === pendingWorkflow.currentStageId);
+
     return (
         <div className="container mx-auto py-10 px-6">
             <NoteDetailView 
@@ -51,6 +70,8 @@ export default async function LoanNoteDetailPage(props: { params: Promise<{ id: 
                 userRole={session.user.role}
                 userPermissions={userWithMember?.permissions}
                 walletBalance={Number(userWithMember?.member?.wallet?.glAccount?.balance || 0)}
+                hasPendingAction={!!hasPendingAction}
+                pendingWorkflowType={pendingWorkflow?.entityType as any}
             />
         </div>
     );

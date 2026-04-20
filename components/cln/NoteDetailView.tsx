@@ -36,9 +36,11 @@ interface NoteDetailViewProps {
     userRole: string;
     userPermissions: any;
     walletBalance: number;
+    hasPendingAction?: boolean;
+    pendingWorkflowType?: 'LOAN_NOTE' | 'LOAN_NOTE_PAYMENT' | 'LOAN_NOTE_SETTLEMENT';
 }
 
-export function NoteDetailView({ note, userId, userRole, userPermissions, walletBalance }: NoteDetailViewProps) {
+export function NoteDetailView({ note, userId, userRole, userPermissions, walletBalance, hasPendingAction, pendingWorkflowType }: NoteDetailViewProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [subscribeAmount, setSubscribeAmount] = useState('');
@@ -138,19 +140,51 @@ export function NoteDetailView({ note, userId, userRole, userPermissions, wallet
                     </div>
 
                     <Tabs defaultValue="overview" className="w-full">
-                        <TabsList className="bg-slate-200/50 p-1.5 rounded-2xl w-fit mb-8 border border-slate-200">
-                            {['overview', 'schedule', 'subscribers', 'approvals'].map(t => (
+                    <TabsList className="bg-slate-200/50 p-1.5 rounded-2xl w-fit mb-8 border border-slate-200">
+                        {['overview', 'schedule', 'subscribers', 'approvals'].map(t => (
+                            <div key={t} className="relative">
                                 <TabsTrigger 
-                                    key={t}
                                     value={t} 
                                     className="rounded-xl px-8 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500 data-[state=active]:bg-white data-[state=active]:text-[#4F46E5] data-[state=active]:shadow-sm transition-all"
                                 >
                                     {t}
                                 </TabsTrigger>
-                            ))}
-                        </TabsList>
+                                {t === 'approvals' && hasPendingAction && (
+                                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 border-2 border-white rounded-full animate-pulse z-20" />
+                                )}
+                            </div>
+                        ))}
+                    </TabsList>
 
-                        <TabsContent value="overview" className="space-y-8 outline-none">
+                    {hasPendingAction && (
+                        <div className="mb-8 p-6 bg-amber-50 border-2 border-amber-200 rounded-[24px] shadow-lg shadow-amber-900/5 animate-in slide-in-from-top-4 duration-500">
+                            <div className="flex items-center justify-between gap-6">
+                                <div className="flex items-center gap-4">
+                                    <div className="p-3 bg-amber-100 rounded-2xl">
+                                        <ShieldCheckIcon className="w-6 h-6 text-amber-600" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-amber-600 uppercase tracking-[0.2em] mb-1">Attention Required</p>
+                                        <h4 className="text-sm font-black text-amber-900 uppercase tracking-tight">
+                                            {pendingWorkflowType === 'LOAN_NOTE' ? 'Awaiting Market Listing Approval' :
+                                             pendingWorkflowType === 'LOAN_NOTE_PAYMENT' ? 'Awaiting Returns Payout Authorization' :
+                                             'Awaiting Early Settlement Clearance'}
+                                        </h4>
+                                    </div>
+                                </div>
+                                <TabsList className="bg-transparent p-0">
+                                    <TabsTrigger 
+                                        value="approvals"
+                                        className="h-12 px-6 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-[10px] uppercase tracking-widest shadow-lg shadow-amber-900/20 transition-all border-none"
+                                    >
+                                        Go to Decisional Terminal
+                                    </TabsTrigger>
+                                </TabsList>
+                            </div>
+                        </div>
+                    )}
+
+                    <TabsContent value="overview" className="space-y-8 outline-none">
                             <div className="p-8 md:p-10 bg-white border border-slate-200 rounded-[32px] shadow-sm">
                                 <div className="flex items-center gap-3 mb-8 border-b border-slate-100 pb-6">
                                     <div className="p-2 bg-indigo-50 rounded-lg">

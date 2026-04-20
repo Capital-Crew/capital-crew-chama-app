@@ -409,7 +409,11 @@ export function NoteApprovalsTab({
                                                 disabled={isSubmitting}
                                                 className="h-12 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-widest"
                                             >
-                                                {isSubmitting ? <Loader2Icon className="animate-spin" /> : "Approve & Promote"}
+                                                {isSubmitting ? <Loader2Icon className="animate-spin" /> : (
+                                                    wf.entityType === 'LOAN_NOTE' ? 'Approve Listing' :
+                                                    wf.entityType === 'LOAN_NOTE_PAYMENT' ? 'Authorize Payout' :
+                                                    'Confirm Settlement'
+                                                )}
                                             </Button>
                                             <Button 
                                                 onClick={() => handleVote(wf.id, 'REJECTED')}
@@ -417,7 +421,9 @@ export function NoteApprovalsTab({
                                                 variant="outline"
                                                 className="h-12 rounded-2xl border-rose-200 text-rose-600 hover:bg-rose-50 font-black text-xs uppercase tracking-widest"
                                             >
-                                                Reject & Terminate
+                                                {wf.entityType === 'LOAN_NOTE' ? 'Reject Listing' :
+                                                 wf.entityType === 'LOAN_NOTE_PAYMENT' ? 'Deny Payout' :
+                                                 'Block Settlement'}
                                             </Button>
                                         </div>
                                     </div>

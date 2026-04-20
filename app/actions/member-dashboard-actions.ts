@@ -88,7 +88,9 @@ export async function getMemberStats(memberId: string): Promise<MemberFactBoxSta
         if (!member) return null
 
         const { WalletService } = await import('@/lib/services/WalletService')
-        const contributionBalance = await getAccountBalance(memberId, '2100', 'CREDIT')
+        const { getMemberContributionBalance } = await import('@/lib/accounting/AccountingEngine')
+        
+        const contributionBalance = await getMemberContributionBalance(memberId)
         const savingsBalance = await WalletService.getWalletBalance(memberId)
 
         const loans = await db.loan.findMany({
@@ -145,7 +147,7 @@ export async function getMemberStats(memberId: string): Promise<MemberFactBoxSta
  */
 export async function getDetailedMemberStats(memberId: string): Promise<{ stats: MemberDashboardStats, loans: LoanPortfolioItem[] } | null> {
     const { LoanScheduleCache } = await import('@/lib/services/LoanScheduleCache');
-    const { getLoanPenaltyBalance } = await import('@/lib/accounting/AccountingEngine');
+    const { getLoanPenaltyBalance, getMemberContributionBalance } = await import('@/lib/accounting/AccountingEngine');
     const { WalletService } = await import('@/lib/services/WalletService');
     const { calculateContributionFine } = await import('@/lib/fines/calculateContributionFine');
 
@@ -175,7 +177,7 @@ export async function getDetailedMemberStats(memberId: string): Promise<{ stats:
     ] = await Promise.all([
         WalletService.getWalletBalance(memberId),
         getAccountBalance(memberId, '3011', 'CREDIT'),
-        getAccountBalance(memberId, '2100', 'CREDIT'),
+        getMemberContributionBalance(memberId),
         getAccountBalance(memberId, '3012', 'CREDIT'),
         getAccountBalance(memberId, '2000', 'CREDIT'),
         db.loan.findMany({

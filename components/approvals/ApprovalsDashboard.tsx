@@ -73,7 +73,6 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
 
     const handleClose = () => {
         setSelectedRequest(null)
-        router.refresh()
     }
 
     const handleQuickAction = async (e: React.MouseEvent, req: ExtendedApprovalRequest, decision: 'APPROVED' | 'REJECTED') => {
@@ -87,28 +86,25 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
         }
 
         setProcessingId(req.id)
-
-        await executeAction(async () => {
-            const result = await processApproval(req.id, decision)
-            if (result.error) {
-                toast.error(`Failed: ${result.error}`)
-                return { success: false, error: result.error }
-            } else {
-                toast.success(`${decision === 'APPROVED' ? 'Approved' : 'Rejected'} successfully`)
+        try {
+            await executeAction(async () => {
+                const result = await processApproval(req.id, decision)
+                if (result.error) {
+                    toast.error(`Failed: ${result.error}`)
+                    return { success: false, error: result.error }
+                }
+                toast.success(decision === 'APPROVED' ? 'Approved successfully' : 'Rejected successfully')
+                setSelectedRequest(null)
                 router.refresh()
                 return { success: true }
-            }
-        }, {
-            onOptimisticUpdate: () => {
-                setOptimisticRequests(req.id);
-                // Also close selected request if it's the one being actioned (though this is quick action from list)
-                if (selectedRequest?.id === req.id) {
-                    setSelectedRequest(null);
+            }, {
+                onOptimisticUpdate: () => {
+                    setOptimisticRequests(req.id)
                 }
-            }
-        });
-        
-        setProcessingId(null)
+            })
+        } finally {
+            setProcessingId(null)
+        }
     }
 
     return (
@@ -392,16 +388,20 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
                             {selectedRequest.canApprove ? (
                                 <>
                                     <button
-                                        onClick={(e) => { handleQuickAction(e as any, selectedRequest, 'REJECTED'); handleClose(); }}
-                                        className="flex-1 py-3 rounded-xl bg-white border border-slate-200 text-slate-600 text-xs font-bold uppercase tracking-wider hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
+                                        onClick={(e) => handleQuickAction(e as any, selectedRequest, 'REJECTED')}
+                                        disabled={!!processingId || anyIsPending}
+                                        className="flex-1 py-3 rounded-xl bg-white border border-slate-200 text-slate-600 text-xs font-bold uppercase tracking-wider hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                                     >
-                                        Reject
+                                        {processingId === selectedRequest.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <X className="w-3.5 h-3.5" />}
+                                        {processingId === selectedRequest.id ? 'Rejecting...' : 'Reject'}
                                     </button>
                                     <button
-                                        onClick={(e) => { handleQuickAction(e as any, selectedRequest, 'APPROVED'); handleClose(); }}
-                                        className="flex-1 py-3 rounded-xl bg-[#00c2e0] text-white text-xs font-black uppercase tracking-wider hover:bg-[#00a0b8] transition-colors shadow-lg shadow-[#00c2e0]/20"
+                                        onClick={(e) => handleQuickAction(e as any, selectedRequest, 'APPROVED')}
+                                        disabled={!!processingId || anyIsPending}
+                                        className="flex-1 py-3 rounded-xl bg-[#00c2e0] text-white text-xs font-black uppercase tracking-wider hover:bg-[#00a0b8] transition-colors shadow-lg shadow-[#00c2e0]/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                                     >
-                                        Approve
+                                        {processingId === selectedRequest.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                                        {processingId === selectedRequest.id ? 'Approving...' : 'Approve'}
                                     </button>
                                 </>
                             ) : (

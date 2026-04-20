@@ -81,6 +81,7 @@ export function MemberProfileView({
             image: member.user?.image
         },
         financials: {
+            savingsBalance: stats?.memberSavings || 0,
             contributionBalance: stats?.contributionBalance || 0,
             outstandingLoans: stats?.outstandingLoans || stats?.totalOutstandingBalance || 0,
             meetingFines: stats?.meetingFines || 0,

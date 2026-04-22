@@ -12,6 +12,7 @@ type UseFormActionReturn<T> = {
   error: string | null
   execute: (action: (idempotencyKey?: string) => Promise<ActionResult<T>>, options?: { useIdempotency?: boolean }) => Promise<void>
   reset: () => void
+  setError: (error: string | null) => void
 }
 
 export function useFormAction<T = void>(): UseFormActionReturn<T> {
@@ -43,5 +44,5 @@ export function useFormAction<T = void>(): UseFormActionReturn<T> {
     setError(null)
   }
 
-  return { isPending, error, execute, reset }
+  return { isPending, error, execute, reset, setError }
 }

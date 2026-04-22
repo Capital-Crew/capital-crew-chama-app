@@ -121,7 +121,17 @@ export async function initiateWorkflow(entityType: EntityType, entityId: string,
         }
     }
 
-    // 2. Create the Request
+    // 2. [IDEMPOTENCY] Delete any existing PENDING requests for this entity
+    // This prevents duplicate requests appearing in the approvals module
+    await prisma.workflowRequest.deleteMany({
+        where: {
+            entityId,
+            entityType,
+            status: WorkflowStatus.PENDING
+        }
+    })
+
+    // 3. Create the Request
     const request = await prisma.workflowRequest.create({
         data: {
             workflowId: definition.id,

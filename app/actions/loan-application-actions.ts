@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { withAudit } from '@/lib/with-audit'
 import { AuditLogAction } from '@prisma/client'
 import { MESSAGES } from '@/lib/constants/messages'
+import { calculateLoanQualification } from '@/app/sacco-settings-actions'
 
 /**
  * Zod schema for allowed draft loan fields.
@@ -167,10 +168,38 @@ export const updateLoanDraft = withAudit(
 
         if (Object.keys(updateData).length > 0) {
             ctx.beginStep('Update Database Record');
+            
+            let financialUpdates = {}
+            // If amount or product changes, recalculate fees to ensure "Net Disbursement" is accurate
+            if (updateData.amount || updateData.loanProductId) {
+                try {
+                    const newAmount = updateData.amount || Number(loan.amount)
+                    const appraisal = await calculateLoanQualification(
+                        loan.memberId, 
+                        (loan.guarantors as any)?.loansToOffset || [], 
+                        newAmount,
+                        loan.feeExemptions
+                    )
+                    
+                    financialUpdates = {
+                        grossQualifyingAmount: appraisal.grossQualifyingAmount,
+                        processingFee: appraisal.processingFee,
+                        insuranceFee: appraisal.insuranceFee,
+                        contributionDeduction: appraisal.contributionDeduction,
+                        existingLoanOffset: appraisal.selectedLoansOffset,
+                        totalDeductions: appraisal.totalDeductions,
+                        netDisbursementAmount: appraisal.netDisbursementAmount,
+                    }
+                } catch (calcError) {
+                    console.error('[updateLoanDraft] Calculation failed:', calcError)
+                }
+            }
+
             const updatedLoan = await db.loan.update({
                 where: { id: loanId },
                 data: {
                     ...updateData,
+                    ...financialUpdates,
                     updatedAt: new Date()
                 }
             })

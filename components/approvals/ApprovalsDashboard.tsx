@@ -58,10 +58,26 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
     const [selectedRequest, setSelectedRequest] = useState<ExtendedApprovalRequest | null>(null)
     const [filter, setFilter] = useState('ALL')
     
+    const [isFilterPending, startFilterTransition] = useTransition()
+    
     // Optimistic state for the list of requests
-    const [optimisticRequests, setOptimisticRequests] = useOptimistic(
+    type OptimisticAction =
+        | { type: 'REMOVE'; id: string }
+        | { type: 'UPDATE_STATUS'; id: string; status: string }
+
+    const [optimisticRequests, dispatchOptimistic] = useOptimistic(
         requests,
-        (state, actionedId: string) => state.filter(r => r.id !== actionedId)
+        (state: ExtendedApprovalRequest[], action: OptimisticAction) => {
+            if (action.type === 'REMOVE') {
+                return state.filter(r => r.id !== action.id)
+            }
+            if (action.type === 'UPDATE_STATUS') {
+                return state.map(r =>
+                    r.id === action.id ? { ...r, status: action.status } : r
+                )
+            }
+            return state
+        }
     );
 
     const { execute: executeAction, isPending: anyIsPending } = useOptimisticAction();
@@ -75,31 +91,39 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
         setSelectedRequest(null)
     }
 
-    const handleQuickAction = async (e: React.MouseEvent, req: ExtendedApprovalRequest, decision: 'APPROVED' | 'REJECTED') => {
-        e.stopPropagation() // Prevent card click
-        if (processingId) return
-
-        // Final safety check
+    const handleQuickAction = async (
+        e: React.MouseEvent,
+        req: ExtendedApprovalRequest,
+        decision: 'APPROVED' | 'REJECTED'
+    ) => {
+        e.stopPropagation()
+        if (processingId || anyIsPending) return
         if (!req.canApprove) {
             toast.error("You do not have permission to action this request")
             return
         }
 
         setProcessingId(req.id)
+
         try {
             await executeAction(async () => {
                 const result = await processApproval(req.id, decision)
+
                 if (result.error) {
                     toast.error(`Failed: ${result.error}`)
                     return { success: false, error: result.error }
                 }
-                toast.success(decision === 'APPROVED' ? 'Approved successfully' : 'Rejected successfully')
+
+                toast.success(
+                    decision === 'APPROVED' ? 'Approved successfully' : 'Rejected successfully'
+                )
                 setSelectedRequest(null)
-                router.refresh()
+                // No router.refresh() — optimistic update handles UI instantly
                 return { success: true }
             }, {
                 onOptimisticUpdate: () => {
-                    setOptimisticRequests(req.id)
+                    // Remove from pending list immediately — no wait for server
+                    dispatchOptimistic({ type: 'REMOVE', id: req.id })
                 }
             })
         } finally {
@@ -114,12 +138,14 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
                 {['ALL', 'LOAN', 'LOAN_NOTE', 'MEMBER', 'EXPENSE'].map(f => (
                     <button
                         key={f}
-                        onClick={() => setFilter(f)}
+                        onClick={() => startFilterTransition(() => setFilter(f))}
                         className={cn(
                             "px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 shadow-sm whitespace-nowrap flex-shrink-0",
                             filter === f
                                 ? 'bg-[#00c2e0] text-white shadow-lg shadow-[#00c2e0]/20 scale-105'
-                                : 'bg-white text-slate-500 border border-slate-100 hover:bg-slate-50'
+                                : isFilterPending
+                                    ? 'bg-slate-100 text-slate-400 border border-slate-100 cursor-wait'
+                                    : 'bg-white text-slate-500 border border-slate-100 hover:bg-slate-50'
                         )}
                     >
                         {f === 'ALL' ? 'All Requests' : f === 'LOAN_NOTE' ? 'Investment Notes' : f + 's'}
@@ -150,7 +176,7 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
                                 onClick={() => setSelectedRequest(req)}
                                 className={cn(
                                     "group bg-white border border-slate-100 hover:border-[#00c2e0]/30 cursor-pointer transition-all duration-300 hover:shadow-xl shadow-sm rounded-2xl overflow-hidden flex flex-col",
-                                    isProcessing && "opacity-50 pointer-events-none scale-[0.98]"
+                                    isProcessing && "opacity-0 scale-95 pointer-events-none"
                                 )}
                             >
                                 <div className="p-5 flex-1 relative">

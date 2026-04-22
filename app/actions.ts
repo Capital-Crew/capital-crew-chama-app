@@ -78,22 +78,18 @@ export async function createMember(formData: FormData) {
 
 export async function createUserAccount(formData: FormData) {
     // 1. Strict Role Check
-    const session = await auth(); // Using auth() from @/auth as imported in other files, but wait, this file imports prisma from relative. 
-
-
-
-
-    // Let's implement the logic assuming `auth` is available, and then I'll add the import.
+    const session = await auth(); 
 
     const name = formData.get('name') as string
     const contact = formData.get('contact') as string
     const email = (formData.get('email') as string).toLowerCase().trim()
+    const nationalId = formData.get('nationalId') as string
 
     const role = (formData.get('role') as any) || 'MEMBER'
 
     // Validate required fields
-    if (!name || !contact || !email) {
-        throw new Error('All fields are required')
+    if (!name || !contact || !email || !nationalId) {
+        throw new Error('All fields are required including National ID')
     }
 
     // Role & Permission Check
@@ -106,8 +102,8 @@ export async function createUserAccount(formData: FormData) {
     const isSystemAdmin = userRole?.role === 'SYSTEM_ADMIN'
     const hasEnrollPermission = permissions?.canEnrollMembers === true
 
-    if (!isSystemAdmin && !['CHAIRPERSON', 'SECRETARY', 'TREASURER'].includes(userRole?.role as string) && !hasEnrollPermission) {
-        throw new Error('Unauthorized: You do not have permission to enroll members.')
+    if (!isSystemAdmin && userRole?.role !== 'CHAIRPERSON' && !hasEnrollPermission) {
+        throw new Error('Unauthorized: Only the Chairperson and System Admin can enroll new members.')
     }
 
     // Check if email already exists
@@ -138,6 +134,12 @@ export async function createUserAccount(formData: FormData) {
                 name,
                 contact,
                 memberNumber,
+                identifiers: {
+                    create: {
+                        type: 'NATIONAL_ID',
+                        value: nationalId
+                    }
+                }
             },
         })
 
@@ -421,7 +423,11 @@ export const applyForLoan = withAudit(
                     ctx.setErrorCode('LIMIT_EXCEEDED');
                     return { error: `Application Denied: The requested amount exceeds your maximum borrowing limit.` }
                 }
-            } catch (e) { }
+            } catch (e: any) {
+                ctx.setErrorCode('CALCULATION_FAILED');
+                ctx.failStep('Appraisal Calculation', e);
+                return { error: `Financial calculation failed: ${e.message}. Please contact support.` }
+            }
         }
         ctx.endStep('Appraisal Calculation');
 

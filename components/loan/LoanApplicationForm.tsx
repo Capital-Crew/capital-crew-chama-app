@@ -15,7 +15,7 @@ import { MemberCreditSnapshot } from './MemberCreditSnapshot';
 import { Member, LoanProduct, Loan } from '@/lib/types'; // Adjust imports as needed
 import { CreditSnapshot } from '@/lib/utils/credit-limit';
 import { formatCurrency } from '@/lib/utils';
-import { ChevronLeft, Send, X, FileText } from 'lucide-react';
+import { ChevronLeft, Send, X, FileText, Loader2 } from 'lucide-react';
 import { useFormAutoSave } from '@/hooks/useFormAutoSave';
 import { AutoSaveIndicator } from './AutoSaveIndicator';
 import { LoanExemptionsSection } from './LoanExemptionsSection';
@@ -23,6 +23,21 @@ import { Button } from "@/components/ui/button";
 import { useFormAction } from '@/hooks/useFormAction';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { FormError } from '@/components/ui/FormError';
+import { checkLoanEligibility } from '@/app/actions/loan-eligibility';
+
+// Validation Schema
+const loanApplicationSchema = z.object({
+    memberId: z.string().min(1, 'Member is required'),
+    loanProductId: z.string().min(1, 'Loan product is required'),
+    amount: z.string()
+        .min(1, 'Amount is required')
+        .refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
+            message: 'Amount must be greater than 0'
+        }),
+    installments: z.number()
+        .min(1, 'Installments must be at least 1')
+        .max(360, 'Installments exceed maximum allowed period')
+});
 
 interface LoanApplicationFormProps {
     members: Member[];
@@ -52,19 +67,6 @@ export function LoanApplicationForm({
     const router = useRouter() // Ensure next/navigation is imported
     const { isPending: isSubmitting, error, execute } = useFormAction();
 
-    // Validation Schema
-    const loanApplicationSchema = z.object({
-        memberId: z.string().min(1, 'Member is required'),
-        loanProductId: z.string().min(1, 'Loan product is required'),
-        amount: z.string()
-            .min(1, 'Amount is required')
-            .refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
-                message: 'Amount must be greater than 0'
-            }),
-        installments: z.number()
-            .min(1, 'Installments must be at least 1')
-            .max(60, 'Installments cannot exceed 60 months')
-    });
 
     // Default handlers if not provided
     const handleSuccess = onSuccess || (() => router.push('/loans'))
@@ -81,9 +83,7 @@ export function LoanApplicationForm({
     const [qualification, setQualification] = useState<any>(null);
     const [calculatingQualification, setCalculatingQualification] = useState(false);
     const [calcError, setCalcError] = useState<string | null>(null);
-    const [isSubmitted, setIsSubmitted] = useState(false);
-    const [pendingIntent, setPendingIntent] = useState<'save' | 'send'>('send');
-    const [isProcessing, setIsProcessing] = useState(false);
+    const [formState, setFormState] = useState<'idle' | 'processing' | 'submitted'>('idle');
     const [processingStage, setProcessingStage] = useState('Initializing application...');
 
     // Status check for read-only mode or auto-save disable
@@ -105,7 +105,7 @@ export function LoanApplicationForm({
     const { status: autoSaveStatus, lastSaved, error: autoSaveError, save: saveDraft } = useFormAutoSave({
         watch,
         debounceMs: 1000,
-        enabled: !isPendingDraft && !isSubmitted,
+        enabled: !isPendingDraft && formState !== 'submitted',
         onSave: async (data: any) => {
             if (initialData?.id) {
                 const { updateLoanDraft } = await import('@/app/actions/loan-application-actions');
@@ -139,8 +139,8 @@ export function LoanApplicationForm({
     useEffect(() => {
         if (debouncedMemberId) {
             getMemberActiveLoans(debouncedMemberId)
-                .then(setLoans => {
-                    setActiveLoans(setLoans);
+                .then(loans => {
+                    setActiveLoans(loans);
                     setSelectedLoansToOffset([]);
                 })
         }
@@ -149,92 +149,122 @@ export function LoanApplicationForm({
     const [eligibility, setEligibility] = useState<{ isEligible: boolean; message?: string } | null>(null);
 
     useEffect(() => {
-        if (debouncedMemberId) {
-            setCalculatingQualification(true);
-            setCalcError(null);
-            const amount = debouncedAmount ? parseFloat(debouncedAmount) : undefined;
-            calculateLoanQualification(debouncedMemberId, selectedLoansToOffset, amount, feeExemptions)
-                .then(result => setQualification(result))
-                .catch(error => {
-                    setCalcError(error.message || 'Failed to calculate fees. Please try again.');
-                })
-                .finally(() => setCalculatingQualification(false));
-
-            import('@/app/actions/loan-eligibility').then(({ checkLoanEligibility }) => {
-                checkLoanEligibility(debouncedMemberId).then(result => {
-                    setEligibility(result);
-                    if (!result.isEligible) {
-                        toast.error(result.message || 'You are not eligible for a new loan.');
-                    }
-                });
-            });
-        } else {
+        if (!debouncedMemberId) {
             setQualification(null);
             setCalcError(null);
             setEligibility(null);
+            return;
         }
-    }, [debouncedMemberId, selectedLoansToOffset, debouncedAmount, feeExemptions]);
+
+        let cancelled = false;
+
+        setCalculatingQualification(true);
+        setCalcError(null);
+
+        const amount = debouncedAmount ? parseFloat(debouncedAmount) : undefined;
+
+        Promise.all([
+            calculateLoanQualification(
+                debouncedMemberId,
+                selectedLoansToOffset,
+                amount,
+                feeExemptions
+            ),
+            checkLoanEligibility(debouncedMemberId),
+        ])
+            .then(([qualResult, eligResult]) => {
+                if (cancelled) return;
+                setQualification(qualResult);
+                setEligibility(eligResult);
+                if (!eligResult.isEligible && canEditDetails) {
+                    toast.error(eligResult.message || 'You are not eligible for a new loan.');
+                }
+            })
+            .catch(err => {
+                if (cancelled) return;
+                setCalcError(err.message || 'Failed to calculate fees. Please try again.');
+            })
+            .finally(() => {
+                if (!cancelled) setCalculatingQualification(false);
+            });
+
+        return () => { cancelled = true; };
+
+    }, [debouncedMemberId, selectedLoansToOffset, debouncedAmount, feeExemptions, canEditDetails]);
 
     async function handleFormAction(formData: FormData) {
-        if (isSubmitted || isProcessing) return;
+        if (formState !== 'idle') return;
 
-        // If intent is 'send', trigger the high-end processing visualization
-        if (pendingIntent === 'send') {
-            setIsProcessing(true);
-            
-            // Artificial delay to cycle through stages as requested
+        const intent = formData.get('submitAction') as 'send' | 'save';
+
+        if (intent === 'send') {
+            setFormState('processing');
             setProcessingStage('Analyzing member eligibility...');
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            setProcessingStage('Calculating loan qualification...');
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            setProcessingStage('Securing ledger entries...');
-            await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
-        // --- Observability: Log incoming data ---
-        const { logFormData } = await import('@/lib/utils/form-debug');
-        logFormData('Raw Submission', formData);
+        if (process.env.NODE_ENV === 'development') {
+            const { logFormData } = await import('@/lib/utils/form-debug');
+            logFormData('Raw Submission', formData);
+        }
 
         await execute(async (idempotencyKey) => {
             const memberId = watchedMemberId || currentMemberId;
             if (memberId && !formData.get('memberId')) {
                 formData.set('memberId', memberId);
             }
-
-            // Centralized Intent Injection
-            formData.set('submitAction', pendingIntent);
-
-            // Technical metadata
+            formData.set('submitAction', intent);
             if (idempotencyKey) {
                 formData.append('idempotencyKey', idempotencyKey);
             }
 
-            // --- Observability: Log finalized data ---
-            logFormData('Final Payload', formData);
-
-            const res = await applyForLoan(null, formData);
-            if (res?.error) {
-                setIsProcessing(false); // Re-enable form on error
-                return { success: false, error: res.error };
+            if (process.env.NODE_ENV === 'development') {
+                const { logFormData } = await import('@/lib/utils/form-debug');
+                logFormData('Final Payload', formData);
             }
 
-            setIsSubmitted(true);
-            toast.success(pendingIntent === 'send' ? 'Loan application submitted successfully!' : 'Draft saved successfully');
+            // ── Cycle stages in parallel with the real server call ──
+            if (intent === 'send') {
+                const stages = [
+                    'Analyzing member eligibility...',
+                    'Calculating loan qualification...',
+                    'Securing ledger entries...',
+                ];
+                let i = 0;
+                const interval = setInterval(() => {
+                    i = Math.min(i + 1, stages.length - 1);
+                    setProcessingStage(stages[i]);
+                }, 900);
+
+                const res = await applyForLoan(null, formData);
+                clearInterval(interval);
+
+                if (res?.error) {
+                    setFormState('idle');  // unfreeze form immediately
+                    return { success: false, error: res.error };
+                }
+
+                setFormState('submitted');
+                toast.success('Loan application submitted successfully!');
+                reset();
+                handleSuccess();
+                return { success: true };
+            }
+
+            // intent === 'save'
+            const res = await applyForLoan(null, formData);
+            if (res?.error) {
+                return { success: false, error: res.error };
+            }
+            toast.success('Draft saved successfully');
             reset();
             handleSuccess();
             return { success: true };
         }, { useIdempotency: true });
-        
-        if (pendingIntent !== 'send') {
-            setIsProcessing(false);
-        }
     }
 
     return (
         <AnimatePresence mode="wait">
-            {!isProcessing ? (
+            {formState !== 'processing' ? (
                 <motion.div
                     key="loan-form"
                     initial={{ opacity: 1, scale: 1 }}
@@ -249,8 +279,9 @@ export function LoanApplicationForm({
                                 <div className="flex items-center gap-3">
                                     <button
                                         type="submit"
-                                        onClick={() => setPendingIntent('save')}
-                                        disabled={isSubmitting || isSubmitted || isProcessing}
+                                        name="submitAction"
+                                        value="save"
+                                        disabled={isSubmitting || formState !== 'idle'}
                                         className="flex items-center gap-2 px-3 py-2 bg-white border-2 border-slate-300 text-slate-700 font-bold text-sm rounded-xl hover:bg-slate-50 hover:border-slate-400 transition-all shadow-sm disabled:opacity-50"
                                         title="Save as Draft and Go Back"
                                     >
@@ -266,12 +297,13 @@ export function LoanApplicationForm({
                                         error={autoSaveError}
                                     />
                                     <SubmitButton
-                                        isPending={isSubmitting || isProcessing}
+                                        isPending={isSubmitting || formState === 'processing'}
                                         label="Send Approval Request"
-                                        pendingLabel={isProcessing ? "Processing..." : "Submitting..."}
-                                        onClick={() => setPendingIntent('send')}
+                                        pendingLabel={formState === 'processing' ? "Processing..." : "Submitting..."}
+                                        name="submitAction"
+                                        value="send"
                                         icon={<Send className="w-4 h-4 mr-2" />}
-                                        disabled={!canEditDetails || isSubmitted || isProcessing}
+                                        disabled={!canEditDetails || formState !== 'idle'}
                                         className="bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200"
                                     />
                                 </div>
@@ -426,11 +458,6 @@ export function LoanApplicationForm({
                                 onChange={setFeeExemptions}
                             />
                         </div>
-                        {
-                            Object.entries(feeExemptions).map(([key, value]) => (
-                                <input key={key} type="hidden" name={`exemptions[${key}]`} value={String(value)} />
-                            ))
-                        }
                         <input type="hidden" name="feeExemptions" value={JSON.stringify(feeExemptions)} />
 
                         <div className="space-y-6 relative">
@@ -583,7 +610,7 @@ export function LoanApplicationForm({
                         {/* Branded Pulse Effect */}
                         <div className="absolute inset-0 bg-blue-400/20 rounded-full animate-ping scale-150" />
                         <div className="relative bg-blue-600 p-6 rounded-full shadow-2xl">
-                            <Loader2 className="w-12 h-12 text-white animate-spin-slow" />
+                            <Loader2 className="w-12 h-12 text-white animate-spin" />
                         </div>
                     </div>
 
@@ -614,7 +641,7 @@ export function LoanApplicationForm({
                             <motion.div
                                 initial={{ width: "0%" }}
                                 animate={{ width: "100%" }}
-                                transition={{ duration: 3, ease: "linear" }}
+                                transition={{ duration: 2.7, ease: "linear" }}
                                 className="h-full bg-blue-600"
                             />
                         </div>
@@ -625,28 +652,3 @@ export function LoanApplicationForm({
     );
 }
 
-const Loader2 = ({ className }: { className?: string }) => (
-    <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className={className}
-    >
-        <path d="M12 2v4" />
-        <path d="m16.2 7.8 2.9-2.9" />
-        <path d="M18 12h4" />
-        <path d="m16.2 16.2 2.9 2.9" />
-        <path d="M12 18v4" />
-        <path d="m4.9 19.1 2.9-2.9" />
-        <path d="M2 12h4" />
-        <path d="m4.9 4.9 2.9 2.9" />
-    </svg>
-);
-    );
-}

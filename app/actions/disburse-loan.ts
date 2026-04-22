@@ -36,7 +36,7 @@ export const disburseLoan = withAudit(
         ctx.captureBefore('Loan', loanId, loan);
 
         const isOwner = session.user.memberId === loan.memberId
-        const isPowerAdmin = ['SYSTEM_ADMIN', 'CHAIRPERSON'].includes(session.user.role)
+        const isPowerAdmin = ['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER'].includes(session.user.role)
 
         if (!isOwner && !isPowerAdmin) {
             ctx.setErrorCode('FORBIDDEN');

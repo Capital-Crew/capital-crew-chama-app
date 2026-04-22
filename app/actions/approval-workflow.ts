@@ -1,5 +1,20 @@
 'use server'
 
+/*
+ * REQUIRED DB INDEXES — run: npx prisma migrate dev --name add_workflow_indexes
+ *
+ * In schema.prisma, add to WorkflowRequest model:
+ *   @@index([entityId, entityType])
+ *   @@index([entityId, entityType, status])
+ *
+ * In ApprovalHistory model:
+ *   @@index([entityId, entityType])
+ *
+ * In Loan model:
+ *   @@index([status])
+ *   @@index([memberId, status])
+ */
+
 import { revalidatePath } from 'next/cache'
 import { db as prisma } from '@/lib/db'
 import { auth } from '@/auth'
@@ -93,39 +108,23 @@ export const handleLoanTransition = withAudit(
                     }
                 })
                 ctx.endStep('Log Approval History');
-                // Log History
-                await tx.approvalHistory.create({
-                    data: {
-                        entityType: 'LOAN',
-                        entityId: loanId,
-                        actorUsername: actorName,
-                        actorId: actorId,
-                        action: 'SUBMITTED',
-                        metadata: { version: nextVersion, amount: loan.amount } as any
-                    }
-                })
-                ctx.endStep('Log Approval History');
-
-                ctx.beginStep('Send Notification');
-                // Create Notification
-                await tx.notification.create({
-                    data: {
-                        memberId: loan.memberId,
-                        type: 'SYSTEM_UPDATE',
-                        message: `Loan Application ${loan.loanApplicationNumber} submitted.`,
-                        loanId: loanId
-                    }
-                })
-                ctx.endStep('Send Notification');
 
                 return { success: true }
             })
 
-            const updatedLoan = await prisma.loan.findUnique({ where: { id: loanId } });
-            if (updatedLoan) ctx.captureAfter(updatedLoan);
+            // Fire-and-forget AFTER transaction commits — does not block response
+            prisma.notification.create({
+                data: {
+                    memberId: loan.memberId,
+                    type: 'SYSTEM_UPDATE',
+                    message: `Loan Application ${loan.loanApplicationNumber} submitted.`,
+                    loanId: loanId
+                }
+            }).catch(err => console.error('[workflow] notification failed:', err))
 
-            revalidatePath('/loans')
-            revalidatePath(`/loans/${loanId}`)
+            ctx.captureAfter({ ...loan, status: 'PENDING_APPROVAL', submissionVersion: nextVersion });
+
+            revalidatePath(`/loans/${loanId}`, 'page')
             return result
         }
 
@@ -149,6 +148,14 @@ export const handleLoanTransition = withAudit(
                         cancellationCount: { increment: 1 }
                     }
                 })
+
+                // [UNIFIED WORKFLOW CLEANUP]
+                const req = await tx.workflowRequest.findFirst({
+                    where: { entityId: loanId, entityType: 'LOAN' }
+                })
+                if (req) {
+                    await tx.workflowRequest.delete({ where: { id: req.id } })
+                }
                 ctx.endStep('Revert Loan Status');
 
                 ctx.beginStep('Log Approval History');
@@ -168,11 +175,9 @@ export const handleLoanTransition = withAudit(
                 return { success: true }
             })
 
-            const updatedLoan = await prisma.loan.findUnique({ where: { id: loanId } });
-            if (updatedLoan) ctx.captureAfter(updatedLoan);
+            ctx.captureAfter({ ...loan, status: 'APPLICATION' });
 
-            revalidatePath('/loans')
-            revalidatePath(`/loans/${loanId}`)
+            revalidatePath(`/loans/${loanId}`, 'page')
             return result
         }
     }
@@ -252,8 +257,7 @@ export const handleLoanNoteTransition = withAudit(
                 return { success: true }
             })
 
-            revalidatePath('/loan-notes')
-            revalidatePath(`/loan-notes/${noteId}`)
+            revalidatePath(`/loan-notes/${noteId}`, 'page')
             return result
         }
 
@@ -277,8 +281,7 @@ export const handleLoanNoteTransition = withAudit(
                 return { success: true }
             })
 
-            revalidatePath('/loan-notes')
-            revalidatePath(`/loan-notes/${noteId}`)
+            revalidatePath(`/loan-notes/${noteId}`, 'page')
             return result
         }
 
@@ -327,8 +330,7 @@ export const handleLoanNoteTransition = withAudit(
                 return { success: true }
             })
 
-            revalidatePath('/loan-notes')
-            revalidatePath(`/loan-notes/${noteId}`)
+            revalidatePath(`/loan-notes/${noteId}`, 'page')
             return result
         }
 
@@ -363,8 +365,7 @@ export const handleLoanNoteTransition = withAudit(
                 return { success: true }
             })
 
-            revalidatePath('/loan-notes')
-            revalidatePath(`/loan-notes/${noteId}`)
+            revalidatePath(`/loan-notes/${noteId}`, 'page')
             return result
         }
     }

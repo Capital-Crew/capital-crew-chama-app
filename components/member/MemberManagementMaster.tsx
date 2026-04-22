@@ -189,6 +189,10 @@ export function MemberManagementMaster({ initialMembers, initialDetail, userRole
                                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 ml-1">Email Address</label>
                                     <input name="email" type="email" required className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-black focus:ring-4 focus:ring-cyan-500/10 transition-all" />
                                 </div>
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 ml-1">National ID Number</label>
+                                    <input name="nationalId" required className="w-full bg-slate-50 border-none rounded-xl px-4 py-3 text-sm font-black focus:ring-4 focus:ring-cyan-500/10 transition-all" placeholder="Enter ID number..." />
+                                </div>
 
                                 <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex gap-3">
                                     <div className="text-blue-500 shrink-0 mt-1">

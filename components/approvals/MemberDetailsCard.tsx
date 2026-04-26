@@ -8,6 +8,7 @@ import { useOptimisticAction } from '@/hooks/useOptimisticAction'
 import { SubmitButton } from '@/components/ui/SubmitButton'
 import { FormError } from '@/components/ui/FormError'
 import { cn } from '@/lib/utils'
+import { ProcessingOverlay } from '../shared/ProcessingOverlay'
 
 interface MemberDetailsCardProps {
     requestId: string
@@ -186,6 +187,11 @@ export function MemberDetailsCard({ requestId, memberId, isOpen, onClose }: Memb
                     </div>
                 </div>
             </div>
+
+            <ProcessingOverlay 
+                isOpen={processing}
+                stage="Finalizing member status..."
+            />
         </div>
     )
 }

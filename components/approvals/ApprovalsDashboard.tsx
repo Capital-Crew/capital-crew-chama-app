@@ -10,6 +10,7 @@ import { processApproval } from '@/app/actions/approval-actions'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useOptimisticAction } from '@/hooks/useOptimisticAction'
+import { ProcessingOverlay } from '../shared/ProcessingOverlay'
 
 // Icon mapping
 const TYPE_ICONS = {
@@ -439,6 +440,11 @@ export function ApprovalsDashboard({ requests, currentUserId }: ApprovalsDashboa
                     </div>
                 </DivWrapper>
             )}
+
+            <ProcessingOverlay 
+                isOpen={anyIsPending}
+                stage="Securing governance decision..."
+            />
         </div>
     )
 }

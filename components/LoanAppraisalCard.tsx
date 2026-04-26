@@ -20,6 +20,7 @@ import dynamic from 'next/dynamic';
 import { useOptimisticAction } from '@/hooks/useOptimisticAction';
 import { SubmitButton } from '@/components/ui/SubmitButton';
 import { FormError } from '@/components/ui/FormError';
+import { ProcessingOverlay } from './shared/ProcessingOverlay';
 
 const VotingRecordsModal = dynamic(
     () => import('./loan/VotingRecordsModal').then(mod => mod.VotingRecordsModal),
@@ -553,6 +554,11 @@ export function LoanAppraisalCard({ loanId, isOpen, onClose, currentUserId, acti
                     onSuccess={onRepaymentSuccess}
                 />
             )}
+
+            <ProcessingOverlay 
+                isOpen={approvalPending || disbursePending || recallPending}
+                stage={disbursePending ? "Finalizing disbursement..." : "Casting your vote..."}
+            />
         </div >
     )
 }

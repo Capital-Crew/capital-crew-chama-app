@@ -1331,6 +1331,8 @@ model AuditLog {
   @@index([userId])
   @@index([entityId, entityType])
   @@index([action])
+  @@index([domain])
+  @@index([status])
   @@index([sessionId])
   @@index([requestId])
   @@index([createdAt])
@@ -2257,6 +2259,10 @@ model Transaction {
   memberId           String?
   member             Member?                @relation(fields: [memberId], references: [id])
   createdAt          DateTime               @default(now())
+
+  @@index([memberId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model PendingTransaction {
@@ -2653,6 +2659,9 @@ model LoanNote {
   auditLogs               LoanNoteAuditLog[]
   escrowLedger            EscrowLedger[] @relation("LoanNoteEscrowLedger")
 
+  @@index([floaterId])
+  @@index([status])
+  @@index([subscriptionDeadline])
   @@map("loan_notes")
 }
 
@@ -2681,6 +2690,9 @@ model LoanNoteSubscription {
   disbursements       LoanNotePaymentDisbursement[]
   escrowLedger        EscrowLedger[]
 
+  @@index([loanNoteId])
+  @@index([subscriberId])
+  @@index([status])
   @@map("loan_note_subscriptions")
 }
 
@@ -2720,6 +2732,9 @@ model LoanNotePaymentSchedule {
   disbursements         LoanNotePaymentDisbursement[]
 
   @@unique([loanNoteId, eventNumber])
+  @@index([loanNoteId])
+  @@index([dueDate])
+  @@index([status])
   @@map("loan_note_payment_schedule")
 }
 
@@ -2746,6 +2761,9 @@ model LoanNotePaymentDisbursement {
   businessDate         DateTime              @db.Date
   status               CLNDisbursementStatus @default(PENDING)
 
+  @@index([loanNoteId])
+  @@index([paymentScheduleId])
+  @@index([subscriptionId])
   @@map("loan_note_payment_disbursements")
 }
 

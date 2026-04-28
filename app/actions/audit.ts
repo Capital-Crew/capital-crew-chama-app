@@ -175,12 +175,19 @@ export async function exportAuditLogs(filters: AuditLogFilter = {}) {
         ]
     }
 
+    const MAX_EXPORT_LIMIT = 5000;
+    const totalCount = await prisma.auditLog.count({ where });
+
+    if (totalCount > MAX_EXPORT_LIMIT) {
+        console.warn(`[exportAuditLogs] Truncating export from ${totalCount} to ${MAX_EXPORT_LIMIT} rows.`);
+    }
+
     return prisma.auditLog.findMany({
         where,
         include: {
             user: { select: { name: true, email: true, role: true } }
         },
         orderBy: { timestamp: 'desc' },
-        take: 2000 // reasonable limit for export
+        take: MAX_EXPORT_LIMIT
     })
 }

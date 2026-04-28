@@ -62,7 +62,6 @@ export class InterestService {
         await tx.loan.update({
             where: { id: loanId },
             data: {
-                current_balance: { increment: interestAmount.toNumber() },
                 accruedInterestTotal: { increment: interestAmount },
                 lastInterestRunDate: now,
                 nextInterestRunDate: startOfMonth(addMonths(now, 1))
@@ -218,7 +217,6 @@ export class InterestService {
                         await tx.loan.update({
                             where: { id: loan.id },
                             data: {
-                                current_balance: { increment: interestAmount.toNumber() },
                                 accruedInterestTotal: { increment: interestAmount },
                                 lastInterestRunDate: now,
                                 nextInterestRunDate: startOfMonth(addMonths(now, 1))
@@ -308,7 +306,6 @@ export class InterestService {
                 await tx.loan.update({
                     where: { id: posting.loanId },
                     data: {
-                        current_balance: { decrement: posting.amount.toNumber() },
                         accruedInterestTotal: { decrement: posting.amount },
                         // Reset next run date to the month this posting covered
                         nextInterestRunDate: new Date(posting.periodYear, posting.periodMonth - 1, 1)

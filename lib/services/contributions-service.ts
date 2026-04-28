@@ -156,15 +156,7 @@ export class ContributionsService {
                 data: { ledgerTransactionId: journalEntry.id }
             });
 
-            // 6. Update member.contributionBalance (Legacy field for compatibility)
-            await tx.member.update({
-                where: { id: memberId },
-                data: {
-                    contributionBalance: {
-                        increment: amount
-                    }
-                }
-            });
+            // Legacy contributionBalance update removed as it's now derived from Ledger.
 
             return contribTx;
         }, {

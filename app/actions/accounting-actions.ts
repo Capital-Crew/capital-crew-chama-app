@@ -443,10 +443,7 @@ export const reverseJournalEntryAction = withAudit({ actionType: AuditLogAction.
         if (originalEntry.referenceType === 'CONTRIBUTION_PAYMENT' || originalEntry.referenceType === 'SAVINGS_DEPOSIT') {
             const amount = originalEntry.ledgerEntries.reduce((sum, line) => sum + Number(line.creditAmount), 0)
             if (originalEntry.referenceId) {
-                await tx.member.update({
-                    where: { id: originalEntry.referenceId },
-                    data: { contributionBalance: { decrement: amount } }
-                })
+                // Legacy contributionBalance update removed as it's derived from Ledger
             }
             // Note: shareTransaction replaced by contributionTransaction or generic ledger
             await tx.contributionTransaction.updateMany({

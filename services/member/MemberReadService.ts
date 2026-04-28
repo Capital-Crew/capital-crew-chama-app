@@ -87,18 +87,41 @@ export class MemberReadService {
     }
 
     static async getMemberSummary(id: string) {
-        const member = await db.member.findUnique({
-            where: { id },
-            select: {
-                id: true,
-                memberNumber: true,
-                name: true,
-                status: true,
-                branch: { select: { name: true } },
-                wallet: { select: { glAccount: { select: { balance: true } } } },
-                contributionBalance: true
-            }
-        })
-        return member
+        const { getMemberWalletBalance, getMemberContributionBalance, getLoanOutstandingBalance } = await import('@/lib/accounting/AccountingEngine');
+
+        const [member, activeLoans, walletBalance, contributionBalance] = await Promise.all([
+            db.member.findUnique({
+                where: { id },
+                select: {
+                    id: true,
+                    memberNumber: true,
+                    name: true,
+                    status: true,
+                    branch: { select: { name: true } },
+                }
+            }),
+            db.loan.findMany({
+                where: { memberId: id, status: { in: ['ACTIVE', 'OVERDUE'] } },
+                select: { id: true }
+            }),
+            getMemberWalletBalance(id).catch(() => 0),
+            getMemberContributionBalance(id).catch(() => 0)
+        ]);
+
+        if (!member) return null;
+
+        let totalLoansOutstanding = 0;
+        if (activeLoans.length > 0) {
+            const balances = await Promise.all(activeLoans.map(l => getLoanOutstandingBalance(l.id).catch(() => 0)));
+            totalLoansOutstanding = balances.reduce((sum, bal) => sum + bal, 0);
+        }
+
+        return {
+            ...member,
+            walletBalance,
+            contributionBalance,
+            totalLoansActive: activeLoans.length,
+            totalLoansOutstanding
+        };
     }
 }

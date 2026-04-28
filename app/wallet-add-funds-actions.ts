@@ -75,16 +75,18 @@ export const addContribution = withAudit(
             revalidatePath('/accounts')
             revalidatePath(`/members/${input.memberId}`)
 
+            const { getMemberContributionBalance } = await import('@/lib/accounting/AccountingEngine');
+            const newShareBalance = await getMemberContributionBalance(input.memberId).catch(() => 0);
+
             const updatedMember = await prisma.member.findUnique({
-                where: { id: input.memberId },
-                select: { contributionBalance: true }
+                where: { id: input.memberId }
             })
             if (updatedMember) ctx.captureAfter(updatedMember);
 
             return {
                 success: true,
                 message: 'Contribution recorded successfully',
-                newShareBalance: Number(updatedMember?.contributionBalance || 0)
+                newShareBalance
             }
         }
 

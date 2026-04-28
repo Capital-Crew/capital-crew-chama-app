@@ -113,15 +113,12 @@ export class WaterfallAllocation {
             remaining = new Prisma.Decimal(0);
         }
 
-        // 4. Update Loan Record (Balance and Accrued Totals)
+        // 4. Update Loan Record (Accrued Totals only)
         await tx.loan.update({
             where: { id: loanId },
             data: {
-                // Decrement current balance by total amount (P+I+Pen)
-                current_balance: { decrement: amountDecimal.toNumber() },
                 // Sync Accrued Totals
-                accruedInterestTotal: { decrement: totalInterest },
-                penalties: { decrement: totalPenalty }
+                accruedInterestTotal: { decrement: totalInterest }
             }
         });
 

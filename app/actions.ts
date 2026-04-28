@@ -493,130 +493,135 @@ export const applyForLoan = withAudit(
         try {
             ctx.beginStep('Database Operations');
             const runCoreLogic = async () => {
-                let loan: any;
-                const commonData = {
-                    memberId,
-                    loanProductId: loanProductId || null,
-                    amount: amount,
-                    applicationDate: new Date(),
-                    status: newStatus,
-                    memberContributionsAtApplication: appraisal.memberContributions,
-                    grossQualifyingAmount: appraisal.grossQualifyingAmount,
-                    processingFee: appraisal.processingFee,
-                    insuranceFee: appraisal.insuranceFee,
-                    contributionDeduction: appraisal.contributionDeduction,
-                    existingLoanOffset: appraisal.selectedLoansOffset,
-                    totalDeductions: appraisal.totalDeductions,
-                    netDisbursementAmount: appraisal.netDisbursementAmount,
-                    installments,
-                    monthlyInstallment,
-                    interestRate: product?.interestRatePerPeriod || 0,
-                    interestRatePerMonth: product?.interestRatePerPeriod,
-                    penaltyRate: product?.defaultPenaltyRate || 0,
-                    repaymentSchedule: schedule,
-                    feeExemptions,
-                    loanContract: contractRef,
-                    updatedAt: new Date()
-                }
+                const result = await prisma.$transaction(async (tx) => {
+                    let loan: any;
+                    const commonData = {
+                        memberId,
+                        loanProductId: loanProductId || null,
+                        amount: amount,
+                        applicationDate: new Date(),
+                        status: newStatus,
+                        memberContributionsAtApplication: appraisal.memberContributions,
+                        grossQualifyingAmount: appraisal.grossQualifyingAmount,
+                        processingFee: appraisal.processingFee,
+                        insuranceFee: appraisal.insuranceFee,
+                        contributionDeduction: appraisal.contributionDeduction,
+                        existingLoanOffset: appraisal.selectedLoansOffset,
+                        totalDeductions: appraisal.totalDeductions,
+                        netDisbursementAmount: appraisal.netDisbursementAmount,
+                        installments,
+                        monthlyInstallment,
+                        interestRate: product?.interestRatePerPeriod || 0,
+                        interestRatePerMonth: product?.interestRatePerPeriod,
+                        penaltyRate: product?.defaultPenaltyRate || 0,
+                        repaymentSchedule: schedule,
+                        feeExemptions,
+                        loanContract: contractRef,
+                        updatedAt: new Date()
+                    }
 
-                let existingLoanState = null;
-                if (loanId) {
-                    existingLoanState = await prisma.loan.findUnique({
-                        where: { id: loanId },
-                        select: { status: true, amount: true, installments: true }
-                    })
-                    loan = await prisma.loan.update({ where: { id: loanId }, data: commonData })
-                } else {
-                    const lastLoan = await prisma.loan.findFirst({
-                        orderBy: { loanApplicationNumber: 'desc' },
-                        select: { loanApplicationNumber: true }
-                    })
-                    const { getNextLoanNumber } = require('../lib/utils');
-                    const loanApplicationNumber = getNextLoanNumber(lastLoan?.loanApplicationNumber)
-                    loan = await prisma.loan.create({
-                        data: {
-                            loanApplicationNumber,
-                            ...commonData,
-                            approvalVotes: [],
-                            applicationFeePaid: false
-                        }
-                    })
-                }
-
-                if (!isDraftSave) {
-                    if (topUpCalculations.length > 0) {
-                        await prisma.loanTopUp.deleteMany({ where: { newLoanId: loan.id } });
-                        await prisma.loanTopUp.createMany({
-                            data: topUpCalculations.map((calc: any) => ({
-                                newLoanId: loan.id,
-                                oldLoanId: calc.loanId,
-                                oldLoanNumber: calc.loanNumber,
-                                productName: calc.productName,
-                                principalBalance: calc.principalBalance,
-                                accruedInterest: calc.accruedInterest,
-                                penalties: calc.penalties,
-                                refinanceFee: calc.refinanceFee,
-                                totalOffset: calc.totalOffset
-                            }))
+                    let existingLoanState = null;
+                    if (loanId) {
+                        existingLoanState = await tx.loan.findUnique({
+                            where: { id: loanId },
+                            select: { status: true, amount: true, installments: true }
+                        })
+                        loan = await tx.loan.update({ where: { id: loanId }, data: commonData })
+                    } else {
+                        const lastLoan = await tx.loan.findFirst({
+                            orderBy: { loanApplicationNumber: 'desc' },
+                            select: { loanApplicationNumber: true }
+                        })
+                        const { getNextLoanNumber } = require('../lib/utils');
+                        const loanApplicationNumber = getNextLoanNumber(lastLoan?.loanApplicationNumber)
+                        loan = await tx.loan.create({
+                            data: {
+                                loanApplicationNumber,
+                                ...commonData,
+                                approvalVotes: [],
+                                applicationFeePaid: false
+                            }
                         })
                     }
 
-                    await prisma.loanJourneyEvent.create({
-                        data: {
-                            loanId: loan.id,
-                            eventType: 'APPLICATION_SUBMITTED',
-                            description: `Loan application submitted for KES ${amount.toLocaleString()}`,
-                            actorId: memberId,
-                            actorName: 'Applicant',
-                            metadata: {
-                                requestedAmount: amount,
-                                netDisbursementAmount: appraisal.netDisbursementAmount
-                            }
+                    if (!isDraftSave) {
+                        if (topUpCalculations.length > 0) {
+                            await tx.loanTopUp.deleteMany({ where: { newLoanId: loan.id } });
+                            await tx.loanTopUp.createMany({
+                                data: topUpCalculations.map((calc: any) => ({
+                                    newLoanId: loan.id,
+                                    oldLoanId: calc.loanId,
+                                    oldLoanNumber: calc.loanNumber,
+                                    productName: calc.productName,
+                                    principalBalance: calc.principalBalance,
+                                    accruedInterest: calc.accruedInterest,
+                                    penalties: calc.penalties,
+                                    refinanceFee: calc.refinanceFee,
+                                    totalOffset: calc.totalOffset
+                                }))
+                            })
                         }
-                    })
 
-                    // Legacy ApprovalRequest creation removed - fully handled by Unified Workflow Engine below.
-
-                    if (product && amount > 0) {
-                        const { ScheduleGeneratorService } = await import('@/lib/services/ScheduleGeneratorService')
-                        await prisma.repaymentInstallment.deleteMany({ where: { loanId: loan.id } })
-                        const scheduleItems = ScheduleGeneratorService.generate(
-                            Number(amount), Number(product.interestRatePerPeriod), installments,
-                            product.interestType as 'FLAT' | 'DECLINING_BALANCE', new Date(), loan.id
-                        )
-                        await prisma.repaymentInstallment.createMany({
-                            data: scheduleItems.map(item => ({ ...item, loanId: loan.id }))
+                        await tx.loanJourneyEvent.create({
+                            data: {
+                                loanId: loan.id,
+                                eventType: 'APPLICATION_SUBMITTED',
+                                description: `Loan application submitted for KES ${amount.toLocaleString()}`,
+                                actorId: memberId,
+                                actorName: 'Applicant',
+                                metadata: {
+                                    requestedAmount: amount,
+                                    netDisbursementAmount: appraisal.netDisbursementAmount
+                                }
+                            }
                         })
-                    }
 
-                    if (session?.user?.id) {
-                        await prisma.loanDraft.deleteMany({ where: { userId: session.user.id } })
-                    }
+                        if (product && amount > 0) {
+                            const { ScheduleGeneratorService } = await import('@/lib/services/ScheduleGeneratorService')
+                            await tx.repaymentInstallment.deleteMany({ where: { loanId: loan.id } })
+                            const scheduleItems = ScheduleGeneratorService.generate(
+                                Number(amount), Number(product.interestRatePerPeriod), installments,
+                                product.interestType as 'FLAT' | 'DECLINING_BALANCE', new Date(), loan.id
+                            )
+                            await tx.repaymentInstallment.createMany({
+                                data: scheduleItems.map(item => ({ ...item, loanId: loan.id }))
+                            })
+                        }
 
-                    if (newStatus === LoanStatus.PENDING_APPROVAL) {
-                        if (existingLoanState && existingLoanState.status !== 'DRAFT') {
-                            if (Number(existingLoanState.amount) !== amount || existingLoanState.installments !== installments) {
-                                await prisma.emailNotificationLog.deleteMany({ where: { loanId: loan.id, templateType: 'LOAN_APPROVAL_REQUEST' } });
-                                await prisma.loan.update({ where: { id: loan.id }, data: { submissionVersion: { increment: 1 } } });
-                                // Re-fetch to get new version
-                                const updated = await prisma.loan.findUnique({ where: { id: loan.id } });
-                                if (updated) loan = updated as any;
+                        if (session?.user?.id) {
+                            await tx.loanDraft.deleteMany({ where: { userId: session.user.id } })
+                        }
+
+                        if (newStatus === LoanStatus.PENDING_APPROVAL) {
+                            if (existingLoanState && existingLoanState.status !== 'DRAFT') {
+                                if (Number(existingLoanState.amount) !== amount || existingLoanState.installments !== installments) {
+                                    await tx.emailNotificationLog.deleteMany({ where: { loanId: loan.id, templateType: 'LOAN_APPROVAL_REQUEST' } });
+                                    loan = await tx.loan.update({ where: { id: loan.id }, data: { submissionVersion: { increment: 1 } } });
+                                }
                             }
                         }
+                    }
 
-                        // [UNIFIED WORKFLOW] Initiate workflow request
-                        try {
-                            const { initiateWorkflow } = await import('@/app/actions/workflow-engine');
-                            await initiateWorkflow('LOAN', loan.id, loan.memberId, (loan as any).submissionVersion || 1);
-                        } catch (workflowErr) {
-                            // TODO: Log error to monitoring service
-                            console.error('[WORKFLOW_INIT_FAILURE]:', workflowErr);
-                            // We don't throw here as the loan is already updated to PENDING_APPROVAL.
-                            // The submitLoanApproval action has auto-repair to fix this later if needed.
-                        }
+                    return { loan, existingLoanState };
+                });
 
+                const { loan, existingLoanState } = result;
+
+                // Side effects outside transaction (Email, Workflow Engine)
+                // Note: These should ideally support transactions, but current architecture triggers these as async side effects.
+                if (!isDraftSave && newStatus === LoanStatus.PENDING_APPROVAL) {
+                    try {
+                        const { initiateWorkflow } = await import('@/app/actions/workflow-engine');
+                        await initiateWorkflow('LOAN', loan.id, loan.memberId, (loan as any).submissionVersion || 1);
+                    } catch (workflowErr) {
+                        console.error('[WORKFLOW_INIT_FAILURE]:', workflowErr);
+                    }
+
+                    try {
                         const { LoanNotificationService } = await import('@/lib/services/LoanNotificationService')
                         await LoanNotificationService.handleApprovalRequest(loan.id)
+                    } catch (notifErr) {
+                        console.error('[NOTIFICATION_FAILURE]:', notifErr);
                     }
                 }
 

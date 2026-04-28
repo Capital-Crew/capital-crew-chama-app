@@ -40,6 +40,51 @@ export type PaymentGatewayResult = {
     journalEntryNumber?: string;
 };
 
+
+export type DbClient = Prisma.TransactionClient | PrismaClient;
+
+// ========================================
+// BALANCE HELPERS (Authoritative Ledger Queries)
+// ========================================
+
+/**
+ * Member wallet balance
+ */
+export async function getMemberWalletBalance(memberId: string, tx?: DbClient): Promise<number> {
+    const client = tx || db;
+    const wallet = await client.wallet.findUnique({
+        where: { memberId },
+        include: { glAccount: true }
+    });
+    if (!wallet || !wallet.glAccount) return 0;
+    return AccountingEngine.getAccountBalance(wallet.glAccount.code, undefined, undefined, tx);
+}
+
+/**
+ * Member Contribution Balance (Total Non-Withdrawable)
+ */
+export async function getMemberContributionBalance(memberId: string, tx?: DbClient): Promise<number> {
+    const client = tx || db;
+    try {
+        const mapping = await client.systemAccountingMapping.findUnique({
+            where: { type: 'CONTRIBUTIONS' },
+            include: { account: true }
+        });
+        if (!mapping) return 0;
+        return await AccountingEngine.getAccountBalance(mapping.account.code, memberId, undefined, tx);
+    } catch (e) {
+        return 0;
+    }
+}
+
+/**
+ * Strict Ledger Balance for Loan (Principal + Interest + Penalties)
+ */
+export async function getLoanOutstandingBalance(loanId: string, tx?: DbClient): Promise<number> {
+    const { getLoanOutstandingBalance: getBalance } = await import('@/lib/accounting/AccountingEngine');
+    return getBalance(loanId, tx);
+}
+
 export class PaymentGateway {
     /**
      * Process a payment from wallet to a destination
@@ -129,16 +174,8 @@ export class PaymentGateway {
                     throw new AppError('Member not found', 404, ErrorCodes.RECORD_NOT_FOUND);
                 }
 
-                // 2. Increment share contributions
-                const currentShares = new Prisma.Decimal(member.contributionBalance);
-                const newShares = currentShares.add(amountDecimal);
-
-                await tx.member.update({
-                    where: { id: input.destinationId },
-                    data: { contributionBalance: newShares.toNumber() }
-                });
-
-                newDestinationBalance = newShares.toNumber();
+                // 2. Projections will be updated below after accounting commit
+                newDestinationBalance = (await getMemberContributionBalance(input.destinationId, tx)) + input.amount;
 
                 // 3. Create contribution transaction
                 await tx.contributionTransaction.create({
@@ -225,8 +262,7 @@ export class PaymentGateway {
                     await tx.loan.update({
                         where: { id: loan.id },
                         data: {
-                            status: 'CLEARED',
-                            outstandingBalance: new Prisma.Decimal(0)
+                            status: 'CLEARED'
                         }
                     });
 
@@ -243,6 +279,22 @@ export class PaymentGateway {
                 }
 
                 newDestinationBalance = updatedBalance.toNumber();
+            }
+
+            // 5. UPDATE PROJECTIONS (Synchronous Consistency)
+            // This runs at the end of the transaction for both paths
+            const { ProjectionService } = await import('@/lib/services/ProjectionService');
+            try {
+                if (input.destinationType === 'CONTRIBUTION') {
+                    await ProjectionService.syncMember(input.destinationId, tx);
+                } else if (input.destinationType === 'LOAN_REPAYMENT') {
+                    await ProjectionService.syncLoan(input.destinationId, tx);
+                }
+                // Always sync member profile if wallet changed
+                await ProjectionService.syncMember(wallet.memberId, tx);
+            } catch (e) {
+                // Log projection drift to avoid rolling back a successfully committed payment
+                console.error('PROJECTION_DRIFT: Failed to sync projections during PaymentGateway transaction', e);
             }
 
             return {

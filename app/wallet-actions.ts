@@ -120,7 +120,7 @@ export async function getWalletBalance(memberId: string): Promise<Serialized<any
         availableBalance,
         activeLoansAmount,
         availableLoanLimit,
-        phoneNumber: member.contactInfo?.mobile || member.contactInfo?.phone || '',
+        phoneNumber: member.contactInfo?.mobile || member.contactInfo?.phone || member.contact || '',
         transactions: member.wallet?.transactions || []
     })
 }

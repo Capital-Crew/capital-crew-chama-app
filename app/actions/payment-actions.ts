@@ -3,7 +3,7 @@
 import { db as prisma } from '@/lib/db'
 import { auth } from '@/auth'
 import { normalizeMSISDN } from '@/lib/utils/phone'
-import { NcbaService } from '@/lib/services/NcbaService'
+import { sendToGateway } from '@/lib/gateway-client'
 import { withAudit } from '@/lib/with-audit'
 import { AuditLogAction } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
@@ -43,7 +43,7 @@ export const initiatePayment = withAudit(
         ctx.endStep('Validate Payment Request');
 
         ctx.beginStep('Normalize MSISDNs');
-        const profilePhoneRaw = user.member.contactInfo?.mobile || user.member.contactInfo?.phone;
+        const profilePhoneRaw = user.member.contactInfo?.mobile || user.member.contactInfo?.phone || user.member.contact;
         if (!profilePhoneRaw) {
             ctx.setErrorCode('PROFILE_PHONE_MISSING');
             throw new Error('Your profile does not have a phone number. Please update it first.')
@@ -76,21 +76,26 @@ export const initiatePayment = withAudit(
         ctx.captureAfter(pendingTx);
         ctx.endStep('Create Pending Transaction');
 
-        ctx.beginStep('Fire NCBA STK Push');
+        ctx.beginStep('Fire Gateway STK Push');
         try {
-            const ncbaResult = await NcbaService.initiateStkPush(
-                normalizedPayingPhone,
-                input.amount,
-                pendingTx.id // Use our ID as reference
+            const gatewayResult = await sendToGateway(
+                '/payments/deposit',
+                {
+                    memberId: session.user.id,
+                    walletId: user.member.wallet.id,
+                    amount: input.amount,
+                    phoneNumber: normalizedPayingPhone
+                },
+                pendingTx.id // Idempotency key
             );
 
-            // Update pending transaction with NCBA reference
+            // Update pending transaction with Gateway reference
             await prisma.pendingTransaction.update({
                 where: { id: pendingTx.id },
-                data: { ncbaReference: ncbaResult.ncbaReference }
+                data: { ncbaReference: gatewayResult.id } // Using ncbaReference column to store Gateway Tx ID for now
             });
 
-            ctx.endStep('Fire NCBA STK Push', { ncbaReference: ncbaResult.ncbaReference });
+            ctx.endStep('Fire Gateway STK Push', { gatewayTxId: gatewayResult.id });
 
             return {
                 success: true,
@@ -106,8 +111,8 @@ export const initiatePayment = withAudit(
                 data: { status: 'failed' }
             });
 
-            ctx.setErrorCode('NCBA_API_ERROR');
-            throw new Error(`NCBA Payment Initiation Failed: ${error.message}`);
+            ctx.setErrorCode('GATEWAY_API_ERROR');
+            throw new Error(`Gateway Payment Initiation Failed: ${error.message}`);
         }
     }
 );

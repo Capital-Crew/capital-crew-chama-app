@@ -8,9 +8,7 @@ interface ActiveLoan {
     id: string
     loanApplicationNumber: string
     loanProduct: { name: string }
-    current_balance: number
-    outstandingBalance?: number
-    penalties: number
+    outstandingBalance: number
     disbursementDate: Date
     interestRate: number
 }

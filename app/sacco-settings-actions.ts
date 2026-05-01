@@ -438,7 +438,6 @@ export async function getMemberActiveLoans(memberId: string) {
                     // Add missing fields required by frontend interface
                     disbursementDate: loan.disbursementDate || loan.applicationDate, // Fallback to application date
                     interestRate: Number(loan.interestRate || loan.loanProduct?.interestRate || 0),
-                    penalties: 0 // Default to 0 as we don't have separate penalty tracking yet
                 }
             } catch (err) {
                 // Return safe fallback
@@ -451,7 +450,6 @@ export async function getMemberActiveLoans(memberId: string) {
                     status: loan.status,
                     disbursementDate: loan.disbursementDate || loan.applicationDate,
                     interestRate: 0,
-                    penalties: 0
                 };
             }
         })

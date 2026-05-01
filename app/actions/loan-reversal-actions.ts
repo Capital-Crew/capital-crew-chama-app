@@ -196,7 +196,6 @@ export const reverseLoanTransaction = withAudit(
                         where: { id: originalTx.loanId },
                         data: {
                             status: 'CANCELLED',
-                            penalties: 0,
                         }
                     })
 

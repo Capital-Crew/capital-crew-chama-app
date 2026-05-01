@@ -205,9 +205,11 @@ export interface ActiveLoanSummary {
     id: string;
     loanApplicationNumber: string;
     productName: string;
-    amount: number;
+    disbursedAmount: number;
     outstandingBalance: number;
     status: string;
+    disbursementDate: Date | string;
+    interestRate: number;
 }
 
 export type Page = 'dashboard' | 'loans' | 'members' | 'expenses' | 'financials' | 'reports' | 'settings' | 'approvals' | 'notifications' | 'audit' | 'rights' | 'disbursements';

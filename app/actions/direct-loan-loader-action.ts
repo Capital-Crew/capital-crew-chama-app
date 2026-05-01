@@ -93,7 +93,6 @@ export const directLoadLoan = withAudit(
                         existingLoanOffset: 0,
                         totalDeductions: 0,
                         netDisbursementAmount: amount,
-                        penalties: 0,
                     }
                 })
 

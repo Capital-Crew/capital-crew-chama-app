@@ -23,7 +23,7 @@ async function main() {
   })
   console.log("Active/Overdue loans count:", activeLoans.length)
   for (const l of activeLoans) {
-      console.log(`- ID: ${l.id}, Num: ${l.loanApplicationNumber}, Status: ${l.status}, Penalties: ${l.penalties}`)
+      console.log(`- ID: ${l.id}, Num: ${l.loanApplicationNumber}, Status: ${l.status}`)
   }
 }
 

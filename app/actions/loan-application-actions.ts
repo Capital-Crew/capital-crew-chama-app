@@ -87,7 +87,6 @@ export const startLoanApplication = withAudit(
                     memberId: targetMemberId,
                     status: 'DRAFT',
                     amount: 0,
-                    penalties: 0,
                     memberContributionsAtApplication: 0,
                     grossQualifyingAmount: 0,
                     processingFee: 0,

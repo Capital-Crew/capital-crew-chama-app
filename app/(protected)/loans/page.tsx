@@ -46,7 +46,7 @@ export default async function LoansPage() {
     const { getLoanFinancials, getLoanPenaltyBalance, getLoanFeeBalance } = await import('@/lib/accounting/AccountingEngine')
 
     // Serialize loans to convert Decimal to number for Client Component
-    const serializedLoans = await Promise.all(loans.map(async (loan: any) => {
+    const serializedLoans = await Promise.all((loans || []).map(async (loan: any) => {
         const [financials, penaltyBalance, feeBalance] = await Promise.all([
             getLoanFinancials(loan.id),
             getLoanPenaltyBalance(loan.id),
@@ -79,10 +79,10 @@ export default async function LoansPage() {
     }));
 
     // Serialize members to convert Decimal fields
-    const serializedMembers = serializeMembers(members);
+    const serializedMembers = serializeMembers(members || []);
 
     // Serialize products to convert Decimal fields
-    const serializedProducts = products.map((product: any) => ({
+    const serializedProducts = (products || []).map((product: any) => ({
         ...product,
         principal: product.principal ? Number(product.principal) : 0,
         minPrincipal: product.minPrincipal ? Number(product.minPrincipal) : 0,

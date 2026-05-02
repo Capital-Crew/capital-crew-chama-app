@@ -87,7 +87,7 @@ export default async function SystemAdminPage() {
     const welfareTypes: any[] = welfareTypesRes?.success ? (welfareTypesRes.data || []) : []
     const requisitions: any[] = welfareReqsRes?.success ? (welfareReqsRes.data || []) : []
 
-    const serializedProducts = products.map((p: any) => ({
+    const serializedProducts = (products || []).map((p: any) => ({
         ...p,
         principal: p.principal ? Number(p.principal) : 0,
         minPrincipal: p.minPrincipal ? Number(p.minPrincipal) : 0,
@@ -99,7 +99,7 @@ export default async function SystemAdminPage() {
     }));
 
     // Serialize Welfare Types
-    const serializedWelfareTypes = welfareTypes.map((w: any) => ({
+    const serializedWelfareTypes = (welfareTypes || []).map((w: any) => ({
         ...w,
         monthlyContribution: w.monthlyContribution ? Number(w.monthlyContribution) : 0,
         minLoanLimit: w.minLoanLimit ? Number(w.minLoanLimit) : 0,
@@ -109,14 +109,14 @@ export default async function SystemAdminPage() {
     }));
 
     // Serialize Welfare Requisitions
-    const serializedRequisitions = requisitions.map((r: any) => ({
+    const serializedRequisitions = (requisitions || []).map((r: any) => ({
         ...r,
         amount: Number(r.amount),
         approvedAmount: r.approvedAmount ? Number(r.approvedAmount) : null
     }));
 
     // Serialize Expense Accounts
-    const serializedExpenseAccounts = expenseAccounts.map((a: any) => ({
+    const serializedExpenseAccounts = (expenseAccounts || []).map((a: any) => ({
         ...a,
         balance: Number(a.balance || 0),
         openingBalance: Number(a.openingBalance || 0)

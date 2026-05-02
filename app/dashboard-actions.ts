@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Dashboard Statistics Actions
  * 
  * Server actions for fetching group-wide dashboard metrics
@@ -21,7 +21,13 @@ export async function getDashboardStatsSync(): Promise<Serialized<any>> {
 
     // 1. Fetch Members mapping and Settings
     const [allMembers, settings] = await Promise.all([
-        prisma.member.findMany({ select: { id: true, name: true } }),
+        prisma.member.findMany({
+            where: {
+                memberNumber: { not: 1 },
+                name: { not: 'System Administrator' }
+            },
+            select: { id: true, name: true }
+        }),
         prisma.saccoSettings.findFirst()
     ])
     const memberMap = new Map(allMembers.map((m: any) => [m.id, m.name]))

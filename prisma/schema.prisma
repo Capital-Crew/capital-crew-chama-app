@@ -842,6 +842,10 @@ model LoanProduct {
   charges  Json // Stores LoanCharge[]
   isActive Boolean @default(true)
 
+  // Concurrent Loan Limits (per borrower, per product)
+  maxConcurrentLoans    Int     @default(0)     // 0 = unlimited
+  concurrentLimitActive Boolean @default(false)  // Toggle enforcement
+
   loans Loan[]
 
   // NEW: Accounting Configuration
@@ -1281,8 +1285,8 @@ model AuditLog {
   id        String   @id @default(cuid())
   timestamp DateTime @default(now())
   createdAt DateTime @default(now())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
 
   // Identity enrichment
   userEmail   String? // Nullable for legacy logs

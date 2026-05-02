@@ -357,6 +357,16 @@ export const applyForLoan = withAudit(
                 }
             }
 
+            // NEW: Concurrent Loan Limit Check (per-product borrower cap)
+            if (loanProductId) {
+                const { checkConcurrentLoanLimit } = await import('@/app/actions/loan-eligibility')
+                const limitCheck = await checkConcurrentLoanLimit(memberId, loanProductId, loanId || undefined)
+                if (!limitCheck.allowed) {
+                    ctx.setErrorCode('CONCURRENT_LIMIT_EXCEEDED');
+                    return { error: limitCheck.message || 'Application Denied: Concurrent loan limit reached for this product.' }
+                }
+            }
+
             const existingApplication = await prisma.loan.findFirst({
                 where: {
                     memberId,

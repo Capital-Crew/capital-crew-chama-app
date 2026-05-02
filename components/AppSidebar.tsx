@@ -166,6 +166,8 @@ export function AppSidebar({ user, approvalCount = 0, pendingLoanCount = 0 }: { 
 
                         {["SYSTEM_ADMIN", "CHAIRPERSON"].includes(user.role) && renderNavItem({ icon: <UserRightsIcon />, label: "User Rights", href: "/admin/user-rights", active: pathname === '/admin/user-rights' })}
 
+                        {["SYSTEM_ADMIN", "SECRETARY", "CHAIRPERSON"].includes(user.role) && renderNavItem({ icon: <Mail />, label: "Meetings Mgmt", href: "/admin/meetings", active: pathname === '/admin/meetings' })}
+
                         {canAccess('ACCOUNTS') && renderNavItem({ icon: <FileTextIcon />, label: "Accounts", href: "/accounts", active: pathname === '/accounts' })}
 
                         {canAccess('ADMIN') && renderNavItem({ icon: <SettingsIcon />, label: "System", href: "/admin/system", active: pathname === '/admin/system' })}

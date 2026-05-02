@@ -149,13 +149,22 @@ export function SystemAdminModule({ products, members = [], welfareTypes = [], w
                             <h2 className="text-2xl font-bold text-slate-900">Loan Products</h2>
                             <p className="text-slate-600 mt-1">Manage and configure your loan product offerings</p>
                         </div>
-                        <Link
-                            href="/admin/products/create"
-                            className="flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white px-6 py-3 rounded-xl font-semibold shadow-lg shadow-cyan-500/30 hover:shadow-xl hover:shadow-cyan-500/40 transition-all duration-200"
-                        >
-                            <PlusCircleIcon className="w-5 h-5" />
-                            Create Product
-                        </Link>
+                         <div className="flex items-center gap-3">
+                            <Link
+                                href="/admin/loan-limits"
+                                className="flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-indigo-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 transition-all duration-200"
+                            >
+                                <Scale className="w-5 h-5" />
+                                Loan Concurrent Limits
+                            </Link>
+                            <Link
+                                href="/admin/products/create"
+                                className="flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white px-6 py-3 rounded-xl font-semibold shadow-lg shadow-cyan-500/30 hover:shadow-xl hover:shadow-cyan-500/40 transition-all duration-200"
+                            >
+                                <PlusCircleIcon className="w-5 h-5" />
+                                Create Product
+                            </Link>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

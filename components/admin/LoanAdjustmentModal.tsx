@@ -81,6 +81,7 @@ export function LoanAdjustmentModal({
         { value: AdjustmentCategory.RECOVERY_COST, label: 'Recovery Costs' },
         { value: AdjustmentCategory.SYSTEM_CORRECTION, label: 'System Correction' },
         { value: AdjustmentCategory.WAIVER, label: 'Charge Waiver' },
+        { value: AdjustmentCategory.PAYMENT_MADE, label: 'Payment Made (Manual Repayment)' },
     ];
 
     // Determine which loan to use

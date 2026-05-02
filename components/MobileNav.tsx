@@ -149,6 +149,12 @@ export function MobileNav({ user, approvalCount = 0 }: { user: { name: string, r
                                 href: "/admin/user-rights",
                                 active: pathname === '/admin/user-rights'
                             })}
+                            {["SYSTEM_ADMIN", "SECRETARY", "CHAIRPERSON"].includes(user.role) && renderNavItem({
+                                icon: <HeartHandshake />,
+                                label: "Meetings Mgmt",
+                                href: "/admin/meetings",
+                                active: pathname === '/admin/meetings'
+                            })}
                             {canAccess('ACCOUNTS') && renderNavItem({ icon: <FileTextIcon />, label: "Accounts", href: "/accounts", active: pathname === '/accounts' })}
                             {canAccess('ADMIN') && renderNavItem({ icon: <SettingsIcon />, label: "System", href: "/admin/system", active: pathname === '/admin/system' })}
                             {canAccess('AUDIT') && renderNavItem({ icon: <AuditLogIcon />, label: "Audit Log", href: "/audit", active: pathname === '/audit' })}

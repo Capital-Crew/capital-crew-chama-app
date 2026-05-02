@@ -22,7 +22,13 @@ export default async function LoansPage() {
             },
             orderBy: { applicationDate: 'desc' }
         }),
-        prisma.member.findMany({ orderBy: { name: 'asc' } }),
+        prisma.member.findMany({
+            where: {
+                memberNumber: { not: 1 },
+                name: { not: 'System Administrator' }
+            },
+            orderBy: { name: 'asc' }
+        }),
         prisma.loanProduct.findMany({ where: { isActive: true } }),
         // Fetch LoanDraft for current user
         session?.user?.id

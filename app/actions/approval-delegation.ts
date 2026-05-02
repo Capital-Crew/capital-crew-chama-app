@@ -230,7 +230,9 @@ export async function getApprovers() {
             OR: [
                 { role: { in: ['SYSTEM_ADMIN', 'CHAIRPERSON', 'TREASURER'] } },
                 // Add granular permission check if needed
-            ]
+            ],
+            email: { not: 'admin@capitalcrew.co.ke' },
+            name: { not: 'System Administrator' }
         },
         select: {
             id: true,

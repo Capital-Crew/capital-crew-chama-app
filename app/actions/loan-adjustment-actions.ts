@@ -151,8 +151,11 @@ export const postLoanAdjustment = withAudit(
         const mappings = await getSystemMappingsDict()
         const getCode = (type: string) => mappings[type as SystemAccountType]
 
-        const portfolioAcc = await prisma.ledgerAccount.findUnique({ where: { code: '1310' } })
-        const interestAcc = await prisma.ledgerAccount.findUnique({ where: { code: '1320' } })
+        const portfolioCode = getCode('EVENT_LOAN_REPAYMENT_PRINCIPAL') || getCode('RECEIVABLES') || '1021'
+        const interestCode = getCode('RECEIVABLE_LOAN_INTEREST') || '1022'
+
+        const portfolioAcc = await prisma.ledgerAccount.findUnique({ where: { code: portfolioCode } })
+        const interestAcc = await prisma.ledgerAccount.findUnique({ where: { code: interestCode } })
 
         let contraAccountCode = '4100'
         if (adjustmentType === 'increase') {
@@ -169,7 +172,11 @@ export const postLoanAdjustment = withAudit(
                     contraAccountCode = '4100'
             }
         } else {
-            contraAccountCode = '6000'
+            if (category === AdjustmentCategory.PAYMENT_MADE) {
+                contraAccountCode = getCode('CASH_ON_HAND') || '1011'
+            } else {
+                contraAccountCode = '6000'
+            }
         }
 
         const targetAssetAccount = (category === AdjustmentCategory.INTEREST || category === AdjustmentCategory.PENALTY)

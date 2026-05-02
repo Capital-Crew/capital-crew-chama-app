@@ -9,23 +9,15 @@ async function main() {
 
   for (const member of members) {
     if (!member.contactInfo) {
-      await prisma.memberContact.create({
-        data: {
-          memberId: member.id,
-          mobile: '254700000000',
-          email: `${member.id}@example.com`
-        }
-      });
-      console.log(`Created contact info for member ${member.memberNumber}`);
+      throw new Error(`CRITICAL: Member ${member.name} (Member #${member.memberNumber}) is missing their contact info record. Users' details can only be edited or changed by them.`);
     } else if (!member.contactInfo.mobile && !member.contactInfo.phone) {
-      await prisma.memberContact.update({
-        where: { id: member.contactInfo.id },
-        data: { mobile: '254700000000' }
-      });
-      console.log(`Updated mobile for member ${member.memberNumber}`);
+      throw new Error(`CRITICAL: Member ${member.name} (Member #${member.memberNumber}) has an incomplete contact info record (missing both mobile and phone). Users' details can only be edited or changed by them.`);
     }
   }
-  console.log('Done.');
+  console.log('All members have complete contact info.');
 }
 
-main().catch(console.error).finally(() => prisma.$disconnect());
+main().catch(e => {
+  console.error(e.message || e);
+  process.exit(1);
+}).finally(() => prisma.$disconnect());

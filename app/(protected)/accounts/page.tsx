@@ -15,6 +15,10 @@ export default async function AccountsPage() {
     if (!await protectPage('ACCOUNTS')) return redirect('/dashboard')
 
     const members = await prisma.member.findMany({
+        where: {
+            memberNumber: { not: 1 },
+            name: { not: 'System Administrator' }
+        },
         select: {
             id: true,
             name: true,

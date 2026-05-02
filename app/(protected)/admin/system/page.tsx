@@ -42,6 +42,10 @@ export default async function SystemAdminPage() {
             orderBy: { name: 'asc' }
         }),
         prisma.member.findMany({
+            where: {
+                memberNumber: { not: 1 },
+                name: { not: 'System Administrator' }
+            },
             select: {
                 id: true,
                 name: true,

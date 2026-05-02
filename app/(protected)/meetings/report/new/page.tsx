@@ -28,7 +28,11 @@ export default async function NewMeetingReportPage() {
 
     // 2. Fetch Active Members with their User IDs (needed for processing)
     const rawMembers = await prisma.member.findMany({
-        where: { status: { in: ['ACTIVE', 'APPROVED'] } },
+        where: {
+            status: { in: ['ACTIVE', 'APPROVED'] },
+            memberNumber: { not: 1 },
+            name: { not: 'System Administrator' }
+        },
         include: {
             user: {
                 select: { id: true }

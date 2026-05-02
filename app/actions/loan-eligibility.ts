@@ -125,3 +125,64 @@ export async function checkLoanEligibility(memberId: string): Promise<Eligibilit
         }
     }
 }
+
+/**
+ * CONCURRENT LOAN LIMIT CHECK
+ * Checks if a member has reached the maximum allowed active loans for a given product type.
+ * 
+ * Rules:
+ * - maxConcurrentLoans = 0 → unlimited (no cap)
+ * - concurrentLimitActive = false → rule not enforced
+ * - Active statuses: ACTIVE, APPROVED
+ */
+export async function checkConcurrentLoanLimit(
+    memberId: string,
+    loanProductId: string,
+    excludeLoanId?: string
+): Promise<{ allowed: boolean; message?: string; currentCount?: number; maxAllowed?: number }> {
+    try {
+        const product = await db.loanProduct.findUnique({
+            where: { id: loanProductId },
+            select: {
+                name: true,
+                maxConcurrentLoans: true,
+                concurrentLimitActive: true,
+            }
+        })
+
+        if (!product) {
+            return { allowed: true } // Product not found — let downstream validation handle it
+        }
+
+        // Rule not enforced or unlimited
+        if (!product.concurrentLimitActive || product.maxConcurrentLoans === 0) {
+            return { allowed: true }
+        }
+
+        // Count member's active loans of this product type
+        const activeCount = await db.loan.count({
+            where: {
+                memberId,
+                loanProductId,
+                status: { in: ['ACTIVE', 'APPROVED'] },
+                ...(excludeLoanId ? { id: { not: excludeLoanId } } : {}),
+            }
+        })
+
+        if (activeCount >= product.maxConcurrentLoans) {
+            return {
+                allowed: false,
+                message: `Application Denied: You already have ${activeCount} active ${product.name} loan${activeCount !== 1 ? 's' : ''}. Maximum allowed: ${product.maxConcurrentLoans}.`,
+                currentCount: activeCount,
+                maxAllowed: product.maxConcurrentLoans,
+            }
+        }
+
+        return { allowed: true, currentCount: activeCount, maxAllowed: product.maxConcurrentLoans }
+
+    } catch (error) {
+        // On error, allow the application to proceed — downstream checks will catch issues
+        console.error('[ConcurrentLimitCheck] Error:', error)
+        return { allowed: true }
+    }
+}

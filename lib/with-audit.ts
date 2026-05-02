@@ -90,7 +90,7 @@ export function withAudit<TArgs extends unknown[], TReturn>(
                 await db.auditLog.create({
                     data: {
                         // Identity
-                        ...(userId !== 'anonymous' ? { userId } : {}),
+                        userId: userId !== 'anonymous' ? userId : null,
                         userEmail,
                         userRole,
                         ipAddress,
@@ -114,7 +114,7 @@ export function withAudit<TArgs extends unknown[], TReturn>(
                         severity: severity === 'CRITICAL' ? 'CRITICAL' : 'INFO', // Legacy String
                         severityLevel: severity, // New Enum
                         summary,
-                        errorCode: finalBuild.errorCode,
+                        errorCode: finalBuild.errorCode ?? null,
                         errorStack,
 
                         // Execution detail
@@ -122,9 +122,9 @@ export function withAudit<TArgs extends unknown[], TReturn>(
                         durationMs: Date.now() - start,
 
                         // State diff
-                        stateBefore: (finalBuild.stateBefore as any) ?? undefined,
-                        stateAfter: (finalBuild.stateAfter as any) ?? undefined,
-                        diff: (finalBuild.diff as any) ?? undefined,
+                        stateBefore: (finalBuild.stateBefore as any) ?? null,
+                        stateAfter: (finalBuild.stateAfter as any) ?? null,
+                        diff: (finalBuild.diff as any) ?? null,
                     },
                 });
             } catch (logError) {
